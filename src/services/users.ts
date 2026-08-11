@@ -2,6 +2,7 @@ import { requireSupabase } from '@/lib/supabase'
 import type { AppUser, Platform, UserStatus } from '@/lib/types'
 import { mockUsers } from '@/data/mock'
 import { delay, isSupabaseConfigured } from './base'
+import { recordAudit } from './audit'
 
 export interface UserQuery {
   search: string
@@ -66,16 +67,48 @@ export async function listUsers(query: UserQuery): Promise<UserPage> {
   return { rows: (data ?? []) as AppUser[], total: count ?? 0 }
 }
 
-export async function updateUserStatus(id: string, status: UserStatus): Promise<void> {
+export async function getUser(id: string): Promise<AppUser | null> {
   if (!isSupabaseConfigured) {
-    const user = demoUsers.find((candidate) => candidate.id === id)
-    if (user) user.status = status
-    await delay(null, 180)
-    return
+    return delay(demoUsers.find((candidate) => candidate.id === id) ?? null)
   }
 
-  const { error } = await requireSupabase().from('app_users').update({ status }).eq('id', id)
+  const { data, error } = await requireSupabase()
+    .from('app_users')
+    .select('*')
+    .eq('id', id)
+    .maybeSingle()
   if (error) throw error
+  return (data as AppUser | null) ?? null
+}
+
+export async function updateUserStatus(user: AppUser, status: UserStatus): Promise<void> {
+  // Read the previous value first: the demo store hands out live references, so
+  // writing to it mutates the very object this argument points at.
+  const previous = user.status
+
+  if (!isSupabaseConfigured) {
+    const target = demoUsers.find((candidate) => candidate.id === user.id)
+    if (target) target.status = status
+    await delay(null, 180)
+  } else {
+    const { error } = await requireSupabase()
+      .from('app_users')
+      .update({ status })
+      .eq('id', user.id)
+    if (error) throw error
+  }
+
+  await recordAudit({
+    action: status === 'suspended' ? 'user.suspend' : 'user.activate',
+    entity: 'user',
+    entityId: user.id,
+    entityLabel: user.full_name,
+    details: {
+      from: USER_STATUS_LABEL[previous],
+      to: USER_STATUS_LABEL[status],
+      email: user.email,
+    },
+  })
 }
 
 export const USER_STATUS_LABEL: Record<UserStatus, string> = {

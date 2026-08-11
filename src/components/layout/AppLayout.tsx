@@ -4,12 +4,12 @@ import { Database } from 'lucide-react'
 import { isSupabaseConfigured } from '@/lib/supabase'
 import { Sidebar } from './Sidebar'
 import { Topbar } from './Topbar'
-import { NAV_ITEMS } from './nav'
+import { titleForPath } from './nav'
 
 export function AppLayout() {
   const [menuOpen, setMenuOpen] = useState(false)
   const { pathname } = useLocation()
-  const title = NAV_ITEMS.find((item) => item.to === pathname)?.label ?? 'لوحة التحكم'
+  const title = titleForPath(pathname)
 
   return (
     <div className="flex h-full">

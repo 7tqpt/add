@@ -6,12 +6,19 @@ import { ErrorState, LoadingBlock, Spinner, Toast } from '@/components/ui/Feedba
 import { Field, Input, Select, Textarea, Toggle } from '@/components/ui/Field'
 import { useAsync } from '@/hooks/useAsync'
 import { useAuth } from '@/context/AuthContext'
+import { formatDate } from '@/lib/format'
 import { isSupabaseConfigured } from '@/lib/supabase'
-import type { AppSettings } from '@/lib/types'
+import type { AdminRole, AppSettings } from '@/lib/types'
+import {
+  ROLE_DESCRIPTION,
+  ROLE_LABEL,
+  listAdmins,
+  setAdminRole,
+} from '@/services/admins'
 import { getSettings, saveSettings } from '@/services/settings'
 
 export function SettingsPage() {
-  const { user } = useAuth()
+  const { user, role, canWrite } = useAuth()
   const load = useCallback(() => getSettings(), [])
   const { data, error, loading, reload } = useAsync(load, [])
 
@@ -150,6 +157,7 @@ export function SettingsPage() {
         <CardHeader title="الحساب ومصدر البيانات" />
         <CardBody className="flex flex-col gap-3 text-xs">
           <Row label="المسؤول الحالي" value={user?.email ?? '—'} />
+          <Row label="دورك" value={role ? ROLE_LABEL[role] : 'بلا صلاحية'} />
           <Row
             label="مصدر البيانات"
             value={isSupabaseConfigured ? 'Supabase (متصل)' : 'بيانات تجريبية محلية'}
@@ -164,7 +172,16 @@ export function SettingsPage() {
       </Card>
 
       <div className="lg:col-span-2">
-        <Button type="submit" variant="primary" disabled={saving}>
+        <AdminsCard onToast={setToast} />
+      </div>
+
+      <div className="lg:col-span-2">
+        <Button
+          type="submit"
+          variant="primary"
+          disabled={saving || !canWrite}
+          title={canWrite ? undefined : 'دورك الحالي للقراءة فقط'}
+        >
           {saving ? <Spinner /> : <Save size={15} aria-hidden />}
           حفظ الإعدادات
         </Button>
@@ -172,6 +189,125 @@ export function SettingsPage() {
 
       {toast ? <Toast message={toast} /> : null}
     </form>
+  )
+}
+
+const ROLES: AdminRole[] = ['owner', 'admin', 'viewer']
+
+function AdminsCard({ onToast }: { onToast: (message: string) => void }) {
+  const { user, role, canManageAdmins, previewRole } = useAuth()
+  const load = useCallback(() => listAdmins(), [])
+  const { data, error, loading, refetching, reload } = useAsync(load, [])
+  const [busyId, setBusyId] = useState<string | null>(null)
+
+  async function changeRole(target: Parameters<typeof setAdminRole>[0], next: AdminRole) {
+    setBusyId(target.user_id)
+    try {
+      await setAdminRole(target, next)
+      onToast(`تم تغيير دور ${target.email} إلى ${ROLE_LABEL[next]}.`)
+      reload()
+    } catch (cause) {
+      onToast(cause instanceof Error ? cause.message : 'تعذّر تغيير الدور.')
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  return (
+    <Card className={refetching ? 'is-refetching' : undefined}>
+      <CardHeader
+        title="المسؤولون والصلاحيات"
+        subtitle="من يستطيع الدخول إلى اللوحة وما الذي يستطيع تغييره"
+      />
+      <CardBody className="flex flex-col gap-4">
+        <ul className="flex flex-col gap-1.5 text-xs text-ink-2">
+          {ROLES.map((key) => (
+            <li key={key}>
+              <span className="font-medium text-ink">{ROLE_LABEL[key]}</span> — {ROLE_DESCRIPTION[key]}
+            </li>
+          ))}
+        </ul>
+
+        {loading ? (
+          <LoadingBlock />
+        ) : error && !data ? (
+          <ErrorState message={error} onRetry={reload} />
+        ) : (
+          <div className="overflow-x-auto rounded-lg border border-hairline">
+            <table className="w-full border-collapse text-xs">
+              <thead>
+                <tr className="bg-surface-2">
+                  {['البريد', 'الدور', 'أُضيف في'].map((heading) => (
+                    <th
+                      key={heading}
+                      scope="col"
+                      className="border-b border-hairline px-3 py-2 text-start font-medium whitespace-nowrap text-ink-2"
+                    >
+                      {heading}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {(data ?? []).map((admin) => (
+                  <tr key={admin.user_id} className="border-b border-hairline last:border-0">
+                    <td dir="ltr" className="px-3 py-2 text-start whitespace-nowrap text-ink">
+                      {admin.email}
+                      {admin.user_id === user?.id ? (
+                        <span className="text-muted"> (أنت)</span>
+                      ) : null}
+                    </td>
+                    <td className="px-3 py-2">
+                      <div className="w-32">
+                        <Select
+                          value={admin.role}
+                          aria-label={`دور ${admin.email}`}
+                          disabled={busyId === admin.user_id || !canManageAdmins}
+                          title={canManageAdmins ? undefined : 'إدارة المسؤولين متاحة للمالك فقط'}
+                          onChange={(event) => changeRole(admin, event.target.value as AdminRole)}
+                        >
+                          {ROLES.map((key) => (
+                            <option key={key} value={key}>
+                              {ROLE_LABEL[key]}
+                            </option>
+                          ))}
+                        </Select>
+                      </div>
+                    </td>
+                    <td className="tnum px-3 py-2 whitespace-nowrap text-ink-2">
+                      {formatDate(admin.created_at)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {!isSupabaseConfigured ? (
+          <div className="flex flex-col gap-2 rounded-lg border border-hairline bg-surface-2 px-3 py-2.5">
+            <p className="text-xs leading-6 text-ink-2">
+              <strong className="font-semibold">معاينة الصلاحيات:</strong> بدّل دورك هنا لترى كيف
+              تتغيّر اللوحة. اختر «مطّلع» ولاحظ تعطّل كل أزرار التعديل في جميع الشاشات. متاح في
+              وضع العرض التجريبي فقط.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {ROLES.map((key) => (
+                <Button
+                  key={key}
+                  type="button"
+                  size="sm"
+                  variant={role === key ? 'primary' : 'secondary'}
+                  onClick={() => previewRole(key)}
+                >
+                  {ROLE_LABEL[key]}
+                </Button>
+              ))}
+            </div>
+          </div>
+        ) : null}
+      </CardBody>
+    </Card>
   )
 }
 

@@ -1,17 +1,34 @@
 -- ============================================================================
 --  لوحة تحكم تطبيق الجوال — مخطط قاعدة البيانات
 --  شغّل هذا الملف في: Supabase Dashboard ← SQL Editor ← New query
+--  ثم شغّل supabase/seed.sql إن أردت بيانات تجريبية للبدء.
 -- ============================================================================
 
 -- ----------------------------------------------------------------------------
--- من هو المسؤول؟ كل سياسات RLS أدناه تعتمد على هذا الجدول.
+-- المسؤولون وأدوارهم — كل سياسات RLS أدناه تعتمد على هذا الجدول
+--
+--   owner  : كل شيء، بما فيه إدارة المسؤولين أنفسهم
+--   admin  : كل شيء عدا إدارة المسؤولين
+--   viewer : قراءة فقط
 -- ----------------------------------------------------------------------------
 create table if not exists public.admins (
   user_id    uuid primary key references auth.users (id) on delete cascade,
+  email      text not null default '',
+  role       text not null default 'viewer' check (role in ('owner', 'admin', 'viewer')),
   created_at timestamptz not null default now()
 );
 
 -- security definer: تتجاوز RLS على جدول admins نفسه، وإلا لصار الفحص دائرياً.
+create or replace function public.admin_role()
+returns text
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select a.role from public.admins a where a.user_id = auth.uid();
+$$;
+
 create or replace function public.is_admin()
 returns boolean
 language sql
@@ -19,30 +36,97 @@ stable
 security definer
 set search_path = public
 as $$
-  select exists (select 1 from public.admins a where a.user_id = auth.uid());
+  select public.admin_role() is not null;
+$$;
+
+-- من يملك حق التعديل. viewer يقرأ فقط.
+create or replace function public.can_write()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select public.admin_role() in ('owner', 'admin');
+$$;
+
+create or replace function public.is_owner()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select public.admin_role() = 'owner';
 $$;
 
 -- ----------------------------------------------------------------------------
 -- مستخدمو التطبيق
 -- ----------------------------------------------------------------------------
 create table if not exists public.app_users (
-  id            uuid primary key default gen_random_uuid(),
-  full_name     text not null,
-  email         text not null unique,
-  phone         text,
-  platform      text not null check (platform in ('ios', 'android')),
-  country       text not null default '',
-  status        text not null default 'pending'
-                check (status in ('active', 'suspended', 'pending')),
-  app_version   text not null default '',
+  id             uuid primary key default gen_random_uuid(),
+  full_name      text not null,
+  email          text not null unique,
+  phone          text,
+  platform       text not null check (platform in ('ios', 'android')),
+  country        text not null default '',
+  status         text not null default 'pending'
+                 check (status in ('active', 'suspended', 'pending')),
+  app_version    text not null default '',
   sessions_count integer not null default 0 check (sessions_count >= 0),
-  created_at    timestamptz not null default now(),
-  last_seen_at  timestamptz
+  created_at     timestamptz not null default now(),
+  last_seen_at   timestamptz
 );
 
 create index if not exists app_users_created_at_idx on public.app_users (created_at desc);
 create index if not exists app_users_status_idx     on public.app_users (status);
 create index if not exists app_users_platform_idx   on public.app_users (platform);
+
+-- ----------------------------------------------------------------------------
+-- جلسات المستخدم — تغذّي شاشة تفاصيل المستخدم
+-- ----------------------------------------------------------------------------
+create table if not exists public.user_sessions (
+  id               uuid primary key default gen_random_uuid(),
+  user_id          uuid not null references public.app_users (id) on delete cascade,
+  started_at       timestamptz not null default now(),
+  duration_seconds integer not null default 0 check (duration_seconds >= 0),
+  platform         text not null check (platform in ('ios', 'android')),
+  app_version      text not null default '',
+  country          text not null default ''
+);
+
+create index if not exists user_sessions_user_idx
+  on public.user_sessions (user_id, started_at desc);
+
+-- ----------------------------------------------------------------------------
+-- أجهزة المستخدم
+-- ----------------------------------------------------------------------------
+create table if not exists public.user_devices (
+  id           uuid primary key default gen_random_uuid(),
+  user_id      uuid not null references public.app_users (id) on delete cascade,
+  model        text not null,
+  os_version   text not null default '',
+  platform     text not null check (platform in ('ios', 'android')),
+  push_enabled boolean not null default true,
+  last_used_at timestamptz not null default now()
+);
+
+create index if not exists user_devices_user_idx on public.user_devices (user_id);
+
+-- ----------------------------------------------------------------------------
+-- المشتريات داخل التطبيق
+-- ----------------------------------------------------------------------------
+create table if not exists public.purchases (
+  id         uuid primary key default gen_random_uuid(),
+  user_id    uuid not null references public.app_users (id) on delete cascade,
+  product    text not null,
+  amount     numeric(12, 2) not null check (amount >= 0),
+  status     text not null default 'paid'
+             check (status in ('paid', 'refunded', 'failed', 'pending')),
+  created_at timestamptz not null default now()
+);
+
+create index if not exists purchases_user_idx on public.purchases (user_id, created_at desc);
 
 -- ----------------------------------------------------------------------------
 -- المقاييس اليومية (صف واحد لكل يوم × منصة)
@@ -104,6 +188,57 @@ create index if not exists app_versions_released_at_idx
   on public.app_versions (released_at desc);
 
 -- ----------------------------------------------------------------------------
+-- البلاغات والدعم الفني
+-- ----------------------------------------------------------------------------
+create table if not exists public.support_tickets (
+  id         uuid primary key default gen_random_uuid(),
+  user_id    uuid references public.app_users (id) on delete set null,
+  user_name  text not null default '',
+  user_email text not null default '',
+  subject    text not null,
+  category   text not null default 'other'
+             check (category in ('bug', 'billing', 'account', 'feature', 'other')),
+  status     text not null default 'open'
+             check (status in ('open', 'pending', 'resolved', 'closed')),
+  priority   text not null default 'normal'
+             check (priority in ('low', 'normal', 'high', 'urgent')),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists support_tickets_status_idx
+  on public.support_tickets (status, created_at desc);
+
+create table if not exists public.ticket_messages (
+  id           uuid primary key default gen_random_uuid(),
+  ticket_id    uuid not null references public.support_tickets (id) on delete cascade,
+  author       text not null check (author in ('user', 'admin')),
+  author_email text not null default '',
+  body         text not null,
+  created_at   timestamptz not null default now()
+);
+
+create index if not exists ticket_messages_ticket_idx
+  on public.ticket_messages (ticket_id, created_at);
+
+-- ----------------------------------------------------------------------------
+-- سجل عمليات المسؤولين — للإلحاق فقط، لا تعديل ولا حذف
+-- ----------------------------------------------------------------------------
+create table if not exists public.audit_log (
+  id          uuid primary key default gen_random_uuid(),
+  actor_email text not null default '',
+  action      text not null,
+  entity      text not null,
+  entity_id   text not null default '',
+  entity_label text not null default '',
+  details     jsonb not null default '{}'::jsonb,
+  created_at  timestamptz not null default now()
+);
+
+create index if not exists audit_log_created_at_idx on public.audit_log (created_at desc);
+create index if not exists audit_log_entity_idx     on public.audit_log (entity, created_at desc);
+
+-- ----------------------------------------------------------------------------
 -- إعدادات التطبيق — صف واحد فقط (id = 1)
 -- ----------------------------------------------------------------------------
 create table if not exists public.app_settings (
@@ -121,38 +256,65 @@ create table if not exists public.app_settings (
 insert into public.app_settings (id) values (1) on conflict (id) do nothing;
 
 -- ============================================================================
---  RLS — كل الجداول مقفلة، والوصول للمسؤولين فقط
+--  RLS — كل الجداول مقفلة. القراءة لكل مسؤول، والكتابة لمن دوره owner أو admin.
 -- ============================================================================
-alter table public.admins            enable row level security;
-alter table public.app_users         enable row level security;
-alter table public.daily_metrics     enable row level security;
+alter table public.admins             enable row level security;
+alter table public.app_users          enable row level security;
+alter table public.user_sessions      enable row level security;
+alter table public.user_devices       enable row level security;
+alter table public.purchases          enable row level security;
+alter table public.daily_metrics      enable row level security;
 alter table public.push_notifications enable row level security;
-alter table public.app_versions      enable row level security;
-alter table public.app_settings      enable row level security;
+alter table public.app_versions       enable row level security;
+alter table public.support_tickets    enable row level security;
+alter table public.ticket_messages    enable row level security;
+alter table public.audit_log          enable row level security;
+alter table public.app_settings       enable row level security;
 
--- كل مستخدم يرى صفّه في admins فقط (للتحقق من صلاحيته بعد تسجيل الدخول).
-drop policy if exists admins_read_self on public.admins;
-create policy admins_read_self on public.admins
-  for select using (user_id = auth.uid());
+-- جدول المسؤولين: كل مسؤول يقرأ القائمة، لكن التعديل عليها لصاحب دور owner فقط.
+drop policy if exists admins_read on public.admins;
+create policy admins_read on public.admins
+  for select using (public.is_admin());
 
--- بقية الجداول: قراءة وكتابة كاملة للمسؤولين، ولا شيء لغيرهم.
+drop policy if exists admins_owner_writes on public.admins;
+create policy admins_owner_writes on public.admins
+  for all using (public.is_owner()) with check (public.is_owner());
+
+-- بقية جداول البيانات: قراءة لكل مسؤول، كتابة لمن يملك الصلاحية.
 do $$
 declare
   t text;
 begin
   foreach t in array array[
-    'app_users', 'daily_metrics', 'push_notifications', 'app_versions', 'app_settings'
+    'app_users', 'user_sessions', 'user_devices', 'purchases', 'daily_metrics',
+    'push_notifications', 'app_versions', 'support_tickets', 'ticket_messages',
+    'app_settings'
   ] loop
-    execute format('drop policy if exists %I_admin_all on public.%I', t, t);
+    execute format('drop policy if exists %I_read on public.%I', t, t);
     execute format(
-      'create policy %I_admin_all on public.%I for all
-         using (public.is_admin()) with check (public.is_admin())', t, t);
+      'create policy %I_read on public.%I for select using (public.is_admin())', t, t);
+
+    execute format('drop policy if exists %I_write on public.%I', t, t);
+    execute format(
+      'create policy %I_write on public.%I for all
+         using (public.can_write()) with check (public.can_write())', t, t);
   end loop;
 end $$;
 
+-- سجل العمليات: يقرأه كل مسؤول، ويكتب فيه من يملك صلاحية التعديل.
+-- لا توجد سياسة update أو delete إطلاقاً — السجل للإلحاق فقط، حتى لا يستطيع
+-- مسؤول محو أثر ما فعله.
+drop policy if exists audit_log_read on public.audit_log;
+create policy audit_log_read on public.audit_log
+  for select using (public.is_admin());
+
+drop policy if exists audit_log_append on public.audit_log;
+create policy audit_log_append on public.audit_log
+  for insert with check (public.can_write());
+
 -- ============================================================================
---  بعد التشغيل: أنشئ مستخدماً من Authentication ← Users، ثم امنحه الصلاحية:
+--  بعد التشغيل: أنشئ مستخدماً من Authentication ← Users، ثم امنحه الدور:
 --
---    insert into public.admins (user_id)
---    select id from auth.users where email = 'you@example.com';
+--    insert into public.admins (user_id, email, role)
+--    select id, email, 'owner' from auth.users where email = 'you@example.com';
 -- ============================================================================

@@ -3,6 +3,7 @@ import { Card, CardBody, CardHeader } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { EmptyState, ErrorState, LoadingBlock, Toast } from '@/components/ui/Feedback'
 import { Toggle } from '@/components/ui/Field'
+import { useAuth } from '@/context/AuthContext'
 import { useAsync } from '@/hooks/useAsync'
 import { cn } from '@/lib/cn'
 import { PLATFORM_LABEL, formatDate } from '@/lib/format'
@@ -53,6 +54,7 @@ function VersionCard({
   onDone: (message: string) => void
   onSaved: () => void
 }) {
+  const { canWrite } = useAuth()
   // The slider tracks locally while dragging and only commits on release, so a
   // drag from 60 to 100 is one write instead of nine.
   const [rollout, setRolloutValue] = useState(version.rollout_percent)
@@ -77,7 +79,7 @@ function VersionCard({
 
   function commitRollout() {
     if (rollout === version.rollout_percent) return
-    void commit(() => setRollout(version.id, rollout), 'تم تحديث نسبة الطرح.')
+    void commit(() => setRollout(version, rollout), 'تم تحديث نسبة الطرح.')
   }
 
   return (
@@ -121,9 +123,10 @@ function VersionCard({
             max={100}
             step={5}
             value={rollout}
-            disabled={busy}
+            disabled={busy || !canWrite}
             style={{ accentColor: 'var(--series-1)' }}
             className="w-full cursor-pointer disabled:cursor-not-allowed"
+            title={canWrite ? undefined : 'دورك الحالي للقراءة فقط'}
             onChange={(event) => setRolloutValue(Number(event.target.value))}
             onPointerUp={commitRollout}
             onKeyUp={commitRollout}
@@ -133,10 +136,10 @@ function VersionCard({
 
         <Toggle
           checked={version.force_update}
-          disabled={busy}
+          disabled={busy || !canWrite}
           onChange={(next) =>
             void commit(
-              () => setForceUpdate(version.id, next),
+              () => setForceUpdate(version, next),
               next ? 'تم تفعيل التحديث الإجباري.' : 'تم إلغاء التحديث الإجباري.',
             )
           }

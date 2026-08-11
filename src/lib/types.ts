@@ -53,6 +53,94 @@ export interface AppSettings {
   default_locale: string
 }
 
+/**
+ * `owner` manages other admins, `admin` changes data but not admins, `viewer`
+ * reads only. Enforced in RLS first; the UI mirrors it so disabled controls
+ * explain themselves before a request is refused.
+ */
+export type AdminRole = 'owner' | 'admin' | 'viewer'
+
+export interface AdminAccount {
+  user_id: string
+  email: string
+  role: AdminRole
+  created_at: string
+}
+
+export interface UserSession {
+  id: string
+  user_id: string
+  started_at: string
+  duration_seconds: number
+  platform: Platform
+  app_version: string
+  country: string
+}
+
+export interface UserDevice {
+  id: string
+  user_id: string
+  model: string
+  os_version: string
+  platform: Platform
+  push_enabled: boolean
+  last_used_at: string
+}
+
+export type PurchaseStatus = 'paid' | 'refunded' | 'failed' | 'pending'
+
+export interface Purchase {
+  id: string
+  user_id: string
+  product: string
+  amount: number
+  status: PurchaseStatus
+  created_at: string
+}
+
+export type TicketStatus = 'open' | 'pending' | 'resolved' | 'closed'
+export type TicketPriority = 'low' | 'normal' | 'high' | 'urgent'
+export type TicketCategory = 'bug' | 'billing' | 'account' | 'feature' | 'other'
+
+export interface SupportTicket {
+  id: string
+  user_id: string | null
+  user_name: string
+  user_email: string
+  subject: string
+  category: TicketCategory
+  status: TicketStatus
+  priority: TicketPriority
+  created_at: string
+  updated_at: string
+}
+
+export interface TicketMessage {
+  id: string
+  ticket_id: string
+  author: 'user' | 'admin'
+  author_email: string
+  body: string
+  created_at: string
+}
+
+export interface AuditEntry {
+  id: string
+  actor_email: string
+  action: string
+  entity: string
+  entity_id: string
+  entity_label: string
+  details: Record<string, unknown>
+  created_at: string
+}
+
+/** One page of rows plus the unfiltered total, for pagination controls. */
+export interface Paged<T> {
+  rows: T[]
+  total: number
+}
+
 /** A single point on a time series. `date` is an ISO `YYYY-MM-DD` day. */
 export interface MetricPoint {
   date: string

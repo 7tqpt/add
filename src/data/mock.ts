@@ -1,11 +1,21 @@
 import type {
+  AdminAccount,
   AppSettings,
   AppUser,
   AppVersion,
   DailyBreakdown,
   MetricPoint,
   Platform,
+  Purchase,
+  PurchaseStatus,
   PushNotification,
+  SupportTicket,
+  TicketCategory,
+  TicketMessage,
+  TicketPriority,
+  TicketStatus,
+  UserDevice,
+  UserSession,
   UserStatus,
 } from '@/lib/types'
 
@@ -251,6 +261,140 @@ export const mockVersions: AppVersion[] = [
     force_update: false,
     rollout_percent: 100,
     notes: 'إضافة الإشعارات داخل التطبيق.',
+  },
+]
+
+const IOS_DEVICES = ['iPhone 15 Pro', 'iPhone 14', 'iPhone 13 mini', 'iPad Air']
+const ANDROID_DEVICES = ['Samsung Galaxy S24', 'Xiaomi 14', 'Pixel 8', 'Oppo Reno 11']
+
+/** Sessions for every user who has actually opened the app. */
+export const mockUserSessions: UserSession[] = mockUsers
+  .filter((user) => user.status !== 'pending')
+  .flatMap((user, userIndex) =>
+    Array.from({ length: intBetween(4, 9) }, (_, i) => ({
+      id: `ses_${userIndex}_${i}`,
+      user_id: user.id,
+      started_at: isoAt(i * 2 + intBetween(0, 1), intBetween(7, 23)),
+      duration_seconds: intBetween(45, 2700),
+      platform: user.platform,
+      app_version: user.app_version,
+      country: user.country,
+    })),
+  )
+
+export const mockUserDevices: UserDevice[] = mockUsers
+  .filter((user) => user.status !== 'pending')
+  .flatMap((user, userIndex) =>
+    // Most people have one device; roughly a third also use a second.
+    Array.from({ length: rng() > 0.66 ? 2 : 1 }, (_, i) => ({
+      id: `dev_${userIndex}_${i}`,
+      user_id: user.id,
+      model: user.platform === 'ios' ? pick(IOS_DEVICES) : pick(ANDROID_DEVICES),
+      os_version: user.platform === 'ios' ? '18.2' : '15',
+      platform: user.platform,
+      push_enabled: rng() > 0.18,
+      last_used_at: user.last_seen_at ?? user.created_at,
+    })),
+  )
+
+const PRODUCTS = [
+  { name: 'اشتراك شهري', amount: 29 },
+  { name: 'اشتراك سنوي', amount: 299 },
+  { name: 'باقة نقاط 100', amount: 19 },
+  { name: 'إزالة الإعلانات', amount: 49 },
+]
+
+export const mockPurchases: Purchase[] = mockUsers
+  .filter((user) => user.status === 'active')
+  .flatMap((user, userIndex) =>
+    Array.from({ length: intBetween(0, 4) }, (_, i) => {
+      const product = pick(PRODUCTS)
+      const roll = rng()
+      return {
+        id: `pur_${userIndex}_${i}`,
+        user_id: user.id,
+        product: product.name,
+        amount: product.amount,
+        status: (roll > 0.94 ? 'refunded' : roll > 0.9 ? 'failed' : 'paid') as PurchaseStatus,
+        created_at: isoAt(intBetween(0, 180), intBetween(8, 22)),
+      }
+    }),
+  )
+
+const TICKET_SUBJECTS: { subject: string; category: TicketCategory }[] = [
+  { subject: 'التطبيق يتوقف عند فتح شاشة الدفع', category: 'bug' },
+  { subject: 'لم يصلني إيصال الاشتراك', category: 'billing' },
+  { subject: 'لا أستطيع تسجيل الدخول برقم الجوال', category: 'account' },
+  { subject: 'طلب إضافة الوضع الليلي', category: 'feature' },
+  { subject: 'خُصم المبلغ مرتين', category: 'billing' },
+  { subject: 'الإشعارات لا تصل على أندرويد', category: 'bug' },
+  { subject: 'كيف أحذف حسابي؟', category: 'account' },
+  { subject: 'اقتراح: دعم اللغة الفرنسية', category: 'feature' },
+]
+
+const TICKET_STATUSES: TicketStatus[] = ['open', 'pending', 'resolved', 'closed']
+const TICKET_PRIORITIES: TicketPriority[] = ['urgent', 'high', 'normal', 'low']
+
+export const mockTickets: SupportTicket[] = Array.from({ length: 14 }, (_, i) => {
+  const user = mockUsers[i * 3]
+  const template = TICKET_SUBJECTS[i % TICKET_SUBJECTS.length]
+  const createdDaysAgo = i + intBetween(0, 2)
+  return {
+    id: `tkt_${(100 + i).toString(36)}`,
+    user_id: user.id,
+    user_name: user.full_name,
+    user_email: user.email,
+    subject: template.subject,
+    category: template.category,
+    status: TICKET_STATUSES[i % TICKET_STATUSES.length],
+    priority: TICKET_PRIORITIES[i % TICKET_PRIORITIES.length],
+    created_at: isoAt(createdDaysAgo, intBetween(8, 20)),
+    updated_at: isoAt(Math.max(0, createdDaysAgo - 1), intBetween(8, 20)),
+  }
+}).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+
+export const mockTicketMessages: TicketMessage[] = mockTickets.flatMap((ticket, i) => {
+  const opening: TicketMessage = {
+    id: `msg_${i}_0`,
+    ticket_id: ticket.id,
+    author: 'user',
+    author_email: ticket.user_email,
+    body: 'السلام عليكم، أواجه هذه المشكلة منذ آخر تحديث للتطبيق. أرجو المساعدة وشكراً.',
+    created_at: ticket.created_at,
+  }
+  if (ticket.status === 'open') return [opening]
+
+  return [
+    opening,
+    {
+      id: `msg_${i}_1`,
+      ticket_id: ticket.id,
+      author: 'admin' as const,
+      author_email: 'support@example.com',
+      body: 'وعليكم السلام، شكراً لتواصلك. تم تحويل البلاغ للفريق التقني وسنوافيك بالتحديث قريباً.',
+      created_at: ticket.updated_at,
+    },
+  ]
+})
+
+export const mockAdmins: AdminAccount[] = [
+  {
+    user_id: 'demo-admin',
+    email: 'admin@example.com',
+    role: 'owner',
+    created_at: isoAt(120, 9),
+  },
+  {
+    user_id: 'adm_2',
+    email: 'ops@example.com',
+    role: 'admin',
+    created_at: isoAt(64, 11),
+  },
+  {
+    user_id: 'adm_3',
+    email: 'analyst@example.com',
+    role: 'viewer',
+    created_at: isoAt(21, 14),
   },
 ]
 

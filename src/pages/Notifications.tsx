@@ -3,11 +3,14 @@ import { Send } from 'lucide-react'
 import { Badge, type Tone } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Card, CardBody, CardHeader } from '@/components/ui/Card'
+import { ExportButton } from '@/components/ui/ExportButton'
 import { EmptyState, ErrorState, LoadingBlock, Spinner, Toast } from '@/components/ui/Feedback'
 import { Field, Input, Select, Textarea, Toggle } from '@/components/ui/Field'
+import { Pagination } from '@/components/ui/Pagination'
+import { useAuth } from '@/context/AuthContext'
 import { useAsync } from '@/hooks/useAsync'
 import { cn } from '@/lib/cn'
-import { formatDateTime, formatNumber, formatPercent } from '@/lib/format'
+import { formatDate, formatDateTime, formatNumber, formatPercent } from '@/lib/format'
 import type { Audience, NotificationStatus } from '@/lib/types'
 import {
   AUDIENCE_LABEL,
@@ -26,9 +29,14 @@ const STATUS_TONE: Record<NotificationStatus, Tone> = {
 const TITLE_LIMIT = 60
 const BODY_LIMIT = 180
 
+const PAGE_SIZE = 8
+const EXPORT_LIMIT = 5000
+
 export function NotificationsPage() {
-  const load = useCallback(() => listNotifications(), [])
-  const { data, error, loading, refetching, reload } = useAsync(load, [])
+  const { canWrite } = useAuth()
+  const [page, setPage] = useState(0)
+  const load = useCallback(() => listNotifications(page, PAGE_SIZE), [page])
+  const { data, error, loading, refetching, reload } = useAsync(load, [page])
 
   const [title, setTitle] = useState('')
   const [body, setBody] = useState('')
@@ -72,13 +80,35 @@ export function NotificationsPage() {
       setScheduled(false)
       setScheduledAt('')
       setToast(scheduled ? 'تمت جدولة الإشعار.' : 'تم إرسال الإشعار.')
-      reload()
+      // A new notification lands at the top, so jump back to the first page.
+      if (page === 0) reload()
+      else setPage(0)
     } catch (cause) {
       setFormError(cause instanceof Error ? cause.message : 'تعذّر إرسال الإشعار.')
     } finally {
       setSubmitting(false)
     }
   }
+
+  const buildExport = useCallback(async () => {
+    const all = await listNotifications(0, EXPORT_LIMIT)
+    return {
+      columns: ['العنوان', 'النص', 'الفئة', 'الحالة', 'الموعد', 'المستلمون', 'الفتحات'],
+      rows: all.rows.map((notification) => [
+        notification.title,
+        notification.body,
+        AUDIENCE_LABEL[notification.audience],
+        NOTIFICATION_STATUS_LABEL[notification.status],
+        notification.sent_at
+          ? formatDate(notification.sent_at)
+          : notification.scheduled_at
+            ? formatDate(notification.scheduled_at)
+            : '',
+        notification.recipients,
+        notification.opened,
+      ]),
+    }
+  }, [])
 
   return (
     <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
@@ -154,7 +184,12 @@ export function NotificationsPage() {
               </p>
             ) : null}
 
-            <Button type="submit" variant="primary" disabled={submitting}>
+            <Button
+              type="submit"
+              variant="primary"
+              disabled={submitting || !canWrite}
+              title={canWrite ? undefined : 'دورك الحالي للقراءة فقط'}
+            >
               {submitting ? <Spinner /> : <Send size={15} aria-hidden />}
               {scheduled ? 'جدولة الإشعار' : 'إرسال الآن'}
             </Button>
@@ -164,17 +199,28 @@ export function NotificationsPage() {
 
       <div className="xl:col-span-2">
         <Card className={cn(refetching && 'is-refetching')}>
-          <CardHeader title="سجل الإشعارات" subtitle="آخر الإشعارات المرسلة والمجدولة" />
+          <CardHeader
+            title="سجل الإشعارات"
+            subtitle="آخر الإشعارات المرسلة والمجدولة"
+            actions={
+              <ExportButton
+                filenamePrefix="تقرير-الإشعارات"
+                build={buildExport}
+                disabled={!data || data.total === 0}
+                onError={setToast}
+              />
+            }
+          />
 
           {loading ? (
             <LoadingBlock />
           ) : error && !data ? (
             <ErrorState message={error} onRetry={reload} />
-          ) : !data || data.length === 0 ? (
+          ) : !data || data.rows.length === 0 ? (
             <EmptyState title="لا توجد إشعارات بعد" description="أرسل أول إشعار من النموذج المجاور." />
           ) : (
             <ul className="divide-y divide-[var(--border)]">
-              {data.map((notification) => {
+              {data.rows.map((notification) => {
                 const openRate =
                   notification.recipients > 0 ? notification.opened / notification.recipients : null
                 const stamp = notification.sent_at ?? notification.scheduled_at
@@ -206,6 +252,10 @@ export function NotificationsPage() {
               })}
             </ul>
           )}
+
+          {data && data.rows.length > 0 ? (
+            <Pagination page={page} pageSize={PAGE_SIZE} total={data.total} onChange={setPage} />
+          ) : null}
         </Card>
       </div>
 

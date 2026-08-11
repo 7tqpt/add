@@ -1,7 +1,8 @@
 import { requireSupabase } from '@/lib/supabase'
-import type { Audience, NotificationStatus, PushNotification } from '@/lib/types'
+import type { Audience, NotificationStatus, Paged, PushNotification } from '@/lib/types'
 import { mockNotifications } from '@/data/mock'
 import { delay, isSupabaseConfigured } from './base'
+import { recordAudit } from './audit'
 
 export interface NotificationDraft {
   title: string
@@ -22,21 +23,47 @@ function sortByRecency(a: PushNotification, b: PushNotification): number {
   return timestampOf(b) - timestampOf(a)
 }
 
-export async function listNotifications(): Promise<PushNotification[]> {
-  if (!isSupabaseConfigured) return delay([...demoNotifications])
+export async function listNotifications(
+  page: number,
+  pageSize: number,
+): Promise<Paged<PushNotification>> {
+  if (!isSupabaseConfigured) {
+    const start = page * pageSize
+    return delay({
+      rows: demoNotifications.slice(start, start + pageSize),
+      total: demoNotifications.length,
+    })
+  }
 
-  const { data, error } = await requireSupabase()
+  const from = page * pageSize
+  const { data, error, count } = await requireSupabase()
     .from('push_notifications')
-    .select('*')
+    .select('*', { count: 'exact' })
     .order('created_at', { ascending: false })
-    .limit(100)
+    .range(from, from + pageSize - 1)
   if (error) throw error
-  return (data ?? []) as PushNotification[]
+  return { rows: (data ?? []) as PushNotification[], total: count ?? 0 }
 }
 
 export async function createNotification(draft: NotificationDraft): Promise<PushNotification> {
   const status: NotificationStatus = draft.scheduledAt ? 'scheduled' : 'sent'
+  const created = await insertNotification(draft, status)
 
+  await recordAudit({
+    action: draft.scheduledAt ? 'notification.schedule' : 'notification.send',
+    entity: 'notification',
+    entityId: created.id,
+    entityLabel: created.title,
+    details: { audience: draft.audience, scheduled_at: draft.scheduledAt },
+  })
+
+  return created
+}
+
+async function insertNotification(
+  draft: NotificationDraft,
+  status: NotificationStatus,
+): Promise<PushNotification> {
   if (!isSupabaseConfigured) {
     const created: PushNotification = {
       id: `ntf_${Date.now().toString(36)}`,

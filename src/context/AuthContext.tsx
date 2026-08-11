@@ -1,5 +1,8 @@
 import { createContext, use, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { isSupabaseConfigured, supabase } from '@/lib/supabase'
+import type { AdminRole } from '@/lib/types'
+import { canManageAdmins, canWrite, getMyRole, setDemoRole } from '@/services/admins'
+import { setAuditActor } from '@/services/audit'
 
 export interface AdminUser {
   id: string
@@ -9,10 +12,21 @@ export interface AdminUser {
 
 interface AuthValue {
   user: AdminUser | null
+  /**
+   * The signed-in admin's role, or `null` when signed in without an `admins`
+   * row — authenticated but not authorised.
+   */
+  role: AdminRole | null
+  /** May change data. Mirrors the `can_write()` RLS check. */
+  canWrite: boolean
+  /** May manage other admins. Mirrors the `is_owner()` RLS check. */
+  canManageAdmins: boolean
   /** True until the initial session lookup settles — routes wait on this. */
   loading: boolean
   signIn: (email: string, password: string) => Promise<void>
   signOut: () => Promise<void>
+  /** Demo mode only: re-render the UI as another role to see gating at work. */
+  previewRole: (role: AdminRole) => void
 }
 
 const AuthContext = createContext<AuthValue | null>(null)
@@ -26,7 +40,39 @@ function nameFromEmail(email: string): string {
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AdminUser | null>(null)
+  const [role, setRole] = useState<AdminRole | null>(null)
+  const [roleNonce, setRoleNonce] = useState(0)
   const [loading, setLoading] = useState(true)
+
+  // The audit log stamps every mutation with whoever is signed in, so the actor
+  // is published here rather than passed through each service call.
+  useEffect(() => {
+    setAuditActor(user?.email ?? '')
+  }, [user])
+
+  useEffect(() => {
+    if (!user) {
+      setRole(null)
+      return
+    }
+    let active = true
+    getMyRole(user.id)
+      .then((next) => {
+        if (active) setRole(next)
+      })
+      .catch(() => {
+        // A failed role lookup must not read as "full access".
+        if (active) setRole(null)
+      })
+    return () => {
+      active = false
+    }
+  }, [user, roleNonce])
+
+  const previewRole = useCallback((next: AdminRole) => {
+    setDemoRole(next)
+    setRoleNonce((value) => value + 1)
+  }, [])
 
   useEffect(() => {
     if (!isSupabaseConfigured || !supabase) {
@@ -106,7 +152,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = useCallback(async () => {
     if (!isSupabaseConfigured || !supabase) {
+      // Signing out clears the demo-only state as well — role preview and audit
+      // trail — so the next sign-in starts from a clean slate.
       localStorage.removeItem(DEMO_STORAGE_KEY)
+      localStorage.removeItem('demo-role')
+      localStorage.removeItem('demo-audit-log')
       setUser(null)
       return
     }
@@ -115,8 +165,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const value = useMemo<AuthValue>(
-    () => ({ user, loading, signIn, signOut }),
-    [user, loading, signIn, signOut],
+    () => ({
+      user,
+      role,
+      canWrite: canWrite(role),
+      canManageAdmins: canManageAdmins(role),
+      loading,
+      signIn,
+      signOut,
+      previewRole,
+    }),
+    [user, role, loading, signIn, signOut, previewRole],
   )
 
   return <AuthContext value={value}>{children}</AuthContext>

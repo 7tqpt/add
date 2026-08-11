@@ -2,6 +2,7 @@ import { requireSupabase } from '@/lib/supabase'
 import type { AppVersion } from '@/lib/types'
 import { mockVersions } from '@/data/mock'
 import { delay, isSupabaseConfigured } from './base'
+import { recordAudit } from './audit'
 
 const demoVersions: AppVersion[] = [...mockVersions].sort(
   (a, b) => new Date(b.released_at).getTime() - new Date(a.released_at).getTime(),
@@ -18,34 +19,52 @@ export async function listVersions(): Promise<AppVersion[]> {
   return (data ?? []) as AppVersion[]
 }
 
-export async function setForceUpdate(id: string, forceUpdate: boolean): Promise<void> {
+export async function setForceUpdate(version: AppVersion, forceUpdate: boolean): Promise<void> {
+  // Read first: the demo store mutates the object this argument points at.
+  const previous = version.force_update
+
   if (!isSupabaseConfigured) {
-    const version = demoVersions.find((candidate) => candidate.id === id)
-    if (version) version.force_update = forceUpdate
+    const target = demoVersions.find((candidate) => candidate.id === version.id)
+    if (target) target.force_update = forceUpdate
     await delay(null, 180)
-    return
+  } else {
+    const { error } = await requireSupabase()
+      .from('app_versions')
+      .update({ force_update: forceUpdate })
+      .eq('id', version.id)
+    if (error) throw error
   }
 
-  const { error } = await requireSupabase()
-    .from('app_versions')
-    .update({ force_update: forceUpdate })
-    .eq('id', id)
-  if (error) throw error
+  await recordAudit({
+    action: 'version.force_update',
+    entity: 'version',
+    entityId: version.id,
+    entityLabel: `${version.version} (${version.platform})`,
+    details: { from: previous, to: forceUpdate },
+  })
 }
 
-export async function setRollout(id: string, percent: number): Promise<void> {
+export async function setRollout(version: AppVersion, percent: number): Promise<void> {
   const clamped = Math.min(100, Math.max(0, Math.round(percent)))
+  const previous = version.rollout_percent
 
   if (!isSupabaseConfigured) {
-    const version = demoVersions.find((candidate) => candidate.id === id)
-    if (version) version.rollout_percent = clamped
+    const target = demoVersions.find((candidate) => candidate.id === version.id)
+    if (target) target.rollout_percent = clamped
     await delay(null, 180)
-    return
+  } else {
+    const { error } = await requireSupabase()
+      .from('app_versions')
+      .update({ rollout_percent: clamped })
+      .eq('id', version.id)
+    if (error) throw error
   }
 
-  const { error } = await requireSupabase()
-    .from('app_versions')
-    .update({ rollout_percent: clamped })
-    .eq('id', id)
-  if (error) throw error
+  await recordAudit({
+    action: 'version.rollout',
+    entity: 'version',
+    entityId: version.id,
+    entityLabel: `${version.version} (${version.platform})`,
+    details: { from: `${previous}%`, to: `${clamped}%` },
+  })
 }

@@ -1,6 +1,8 @@
 import {
   Bell,
   LayoutDashboard,
+  LifeBuoy,
+  ScrollText,
   Settings,
   Smartphone,
   Users,
@@ -16,7 +18,21 @@ export interface NavItem {
 export const NAV_ITEMS: NavItem[] = [
   { to: '/', label: 'لوحة المعلومات', icon: LayoutDashboard },
   { to: '/users', label: 'المستخدمون', icon: Users },
+  { to: '/tickets', label: 'البلاغات والدعم', icon: LifeBuoy },
   { to: '/notifications', label: 'الإشعارات', icon: Bell },
   { to: '/versions', label: 'إصدارات التطبيق', icon: Smartphone },
+  { to: '/audit', label: 'سجل العمليات', icon: ScrollText },
   { to: '/settings', label: 'الإعدادات', icon: Settings },
 ]
+
+/**
+ * Page title for the top bar. Detail routes are not in the sidebar, so they are
+ * matched by prefix — `/users/abc` still reads as "المستخدمون".
+ */
+export function titleForPath(pathname: string): string {
+  const exact = NAV_ITEMS.find((item) => item.to === pathname)
+  if (exact) return exact.label
+
+  const prefixed = NAV_ITEMS.find((item) => item.to !== '/' && pathname.startsWith(`${item.to}/`))
+  return prefixed?.label ?? 'لوحة التحكم'
+}
