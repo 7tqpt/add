@@ -53,7 +53,9 @@ export function BarChart({
                 style={{ width: `${(datum.value / max) * 100}%`, background: color }}
               />
             </span>
-            <span className="tnum w-14 shrink-0 text-start text-xs font-medium text-ink">
+            {/* Auto width, never wrapped: a fixed column breaks currency labels
+                like "5,048 ر.س" across two lines. */}
+            <span className="tnum shrink-0 text-start text-xs font-medium whitespace-nowrap text-ink">
               {formatValue(datum.value)}
             </span>
 

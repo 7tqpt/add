@@ -8,7 +8,7 @@ import { Pagination } from '@/components/ui/Pagination'
 import { useAsync } from '@/hooks/useAsync'
 import { useDebounced } from '@/hooks/useDebounced'
 import { cn } from '@/lib/cn'
-import { formatDateTime } from '@/lib/format'
+import { formatDateTime, formatMoney } from '@/lib/format'
 import { isSupabaseConfigured } from '@/lib/supabase'
 import {
   AUDIT_ACTION_LABEL,
@@ -32,6 +32,12 @@ function describe(details: Record<string, unknown>): string {
   }
   if (typeof details.audience === 'string') {
     parts.push(`الفئة: ${details.audience}`)
+  }
+  if (typeof details.amount === 'number') {
+    parts.push(`المبلغ: ${formatMoney(details.amount)}`)
+  }
+  if (typeof details.user === 'string') {
+    parts.push(`العميل: ${details.user}`)
   }
 
   return parts.join(' · ')

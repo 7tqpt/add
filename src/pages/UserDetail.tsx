@@ -28,8 +28,12 @@ import {
   formatNumber,
   formatRelative,
 } from '@/lib/format'
-import type { AppUser, PurchaseStatus, UserStatus } from '@/lib/types'
-import { PURCHASE_STATUS_LABEL, getUserActivity } from '@/services/userActivity'
+import type { AppUser, PaymentStatus, UserStatus } from '@/lib/types'
+import {
+  PAYMENT_METHOD_LABEL,
+  PAYMENT_STATUS_LABEL,
+} from '@/services/payments'
+import { getUserActivity } from '@/services/userActivity'
 import { USER_STATUS_LABEL, getUser, updateUserStatus } from '@/services/users'
 
 const STATUS_TONE: Record<UserStatus, Tone> = {
@@ -38,11 +42,11 @@ const STATUS_TONE: Record<UserStatus, Tone> = {
   pending: 'warning',
 }
 
-const PURCHASE_TONE: Record<PurchaseStatus, Tone> = {
+const PAYMENT_TONE: Record<PaymentStatus, Tone> = {
   paid: 'good',
-  refunded: 'warning',
+  pending: 'warning',
   failed: 'critical',
-  pending: 'neutral',
+  refunded: 'serious',
 }
 
 export function UserDetailPage() {
@@ -99,10 +103,10 @@ export function UserDetailPage() {
   const record = user.data
   const sessions = activity.data?.sessions ?? []
   const devices = activity.data?.devices ?? []
-  const purchases = activity.data?.purchases ?? []
+  const payments = activity.data?.payments ?? []
 
-  const paid = purchases.filter((purchase) => purchase.status === 'paid')
-  const totalSpent = paid.reduce((sum, purchase) => sum + purchase.amount, 0)
+  const paid = payments.filter((payment) => payment.status === 'paid')
+  const totalSpent = paid.reduce((sum, payment) => sum + payment.amount, 0)
   const averageSession = sessions.length
     ? sessions.reduce((sum, session) => sum + session.duration_seconds, 0) / sessions.length
     : 0
@@ -278,17 +282,25 @@ export function UserDetailPage() {
 
           <Card className="overflow-hidden">
             <CardHeader
-              title="المشتريات"
-              subtitle={`${formatNumber(purchases.length)} عملية · ${formatNumber(paid.length)} مدفوعة`}
+              title="عمليات الدفع"
+              subtitle={`${formatNumber(payments.length)} عملية · ${formatNumber(paid.length)} ناجحة`}
+              actions={
+                <Link
+                  to="/payments"
+                  className="text-xs font-medium text-series-1 underline underline-offset-4"
+                >
+                  السجل الكامل
+                </Link>
+              }
             />
-            {purchases.length === 0 ? (
-              <EmptyState title="لا توجد مشتريات" />
+            {payments.length === 0 ? (
+              <EmptyState title="لا توجد عمليات دفع" />
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full border-collapse text-xs">
                   <thead>
                     <tr className="bg-surface-2">
-                      {['المنتج', 'المبلغ', 'الحالة', 'التاريخ'].map((heading) => (
+                      {['المرجع', 'الوصف', 'المبلغ', 'الطريقة', 'الحالة', 'التاريخ'].map((heading) => (
                         <th
                           key={heading}
                           scope="col"
@@ -300,19 +312,27 @@ export function UserDetailPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {purchases.map((purchase) => (
-                      <tr key={purchase.id} className="border-b border-hairline last:border-0">
-                        <td className="px-4 py-2.5 whitespace-nowrap text-ink">{purchase.product}</td>
+                    {payments.map((payment) => (
+                      <tr key={payment.id} className="border-b border-hairline last:border-0">
+                        <td dir="ltr" className="tnum px-4 py-2.5 text-start whitespace-nowrap text-ink">
+                          {payment.reference}
+                        </td>
+                        <td className="px-4 py-2.5 whitespace-nowrap text-ink-2">
+                          {payment.description}
+                        </td>
                         <td className="tnum px-4 py-2.5 whitespace-nowrap text-ink-2">
-                          {formatMoney(purchase.amount)}
+                          {formatMoney(payment.amount)}
+                        </td>
+                        <td className="px-4 py-2.5 whitespace-nowrap text-ink-2">
+                          {PAYMENT_METHOD_LABEL[payment.method]}
                         </td>
                         <td className="px-4 py-2.5">
-                          <Badge tone={PURCHASE_TONE[purchase.status]}>
-                            {PURCHASE_STATUS_LABEL[purchase.status]}
+                          <Badge tone={PAYMENT_TONE[payment.status]}>
+                            {PAYMENT_STATUS_LABEL[payment.status]}
                           </Badge>
                         </td>
                         <td className="tnum px-4 py-2.5 whitespace-nowrap text-ink-2">
-                          {formatDate(purchase.created_at)}
+                          {formatDate(payment.created_at)}
                         </td>
                       </tr>
                     ))}

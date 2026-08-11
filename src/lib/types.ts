@@ -87,15 +87,50 @@ export interface UserDevice {
   last_used_at: string
 }
 
-export type PurchaseStatus = 'paid' | 'refunded' | 'failed' | 'pending'
+export type PaymentStatus = 'paid' | 'pending' | 'failed' | 'refunded'
 
-export interface Purchase {
+export type PaymentMethod = 'card' | 'mada' | 'apple_pay' | 'stc_pay' | 'wallet'
+
+/** What was paid for: a service order, a subscription, or a wallet top-up. */
+export type PaymentKind = 'order' | 'subscription' | 'topup'
+
+/**
+ * One row of the money ledger — every in-app payment, whatever it was for.
+ *
+ * `amount` is what the customer was charged. `platform_share` is what the app
+ * keeps — a commission on a service order, the whole amount on a subscription
+ * or top-up — and `net_amount` is what is owed onward to the provider, zero
+ * when there is no provider involved.
+ */
+export interface Payment {
   id: string
+  reference: string
   user_id: string
-  product: string
+  user_name: string
+  provider_id: string | null
+  provider_name: string
+  kind: PaymentKind
+  description: string
   amount: number
-  status: PurchaseStatus
+  platform_share: number
+  net_amount: number
+  method: PaymentMethod
+  status: PaymentStatus
+  gateway_ref: string
   created_at: string
+  refunded_at: string | null
+}
+
+export interface PaymentTotals {
+  /** Gross value of successful payments in range. */
+  collected: number
+  /** The app's cut of those payments. */
+  platformShare: number
+  refunded: number
+  refundedCount: number
+  /** Share of attempts that succeeded — failed attempts included in the base. */
+  successRate: number
+  byMethod: { method: PaymentMethod; amount: number }[]
 }
 
 export type TicketStatus = 'open' | 'pending' | 'resolved' | 'closed'

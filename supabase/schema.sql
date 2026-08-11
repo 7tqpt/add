@@ -114,21 +114,6 @@ create table if not exists public.user_devices (
 create index if not exists user_devices_user_idx on public.user_devices (user_id);
 
 -- ----------------------------------------------------------------------------
--- المشتريات داخل التطبيق
--- ----------------------------------------------------------------------------
-create table if not exists public.purchases (
-  id         uuid primary key default gen_random_uuid(),
-  user_id    uuid not null references public.app_users (id) on delete cascade,
-  product    text not null,
-  amount     numeric(12, 2) not null check (amount >= 0),
-  status     text not null default 'paid'
-             check (status in ('paid', 'refunded', 'failed', 'pending')),
-  created_at timestamptz not null default now()
-);
-
-create index if not exists purchases_user_idx on public.purchases (user_id, created_at desc);
-
--- ----------------------------------------------------------------------------
 -- المقاييس اليومية (صف واحد لكل يوم × منصة)
 -- ----------------------------------------------------------------------------
 create table if not exists public.daily_metrics (
@@ -296,6 +281,45 @@ create index if not exists provider_reviews_provider_idx
   on public.provider_reviews (provider_id, created_at desc);
 
 -- ----------------------------------------------------------------------------
+-- سجل المدفوعات — كل عملية دفع داخل التطبيق، مهما كان سببها
+--
+--   amount       : ما دُفع فعلياً من العميل
+--   platform_share : ما تحتفظ به المنصة من العملية
+--   net_amount   : المستحق لمقدّم الخدمة (صفر إن لم يوجد مقدّم خدمة)
+-- ----------------------------------------------------------------------------
+create table if not exists public.payments (
+  id            uuid primary key default gen_random_uuid(),
+  reference     text not null unique,
+  user_id       uuid references public.app_users (id) on delete set null,
+  user_name     text not null default '',
+  provider_id   uuid references public.service_providers (id) on delete set null,
+  provider_name text not null default '',
+  kind          text not null default 'order'
+                check (kind in ('order', 'subscription', 'topup')),
+  description   text not null default '',
+  amount        numeric(12, 2) not null check (amount >= 0),
+  platform_share  numeric(12, 2) not null default 0 check (platform_share >= 0),
+  net_amount    numeric(12, 2) not null default 0 check (net_amount >= 0),
+  method        text not null default 'card'
+                check (method in ('card', 'mada', 'apple_pay', 'stc_pay', 'wallet')),
+  status        text not null default 'pending'
+                check (status in ('paid', 'pending', 'failed', 'refunded')),
+  gateway_ref   text not null default '',
+  created_at    timestamptz not null default now(),
+  refunded_at   timestamptz,
+  -- الحصة والمستحق لا يمكن أن يتجاوزا المبلغ المدفوع
+  constraint split_within_amount check (platform_share + net_amount <= amount),
+  -- عملية مسترجعة لا معنى لها بدون تاريخ استرجاع، والعكس
+  constraint refund_needs_timestamp
+    check ((status = 'refunded') = (refunded_at is not null))
+);
+
+create index if not exists payments_created_at_idx on public.payments (created_at desc);
+create index if not exists payments_user_idx       on public.payments (user_id, created_at desc);
+create index if not exists payments_provider_idx   on public.payments (provider_id, created_at desc);
+create index if not exists payments_status_idx     on public.payments (status, created_at desc);
+
+-- ----------------------------------------------------------------------------
 -- سجل عمليات المسؤولين — للإلحاق فقط، لا تعديل ولا حذف
 -- ----------------------------------------------------------------------------
 create table if not exists public.audit_log (
@@ -336,7 +360,7 @@ alter table public.admins             enable row level security;
 alter table public.app_users          enable row level security;
 alter table public.user_sessions      enable row level security;
 alter table public.user_devices       enable row level security;
-alter table public.purchases          enable row level security;
+alter table public.payments           enable row level security;
 alter table public.daily_metrics      enable row level security;
 alter table public.push_notifications enable row level security;
 alter table public.app_versions       enable row level security;
@@ -364,7 +388,7 @@ declare
   t text;
 begin
   foreach t in array array[
-    'app_users', 'user_sessions', 'user_devices', 'purchases', 'daily_metrics',
+    'app_users', 'user_sessions', 'user_devices', 'payments', 'daily_metrics',
     'push_notifications', 'app_versions', 'support_tickets', 'ticket_messages',
     'service_providers', 'provider_documents', 'provider_services',
     'provider_reviews', 'app_settings'

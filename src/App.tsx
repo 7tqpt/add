@@ -7,6 +7,7 @@ import { DashboardPage } from '@/pages/Dashboard'
 import { LoginPage } from '@/pages/Login'
 import { NotFoundPage } from '@/pages/NotFound'
 import { NotificationsPage } from '@/pages/Notifications'
+import { PaymentsPage } from '@/pages/Payments'
 import { ProviderDetailPage } from '@/pages/ProviderDetail'
 import { ProvidersPage } from '@/pages/Providers'
 import { SettingsPage } from '@/pages/Settings'
@@ -35,6 +36,7 @@ export function App() {
         <Route path="/users/:id" element={<UserDetailPage />} />
         <Route path="/providers" element={<ProvidersPage />} />
         <Route path="/providers/:id" element={<ProviderDetailPage />} />
+        <Route path="/payments" element={<PaymentsPage />} />
         <Route path="/tickets" element={<TicketsPage />} />
         <Route path="/notifications" element={<NotificationsPage />} />
         <Route path="/versions" element={<VersionsPage />} />

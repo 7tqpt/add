@@ -1,30 +1,33 @@
 import { requireSupabase } from '@/lib/supabase'
-import type { Purchase, UserDevice, UserSession } from '@/lib/types'
-import { mockPurchases, mockUserDevices, mockUserSessions } from '@/data/mock'
+import type { Payment, UserDevice, UserSession } from '@/lib/types'
+import { mockUserDevices, mockUserSessions } from '@/data/mock'
 import { delay, isSupabaseConfigured } from './base'
+import { listPaymentsFor } from './payments'
 
 export interface UserActivity {
   sessions: UserSession[]
   devices: UserDevice[]
-  purchases: Purchase[]
+  payments: Payment[]
 }
-
-const byNewest = <T extends { created_at?: string; started_at?: string }>(a: T, b: T) =>
-  new Date(b.started_at ?? b.created_at ?? 0).getTime() -
-  new Date(a.started_at ?? a.created_at ?? 0).getTime()
 
 /** Everything the user-detail screen shows below the profile header. */
 export async function getUserActivity(userId: string): Promise<UserActivity> {
   if (!isSupabaseConfigured) {
-    return delay({
-      sessions: mockUserSessions.filter((row) => row.user_id === userId).sort(byNewest).slice(0, 20),
-      devices: mockUserDevices.filter((row) => row.user_id === userId),
-      purchases: mockPurchases.filter((row) => row.user_id === userId).sort(byNewest),
-    })
+    const [sessions, devices, payments] = await Promise.all([
+      delay(
+        mockUserSessions
+          .filter((row) => row.user_id === userId)
+          .sort((a, b) => new Date(b.started_at).getTime() - new Date(a.started_at).getTime())
+          .slice(0, 20),
+      ),
+      delay(mockUserDevices.filter((row) => row.user_id === userId)),
+      listPaymentsFor('user', userId),
+    ])
+    return { sessions, devices, payments }
   }
 
   const client = requireSupabase()
-  const [sessions, devices, purchases] = await Promise.all([
+  const [sessions, devices, payments] = await Promise.all([
     client
       .from('user_sessions')
       .select('*')
@@ -36,27 +39,15 @@ export async function getUserActivity(userId: string): Promise<UserActivity> {
       .select('*')
       .eq('user_id', userId)
       .order('last_used_at', { ascending: false }),
-    client
-      .from('purchases')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false }),
+    listPaymentsFor('user', userId),
   ])
 
   if (sessions.error) throw sessions.error
   if (devices.error) throw devices.error
-  if (purchases.error) throw purchases.error
 
   return {
     sessions: (sessions.data ?? []) as UserSession[],
     devices: (devices.data ?? []) as UserDevice[],
-    purchases: (purchases.data ?? []) as Purchase[],
+    payments,
   }
-}
-
-export const PURCHASE_STATUS_LABEL: Record<string, string> = {
-  paid: 'مدفوع',
-  refunded: 'مسترجع',
-  failed: 'فشل',
-  pending: 'قيد المعالجة',
 }

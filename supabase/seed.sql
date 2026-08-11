@@ -8,13 +8,13 @@
 
 begin;
 
+delete from public.payments;
 delete from public.provider_reviews;
 delete from public.provider_services;
 delete from public.provider_documents;
 delete from public.service_providers;
 delete from public.ticket_messages;
 delete from public.support_tickets;
-delete from public.purchases;
 delete from public.user_devices;
 delete from public.user_sessions;
 delete from public.app_users;
@@ -43,7 +43,7 @@ select
 from generate_series(1, 80) as i;
 
 -- ----------------------------------------------------------------------------
--- الجلسات والأجهزة والمشتريات — مرتبطة بالمستخدمين أعلاه
+-- الجلسات والأجهزة — مرتبطة بالمستخدمين أعلاه
 -- ----------------------------------------------------------------------------
 insert into public.user_sessions (user_id, started_at, duration_seconds, platform, app_version, country)
 select u.id,
@@ -69,15 +69,7 @@ select u.id,
 from public.app_users u
 where u.status <> 'pending';
 
-insert into public.purchases (user_id, product, amount, status, created_at)
-select u.id,
-       (array['اشتراك شهري','اشتراك سنوي','باقة نقاط 100','إزالة الإعلانات'])[1 + (p % 4)],
-       (array[29.00, 299.00, 19.00, 49.00])[1 + (p % 4)],
-       case when p % 11 = 0 then 'refunded' when p % 17 = 0 then 'failed' else 'paid' end,
-       now() - ((p * 11) % 180 || ' days')::interval
-from public.app_users u
-cross join generate_series(1, 3) as p
-where u.status = 'active' and abs(hashtext(u.id::text)) % 3 = 0;
+-- المدفوعات تُدرج بعد مقدّمي الخدمة، لأن جزءاً منها مرتبط بهم.
 
 -- ----------------------------------------------------------------------------
 -- المقاييس اليومية — 90 يوماً × منصتين، باتجاه صاعد وانخفاض في العطلة
@@ -237,6 +229,64 @@ select p.id,
 from public.service_providers p
 cross join generate_series(1, 4) as r
 where p.status in ('active', 'suspended');
+
+-- ----------------------------------------------------------------------------
+-- سجل المدفوعات
+--
+-- طلبات الخدمة تُقسم بين المنصة ومقدّم الخدمة حسب نسبة عمولته، أما الاشتراكات
+-- وشحن المحفظة فتبقى للمنصة بالكامل (net_amount = 0).
+-- ----------------------------------------------------------------------------
+insert into public.payments
+  (reference, user_id, user_name, provider_id, provider_name, kind, description,
+   amount, platform_share, net_amount, method, status, gateway_ref, created_at, refunded_at)
+select
+  'TRX-' || to_char(now(), 'YYYY') || '-' || lpad(row_number() over ()::text, 6, '0'),
+  u.id,
+  u.full_name,
+  case when k.kind = 'order' then pr.id else null end,
+  case when k.kind = 'order' then pr.business_name else '' end,
+  k.kind,
+  case k.kind
+    when 'order'        then pr.category || ' — خدمة أساسية'
+    when 'subscription' then 'اشتراك شهري'
+    else 'شحن محفظة'
+  end,
+  k.amount,
+  case when k.kind = 'order'
+       then round(k.amount * coalesce(pr.commission_percent, 15) / 100.0, 2)
+       else k.amount end,
+  case when k.kind = 'order'
+       then k.amount - round(k.amount * coalesce(pr.commission_percent, 15) / 100.0, 2)
+       else 0 end,
+  (array['card','mada','apple_pay','stc_pay','wallet'])[1 + (k.n % 5)],
+  k.status,
+  'gw_' || substr(md5(u.id::text || k.n::text), 1, 12),
+  now() - ((k.n * 7) % 120 || ' days')::interval,
+  case when k.status = 'refunded'
+       then now() - ((k.n * 7) % 120 || ' days')::interval + interval '2 days'
+       else null end
+from public.app_users u
+cross join generate_series(1, 4) as n
+cross join lateral (
+  select
+    n,
+    (array['order','order','order','subscription','topup'])[1 + ((abs(hashtext(u.id::text)) + n) % 5)] as kind,
+    (array[120.00, 220.00, 380.00, 29.00, 100.00])[1 + ((abs(hashtext(u.id::text)) + n) % 5)] as amount,
+    case
+      when (abs(hashtext(u.id::text)) + n) % 23 = 0 then 'refunded'
+      when (abs(hashtext(u.id::text)) + n) % 17 = 0 then 'failed'
+      when (abs(hashtext(u.id::text)) + n) % 13 = 0 then 'pending'
+      else 'paid'
+    end as status
+) as k
+left join lateral (
+  select id, business_name, category, commission_percent
+  from public.service_providers
+  where status = 'active'
+  order by md5(id::text || u.id::text)
+  limit 1
+) as pr on k.kind = 'order'
+where u.status <> 'pending';
 
 commit;
 

@@ -7,13 +7,15 @@ import type {
   MetricPoint,
   DocumentStatus,
   DocumentType,
+  Payment,
+  PaymentKind,
+  PaymentMethod,
+  PaymentStatus,
   Platform,
   ProviderDocument,
   ProviderReview,
   ProviderService,
   ProviderStatus,
-  Purchase,
-  PurchaseStatus,
   PushNotification,
   ServiceProvider,
   SupportTicket,
@@ -304,30 +306,6 @@ export const mockUserDevices: UserDevice[] = mockUsers
     })),
   )
 
-const PRODUCTS = [
-  { name: 'اشتراك شهري', amount: 29 },
-  { name: 'اشتراك سنوي', amount: 299 },
-  { name: 'باقة نقاط 100', amount: 19 },
-  { name: 'إزالة الإعلانات', amount: 49 },
-]
-
-export const mockPurchases: Purchase[] = mockUsers
-  .filter((user) => user.status === 'active')
-  .flatMap((user, userIndex) =>
-    Array.from({ length: intBetween(0, 4) }, (_, i) => {
-      const product = pick(PRODUCTS)
-      const roll = rng()
-      return {
-        id: `pur_${userIndex}_${i}`,
-        user_id: user.id,
-        product: product.name,
-        amount: product.amount,
-        status: (roll > 0.94 ? 'refunded' : roll > 0.9 ? 'failed' : 'paid') as PurchaseStatus,
-        created_at: isoAt(intBetween(0, 180), intBetween(8, 22)),
-      }
-    }),
-  )
-
 const TICKET_SUBJECTS: { subject: string; category: TicketCategory }[] = [
   { subject: 'التطبيق يتوقف عند فتح شاشة الدفع', category: 'bug' },
   { subject: 'لم يصلني إيصال الاشتراك', category: 'billing' },
@@ -516,6 +494,84 @@ export const mockProviderReviews: ProviderReview[] = mockProviders
       created_at: isoAt(intBetween(0, 120), intBetween(9, 21)),
     })),
   )
+
+const PAYMENT_METHODS: PaymentMethod[] = ['card', 'mada', 'apple_pay', 'stc_pay', 'wallet']
+
+const SUBSCRIPTION_PRODUCTS = [
+  { description: 'اشتراك شهري', amount: 29 },
+  { description: 'اشتراك سنوي', amount: 299 },
+  { description: 'إزالة الإعلانات', amount: 49 },
+]
+
+const TOPUP_AMOUNTS = [50, 100, 200, 500]
+
+const activeProviders = mockProviders.filter((provider) => provider.status === 'active')
+
+/**
+ * The money ledger. Service orders are split between the platform and the
+ * provider by that provider's commission; subscriptions and wallet top-ups stay
+ * with the platform in full.
+ */
+export const mockPayments: Payment[] = mockUsers
+  .filter((user) => user.status !== 'pending')
+  .flatMap((user, userIndex) =>
+    Array.from({ length: intBetween(1, 5) }, (_, i) => {
+      const roll = rng()
+      const kind: PaymentKind = roll > 0.75 ? 'subscription' : roll > 0.62 ? 'topup' : 'order'
+      const statusRoll = rng()
+      const status: PaymentStatus =
+        statusRoll > 0.965
+          ? 'refunded'
+          : statusRoll > 0.93
+            ? 'failed'
+            : statusRoll > 0.9
+              ? 'pending'
+              : 'paid'
+
+      const provider = kind === 'order' ? pick(activeProviders) : null
+      const product = pick(SUBSCRIPTION_PRODUCTS)
+      const amount =
+        kind === 'order'
+          ? pick([120, 220, 380, 650])
+          : kind === 'topup'
+            ? pick(TOPUP_AMOUNTS)
+            : product.amount
+
+      // Only an order owes money onward; everything else the platform keeps.
+      const platformFee =
+        kind === 'order' && provider
+          ? Math.round(amount * (provider.commission_percent / 100) * 100) / 100
+          : amount
+      const netAmount = kind === 'order' ? Math.round((amount - platformFee) * 100) / 100 : 0
+
+      const createdDaysAgo = intBetween(0, 120)
+
+      return {
+        id: `pay_${userIndex}_${i}`,
+        reference: `TRX-2026-${(userIndex * 5 + i + 1).toString().padStart(6, '0')}`,
+        user_id: user.id,
+        user_name: user.full_name,
+        provider_id: provider?.id ?? null,
+        provider_name: provider?.business_name ?? '',
+        kind,
+        description:
+          kind === 'order'
+            ? `${provider?.category ?? 'خدمة'} — خدمة أساسية`
+            : kind === 'topup'
+              ? 'شحن محفظة'
+              : product.description,
+        amount,
+        platform_share: platformFee,
+        net_amount: netAmount,
+        method: pick(PAYMENT_METHODS),
+        status,
+        gateway_ref: `gw_${(userIndex * 31 + i * 7).toString(36).padStart(8, '0')}`,
+        created_at: isoAt(createdDaysAgo, intBetween(8, 22)),
+        refunded_at: status === 'refunded' ? isoAt(Math.max(0, createdDaysAgo - 2), 12) : null,
+      }
+    }),
+  )
+  .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
 
 export const mockAdmins: AdminAccount[] = [
   {
