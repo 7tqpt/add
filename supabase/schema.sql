@@ -40,14 +40,18 @@ returns boolean language sql stable security definer set search_path = public as
 $$;
 
 -- من يملك حق التعديل. viewer يقرأ فقط.
+--
+-- coalesce ضرورية لا تجميلية: admin_role() تُرجع NULL لغير المسؤول، و
+-- `NULL in (...)` تُنتج NULL لا false. فتصير `not can_write()` مساويةً لـ NULL،
+-- وشرطٌ قيمته NULL لا يتحقّق — فيمرّ من كان يجب منعه.
 create or replace function public.can_write()
 returns boolean language sql stable security definer set search_path = public as $$
-  select public.admin_role() in ('owner', 'admin');
+  select coalesce(public.admin_role() in ('owner', 'admin'), false);
 $$;
 
 create or replace function public.is_owner()
 returns boolean language sql stable security definer set search_path = public as $$
-  select public.admin_role() = 'owner';
+  select coalesce(public.admin_role() = 'owner', false);
 $$;
 
 -- ============================================================================
@@ -121,6 +125,9 @@ create unique index if not exists cancellation_policies_one_default_idx
 -- ----------------------------------------------------------------------------
 create table if not exists public.app_users (
   id             uuid primary key default gen_random_uuid(),
+  -- ربط الحساب بمصادقة Supabase. يبقى فارغاً للبيانات التجريبية، ويُملأ عند
+  -- تسجيل مستخدم حقيقي من التطبيق. كل سياسات العميل تمرّ عبره.
+  auth_user_id   uuid unique references auth.users (id) on delete cascade,
   full_name      text not null,
   email          text not null unique,
   phone          text not null default '',
@@ -678,6 +685,69 @@ create table if not exists public.app_versions (
 );
 
 -- ----------------------------------------------------------------------------
+-- المفضّلة — «إضافة الخدمات المفضلة للقائمة الخاصة» في تطبيق العميل
+-- ----------------------------------------------------------------------------
+create table if not exists public.favourites (
+  user_id    uuid not null references public.app_users (id) on delete cascade,
+  service_id uuid not null references public.provider_services (id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (user_id, service_id)
+);
+
+create index if not exists favourites_user_idx on public.favourites (user_id, created_at desc);
+
+-- ----------------------------------------------------------------------------
+-- صندوق الإشعارات داخل التطبيق
+--
+-- يختلف عن push_notifications: ذاك حملات تُرسل من اللوحة، وهذا إشعارات موجّهة
+-- لحساب بعينه (قُبل حجزك، وصل الدفع، ردّ عليك مقدّم الخدمة).
+-- ----------------------------------------------------------------------------
+create table if not exists public.notifications (
+  id          uuid primary key default gen_random_uuid(),
+  user_id     uuid references public.app_users (id) on delete cascade,
+  provider_id uuid references public.service_providers (id) on delete cascade,
+  kind        text not null default 'general'
+              check (kind in ('booking', 'payment', 'message', 'review', 'dispute',
+                              'account', 'reminder', 'general')),
+  title       text not null,
+  body        text not null default '',
+  -- معرّفات تكفي التطبيق ليفتح الشاشة الصحيحة: { "booking_id": "…" }
+  data        jsonb not null default '{}'::jsonb,
+  read_at     timestamptz,
+  created_at  timestamptz not null default now(),
+  -- الإشعار موجَّه إلى طرف واحد، لا إلى الاثنين ولا إلى لا أحد
+  constraint notification_has_one_owner
+    check ((user_id is not null) <> (provider_id is not null))
+);
+
+create index if not exists notifications_user_idx
+  on public.notifications (user_id, created_at desc) where user_id is not null;
+create index if not exists notifications_provider_idx
+  on public.notifications (provider_id, created_at desc) where provider_id is not null;
+
+-- ----------------------------------------------------------------------------
+-- الفواتير — «متابعة الحجوزات والمدفوعات وإصدار الفواتير» في تطبيق العميل
+-- ----------------------------------------------------------------------------
+create table if not exists public.invoices (
+  id          uuid primary key default gen_random_uuid(),
+  number      text not null unique,
+  booking_id  uuid not null references public.bookings (id) on delete cascade,
+  user_id     uuid references public.app_users (id) on delete set null,
+  provider_id uuid references public.service_providers (id) on delete set null,
+  subtotal    numeric(12, 2) not null default 0 check (subtotal >= 0),
+  commission  numeric(12, 2) not null default 0 check (commission >= 0),
+  total       numeric(12, 2) not null default 0 check (total >= 0),
+  currency    text not null default 'YER',
+  status      text not null default 'issued'
+              check (status in ('issued', 'paid', 'void')),
+  pdf_url     text not null default '',
+  issued_at   timestamptz not null default now()
+);
+
+create index if not exists invoices_booking_idx on public.invoices (booking_id);
+create index if not exists invoices_user_idx    on public.invoices (user_id, issued_at desc);
+
+-- ----------------------------------------------------------------------------
 -- سجل عمليات المسؤولين — للإلحاق فقط
 -- ----------------------------------------------------------------------------
 create table if not exists public.audit_log (
@@ -719,7 +789,10 @@ create table if not exists public.app_settings (
 insert into public.app_settings (id) values (1) on conflict (id) do nothing;
 
 -- ============================================================================
---  9. RLS — كل الجداول مقفلة. القراءة لكل مسؤول، والكتابة لمن دوره owner أو admin.
+--  9. تفعيل RLS على كل الجداول
+--
+--  التفعيل هنا والسياسات في policies.sql. جدول مفعَّل بلا سياسة = ممنوع على
+--  الجميع، وهذا هو الوضع الآمن لو نُسي تشغيل ملف السياسات.
 -- ============================================================================
 
 do $$
@@ -727,56 +800,51 @@ declare
   t text;
 begin
   foreach t in array array[
-    'governorates', 'service_categories', 'cancellation_policies',
+    'admins', 'governorates', 'service_categories', 'cancellation_policies',
     'app_users', 'user_sessions', 'user_devices',
     'service_providers', 'provider_categories', 'provider_documents',
     'provider_services', 'provider_availability',
-    'wedding_plans', 'bookings',
-    'payments', 'settlements', 'settlement_items',
+    'wedding_plans', 'bookings', 'favourites',
+    'payments', 'invoices', 'settlements', 'settlement_items',
     'reviews', 'disputes', 'dispute_messages',
     'conversations', 'conversation_messages',
     'subscription_plans', 'provider_subscriptions', 'promotions',
-    'push_notifications', 'daily_metrics', 'app_versions', 'app_settings'
+    'notifications', 'push_notifications', 'daily_metrics', 'app_versions',
+    'audit_log', 'app_settings'
   ] loop
     execute format('alter table public.%I enable row level security', t);
-
-    execute format('drop policy if exists %I_read on public.%I', t, t);
-    execute format(
-      'create policy %I_read on public.%I for select using (public.is_admin())', t, t);
-
-    execute format('drop policy if exists %I_write on public.%I', t, t);
-    execute format(
-      'create policy %I_write on public.%I for all
-         using (public.can_write()) with check (public.can_write())', t, t);
   end loop;
 end $$;
-
--- جدول المسؤولين: يقرأه كل مسؤول، ولا يعدّله إلا المالك.
-alter table public.admins enable row level security;
-
-drop policy if exists admins_read on public.admins;
-create policy admins_read on public.admins
-  for select using (public.is_admin());
-
-drop policy if exists admins_owner_writes on public.admins;
-create policy admins_owner_writes on public.admins
-  for all using (public.is_owner()) with check (public.is_owner());
-
--- سجل العمليات: للإلحاق فقط — لا سياسة update ولا delete إطلاقاً، حتى لا يمحو
--- مسؤول أثر ما فعله.
-alter table public.audit_log enable row level security;
-
-drop policy if exists audit_log_read on public.audit_log;
-create policy audit_log_read on public.audit_log
-  for select using (public.is_admin());
-
-drop policy if exists audit_log_append on public.audit_log;
-create policy audit_log_append on public.audit_log
-  for insert with check (public.can_write());
 
 -- ============================================================================
 --  10. دوال مساعدة
 -- ============================================================================
+
+-- ----------------------------------------------------------------------------
+-- هوية المتصل الحالي
+--
+-- التطبيقان يتصلان بقاعدة البيانات مباشرة، فكل سياسة تسأل: من هذا؟ هذه الدوال
+-- هي الجواب، و security definer يجعلها تقرأ الجداول متجاوزةً RLS حتى لا يصير
+-- الفحص دائرياً.
+-- ----------------------------------------------------------------------------
+create or replace function public.current_app_user()
+returns uuid language sql stable security definer set search_path = public as $$
+  select u.id from public.app_users u where u.auth_user_id = auth.uid();
+$$;
+
+create or replace function public.current_provider()
+returns uuid language sql stable security definer set search_path = public as $$
+  select p.id from public.service_providers p
+  where p.user_id = public.current_app_user();
+$$;
+
+create or replace function public.is_verified_provider()
+returns boolean language sql stable security definer set search_path = public as $$
+  select exists (
+    select 1 from public.service_providers p
+    where p.user_id = public.current_app_user() and p.status = 'verified'
+  );
+$$;
 
 -- ----------------------------------------------------------------------------
 -- المبلغ المستردّ لحجز لو أُلغي الآن، حسب السلّم المنسوخ في الحجز نفسه.
