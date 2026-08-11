@@ -191,7 +191,7 @@ export async function listProviders(query: ProviderQuery): Promise<Paged<Service
   const client = requireSupabase()
   const from = query.page * query.pageSize
   let builder = client
-    .from('service_providers')
+    .from('v_admin_providers')
     .select('*', { count: 'exact' })
     .order('applied_at', { ascending: false })
     .range(from, from + query.pageSize - 1)
@@ -215,7 +215,7 @@ export async function listProviders(query: ProviderQuery): Promise<Paged<Service
 export async function getProvider(id: string): Promise<ServiceProvider | null> {
   if (!isSupabaseConfigured) return delay(demoProviders.find((p) => p.id === id) ?? null)
   const { data, error } = await requireSupabase()
-    .from('service_providers').select('*').eq('id', id).maybeSingle()
+    .from('v_admin_providers').select('*').eq('id', id).maybeSingle()
   if (error) throw error
   return (data as ServiceProvider | null) ?? null
 }
@@ -236,7 +236,7 @@ export async function getProviderPortfolio(providerId: string): Promise<Provider
   const client = requireSupabase()
   const [documents, services] = await Promise.all([
     client.from('provider_documents').select('*').eq('provider_id', providerId),
-    client.from('provider_services').select('*').eq('provider_id', providerId),
+    client.from('v_admin_services').select('*').eq('provider_id', providerId),
   ])
   if (documents.error) throw documents.error
   if (services.error) throw services.error

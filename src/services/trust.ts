@@ -51,7 +51,7 @@ export async function listReviews(query: ReviewQuery): Promise<Paged<Review>> {
 
   const from = query.page * query.pageSize
   let builder = requireSupabase()
-    .from('reviews')
+    .from('v_admin_reviews')
     .select('*', { count: 'exact' })
     .order('created_at', { ascending: false })
     .range(from, from + query.pageSize - 1)
@@ -81,7 +81,7 @@ export async function listProviderReviews(providerId: string, limit = 20): Promi
   }
 
   const { data, error } = await requireSupabase()
-    .from('reviews')
+    .from('v_admin_reviews')
     .select('*')
     .eq('provider_id', providerId)
     .order('created_at', { ascending: false })

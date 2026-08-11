@@ -212,7 +212,7 @@ export async function listSettlements(query: SettlementQuery): Promise<Paged<Set
   const client = requireSupabase()
   const from = query.page * query.pageSize
   let builder = client
-    .from('settlements')
+    .from('v_admin_settlements')
     .select('*', { count: 'exact' })
     .order('created_at', { ascending: false })
     .range(from, from + query.pageSize - 1)

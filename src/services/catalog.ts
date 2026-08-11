@@ -97,7 +97,7 @@ export async function listServices(query: ServiceQuery): Promise<Paged<ProviderS
 
   const from = query.page * query.pageSize
   let builder = requireSupabase()
-    .from('provider_services')
+    .from('v_admin_services')
     .select('*', { count: 'exact' })
     .order('title', { ascending: true })
     .range(from, from + query.pageSize - 1)

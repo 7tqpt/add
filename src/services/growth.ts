@@ -23,7 +23,7 @@ export async function listSubscriptionPlans(): Promise<SubscriptionPlan[]> {
   if (!isSupabaseConfigured) return delay([...demoSubscriptions])
 
   const { data, error } = await requireSupabase()
-    .from('subscription_plans')
+    .from('v_admin_subscription_plans')
     .select('*')
     .order('price', { ascending: true })
   if (error) throw error
@@ -91,7 +91,7 @@ export async function listPromotions(query: PromotionQuery): Promise<Paged<Promo
 
   const from = query.page * query.pageSize
   let builder = requireSupabase()
-    .from('promotions')
+    .from('v_admin_promotions')
     .select('*', { count: 'exact' })
     .order('starts_at', { ascending: false })
     .range(from, from + query.pageSize - 1)
