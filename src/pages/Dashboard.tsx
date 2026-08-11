@@ -1,9 +1,21 @@
 import { useCallback, useState } from 'react'
-import { Activity, Download, RefreshCw, ShieldCheck, TrendingUp, Wallet } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import {
+  Activity,
+  Banknote,
+  BriefcaseBusiness,
+  CalendarCheck,
+  ChevronLeft,
+  PercentCircle,
+  RefreshCw,
+  Scale,
+  Star,
+  Wallet,
+  type LucideIcon,
+} from 'lucide-react'
 import { BarChart } from '@/components/charts/BarChart'
 import { ChartCard } from '@/components/charts/ChartCard'
 import { SERIES_COLORS } from '@/components/charts/chart-utils'
-import { ShareBar } from '@/components/charts/ShareBar'
 import { StatTile } from '@/components/charts/StatTile'
 import { TimeSeriesChart } from '@/components/charts/TimeSeriesChart'
 import { Card, CardBody, CardHeader } from '@/components/ui/Card'
@@ -15,10 +27,10 @@ import {
   formatCompact,
   formatDate,
   formatMoney,
+  formatMoneyCompact,
   formatNumber,
-  formatPercent,
 } from '@/lib/format'
-import type { RangeDays } from '@/lib/types'
+import type { DashboardStats, RangeDays } from '@/lib/types'
 import { getDashboardStats } from '@/services/stats'
 
 const RANGES: { value: RangeDays; label: string }[] = [
@@ -29,6 +41,14 @@ const RANGES: { value: RangeDays; label: string }[] = [
 
 const COMPARISON = 'مقارنة بالفترة السابقة'
 
+/** What is waiting on an admin right now, and where to go to clear it. */
+const QUEUE: { key: keyof DashboardStats; label: string; to: string; icon: LucideIcon }[] = [
+  { key: 'pendingProviders', label: 'طلبات توثيق', to: '/providers', icon: BriefcaseBusiness },
+  { key: 'openDisputes', label: 'نزاعات مفتوحة', to: '/disputes', icon: Scale },
+  { key: 'pendingSettlements', label: 'تسويات بانتظار الاعتماد', to: '/settlements', icon: Banknote },
+  { key: 'flaggedReviews', label: 'تقييمات مُبلَّغ عنها', to: '/reviews', icon: Star },
+]
+
 export function DashboardPage() {
   const [range, setRange] = useState<RangeDays>(30)
   const load = useCallback(() => getDashboardStats(range), [range])
@@ -38,6 +58,11 @@ export function DashboardPage() {
   if (error && !data) return <ErrorState message={error} onRetry={reload} />
   if (!data) return null
 
+  const bookingPoints = data.bookingsByDay.map((point) => ({
+    date: point.date,
+    values: [point.value],
+  }))
+
   const installPoints = data.installsByDay.map((day) => ({
     date: day.date,
     values: [day.ios, day.android],
@@ -46,11 +71,6 @@ export function DashboardPage() {
     { label: PLATFORM_LABEL.ios, color: SERIES_COLORS[0] },
     { label: PLATFORM_LABEL.android, color: SERIES_COLORS[1] },
   ]
-
-  const sessionPoints = data.sessionsByDay.map((point) => ({
-    date: point.date,
-    values: [point.value],
-  }))
 
   return (
     <div className="flex flex-col gap-4">
@@ -69,9 +89,7 @@ export function DashboardPage() {
               aria-pressed={range === option.value}
               className={cn(
                 'h-8 cursor-pointer rounded-md px-3 text-xs font-medium transition-colors',
-                range === option.value
-                  ? 'bg-surface-2 text-ink'
-                  : 'text-muted hover:text-ink',
+                range === option.value ? 'bg-surface-2 text-ink' : 'text-muted hover:text-ink',
               )}
             >
               {option.label}
@@ -91,12 +109,41 @@ export function DashboardPage() {
       </div>
 
       {error ? (
-        <p role="alert" className="rounded-lg border border-hairline bg-surface px-3 py-2 text-xs text-ink">
+        <p
+          role="alert"
+          className="rounded-lg border border-hairline bg-surface px-3 py-2 text-xs text-ink"
+        >
           تعذّر تحديث البيانات ({error}) — الأرقام المعروضة من آخر تحميل ناجح.
         </p>
       ) : null}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatTile
+          label="الحجوزات"
+          value={formatNumber(data.bookings.value)}
+          change={data.bookings.change}
+          comparisonLabel={COMPARISON}
+          icon={CalendarCheck}
+          refetching={refetching}
+        />
+        <StatTile
+          label="قيمة الحجوزات"
+          value={formatMoneyCompact(data.revenue.value)}
+          valueTitle={formatMoney(data.revenue.value)}
+          change={data.revenue.change}
+          comparisonLabel={COMPARISON}
+          icon={Wallet}
+          refetching={refetching}
+        />
+        <StatTile
+          label="عمولة المنصة"
+          value={formatMoneyCompact(data.commission.value)}
+          valueTitle={formatMoney(data.commission.value)}
+          change={data.commission.change}
+          comparisonLabel={COMPARISON}
+          icon={PercentCircle}
+          refetching={refetching}
+        />
         <StatTile
           label="متوسط المستخدمين النشطين يومياً"
           value={formatNumber(data.activeUsers.value)}
@@ -105,94 +152,24 @@ export function DashboardPage() {
           icon={Activity}
           refetching={refetching}
         />
-        <StatTile
-          label="عمليات التثبيت"
-          value={formatNumber(data.installs.value)}
-          change={data.installs.change}
-          comparisonLabel={COMPARISON}
-          icon={Download}
-          refetching={refetching}
-        />
-        <StatTile
-          label="الجلسات"
-          value={formatNumber(data.sessions.value)}
-          change={data.sessions.change}
-          comparisonLabel={COMPARISON}
-          icon={TrendingUp}
-          refetching={refetching}
-        />
-        <StatTile
-          label="الإيرادات"
-          value={formatMoney(data.revenue.value)}
-          change={data.revenue.change}
-          comparisonLabel={COMPARISON}
-          icon={Wallet}
-          refetching={refetching}
-        />
       </div>
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
         <div className="xl:col-span-2">
           <ChartCard
-            title="عمليات التثبيت اليومية"
-            subtitle="حسب المنصة — المحور الأفقي يبدأ من الأقدم على اليمين"
-            series={installSeries}
+            title="الحجوزات اليومية"
+            subtitle="الحجوزات القائمة والمنفّذة — المحور الأفقي يبدأ من الأقدم على اليمين"
             refetching={refetching}
             table={{
-              columns: ['التاريخ', PLATFORM_LABEL.ios, PLATFORM_LABEL.android],
-              rows: [...data.installsByDay]
-                .reverse()
-                .map((day) => [formatDate(day.date), formatNumber(day.ios), formatNumber(day.android)]),
-            }}
-          >
-            <TimeSeriesChart
-              points={installPoints}
-              series={installSeries}
-              formatValue={formatNumber}
-              formatTick={formatCompact}
-            />
-          </ChartCard>
-        </div>
-
-        <div className="flex flex-col gap-4">
-          <Card>
-            <CardHeader title="توزيع قاعدة المستخدمين" subtitle="حسب المنصة" />
-            <CardBody>
-              <ShareBar
-                segments={data.platformSplit.map((entry, index) => ({
-                  label: PLATFORM_LABEL[entry.platform] ?? entry.platform,
-                  value: entry.users,
-                  color: SERIES_COLORS[index],
-                }))}
-              />
-            </CardBody>
-          </Card>
-
-          <StatTile
-            label="معدل الجلسات الخالية من الأعطال"
-            value={Number.isFinite(data.crashFreeRate) ? formatPercent(data.crashFreeRate) : '—'}
-            icon={ShieldCheck}
-            refetching={refetching}
-          />
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
-        <div className="xl:col-span-2">
-          <ChartCard
-            title="الجلسات اليومية"
-            subtitle="إجمالي الجلسات على كل المنصات"
-            refetching={refetching}
-            table={{
-              columns: ['التاريخ', 'الجلسات'],
-              rows: [...data.sessionsByDay]
+              columns: ['التاريخ', 'الحجوزات'],
+              rows: [...data.bookingsByDay]
                 .reverse()
                 .map((point) => [formatDate(point.date), formatNumber(point.value)]),
             }}
           >
             <TimeSeriesChart
-              points={sessionPoints}
-              series={[{ label: 'الجلسات', color: SERIES_COLORS[0] }]}
+              points={bookingPoints}
+              series={[{ label: 'الحجوزات', color: SERIES_COLORS[0] }]}
               fill
               formatValue={formatNumber}
               formatTick={formatCompact}
@@ -201,12 +178,95 @@ export function DashboardPage() {
         </div>
 
         <Card>
-          <CardHeader title="أعلى الدول" subtitle="حسب عدد المستخدمين" />
-          <CardBody>
-            <BarChart data={data.topCountries.map((row) => ({ label: row.country, value: row.users }))} formatValue={formatNumber} />
+          <CardHeader title="بانتظار الإدارة" subtitle="ما يحتاج قراراً الآن" />
+          <CardBody className="flex flex-col gap-1 px-2 py-2 sm:px-2">
+            {QUEUE.map((entry) => {
+              const count = data[entry.key] as number
+              return (
+                <Link
+                  key={entry.key}
+                  to={entry.to}
+                  className="flex items-center justify-between gap-3 rounded-lg px-3 py-2.5 transition-colors hover:bg-surface-2"
+                >
+                  <span className="flex min-w-0 items-center gap-2.5">
+                    <entry.icon
+                      size={16}
+                      aria-hidden
+                      className={count > 0 ? 'text-series-1' : 'text-muted'}
+                    />
+                    <span className="truncate text-xs text-ink-2">{entry.label}</span>
+                  </span>
+                  <span className="flex shrink-0 items-center gap-1">
+                    {/* Zero is not dimmed away: "nothing waiting" is the answer
+                        an admin came here for. */}
+                    <span
+                      className={cn(
+                        'tnum text-sm font-semibold',
+                        count > 0 ? 'text-ink' : 'text-muted',
+                      )}
+                    >
+                      {formatNumber(count)}
+                    </span>
+                    <ChevronLeft size={14} aria-hidden className="text-muted" />
+                  </span>
+                </Link>
+              )
+            })}
           </CardBody>
         </Card>
       </div>
+
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+        <Card>
+          <CardHeader title="الحجوزات حسب القسم" subtitle="أكثر الخدمات طلباً في الفترة" />
+          <CardBody>
+            <BarChart
+              data={data.bookingsByCategory.map((row) => ({
+                label: row.category,
+                value: row.count,
+              }))}
+              formatValue={formatNumber}
+            />
+          </CardBody>
+        </Card>
+
+        <Card>
+          <CardHeader title="أعلى المحافظات" subtitle="حسب عدد الحجوزات" />
+          <CardBody>
+            <BarChart
+              data={data.topGovernorates.map((row) => ({
+                label: row.governorate,
+                value: row.bookings,
+              }))}
+              formatValue={formatNumber}
+            />
+          </CardBody>
+        </Card>
+      </div>
+
+      <ChartCard
+        title="عمليات التثبيت اليومية"
+        subtitle="حسب المنصة — نمو قاعدة المستخدمين خلف الحجوزات"
+        series={installSeries}
+        refetching={refetching}
+        table={{
+          columns: ['التاريخ', PLATFORM_LABEL.ios, PLATFORM_LABEL.android],
+          rows: [...data.installsByDay]
+            .reverse()
+            .map((day) => [
+              formatDate(day.date),
+              formatNumber(day.ios),
+              formatNumber(day.android),
+            ]),
+        }}
+      >
+        <TimeSeriesChart
+          points={installPoints}
+          series={installSeries}
+          formatValue={formatNumber}
+          formatTick={formatCompact}
+        />
+      </ChartCard>
     </div>
   )
 }

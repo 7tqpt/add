@@ -84,9 +84,76 @@ export function SettingsPage() {
           <Toggle
             checked={form.allow_signups}
             onChange={(next) => patch({ allow_signups: next })}
-            label="السماح بالتسجيل"
-            description="عند الإيقاف لن يتمكن مستخدمون جدد من إنشاء حسابات."
+            label="السماح بتسجيل العملاء"
+            description="عند الإيقاف لن يتمكن عملاء جدد من إنشاء حسابات."
           />
+
+          <Toggle
+            checked={form.allow_provider_signups}
+            onChange={(next) => patch({ allow_provider_signups: next })}
+            label="استقبال طلبات مقدّمي الخدمة"
+            description="عند الإيقاف يُخفى نموذج الانضمام؛ الطلبات المعلّقة تبقى للمراجعة."
+          />
+        </CardBody>
+      </Card>
+
+      <Card>
+        <CardHeader
+          title="العمولة والعربون"
+          subtitle="القيم الافتراضية للمنصة — تسري على الحجوزات الجديدة فقط"
+        />
+        <CardBody className="flex flex-col gap-5">
+          <Field
+            label="نسبة عمولة المنصة العامة (%)"
+            hint="تُطبَّق على كل شريك ليس له نسبة خاصة في صفحته."
+          >
+            {(id) => (
+              <Input
+                id={id}
+                type="number"
+                min={0}
+                max={100}
+                dir="ltr"
+                className="tnum text-start"
+                value={String(form.commission_percent)}
+                onChange={(event) => patch({ commission_percent: Number(event.target.value) })}
+              />
+            )}
+          </Field>
+
+          <Field
+            label="نسبة العربون الافتراضية (%)"
+            hint="ما يدفعه العميل لتأكيد الحجز حين لا تحدّد الخدمة نسبتها."
+          >
+            {(id) => (
+              <Input
+                id={id}
+                type="number"
+                min={0}
+                max={100}
+                dir="ltr"
+                className="tnum text-start"
+                value={String(form.default_deposit_percent)}
+                onChange={(event) =>
+                  patch({ default_deposit_percent: Number(event.target.value) })
+                }
+              />
+            )}
+          </Field>
+
+          <Field label="العملة" hint="تظهر في كل المبالغ داخل التطبيق واللوحة.">
+            {(id) => (
+              <Select
+                id={id}
+                value={form.currency}
+                onChange={(event) => patch({ currency: event.target.value })}
+              >
+                <option value="YER">الريال اليمني (ر.ي)</option>
+                <option value="SAR">الريال السعودي (ر.س)</option>
+                <option value="USD">الدولار الأمريكي ($)</option>
+              </Select>
+            )}
+          </Field>
         </CardBody>
       </Card>
 
@@ -137,7 +204,7 @@ export function SettingsPage() {
 
       <Card>
         <CardHeader title="الدعم" subtitle="بيانات التواصل الظاهرة داخل التطبيق" />
-        <CardBody>
+        <CardBody className="flex flex-col gap-5">
           <Field label="بريد الدعم الفني">
             {(id) => (
               <Input
@@ -147,6 +214,20 @@ export function SettingsPage() {
                 placeholder="support@example.com"
                 value={form.support_email}
                 onChange={(event) => patch({ support_email: event.target.value })}
+              />
+            )}
+          </Field>
+
+          <Field label="رقم الدعم (واتساب/اتصال)">
+            {(id) => (
+              <Input
+                id={id}
+                type="tel"
+                dir="ltr"
+                className="text-start"
+                placeholder="+967700000000"
+                value={form.support_phone}
+                onChange={(event) => patch({ support_phone: event.target.value })}
               />
             )}
           </Field>

@@ -25,16 +25,18 @@ import {
   formatDateTime,
   formatDuration,
   formatMoney,
+  formatMoneyCompact,
   formatNumber,
   formatRelative,
 } from '@/lib/format'
 import type { AppUser, PaymentStatus, UserStatus } from '@/lib/types'
+import { PAYMENT_METHOD_LABEL, PAYMENT_STATUS_LABEL } from '@/services/finance'
 import {
-  PAYMENT_METHOD_LABEL,
-  PAYMENT_STATUS_LABEL,
-} from '@/services/payments'
-import { getUserActivity } from '@/services/userActivity'
-import { USER_STATUS_LABEL, getUser, updateUserStatus } from '@/services/users'
+  USER_STATUS_LABEL,
+  getUser,
+  getUserActivity,
+  updateUserStatus,
+} from '@/services/directory'
 
 const STATUS_TONE: Record<UserStatus, Tone> = {
   active: 'good',
@@ -88,11 +90,11 @@ export function UserDetailPage() {
     return (
       <Card>
         <EmptyState
-          title="المستخدم غير موجود"
+          title="العميل غير موجود"
           description="ربما حُذف الحساب أو أن الرابط غير صحيح."
           action={
             <Link to="/users" className="text-sm font-medium text-series-1 underline underline-offset-4">
-              العودة إلى قائمة المستخدمين
+              العودة إلى قائمة العملاء
             </Link>
           }
         />
@@ -119,7 +121,7 @@ export function UserDetailPage() {
       >
         {/* Under RTL "back" points toward the start edge, which is the right. */}
         <ArrowRight size={14} aria-hidden />
-        كل المستخدمين
+        كل العملاء
       </Link>
 
       <Card>
@@ -157,7 +159,7 @@ export function UserDetailPage() {
           <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-xs sm:grid-cols-3 lg:grid-cols-6">
             <Detail label="الجوال" value={record.phone ?? '—'} ltr />
             <Detail label="المنصة" value={PLATFORM_LABEL[record.platform]} />
-            <Detail label="الدولة" value={record.country || '—'} />
+            <Detail label="المحافظة" value={record.governorate || '—'} />
             <Detail label="إصدار التطبيق" value={record.app_version || '—'} ltr />
             <Detail label="تاريخ التسجيل" value={formatDate(record.created_at)} />
             <Detail label="آخر ظهور" value={formatRelative(record.last_seen_at)} />
@@ -180,7 +182,8 @@ export function UserDetailPage() {
         />
         <StatTile
           label="إجمالي المدفوعات"
-          value={formatMoney(totalSpent)}
+          value={formatMoneyCompact(totalSpent)}
+          valueTitle={formatMoney(totalSpent)}
           icon={Wallet}
           refetching={activity.refetching}
         />
@@ -207,7 +210,7 @@ export function UserDetailPage() {
                     <table className="w-full border-collapse text-xs">
                       <thead className="sticky top-0 bg-surface-2">
                         <tr>
-                          {['بدأت في', 'المدة', 'المنصة', 'الإصدار', 'الدولة'].map((heading) => (
+                          {['بدأت في', 'المدة', 'المنصة', 'الإصدار', 'المحافظة'].map((heading) => (
                             <th
                               key={heading}
                               scope="col"
@@ -234,7 +237,7 @@ export function UserDetailPage() {
                               {session.app_version || '—'}
                             </td>
                             <td className="px-4 py-2 whitespace-nowrap text-ink-2">
-                              {session.country || '—'}
+                              {session.governorate || '—'}
                             </td>
                           </tr>
                         ))}

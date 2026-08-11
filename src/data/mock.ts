@@ -3,41 +3,45 @@ import type {
   AppSettings,
   AppUser,
   AppVersion,
+  Booking,
+  BookingStatus,
+  CancellationPolicy,
   DailyBreakdown,
-  MetricPoint,
+  Dispute,
+  DisputeMessage,
+  DisputeStatus,
   DocumentStatus,
   DocumentType,
-  OfferStatus,
-  Order,
-  OrderOffer,
-  OrderStatus,
+  Governorate,
+  MetricPoint,
   Payment,
-  PaymentKind,
   PaymentMethod,
   PaymentStatus,
+  PlanStatus,
   Platform,
+  Promotion,
   ProviderDocument,
-  ProviderReview,
   ProviderService,
   ProviderStatus,
   PushNotification,
+  RefundRule,
+  Review,
+  ServiceCategory,
   ServiceProvider,
-  SupportTicket,
-  TicketCategory,
-  TicketMessage,
-  TicketPriority,
-  TicketStatus,
+  Settlement,
+  SubscriptionPlan,
   UserDevice,
   UserSession,
   UserStatus,
+  WeddingPlan,
 } from '@/lib/types'
 
 /**
  * Demo dataset used whenever Supabase env vars are absent.
  *
- * Everything is generated from a fixed seed so the numbers stay identical
- * across renders, reloads and screenshots — a dashboard whose KPIs shuffle on
- * every refresh is impossible to review.
+ * Generated from a fixed seed so the numbers stay identical across renders,
+ * reloads and screenshots — a dashboard whose KPIs shuffle on every refresh is
+ * impossible to review. Mirrors supabase/seed.sql so both tell the same story.
  */
 
 /** mulberry32 — small, fast, deterministic. */
@@ -52,11 +56,8 @@ function makeRng(seed: number) {
 }
 
 const rng = makeRng(20260811)
-
 const pick = <T,>(items: readonly T[]): T => items[Math.floor(rng() * items.length)]
-
 const between = (min: number, max: number) => min + rng() * (max - min)
-
 const intBetween = (min: number, max: number) => Math.round(between(min, max))
 
 function isoDay(daysAgo: number): string {
@@ -73,686 +74,789 @@ function isoAt(daysAgo: number, hour = 10): string {
   return d.toISOString()
 }
 
-/** Longest range any screen asks for; shorter ranges slice the tail. */
 const HISTORY_DAYS = 90
 
+// ---------------------------------------------------------------------------
+// المرجعيات
+// ---------------------------------------------------------------------------
+
+const GOVERNORATE_NAMES = [
+  'أمانة العاصمة', 'صنعاء', 'عدن', 'تعز', 'الحديدة', 'حضرموت', 'إب', 'ذمار',
+  'حجة', 'مأرب', 'لحج', 'أبين', 'شبوة', 'عمران', 'صعدة', 'البيضاء',
+  'الضالع', 'المهرة', 'ريمة', 'الجوف',
+]
+
+export const mockGovernorates: Governorate[] = GOVERNORATE_NAMES.map((name, i) => ({
+  id: `gov_${i + 1}`,
+  name,
+  sort_order: i + 1,
+  is_active: true,
+}))
+
+/** المحافظات التي تظهر فيها حركة فعلية في البيانات التجريبية. */
+const ACTIVE_GOVERNORATES = GOVERNORATE_NAMES.slice(0, 8)
+
+export const mockCategories: ServiceCategory[] = [
+  {
+    id: 'cat_halls', name: 'القاعات والخيام', slug: 'halls', sort_order: 1, is_active: true,
+    description: 'صالات، خيام، استراحات، السعة، الموقع، الصور، الأسعار والمواعيد المتاحة.',
+    custom_fields: [
+      { key: 'capacity', label: 'السعة', type: 'number', required: true },
+      { key: 'has_parking', label: 'يوجد موقف سيارات', type: 'boolean', required: false },
+      { key: 'indoor', label: 'مغلقة', type: 'boolean', required: false },
+    ],
+  },
+  {
+    id: 'cat_artists', name: 'الفنانين والفرق', slug: 'artists', sort_order: 2, is_active: true,
+    description: 'فنانين، فرق فنية، منشدين، دي جي، زفة، وفنانين مع معداتهم.',
+    custom_fields: [
+      { key: 'members', label: 'عدد أفراد الفرقة', type: 'number', required: false },
+      { key: 'genre', label: 'النوع', type: 'text', required: false },
+    ],
+  },
+  {
+    id: 'cat_sound', name: 'الصوت والمعدات', slug: 'sound', sort_order: 3, is_active: true,
+    description: 'سماعات، مكبرات، ميكروفونات، أجهزة دي جي، معدات صوت وحفلات وتأجير المعدات.',
+    custom_fields: [{ key: 'coverage_area', label: 'مساحة التغطية', type: 'text', required: false }],
+  },
+  {
+    id: 'cat_photo', name: 'التصوير والإضاءة', slug: 'photography', sort_order: 4, is_active: true,
+    description: 'مصورين، فرق تصوير، تصوير فيديو وفوتوغرافي، كاميرات، درون، وإضاءة الحفلات.',
+    custom_fields: [
+      { key: 'has_drone', label: 'تصوير بالدرون', type: 'boolean', required: false },
+      { key: 'team_size', label: 'عدد المصورين', type: 'number', required: false },
+    ],
+  },
+  {
+    id: 'cat_support', name: 'الموية والطليع والخدمات المساندة', slug: 'support', sort_order: 5,
+    is_active: true,
+    description: 'موية، قريح، طليع وأي خدمات مساندة يعتمدها النظام حسب المدينة.',
+    custom_fields: [{ key: 'quantity_unit', label: 'وحدة القياس', type: 'text', required: false }],
+  },
+  {
+    id: 'cat_cars', name: 'السيارات', slug: 'cars', sort_order: 6, is_active: true,
+    description: 'سيارات للعريس، الزفة، الضيوف، سيارات فخمة، باصات وخدمات نقل.',
+    custom_fields: [
+      { key: 'car_model', label: 'الطراز', type: 'text', required: false },
+      { key: 'seats', label: 'عدد الركاب', type: 'number', required: false },
+    ],
+  },
+  {
+    id: 'cat_attire', name: 'الملبوسات', slug: 'attire', sort_order: 7, is_active: true,
+    description: 'ملابس العريس والعروس والضيوف والأطفال، شراء، إيجار، تفصيل وإكسسوارات.',
+    custom_fields: [{ key: 'mode', label: 'نوع التعامل', type: 'text', required: false }],
+  },
+  {
+    id: 'cat_planners', name: 'متعهدين الحفلات', slug: 'planners', sort_order: 8, is_active: true,
+    description: 'تنظيم وتجهيز شامل، باقات، تنسيق الخدمات، الديكور، الصوت، التصوير والزفة.',
+    custom_fields: [{ key: 'package_scope', label: 'نطاق الباقة', type: 'text', required: false }],
+  },
+  {
+    id: 'cat_beauty', name: 'التجميل والكوافير', slug: 'beauty', sort_order: 9, is_active: true,
+    description: 'مكياج، تسريحات، كوافير، تجهيز العروس وخدمات التجميل.',
+    custom_fields: [{ key: 'home_service', label: 'خدمة منزلية', type: 'boolean', required: false }],
+  },
+  {
+    id: 'cat_decor', name: 'الديكور والكوشة والورد', slug: 'decor', sort_order: 10, is_active: true,
+    description: 'كوش، ورد، ديكور، خلفيات، طاولات، كراسي وتجهيزات المكان.',
+    custom_fields: [{ key: 'style', label: 'الطراز', type: 'text', required: false }],
+  },
+  {
+    id: 'cat_print', name: 'الطباعة', slug: 'printing', sort_order: 11, is_active: true,
+    description: 'بطاقات الدعوة، اللوحات، الاستيكرات، التوزيعات، أرقام الطاولات وبطاقات الشكر.',
+    custom_fields: [{ key: 'min_quantity', label: 'أقل كمية', type: 'number', required: false }],
+  },
+]
+
+/** سعر الباقة الأساسية لكل قسم، بالريال اليمني. */
+const CATEGORY_BASE_PRICE: Record<string, number> = {
+  cat_halls: 300_000, cat_artists: 200_000, cat_sound: 90_000, cat_photo: 120_000,
+  cat_support: 40_000, cat_cars: 60_000, cat_attire: 80_000, cat_planners: 400_000,
+  cat_beauty: 50_000, cat_decor: 150_000, cat_print: 20_000,
+}
+
+const FLEXIBLE_RULES: RefundRule[] = [
+  { hours_before: 168, refund_percent: 100 },
+  { hours_before: 48, refund_percent: 50 },
+  { hours_before: 0, refund_percent: 0 },
+]
+
+const STRICT_RULES: RefundRule[] = [
+  { hours_before: 720, refund_percent: 50 },
+  { hours_before: 0, refund_percent: 0 },
+]
+
+export const mockPolicies: CancellationPolicy[] = [
+  {
+    id: 'pol_flex', name: 'مرنة', is_default: true, is_active: true,
+    description: 'استرداد كامل قبل 7 أيام من الموعد، ونصف المبلغ قبل 48 ساعة.',
+    rules: FLEXIBLE_RULES,
+  },
+  {
+    id: 'pol_mid', name: 'متوسطة', is_default: false, is_active: true,
+    description: 'استرداد كامل قبل 14 يوماً، و50% قبل 7 أيام، و25% قبل 72 ساعة.',
+    rules: [
+      { hours_before: 336, refund_percent: 100 },
+      { hours_before: 168, refund_percent: 50 },
+      { hours_before: 72, refund_percent: 25 },
+      { hours_before: 0, refund_percent: 0 },
+    ],
+  },
+  {
+    id: 'pol_strict', name: 'صارمة', is_default: false, is_active: true,
+    description: 'استرداد 50% فقط قبل 30 يوماً، ولا استرداد بعدها — للقاعات والمواسم.',
+    rules: STRICT_RULES,
+  },
+]
+
+// ---------------------------------------------------------------------------
+// المستخدمون
+// ---------------------------------------------------------------------------
+
 const FIRST_NAMES = [
-  'أحمد', 'محمد', 'عبدالله', 'خالد', 'يوسف', 'عمر', 'سعيد', 'طارق', 'بلال', 'كريم',
-  'فاطمة', 'مريم', 'نورة', 'سارة', 'ليلى', 'هدى', 'رنا', 'أمل', 'دعاء', 'ريم',
+  'أحمد', 'محمد', 'عبدالله', 'خالد', 'يوسف', 'عمر', 'صالح', 'عبدالرحمن',
+  'فاطمة', 'مريم', 'نورة', 'سارة', 'هدى', 'أسماء', 'ريم', 'بلقيس',
 ]
 
 const LAST_NAMES = [
-  'العتيبي', 'الحربي', 'القحطاني', 'الشمري', 'الزهراني', 'المالكي', 'الدوسري',
-  'بن سالم', 'العمري', 'الأنصاري', 'حسن', 'إبراهيم', 'منصور', 'صالح',
+  'الحضرمي', 'الصنعاني', 'العديني', 'التعزي', 'الحديدي', 'المقطري',
+  'باسلامة', 'الشرعبي', 'الأهدل', 'الوصابي',
 ]
 
-const COUNTRIES = [
-  'السعودية', 'مصر', 'الإمارات', 'المغرب', 'الأردن', 'الكويت', 'الجزائر', 'قطر', 'تونس', 'عُمان',
-]
-
-const APP_VERSIONS = ['3.4.0', '3.3.2', '3.3.0', '3.2.1', '3.1.0']
-
-const STATUS_WEIGHTS: { status: UserStatus; weight: number }[] = [
-  { status: 'active', weight: 0.78 },
-  { status: 'pending', weight: 0.14 },
-  { status: 'suspended', weight: 0.08 },
-]
-
-function weightedStatus(): UserStatus {
+function weightedUserStatus(): UserStatus {
   const roll = rng()
-  let acc = 0
-  for (const entry of STATUS_WEIGHTS) {
-    acc += entry.weight
-    if (roll <= acc) return entry.status
-  }
+  if (roll > 0.94) return 'suspended'
+  if (roll > 0.86) return 'pending'
   return 'active'
 }
 
-function transliterate(index: number): string {
-  return `user${(index + 137).toString().padStart(4, '0')}`
-}
-
-export const mockUsers: AppUser[] = Array.from({ length: 84 }, (_, i) => {
-  const createdDaysAgo = intBetween(0, 320)
-  const status = weightedStatus()
-  // Pending accounts never signed in; suspended ones went quiet a while back.
-  const lastSeenDaysAgo =
-    status === 'pending'
-      ? null
-      : status === 'suspended'
-        ? intBetween(20, Math.max(21, createdDaysAgo))
-        : intBetween(0, Math.min(14, Math.max(1, createdDaysAgo)))
-
+export const mockUsers: AppUser[] = Array.from({ length: 90 }, (_, i) => {
+  const status = weightedUserStatus()
+  const createdDaysAgo = intBetween(0, 300)
   return {
-    id: `usr_${(1000 + i).toString(36)}${i}`,
+    id: `usr_${i + 1}`,
     full_name: `${pick(FIRST_NAMES)} ${pick(LAST_NAMES)}`,
-    email: `${transliterate(i)}@example.com`,
-    phone: rng() > 0.25 ? `+9665${intBetween(10_000_000, 99_999_999)}` : null,
-    platform: (rng() > 0.42 ? 'android' : 'ios') as Platform,
-    country: pick(COUNTRIES),
+    email: `user${(i + 1).toString().padStart(4, '0')}@example.com`,
+    phone: `+9677${intBetween(10_000_000, 79_999_999)}`,
+    platform: (rng() > 0.4 ? 'android' : 'ios') as Platform,
+    governorate: pick(ACTIVE_GOVERNORATES),
     status,
-    app_version: pick(APP_VERSIONS),
-    sessions_count: status === 'pending' ? 0 : intBetween(1, 480),
-    created_at: isoAt(createdDaysAgo, intBetween(6, 23)),
-    last_seen_at: lastSeenDaysAgo === null ? null : isoAt(lastSeenDaysAgo, intBetween(6, 23)),
+    app_version: pick(['1.4.0', '1.3.2', '1.3.0', '1.2.1']),
+    sessions_count: status === 'pending' ? 0 : intBetween(5, 265),
+    created_at: isoAt(createdDaysAgo, intBetween(7, 22)),
+    last_seen_at: status === 'pending' ? null : isoAt(intBetween(0, 14), intBetween(7, 22)),
   }
-})
+}).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
 
-/**
- * Installs per day, split by platform. Built as a gently rising trend plus a
- * weekend dip so the shape reads like real product data rather than noise.
- */
-export const mockInstallsByDay: DailyBreakdown[] = Array.from(
-  { length: HISTORY_DAYS },
-  (_, i) => {
-    const daysAgo = HISTORY_DAYS - 1 - i
-    const date = isoDay(daysAgo)
-    const trend = 180 + i * 2.4
-    const weekend = [5, 6].includes(new Date(date).getDay()) ? 0.82 : 1
-    const total = Math.round(trend * weekend * between(0.86, 1.14))
-    const android = Math.round(total * between(0.54, 0.62))
-    return { date, ios: total - android, android }
-  },
-)
-
-export const mockSessionsByDay: MetricPoint[] = mockInstallsByDay.map((day, i) => ({
-  date: day.date,
-  value: Math.round((day.ios + day.android) * between(9.5, 12.5) + i * 12),
-}))
-
-export const mockRevenueByDay: MetricPoint[] = mockInstallsByDay.map((day) => ({
-  date: day.date,
-  value: Math.round((day.ios + day.android) * between(11, 18)),
-}))
-
-export const mockNotifications: PushNotification[] = [
-  {
-    id: 'ntf_01',
-    title: 'خصم 25% لنهاية الأسبوع',
-    body: 'استخدم كود WEEKEND25 عند إتمام الطلب قبل يوم الأحد.',
-    audience: 'all',
-    status: 'sent',
-    scheduled_at: null,
-    sent_at: isoAt(1, 19),
-    recipients: 18420,
-    opened: 7361,
-  },
-  {
-    id: 'ntf_02',
-    title: 'تحديث جديد متاح',
-    body: 'النسخة 3.4.0 أصبحت متاحة مع تحسينات في السرعة وإصلاح الأعطال.',
-    audience: 'ios',
-    status: 'sent',
-    scheduled_at: null,
-    sent_at: isoAt(4, 12),
-    recipients: 7940,
-    opened: 2418,
-  },
-  {
-    id: 'ntf_03',
-    title: 'اشتقنا لك 👋',
-    body: 'لم نرَك منذ فترة — تفقّد الجديد في التطبيق.',
-    audience: 'inactive',
-    status: 'scheduled',
-    scheduled_at: isoAt(-2, 18),
-    sent_at: null,
-    recipients: 3120,
-    opened: 0,
-  },
-  {
-    id: 'ntf_04',
-    title: 'صيانة مجدولة',
-    body: 'سيتوقف التطبيق مؤقتاً يوم الجمعة من 2 إلى 4 فجراً.',
-    audience: 'all',
-    status: 'draft',
-    scheduled_at: null,
-    sent_at: null,
-    recipients: 0,
-    opened: 0,
-  },
-  {
-    id: 'ntf_05',
-    title: 'تنبيه أمني',
-    body: 'يُنصح بتفعيل التحقق بخطوتين من الإعدادات.',
-    audience: 'android',
-    status: 'failed',
-    scheduled_at: null,
-    sent_at: isoAt(9, 9),
-    recipients: 0,
-    opened: 0,
-  },
-  {
-    id: 'ntf_06',
-    title: 'مرحباً بك في التطبيق',
-    body: 'ابدأ بإكمال ملفك الشخصي للحصول على توصيات أفضل.',
-    audience: 'active',
-    status: 'sent',
-    scheduled_at: null,
-    sent_at: isoAt(14, 11),
-    recipients: 15230,
-    opened: 8102,
-  },
-]
-
-export const mockVersions: AppVersion[] = [
-  {
-    id: 'ver_01',
-    platform: 'ios',
-    version: '3.4.0',
-    build: 3401,
-    released_at: isoAt(6, 10),
-    force_update: false,
-    rollout_percent: 100,
-    notes: 'تحسين سرعة الإقلاع بنسبة 30% وإصلاح تعطّل شاشة الدفع.',
-  },
-  {
-    id: 'ver_02',
-    platform: 'android',
-    version: '3.4.0',
-    build: 3402,
-    released_at: isoAt(5, 10),
-    force_update: false,
-    rollout_percent: 60,
-    notes: 'نفس تحديثات iOS مع دعم الوضع الليلي على أندرويد 15.',
-  },
-  {
-    id: 'ver_03',
-    platform: 'ios',
-    version: '3.3.2',
-    build: 3322,
-    released_at: isoAt(28, 10),
-    force_update: true,
-    rollout_percent: 100,
-    notes: 'إصلاح ثغرة في تجديد الجلسة — التحديث إجباري.',
-  },
-  {
-    id: 'ver_04',
-    platform: 'android',
-    version: '3.3.0',
-    build: 3300,
-    released_at: isoAt(44, 10),
-    force_update: false,
-    rollout_percent: 100,
-    notes: 'إضافة الإشعارات داخل التطبيق.',
-  },
-]
-
-const IOS_DEVICES = ['iPhone 15 Pro', 'iPhone 14', 'iPhone 13 mini', 'iPad Air']
-const ANDROID_DEVICES = ['Samsung Galaxy S24', 'Xiaomi 14', 'Pixel 8', 'Oppo Reno 11']
-
-/** Sessions for every user who has actually opened the app. */
 export const mockUserSessions: UserSession[] = mockUsers
-  .filter((user) => user.status !== 'pending')
-  .flatMap((user, userIndex) =>
-    Array.from({ length: intBetween(4, 9) }, (_, i) => ({
-      id: `ses_${userIndex}_${i}`,
+  .filter((u) => u.status !== 'pending')
+  .flatMap((user, i) =>
+    Array.from({ length: intBetween(3, 8) }, (_, s) => ({
+      id: `ses_${i}_${s}`,
       user_id: user.id,
-      started_at: isoAt(i * 2 + intBetween(0, 1), intBetween(7, 23)),
-      duration_seconds: intBetween(45, 2700),
+      started_at: isoAt(s * 2 + intBetween(0, 1), intBetween(7, 23)),
+      duration_seconds: intBetween(120, 2600),
       platform: user.platform,
       app_version: user.app_version,
-      country: user.country,
+      governorate: user.governorate,
     })),
   )
 
+const IOS_DEVICES = ['iPhone 13', 'iPhone 12', 'iPhone 11', 'iPhone SE']
+const ANDROID_DEVICES = ['Samsung Galaxy A54', 'Redmi Note 12', 'Infinix Hot 30', 'Tecno Spark 10']
+
 export const mockUserDevices: UserDevice[] = mockUsers
-  .filter((user) => user.status !== 'pending')
-  .flatMap((user, userIndex) =>
-    // Most people have one device; roughly a third also use a second.
-    Array.from({ length: rng() > 0.66 ? 2 : 1 }, (_, i) => ({
-      id: `dev_${userIndex}_${i}`,
+  .filter((u) => u.status !== 'pending')
+  .flatMap((user, i) =>
+    Array.from({ length: rng() > 0.7 ? 2 : 1 }, (_, d) => ({
+      id: `dev_${i}_${d}`,
       user_id: user.id,
       model: user.platform === 'ios' ? pick(IOS_DEVICES) : pick(ANDROID_DEVICES),
-      os_version: user.platform === 'ios' ? '18.2' : '15',
+      os_version: user.platform === 'ios' ? '17.4' : '13',
       platform: user.platform,
       push_enabled: rng() > 0.18,
       last_used_at: user.last_seen_at ?? user.created_at,
     })),
   )
 
-const TICKET_SUBJECTS: { subject: string; category: TicketCategory }[] = [
-  { subject: 'التطبيق يتوقف عند فتح شاشة الدفع', category: 'bug' },
-  { subject: 'لم يصلني إيصال الاشتراك', category: 'billing' },
-  { subject: 'لا أستطيع تسجيل الدخول برقم الجوال', category: 'account' },
-  { subject: 'طلب إضافة الوضع الليلي', category: 'feature' },
-  { subject: 'خُصم المبلغ مرتين', category: 'billing' },
-  { subject: 'الإشعارات لا تصل على أندرويد', category: 'bug' },
-  { subject: 'كيف أحذف حسابي؟', category: 'account' },
-  { subject: 'اقتراح: دعم اللغة الفرنسية', category: 'feature' },
-]
+// ---------------------------------------------------------------------------
+// مقدّمو الخدمة
+// ---------------------------------------------------------------------------
 
-const TICKET_STATUSES: TicketStatus[] = ['open', 'pending', 'resolved', 'closed']
-const TICKET_PRIORITIES: TicketPriority[] = ['urgent', 'high', 'normal', 'low']
+const PROVIDER_FIRST = ['سعد', 'ماجد', 'فهد', 'بدر', 'ريان', 'هند', 'لمياء', 'غادة', 'منى', 'وليد']
+const PROVIDER_LAST = ['باعوم', 'الحبيشي', 'الرداعي', 'السقاف', 'الجنيد', 'المخلافي', 'بن شملان']
+const BUSINESS_PREFIX = ['قاعة', 'مؤسسة', 'استوديو', 'مركز', 'معرض', 'فرقة']
+const BUSINESS_NAME = ['اللؤلؤة', 'الأصالة', 'النخبة', 'الياسمين', 'بلقيس', 'السعادة', 'الفردوس', 'التاج']
 
-export const mockTickets: SupportTicket[] = Array.from({ length: 14 }, (_, i) => {
-  const user = mockUsers[i * 3]
-  const template = TICKET_SUBJECTS[i % TICKET_SUBJECTS.length]
-  const createdDaysAgo = i + intBetween(0, 2)
-  return {
-    id: `tkt_${(100 + i).toString(36)}`,
-    user_id: user.id,
-    user_name: user.full_name,
-    user_email: user.email,
-    subject: template.subject,
-    category: template.category,
-    status: TICKET_STATUSES[i % TICKET_STATUSES.length],
-    priority: TICKET_PRIORITIES[i % TICKET_PRIORITIES.length],
-    created_at: isoAt(createdDaysAgo, intBetween(8, 20)),
-    updated_at: isoAt(Math.max(0, createdDaysAgo - 1), intBetween(8, 20)),
-  }
-}).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-
-export const mockTicketMessages: TicketMessage[] = mockTickets.flatMap((ticket, i) => {
-  const opening: TicketMessage = {
-    id: `msg_${i}_0`,
-    ticket_id: ticket.id,
-    author: 'user',
-    author_email: ticket.user_email,
-    body: 'السلام عليكم، أواجه هذه المشكلة منذ آخر تحديث للتطبيق. أرجو المساعدة وشكراً.',
-    created_at: ticket.created_at,
-  }
-  if (ticket.status === 'open') return [opening]
-
-  return [
-    opening,
-    {
-      id: `msg_${i}_1`,
-      ticket_id: ticket.id,
-      author: 'admin' as const,
-      author_email: 'support@example.com',
-      body: 'وعليكم السلام، شكراً لتواصلك. تم تحويل البلاغ للفريق التقني وسنوافيك بالتحديث قريباً.',
-      created_at: ticket.updated_at,
-    },
-  ]
-})
-
-export const PROVIDER_CATEGORIES = [
-  'سباكة',
-  'كهرباء',
-  'تنظيف',
-  'تكييف',
-  'نجارة',
-  'دهان',
-  'نقل أثاث',
-  'صيانة أجهزة',
-]
-
-export const PROVIDER_CITIES = [
-  'الرياض',
-  'جدة',
-  'الدمام',
-  'مكة',
-  'المدينة',
-  'الخبر',
-  'أبها',
-  'تبوك',
-]
-
-const BUSINESS_NAMES = ['الإتقان', 'النخبة', 'الرواد', 'البناء', 'السرعة', 'الأمانة']
-
-const PROVIDER_FIRST = ['سعد', 'ماجد', 'فهد', 'بدر', 'تركي', 'ريان', 'هند', 'لمياء', 'غادة', 'منى']
-const PROVIDER_LAST = [
-  'السبيعي',
-  'الغامدي',
-  'الرشيد',
-  'البقمي',
-  'المطيري',
-  'الجهني',
-  'العنزي',
-  'الخالدي',
-]
-
-/** Roughly two thirds active, with a working queue of pending applications. */
-function providerStatus(index: number): ProviderStatus {
-  if (index % 9 === 0) return 'rejected'
-  if (index % 5 === 0) return 'pending'
-  if (index % 11 === 0) return 'suspended'
-  return 'active'
+function providerStatus(i: number): ProviderStatus {
+  if (i % 12 === 0) return 'rejected'
+  if (i % 7 === 0) return 'pending'
+  if (i % 19 === 0) return 'suspended'
+  return 'verified'
 }
 
-export const mockProviders: ServiceProvider[] = Array.from({ length: 32 }, (_, i) => {
-  const status = providerStatus(i + 1)
-  const trading = status === 'active' || status === 'suspended'
-  const joinedDaysAgo = intBetween(5, 400)
+export const mockProviders: ServiceProvider[] = Array.from({ length: 44 }, (_, idx) => {
+  const i = idx + 1
+  const status = providerStatus(i)
+  const trading = status === 'verified' || status === 'suspended'
+  const appliedDaysAgo = intBetween(5, 380)
+  const category = mockCategories[idx % mockCategories.length]
+  const governorate = ACTIVE_GOVERNORATES[idx % ACTIVE_GOVERNORATES.length]
 
   return {
-    id: `prv_${(200 + i).toString(36)}`,
+    id: `prv_${i}`,
     full_name: `${pick(PROVIDER_FIRST)} ${pick(PROVIDER_LAST)}`,
-    business_name: `مؤسسة ${pick(BUSINESS_NAMES)} للخدمات`,
-    email: `provider${(i + 1).toString().padStart(3, '0')}@example.com`,
-    phone: `+9665${intBetween(20_000_000, 89_999_999)}`,
-    category: pick(PROVIDER_CATEGORIES),
-    city: pick(PROVIDER_CITIES),
+    business_name: `${pick(BUSINESS_PREFIX)} ${pick(BUSINESS_NAME)}`,
+    email: `provider${i.toString().padStart(3, '0')}@example.com`,
+    phone: `+9677${intBetween(70_000_000, 79_999_999)}`,
+    bio: `خبرة تتجاوز ${intBetween(3, 15)} سنوات في تجهيز الأعراس.`,
+    governorate,
+    coverage_areas: [governorate],
     status,
-    rating: trading ? Math.round(between(3.4, 5) * 10) / 10 : 0,
-    reviews_count: trading ? intBetween(4, 120) : 0,
-    completed_orders: trading ? intBetween(12, 380) : 0,
-    total_earnings: trading ? intBetween(1500, 68_000) : 0,
-    commission_percent: pick([10, 12, 15, 15, 18, 20]),
-    joined_at: isoAt(joinedDaysAgo, intBetween(8, 20)),
-    // Verification lands a couple of days after the application.
-    verified_at: trading ? isoAt(Math.max(0, joinedDaysAgo - 3), intBetween(8, 20)) : null,
+    is_featured: i % 13 === 0,
+    rating: trading ? Math.round(between(3.5, 5) * 10) / 10 : 0,
+    reviews_count: trading ? intBetween(3, 80) : 0,
+    completed_bookings: trading ? intBetween(5, 160) : 0,
+    total_earnings: trading ? intBetween(150_000, 7_000_000) : 0,
+    // معظمهم على العمولة العامة؛ القليل باتفاق خاص
+    commission_percent: i % 9 === 0 ? pick([7, 8, 12, 15]) : null,
+    rejection_reason: status === 'rejected' ? 'السجل التجاري منتهي الصلاحية.' : '',
+    categories: [category.name],
+    applied_at: isoAt(appliedDaysAgo, intBetween(8, 20)),
+    verified_at: trading ? isoAt(Math.max(0, appliedDaysAgo - 4), intBetween(8, 20)) : null,
   }
-}).sort((a, b) => new Date(b.joined_at).getTime() - new Date(a.joined_at).getTime())
+}).sort((a, b) => new Date(b.applied_at).getTime() - new Date(a.applied_at).getTime())
 
-const DOCUMENT_TYPES: DocumentType[] = ['id_card', 'commercial_register', 'certificate']
+/** يربط كل مقدّم خدمة بقسمه، للبحث والتصفية. */
+const providerCategoryId = new Map<string, string>()
+for (const provider of mockProviders) {
+  const category = mockCategories.find((c) => c.name === provider.categories[0])
+  if (category) providerCategoryId.set(provider.id, category.id)
+}
 
-export const mockProviderDocuments: ProviderDocument[] = mockProviders.flatMap((provider, index) =>
-  DOCUMENT_TYPES.map((type, i) => {
+const DOCUMENT_TYPES: DocumentType[] = ['id_card', 'commercial_register', 'work_samples']
+
+export const mockDocuments: ProviderDocument[] = mockProviders.flatMap((provider, i) =>
+  DOCUMENT_TYPES.map((type, d) => {
     const status: DocumentStatus =
       provider.status === 'pending'
         ? 'pending'
         : provider.status === 'rejected' && type === 'commercial_register'
           ? 'rejected'
           : 'approved'
-
     return {
-      id: `doc_${index}_${i}`,
+      id: `doc_${i}_${d}`,
       provider_id: provider.id,
       type,
       file_name: `${type}-${provider.id}.pdf`,
       status,
       note: status === 'rejected' ? 'السجل التجاري منتهي الصلاحية.' : '',
-      uploaded_at: provider.joined_at,
+      uploaded_at: provider.applied_at,
     }
   }),
 )
 
-const SERVICE_TEMPLATES = [
-  { suffix: 'زيارة معاينة', price: 80, duration: 30 },
-  { suffix: 'خدمة أساسية', price: 220, duration: 90 },
-  { suffix: 'باقة صيانة شاملة', price: 650, duration: 240 },
-]
+const PACKAGE_TIERS = ['باقة أساسية', 'باقة متوسطة', 'باقة شاملة']
 
-export const mockProviderServices: ProviderService[] = mockProviders
-  .filter((provider) => provider.status === 'active' || provider.status === 'suspended')
-  .flatMap((provider, index) =>
-    SERVICE_TEMPLATES.map((template, i) => ({
-      id: `psv_${index}_${i}`,
+export const mockServices: ProviderService[] = mockProviders
+  .filter((p) => p.status === 'verified' || p.status === 'suspended')
+  .flatMap((provider, i) => {
+    const categoryId = providerCategoryId.get(provider.id)!
+    const category = mockCategories.find((c) => c.id === categoryId)!
+    const base = CATEGORY_BASE_PRICE[categoryId]
+    // القاعات تأخذ السياسة الصارمة لارتباطها بموسم وموعد لا يُعوَّض
+    const policy = categoryId === 'cat_halls' ? mockPolicies[2] : mockPolicies[0]
+
+    return PACKAGE_TIERS.map((tier, t) => ({
+      id: `svc_${i}_${t}`,
       provider_id: provider.id,
-      title: `${provider.category} — ${template.suffix}`,
-      price: template.price,
-      duration_minutes: template.duration,
-      active: provider.status === 'active',
-    })),
-  )
+      provider_name: provider.business_name,
+      category_id: categoryId,
+      category_name: category.name,
+      title: `${category.name} — ${tier}`,
+      description: 'تشمل الباقة تجهيزاً كاملاً مع فريق مختص وضمان جودة التنفيذ.',
+      price: base * (t + 1),
+      price_to: base * (t + 1) + base / 2,
+      unit: categoryId === 'cat_print' ? 'لكل 100 بطاقة' : categoryId === 'cat_cars' ? 'لليوم' : 'للحجز',
+      deposit_percent: [20, 30, 50][t],
+      duration_minutes: [120, 240, 480][t],
+      cancellation_policy_id: policy.id,
+      cancellation_policy_name: policy.name,
+      is_active: provider.status === 'verified',
+    }))
+  })
 
-const REVIEW_COMMENTS = [
-  'خدمة ممتازة والتزام بالموعد.',
-  'العمل جيد لكن التأخير كان ملحوظاً.',
-  'أنصح به، سعر مناسب وجودة عالية.',
-  'أنهى المهمة بسرعة وترك المكان نظيفاً.',
-  'تعامل محترم وشرح المشكلة بوضوح.',
-]
+// ---------------------------------------------------------------------------
+// خطط الأعراس والحجوزات
+// ---------------------------------------------------------------------------
 
-export const mockProviderReviews: ProviderReview[] = mockProviders
-  .filter((provider) => provider.status === 'active' || provider.status === 'suspended')
-  .flatMap((provider, index) =>
-    Array.from({ length: intBetween(3, 6) }, (_, i) => ({
-      id: `rev_${index}_${i}`,
-      provider_id: provider.id,
-      user_name: `${pick(FIRST_NAMES)} ${pick(LAST_NAMES)}`,
-      // Scatter around the provider's headline rating rather than repeating it.
-      rating: Math.max(1, Math.min(5, Math.round(provider.rating + between(-1.2, 0.6)))),
-      comment: pick(REVIEW_COMMENTS),
-      created_at: isoAt(intBetween(0, 120), intBetween(9, 21)),
-    })),
-  )
+const bookableServices = mockServices.filter((s) => s.is_active)
 
-const PAYMENT_METHODS: PaymentMethod[] = ['card', 'mada', 'apple_pay', 'stc_pay', 'wallet']
+interface PlanDraft extends Omit<WeddingPlan, 'services_count' | 'total_cost' | 'paid_amount' | 'remaining_amount'> {}
 
-const activeProviders = mockProviders.filter((provider) => provider.status === 'active')
+const planDrafts: PlanDraft[] = mockUsers
+  .filter((u) => u.status === 'active')
+  .slice(0, 26)
+  .map((user, i) => {
+    // بعض الأعراس مضت وبعضها قادم، فتظهر كل الحالات على الشاشة
+    const offset = intBetween(-45, 110)
+    const weddingDate = isoDay(-offset)
+    const past = offset < 0
+    const status: PlanStatus = past
+      ? 'completed'
+      : rng() > 0.9
+        ? 'cancelled'
+        : rng() > 0.55
+          ? 'confirmed'
+          : 'planning'
 
-const ADDRESS_DISTRICTS = ['النرجس', 'الياسمين', 'الملقا', 'الروضة', 'السلامة', 'العزيزية']
-
-const ORDER_DESCRIPTIONS = [
-  'تسريب في مواسير المطبخ يحتاج معاينة عاجلة.',
-  'انقطاع كهرباء متكرر في غرفتين.',
-  'تنظيف شقة بعد الانتهاء من الترميم.',
-  'صيانة مكيّف سبليت لا يبرّد.',
-  'تركيب رفوف خشبية في غرفة المكتب.',
-]
-
-const OFFER_NOTES = [
-  'أستطيع الحضور في الموعد المطلوب.',
-  'السعر شامل قطع الغيار الأساسية.',
-  'يشمل ضمان شهر على العمل.',
-  '',
-]
-
-/** Weighted so the working queue (new / in-flight) is never empty. */
-function orderStatus(): OrderStatus {
-  const roll = rng()
-  if (roll > 0.9) return 'cancelled'
-  if (roll > 0.72) return 'new'
-  if (roll > 0.62) return 'confirmed'
-  if (roll > 0.52) return 'on_the_way'
-  if (roll > 0.42) return 'in_progress'
-  if (roll > 0.22) return 'completed'
-  return 'closed'
-}
-
-/** The platform's cut of an accepted offer, matching the seed data. */
-const ORDER_COMMISSION = 0.15
-
-const BOOKING_FEE = 25
-
-interface DraftOrder extends Order {}
-
-const draftOrders: DraftOrder[] = mockUsers
-  .filter((user) => user.status === 'active')
-  .flatMap((user, userIndex) =>
-    Array.from({ length: intBetween(1, 3) }, (_, i) => {
-      const status = orderStatus()
-      const createdDaysAgo = intBetween(0, 60)
-      const category = pick(PROVIDER_CATEGORIES)
-
-      return {
-        id: `ord_${userIndex}_${i}`,
-        reference: `ORD-2026-${(userIndex * 3 + i + 1).toString().padStart(6, '0')}`,
-        user_id: user.id,
-        user_name: user.full_name,
-        provider_id: null,
-        provider_name: '',
-        category,
-        city: pick(PROVIDER_CITIES),
-        address: `حي ${pick(ADDRESS_DISTRICTS)} — شارع ${intBetween(10, 60)}`,
-        description: pick(ORDER_DESCRIPTIONS),
-        status,
-        // Scheduled visits straddle today: some upcoming, some already past.
-        scheduled_at: isoAt(createdDaysAgo - intBetween(-7, 3), intBetween(8, 19)),
-        booking_fee: BOOKING_FEE,
-        final_price: 0,
-        platform_share: 0,
-        accepted_offer_id: null,
-        cancel_reason: status === 'cancelled' ? 'ألغى العميل الطلب قبل الموعد.' : '',
-        created_at: isoAt(createdDaysAgo, intBetween(8, 20)),
-        accepted_at: null,
-        completed_at: null,
-        cancelled_at:
-          status === 'cancelled' ? isoAt(Math.max(0, createdDaysAgo - 1), 12) : null,
-      }
-    }),
-  )
-
-const offers: OrderOffer[] = []
-
-for (const order of draftOrders) {
-  // Providers bid within their own category; if none serve it, the order simply
-  // gets no offers and stays open — the same thing that happens in production.
-  const candidates = activeProviders.filter(
-    (provider) => provider.category === order.category,
-  )
-  const bidders = candidates.slice(0, 3)
-
-  const orderOffers = bidders.map((provider, i) => ({
-    id: `off_${order.id}_${i}`,
-    order_id: order.id,
-    provider_id: provider.id,
-    provider_name: provider.business_name,
-    provider_rating: provider.rating,
-    price: intBetween(150, 850),
-    duration_minutes: pick([60, 90, 120, 240]),
-    note: pick(OFFER_NOTES),
-    status: 'pending' as OfferStatus,
-    created_at: isoAt(
-      Math.max(0, Math.round((Date.now() - new Date(order.created_at).getTime()) / 86_400_000)),
-      14,
-    ),
-  }))
-
-  const pastBidding = order.status !== 'new' && order.status !== 'cancelled'
-  if (pastBidding && orderOffers.length > 0) {
-    // The customer accepts the cheapest bid; the rest are rejected.
-    const winner = orderOffers.reduce((best, offer) => (offer.price < best.price ? offer : best))
-    for (const offer of orderOffers) {
-      offer.status = offer.id === winner.id ? 'accepted' : 'rejected'
+    return {
+      id: `pln_${i + 1}`,
+      user_id: user.id,
+      user_name: user.full_name,
+      title: `عرس ${user.full_name.split(' ')[0]}`,
+      wedding_date: weddingDate,
+      governorate: user.governorate,
+      guests_count: intBetween(150, 800),
+      budget: intBetween(30, 200) * 50_000,
+      status,
+      notes: 'تجهيز العرس بالكامل عبر المنصة.',
+      created_at: isoAt(intBetween(10, 120), intBetween(9, 21)),
     }
-    order.provider_id = winner.provider_id
-    order.provider_name = winner.provider_name
-    order.accepted_offer_id = winner.id
-    order.final_price = winner.price
-    order.platform_share = Math.round(winner.price * ORDER_COMMISSION * 100) / 100
-    order.accepted_at = order.created_at
-    order.completed_at =
-      order.status === 'completed' || order.status === 'closed' ? order.scheduled_at : null
-  } else if (pastBidding) {
-    // Nothing to accept, so it cannot have moved past bidding.
-    order.status = 'new'
-  }
+  })
 
-  offers.push(...orderOffers)
+function bookingStatusFor(planPast: boolean, i: number): BookingStatus {
+  if (i % 13 === 0) return 'rejected'
+  if (i % 11 === 0) return 'cancelled'
+  // A booking still awaiting a reply after the wedding has passed is not
+  // "pending" — the response window closed on it.
+  if (i % 5 === 0) return planPast ? 'expired' : 'pending_provider'
+  return planPast ? 'completed' : 'confirmed'
 }
 
-export const mockOrders: Order[] = draftOrders.sort(
-  (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
-)
+const DISTRICTS = ['السنينة', 'حدة', 'الصافية', 'المعلا', 'الكمب', 'القاهرة', 'الروضة']
 
-export const mockOffers: OrderOffer[] = offers
+let bookingSeq = 0
+
+export const mockBookings: Booking[] = planDrafts.flatMap((plan, planIndex) => {
+  const planPast = new Date(plan.wedding_date) < new Date()
+
+  return Array.from({ length: intBetween(1, 4) }, (_, n) => {
+    const service = bookableServices[(planIndex * 3 + n) % bookableServices.length]
+    const provider = mockProviders.find((p) => p.id === service.provider_id)!
+    const status = bookingStatusFor(planPast, planIndex + n)
+    const settled = status === 'confirmed' || status === 'completed'
+
+    const total = service.price
+    const deposit = Math.round((total * service.deposit_percent) / 100)
+    const commissionPercent = provider.commission_percent ?? 10
+    const paid = settled ? total : deposit
+    // The provider's own failure to serve returns everything; the customer's
+    // change of mind returns what the cancellation ladder allows.
+    const refunded =
+      status === 'rejected' || status === 'expired'
+        ? deposit
+        : status === 'cancelled'
+          ? Math.round(deposit / 2)
+          : 0
+
+    bookingSeq += 1
+
+    return {
+      id: `bkg_${bookingSeq}`,
+      reference: `BK-2026-${bookingSeq.toString().padStart(6, '0')}`,
+      user_id: plan.user_id,
+      user_name: plan.user_name,
+      provider_id: provider.id,
+      provider_name: provider.business_name,
+      service_id: service.id,
+      service_title: service.title,
+      category_id: service.category_id,
+      category_name: service.category_name,
+      plan_id: plan.id,
+      event_date: plan.wedding_date,
+      event_time: pick(['16:00', '18:00', '20:00', '21:30']),
+      governorate: plan.governorate,
+      address: `حي ${pick(DISTRICTS)} — شارع ${intBetween(10, 60)}`,
+      guests_count: plan.guests_count,
+      notes: 'يرجى التواجد قبل الموعد بساعة.',
+      status,
+      total_price: total,
+      deposit_amount: deposit,
+      paid_amount: paid,
+      refunded_amount: refunded,
+      commission_percent: commissionPercent,
+      commission_amount: settled ? Math.round((total * commissionPercent) / 100) : 0,
+      cancellation_rules: service.cancellation_policy_id === 'pol_strict' ? STRICT_RULES : FLEXIBLE_RULES,
+      rejection_reason:
+        status === 'rejected'
+          ? 'الموعد محجوز مسبقاً لدينا.'
+          : status === 'expired'
+            ? 'انتهت مهلة رد مقدّم الخدمة.'
+            : '',
+      cancel_reason: status === 'cancelled' ? 'ألغى العميل بعد تغيير موعد العرس.' : '',
+      created_at: plan.created_at,
+      confirmed_at: settled ? isoAt(intBetween(5, 100), 11) : null,
+      completed_at: status === 'completed' ? `${plan.wedding_date}T21:00:00.000Z` : null,
+      cancelled_at:
+        status === 'cancelled' || status === 'rejected' || status === 'expired'
+          ? isoAt(intBetween(3, 90), 13)
+          : null,
+    }
+  })
+})
+
+/** المجاميع تُحسب من الحجوزات، لا تُخزَّن — فلا تتباعد الأرقام أبداً. */
+export const mockPlans: WeddingPlan[] = planDrafts.map((plan) => {
+  const items = mockBookings.filter(
+    (b) =>
+      b.plan_id === plan.id &&
+      b.status !== 'cancelled' &&
+      b.status !== 'rejected' &&
+      b.status !== 'expired',
+  )
+  const totalCost = items.reduce((sum, b) => sum + b.total_price, 0)
+  const paid = items.reduce((sum, b) => sum + b.paid_amount, 0)
+  return {
+    ...plan,
+    services_count: items.length,
+    total_cost: totalCost,
+    paid_amount: paid,
+    remaining_amount: totalCost - paid,
+  }
+})
+
+// ---------------------------------------------------------------------------
+// المالية
+// ---------------------------------------------------------------------------
+
+const PAYMENT_METHODS: PaymentMethod[] = ['jawali', 'cash_wallet', 'kuraimi', 'bank_transfer', 'card']
 
 let paymentSeq = 0
-const nextReference = () => `TRX-2026-${(++paymentSeq).toString().padStart(6, '0')}`
+const nextPaymentRef = () => `TRX-2026-${(++paymentSeq).toString().padStart(6, '0')}`
 
-/**
- * The money ledger, derived from the orders above so the two always agree.
- *
- * Every order charges a booking fee up front; once an offer is accepted the
- * balance is charged too and split with the provider. Subscriptions and wallet
- * top-ups stay with the platform in full.
- */
-const orderPayments: Payment[] = mockOrders.flatMap((order) => {
+export const mockPayments: Payment[] = mockBookings.flatMap((booking) => {
   const method = pick(PAYMENT_METHODS)
+  const refunded = booking.status === 'rejected' || booking.status === 'cancelled'
+  const commission = booking.commission_percent
 
-  const bookingFee: Payment = {
-    id: `pay_fee_${order.id}`,
-    reference: nextReference(),
-    user_id: order.user_id,
-    user_name: order.user_name,
-    provider_id: null,
-    provider_name: '',
-    order_id: order.id,
-    order_reference: order.reference,
-    kind: 'booking_fee',
-    description: `رسم حجز — ${order.category}`,
-    amount: order.booking_fee,
-    platform_share: order.booking_fee,
-    net_amount: 0,
+  const deposit: Payment = {
+    id: `pay_dep_${booking.id}`,
+    reference: nextPaymentRef(),
+    user_id: booking.user_id,
+    user_name: booking.user_name,
+    provider_id: booking.provider_id,
+    provider_name: booking.provider_name,
+    booking_id: booking.id,
+    booking_reference: booking.reference,
+    kind: 'deposit',
+    description: `عربون حجز — ${booking.category_name}`,
+    amount: booking.deposit_amount,
+    platform_share: Math.round((booking.deposit_amount * commission) / 100),
+    net_amount: booking.deposit_amount - Math.round((booking.deposit_amount * commission) / 100),
     method,
-    status: order.status === 'cancelled' ? 'refunded' : 'paid',
-    gateway_ref: `gw_${order.id}`,
-    created_at: order.created_at,
-    refunded_at: order.status === 'cancelled' ? order.cancelled_at : null,
+    status: (refunded ? 'refunded' : 'paid') as PaymentStatus,
+    gateway_ref: `gw_${booking.id}`,
+    created_at: booking.created_at,
+    refunded_at: refunded ? booking.cancelled_at : null,
   }
 
-  if (!order.accepted_offer_id) return [bookingFee]
+  if (booking.status !== 'confirmed' && booking.status !== 'completed') return [deposit]
 
+  const balanceAmount = booking.total_price - booking.deposit_amount
   const balance: Payment = {
-    id: `pay_bal_${order.id}`,
-    reference: nextReference(),
-    user_id: order.user_id,
-    user_name: order.user_name,
-    provider_id: order.provider_id,
-    provider_name: order.provider_name,
-    order_id: order.id,
-    order_reference: order.reference,
-    kind: 'order',
-    description: `${order.category} — رصيد الطلب`,
-    amount: order.final_price,
-    platform_share: order.platform_share,
-    net_amount: Math.round((order.final_price - order.platform_share) * 100) / 100,
-    method,
+    ...deposit,
+    id: `pay_bal_${booking.id}`,
+    reference: nextPaymentRef(),
+    kind: 'balance',
+    description: `سداد المتبقي — ${booking.category_name}`,
+    amount: balanceAmount,
+    platform_share: Math.round((balanceAmount * commission) / 100),
+    net_amount: balanceAmount - Math.round((balanceAmount * commission) / 100),
     status: 'paid',
-    gateway_ref: `gw_${order.id}_b`,
-    created_at: order.accepted_at ?? order.created_at,
+    gateway_ref: `gw_${booking.id}_b`,
+    created_at: booking.confirmed_at ?? booking.created_at,
     refunded_at: null,
   }
 
-  return [bookingFee, balance]
+  return [deposit, balance]
+}).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+
+const settlementProviders = [
+  ...new Set(mockBookings.filter((b) => b.status === 'completed').map((b) => b.provider_id)),
+]
+
+export const mockSettlements: Settlement[] = settlementProviders.map((providerId, i) => {
+  const provider = mockProviders.find((p) => p.id === providerId)!
+  const items = mockBookings.filter((b) => b.provider_id === providerId && b.status === 'completed')
+  const gross = items.reduce((sum, b) => sum + b.paid_amount, 0)
+  const commission = items.reduce((sum, b) => sum + b.commission_amount, 0)
+  const status = (['pending', 'approved', 'paid'] as const)[i % 3]
+
+  const periodEnd = new Date()
+  periodEnd.setDate(0)
+  const periodStart = new Date(periodEnd)
+  periodStart.setDate(1)
+
+  return {
+    id: `stl_${i + 1}`,
+    reference: `STL-2026-${(i + 1).toString().padStart(4, '0')}`,
+    provider_id: providerId,
+    provider_name: provider.business_name,
+    period_start: periodStart.toISOString().slice(0, 10),
+    period_end: periodEnd.toISOString().slice(0, 10),
+    gross_amount: gross,
+    commission_amount: commission,
+    net_amount: gross - commission,
+    status,
+    method: 'تحويل بنكي',
+    note: '',
+    created_at: isoAt(intBetween(1, 20), 10),
+    paid_at: status === 'paid' ? isoAt(intBetween(0, 5), 12) : null,
+    bookings_count: items.length,
+  }
 })
 
-const standalonePayments: Payment[] = mockUsers
-  .filter((user) => user.status !== 'pending')
-  .flatMap((user, userIndex) =>
-    Array.from({ length: intBetween(0, 2) }, (_, i) => {
-      const isTopup = rng() > 0.5
-      const amount = isTopup ? pick([50, 100, 200, 500]) : pick([29, 299, 49])
-      return {
-        id: `pay_std_${userIndex}_${i}`,
-        reference: nextReference(),
-        user_id: user.id,
-        user_name: user.full_name,
-        provider_id: null,
-        provider_name: '',
-        order_id: null,
-        order_reference: '',
-        kind: (isTopup ? 'topup' : 'subscription') as PaymentKind,
-        description: isTopup ? 'شحن محفظة' : 'اشتراك التطبيق',
-        amount,
-        platform_share: amount,
-        net_amount: 0,
-        method: pick(PAYMENT_METHODS),
-        status: (rng() > 0.94 ? 'failed' : 'paid') as PaymentStatus,
-        gateway_ref: `gw_std_${userIndex}_${i}`,
-        created_at: isoAt(intBetween(0, 120), intBetween(8, 22)),
-        refunded_at: null,
-      }
-    }),
-  )
+// ---------------------------------------------------------------------------
+// الثقة
+// ---------------------------------------------------------------------------
 
-export const mockPayments: Payment[] = [...orderPayments, ...standalonePayments].sort(
-  (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
-)
+const REVIEW_COMMENTS = [
+  'خدمة ممتازة والتزام تام بالموعد، شكراً لكم.',
+  'التنفيذ كان جيداً لكن التأخير في البداية أزعجنا.',
+  'أنصح بهم بشدة، الجودة تستحق السعر.',
+  'تعامل راقٍ وتنسيق جميل، وفّقكم الله.',
+  'كل شيء تم كما اتفقنا تماماً.',
+]
 
-export const mockAdmins: AdminAccount[] = [
+export const mockReviews: Review[] = mockBookings
+  .filter((b) => b.status === 'completed')
+  .map((booking, i) => ({
+    id: `rev_${i + 1}`,
+    booking_id: booking.id,
+    booking_reference: booking.reference,
+    user_id: booking.user_id,
+    user_name: booking.user_name,
+    provider_id: booking.provider_id,
+    provider_name: booking.provider_name,
+    rating: intBetween(3, 5),
+    comment: pick(REVIEW_COMMENTS),
+    // بعضها مُبلَّغ عنه لتظهر شاشة المراجعة بعمل فعلي
+    status: i % 9 === 0 ? 'flagged' : i % 17 === 0 ? 'hidden' : 'published',
+    hidden_reason: i % 17 === 0 ? 'لغة غير لائقة.' : '',
+    created_at: booking.completed_at ?? booking.created_at,
+  }))
+
+const DISPUTE_SUBJECTS = [
+  'مقدم الخدمة لم يحضر في الموعد',
+  'جودة التنفيذ أقل من المتفق عليه',
+  'خُصم مبلغ إضافي دون اتفاق',
+  'العميل ألغى في اللحظة الأخيرة',
+  'خلاف على تفاصيل الباقة',
+]
+
+const DISPUTE_STATUSES: DisputeStatus[] = ['open', 'investigating', 'resolved', 'closed']
+
+export const mockDisputes: Dispute[] = mockBookings
+  .filter((_, i) => i % 9 === 0)
+  .map((booking, i) => {
+    const status = DISPUTE_STATUSES[i % 4]
+    const settled = status === 'resolved' || status === 'closed'
+    return {
+      id: `dsp_${i + 1}`,
+      reference: `DSP-2026-${(i + 1).toString().padStart(4, '0')}`,
+      booking_id: booking.id,
+      booking_reference: booking.reference,
+      opened_by: (i % 4 === 0 ? 'provider' : 'customer') as 'customer' | 'provider',
+      user_id: booking.user_id,
+      user_name: booking.user_name,
+      provider_id: booking.provider_id,
+      provider_name: booking.provider_name,
+      subject: DISPUTE_SUBJECTS[i % DISPUTE_SUBJECTS.length],
+      description: 'تفاصيل الشكوى مرفقة مع المحادثات والإيصالات.',
+      category: (['no_show', 'quality', 'payment', 'cancellation', 'behaviour'] as const)[i % 5],
+      status,
+      resolution: settled ? 'تمت التسوية باتفاق الطرفين بعد مراجعة الإدارة.' : '',
+      refund_amount: status === 'resolved' ? Math.round(booking.paid_amount * 0.3) : 0,
+      resolved_by: settled ? 'admin@example.com' : '',
+      created_at: isoAt(intBetween(2, 40), 11),
+      resolved_at: settled ? isoAt(intBetween(0, 10), 15) : null,
+    }
+  })
+
+export const mockDisputeMessages: DisputeMessage[] = mockDisputes.flatMap((dispute, i) => {
+  const opening: DisputeMessage = {
+    id: `dmsg_${i}_0`,
+    dispute_id: dispute.id,
+    author: dispute.opened_by,
+    author_name: dispute.opened_by === 'customer' ? dispute.user_name : dispute.provider_name,
+    body: 'السلام عليكم، أرجو النظر في المشكلة المذكورة وإفادتي.',
+    created_at: dispute.created_at,
+  }
+  if (dispute.status === 'open') return [opening]
+
+  return [
+    opening,
+    {
+      id: `dmsg_${i}_1`,
+      dispute_id: dispute.id,
+      author: 'admin' as const,
+      author_name: 'فريق المنصة',
+      body: 'شكراً لتواصلك، تم فتح النزاع ونحن نتواصل مع الطرف الآخر.',
+      created_at: dispute.resolved_at ?? dispute.created_at,
+    },
+  ]
+})
+
+// ---------------------------------------------------------------------------
+// الدخل
+// ---------------------------------------------------------------------------
+
+export const mockSubscriptionPlans: SubscriptionPlan[] = [
   {
-    user_id: 'demo-admin',
-    email: 'admin@example.com',
-    role: 'owner',
-    created_at: isoAt(120, 9),
+    id: 'sub_basic', name: 'الباقة الأساسية', price: 0, duration_days: 30, is_active: true,
+    description: 'ظهور عادي وحتى 5 خدمات معروضة.',
+    perks: ['حتى 5 خدمات', 'ملف تعريفي أساسي'],
+    subscribers_count: 18,
   },
   {
-    user_id: 'adm_2',
-    email: 'ops@example.com',
-    role: 'admin',
-    created_at: isoAt(64, 11),
+    id: 'sub_silver', name: 'الباقة الفضية', price: 15_000, duration_days: 30, is_active: true,
+    description: 'خدمات غير محدودة وأولوية في نتائج البحث.',
+    perks: ['خدمات غير محدودة', 'أولوية في البحث', 'شارة نشط'],
+    subscribers_count: 11,
   },
   {
-    user_id: 'adm_3',
-    email: 'analyst@example.com',
-    role: 'viewer',
-    created_at: isoAt(21, 14),
+    id: 'sub_gold', name: 'الباقة الذهبية', price: 40_000, duration_days: 30, is_active: true,
+    description: 'ظهور مميز في الصفحة الرئيسية وتقارير أداء شهرية.',
+    perks: ['كل مزايا الفضية', 'ظهور مميز في الرئيسية', 'تقارير أداء', 'دعم مخصص'],
+    subscribers_count: 6,
   },
 ]
+
+export const mockPromotions: Promotion[] = mockProviders
+  .filter((p) => p.status === 'verified')
+  .filter((_, i) => i % 3 === 0)
+  .map((provider, i) => ({
+    id: `promo_${i + 1}`,
+    provider_id: provider.id,
+    provider_name: provider.business_name,
+    kind: (['featured', 'banner', 'category_top'] as const)[i % 3],
+    placement: (['الصفحة الرئيسية', 'نتائج البحث', 'صفحة القسم'] as const)[i % 3],
+    category_name: provider.categories[0],
+    amount: [25_000, 50_000, 80_000][i % 3],
+    status: i % 5 === 0 ? 'ended' : 'active',
+    impressions: intBetween(1200, 19_000),
+    clicks: intBetween(40, 900),
+    starts_at: isoAt(15, 9),
+    ends_at: isoAt(-15, 9),
+  }))
+
+// ---------------------------------------------------------------------------
+// التشغيل
+// ---------------------------------------------------------------------------
+
+export const mockNotifications: PushNotification[] = [
+  {
+    id: 'ntf_1', title: 'موسم الأعراس بدأ 🎉',
+    body: 'احجز قاعتك مبكراً واحصل على خصم 10% حتى نهاية الشهر.',
+    audience: 'customers', status: 'sent', scheduled_at: null, sent_at: isoAt(2, 19),
+    recipients: 14_200, opened: 6180,
+  },
+  {
+    id: 'ntf_2', title: 'وثّق حسابك الآن',
+    body: 'أكمل رفع مستنداتك لتبدأ استقبال الحجوزات.',
+    audience: 'providers', status: 'sent', scheduled_at: null, sent_at: isoAt(6, 11),
+    recipients: 320, opened: 210,
+  },
+  {
+    id: 'ntf_3', title: 'تذكير بموعد عرسك',
+    body: 'بقي أسبوع على موعدك — راجع خطة العرس وتأكد من الحجوزات.',
+    audience: 'active', status: 'scheduled', scheduled_at: isoAt(-3, 18), sent_at: null,
+    recipients: 2400, opened: 0,
+  },
+  {
+    id: 'ntf_4', title: 'صيانة مجدولة',
+    body: 'سيتوقف التطبيق مؤقتاً ليلة الجمعة من 2 إلى 4 فجراً.',
+    audience: 'all', status: 'draft', scheduled_at: null, sent_at: null,
+    recipients: 0, opened: 0,
+  },
+  {
+    id: 'ntf_5', title: 'تنبيه أمني',
+    body: 'يُنصح بتفعيل التحقق بخطوتين من الإعدادات.',
+    audience: 'all', status: 'failed', scheduled_at: null, sent_at: isoAt(12, 9),
+    recipients: 0, opened: 0,
+  },
+]
+
+export const mockVersions: AppVersion[] = [
+  {
+    id: 'ver_1', platform: 'ios', version: '1.4.0', build: 1401, released_at: isoAt(5, 10),
+    force_update: false, rollout_percent: 100,
+    notes: 'إضافة خطة العرس وتحسين سرعة البحث.',
+  },
+  {
+    id: 'ver_2', platform: 'android', version: '1.4.0', build: 1402, released_at: isoAt(4, 10),
+    force_update: false, rollout_percent: 70,
+    notes: 'إضافة خطة العرس ودعم محفظة جوالي.',
+  },
+  {
+    id: 'ver_3', platform: 'ios', version: '1.3.2', build: 1322, released_at: isoAt(30, 10),
+    force_update: true, rollout_percent: 100,
+    notes: 'إصلاح ثغرة في تجديد الجلسة — التحديث إجباري.',
+  },
+  {
+    id: 'ver_4', platform: 'android', version: '1.3.0', build: 1300, released_at: isoAt(48, 10),
+    force_update: false, rollout_percent: 100,
+    notes: 'إشعارات الحجز داخل التطبيق.',
+  },
+]
+
+/**
+ * التثبيتات اليومية حسب المنصة — اتجاه صاعد مع ارتفاع في نهاية الأسبوع اليمنية
+ * (الخميس والجمعة)، حيث تُقام معظم الأعراس.
+ */
+export const mockInstallsByDay: DailyBreakdown[] = Array.from({ length: HISTORY_DAYS }, (_, i) => {
+  const daysAgo = HISTORY_DAYS - 1 - i
+  const date = isoDay(daysAgo)
+  const weekday = new Date(date).getDay()
+  const weekendLift = weekday === 4 || weekday === 5 ? 1.18 : 1
+  const total = Math.round((120 + i * 1.6) * weekendLift * between(0.86, 1.14))
+  const android = Math.round(total * between(0.58, 0.66))
+  return { date, ios: total - android, android }
+})
+
+export const mockBookingsByDay: MetricPoint[] = mockInstallsByDay.map((day) => ({
+  date: day.date,
+  value: Math.max(1, Math.round((day.ios + day.android) * between(0.1, 0.2))),
+}))
+
+export const mockRevenueByDay: MetricPoint[] = mockBookingsByDay.map((point) => ({
+  date: point.date,
+  value: Math.round(point.value * between(180_000, 340_000)),
+}))
+
+export const mockActiveByDay: MetricPoint[] = mockInstallsByDay.map((day, i) => ({
+  date: day.date,
+  value: Math.round((day.ios + day.android) * (3.2 + 0.4 * Math.sin(i * 1.7))),
+}))
 
 export const mockSettings: AppSettings = {
   maintenance_mode: false,
   maintenance_message: 'نقوم بأعمال صيانة سريعة، عُد إلينا خلال ساعة.',
   allow_signups: true,
-  min_ios_version: '3.3.2',
-  min_android_version: '3.2.0',
+  allow_provider_signups: true,
+  commission_percent: 10,
+  default_deposit_percent: 30,
+  currency: 'YER',
+  min_ios_version: '1.3.2',
+  min_android_version: '1.3.0',
   support_email: 'support@example.com',
+  support_phone: '+967700000000',
   default_locale: 'ar',
-  booking_fee: BOOKING_FEE,
 }
 
-export const mockCrashFreeRate = 0.9942
+export const mockAdmins: AdminAccount[] = [
+  { user_id: 'demo-admin', email: 'admin@example.com', role: 'owner', created_at: isoAt(200, 9) },
+  { user_id: 'adm_2', email: 'ops@example.com', role: 'admin', created_at: isoAt(90, 11) },
+  { user_id: 'adm_3', email: 'analyst@example.com', role: 'viewer', created_at: isoAt(30, 14) },
+]

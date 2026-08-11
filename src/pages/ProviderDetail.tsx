@@ -23,7 +23,13 @@ import { Rating } from '@/components/ui/Rating'
 import { useAuth } from '@/context/AuthContext'
 import { useAsync } from '@/hooks/useAsync'
 import { cn } from '@/lib/cn'
-import { formatDate, formatDuration, formatMoney, formatNumber } from '@/lib/format'
+import {
+  formatDate,
+  formatDuration,
+  formatMoney,
+  formatMoneyCompact,
+  formatNumber,
+} from '@/lib/format'
 import type {
   DocumentStatus,
   ProviderDocument,
@@ -39,10 +45,11 @@ import {
   setDocumentStatus,
   setProviderCommission,
   setProviderStatus,
-} from '@/services/providers'
+} from '@/services/directory'
+import { REVIEW_STATUS_LABEL, listProviderReviews } from '@/services/trust'
 
 const STATUS_TONE: Record<ProviderStatus, Tone> = {
-  active: 'good',
+  verified: 'good',
   pending: 'warning',
   suspended: 'critical',
   rejected: 'neutral',
@@ -72,8 +79,11 @@ export function ProviderDetailPage() {
   const loadProvider = useCallback(() => getProvider(id), [id])
   const loadPortfolio = useCallback(() => getProviderPortfolio(id), [id])
 
+  const loadReviews = useCallback(() => listProviderReviews(id), [id])
+
   const provider = useAsync(loadProvider, [id])
   const portfolio = useAsync(loadPortfolio, [id])
+  const reviews = useAsync(loadReviews, [id])
 
   useEffect(() => {
     if (!toast) return
@@ -143,7 +153,7 @@ export function ProviderDetailPage() {
   const record = provider.data
   const documents = portfolio.data?.documents ?? []
   const services = portfolio.data?.services ?? []
-  const reviews = portfolio.data?.reviews ?? []
+  const reviewRows = reviews.data ?? []
   const allApproved = documents.length > 0 && documents.every((doc) => doc.status === 'approved')
 
   return (
@@ -160,7 +170,7 @@ export function ProviderDetailPage() {
       <Card>
         <CardHeader
           title={record.full_name}
-          subtitle={`${record.business_name} · ${record.category} · ${record.city}`}
+          subtitle={`${record.business_name} · ${record.categories.join('، ')} · ${record.governorate}`}
           actions={
             <div className="flex flex-wrap items-center gap-2">
               <Badge
@@ -185,9 +195,9 @@ export function ProviderDetailPage() {
                     }
                     onClick={() =>
                       setPending({
-                        status: 'active',
+                        status: 'verified',
                         title: 'توثيق مقدّم الخدمة؟',
-                        message: `سيصبح ${record.business_name || record.full_name} قادراً على استقبال الطلبات فوراً. سيُسجَّل هذا الإجراء باسمك في سجل العمليات.`,
+                        message: `سيصبح ${record.business_name || record.full_name} قادراً على استقبال الحجوزات فوراً. سيُسجَّل هذا الإجراء باسمك في سجل العمليات.`,
                         confirmLabel: 'توثيق وتفعيل',
                         tone: 'primary',
                       })
@@ -205,7 +215,7 @@ export function ProviderDetailPage() {
                       setPending({
                         status: 'rejected',
                         title: 'رفض الطلب؟',
-                        message: `سيُرفض طلب ${record.business_name || record.full_name} ولن يتمكن من استقبال الطلبات. يمكنك إعادته للمراجعة لاحقاً.`,
+                        message: `سيُرفض طلب ${record.business_name || record.full_name} ولن يتمكن من استقبال الحجوزات. يمكنك إعادته للمراجعة لاحقاً.`,
                         confirmLabel: 'رفض الطلب',
                         tone: 'danger',
                       })
@@ -217,7 +227,7 @@ export function ProviderDetailPage() {
                 </>
               ) : null}
 
-              {record.status === 'active' ? (
+              {record.status === 'verified' ? (
                 <Button
                   size="sm"
                   variant="ghost"
@@ -227,7 +237,7 @@ export function ProviderDetailPage() {
                     setPending({
                       status: 'suspended',
                       title: 'إيقاف مقدّم الخدمة؟',
-                      message: `سيتوقف ${record.business_name || record.full_name} عن استقبال أي طلبات جديدة فوراً. الطلبات الجارية لا تتأثر.`,
+                      message: `سيتوقف ${record.business_name || record.full_name} عن استقبال أي حجوزات جديدة فوراً. الحجوزات المؤكدة لا تتأثر.`,
                       confirmLabel: 'إيقاف',
                       tone: 'danger',
                     })
@@ -244,7 +254,7 @@ export function ProviderDetailPage() {
                   disabled={busy || !canWrite}
                   title={canWrite ? undefined : 'دورك الحالي للقراءة فقط'}
                   onClick={() =>
-                    applyStatus(record, record.status === 'suspended' ? 'active' : 'pending')
+                    applyStatus(record, record.status === 'suspended' ? 'verified' : 'pending')
                   }
                 >
                   <RotateCcw size={14} aria-hidden />
@@ -259,25 +269,40 @@ export function ProviderDetailPage() {
             <Detail label="البريد" value={record.email} ltr />
             <Detail label="الجوال" value={record.phone} ltr />
             <Detail label="التقييم" node={<Rating value={record.rating} count={record.reviews_count} />} />
-            <Detail label="تاريخ الانضمام" value={formatDate(record.joined_at)} />
+            <Detail label="تاريخ التقديم" value={formatDate(record.applied_at)} />
             <Detail
               label="تاريخ التوثيق"
               value={record.verified_at ? formatDate(record.verified_at) : '—'}
             />
+            <Detail label="المحافظة" value={record.governorate} />
+            <Detail
+              label="مناطق التغطية"
+              value={record.coverage_areas.join('، ') || 'المحافظة فقط'}
+            />
           </dl>
+
+          {record.bio ? (
+            <p className="mt-3 text-xs leading-6 text-ink-2">{record.bio}</p>
+          ) : null}
+          {record.status === 'rejected' && record.rejection_reason ? (
+            <p className="mt-3 rounded-lg border border-[color-mix(in_oklab,var(--critical)_35%,transparent)] px-3 py-2 text-xs text-ink">
+              سبب الرفض: {record.rejection_reason}
+            </p>
+          ) : null}
         </CardBody>
       </Card>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <StatTile
-          label="الطلبات المكتملة"
-          value={formatNumber(record.completed_orders)}
+          label="الحجوزات المنفّذة"
+          value={formatNumber(record.completed_bookings)}
           icon={Package}
           refetching={provider.refetching}
         />
         <StatTile
           label="إجمالي الأرباح"
-          value={formatMoney(record.total_earnings)}
+          value={formatMoneyCompact(record.total_earnings)}
+          valueTitle={formatMoney(record.total_earnings)}
           icon={Wallet}
           refetching={provider.refetching}
         />
@@ -393,8 +418,8 @@ export function ProviderDetailPage() {
                             {formatDuration(service.duration_minutes * 60)}
                           </td>
                           <td className="px-4 py-2.5">
-                            <Badge tone={service.active ? 'good' : 'neutral'}>
-                              {service.active ? 'معروضة' : 'مخفية'}
+                            <Badge tone={service.is_active ? 'good' : 'neutral'}>
+                              {service.is_active ? 'معروضة' : 'مخفية'}
                             </Badge>
                           </td>
                         </tr>
@@ -405,20 +430,44 @@ export function ProviderDetailPage() {
               )}
             </Card>
 
-            <Card>
+            <Card className={cn(reviews.refetching && 'is-refetching')}>
               <CardHeader
-                title="تقييمات العملاء"
-                subtitle={`${formatNumber(reviews.length)} تقييم`}
+                title="أحدث التقييمات"
+                subtitle={`${formatNumber(record.reviews_count)} تقييم عبر تاريخ الشريك`}
+                actions={
+                  <Link
+                    to="/reviews"
+                    className="text-xs font-medium text-series-1 underline underline-offset-4"
+                  >
+                    كل التقييمات
+                  </Link>
+                }
               />
-              {reviews.length === 0 ? (
-                <EmptyState title="لا توجد تقييمات بعد" />
+              {reviews.loading ? (
+                <LoadingBlock />
+              ) : reviews.error && !reviews.data ? (
+                <ErrorState message={reviews.error} onRetry={reviews.reload} />
+              ) : reviewRows.length === 0 ? (
+                <EmptyState
+                  title="لا توجد تقييمات حديثة"
+                  description="متوسط التقييم في الأعلى محسوب من كامل سجل الشريك."
+                />
               ) : (
                 <ul className="max-h-96 divide-y divide-[var(--border)] overflow-auto">
-                  {reviews.map((review) => (
+                  {reviewRows.map((review) => (
                     <li key={review.id} className="flex flex-col gap-1.5 px-4 py-3 sm:px-5">
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <p className="text-sm font-medium text-ink">{review.user_name}</p>
-                        <Rating value={review.rating} />
+                        <div className="flex items-center gap-2">
+                          {/* A hidden review still counts for the admin reading
+                              this page, but it must be visibly marked as hidden. */}
+                          {review.status !== 'published' ? (
+                            <Badge tone={review.status === 'flagged' ? 'serious' : 'neutral'}>
+                              {REVIEW_STATUS_LABEL[review.status]}
+                            </Badge>
+                          ) : null}
+                          <Rating value={review.rating} />
+                        </div>
                       </div>
                       <p className="text-xs leading-6 text-ink-2">{review.comment}</p>
                       <p className="tnum text-[11px] text-muted">{formatDate(review.created_at)}</p>
@@ -457,15 +506,19 @@ function CommissionCard({
   onSaved: () => void
 }) {
   const { canWrite } = useAuth()
-  const [value, setValue] = useState(String(record.commission_percent))
+  // An empty field is not "0%" — it means this partner has no override and the
+  // platform-wide rate applies, which is stored as null.
+  const asText = (percent: number | null) => (percent === null ? '' : String(percent))
+  const [value, setValue] = useState(asText(record.commission_percent))
   const [busy, setBusy] = useState(false)
 
   useEffect(() => {
-    setValue(String(record.commission_percent))
+    setValue(asText(record.commission_percent))
   }, [record.commission_percent])
 
-  const parsed = Number(value)
-  const valid = Number.isFinite(parsed) && parsed >= 0 && parsed <= 100
+  const trimmed = value.trim()
+  const parsed = trimmed === '' ? null : Number(trimmed)
+  const valid = parsed === null || (Number.isFinite(parsed) && parsed >= 0 && parsed <= 100)
   const changed = valid && parsed !== record.commission_percent
 
   async function save() {
@@ -484,7 +537,7 @@ function CommissionCard({
 
   return (
     <Card className="p-4 sm:p-5">
-      <p className="text-xs font-medium text-ink-2">نسبة عمولة المنصة</p>
+      <p className="text-xs font-medium text-ink-2">عمولة خاصة بهذا الشريك</p>
       <div className="mt-2 flex items-center gap-2">
         <div className="w-24">
           <Input
@@ -494,6 +547,7 @@ function CommissionCard({
             value={value}
             disabled={busy || !canWrite}
             aria-label="نسبة العمولة بالمئة"
+            placeholder="العامة"
             title={canWrite ? undefined : 'دورك الحالي للقراءة فقط'}
             onChange={(event) => setValue(event.target.value)}
           />
@@ -504,9 +558,13 @@ function CommissionCard({
         </Button>
       </div>
       {!valid ? (
-        <p className="mt-2 text-xs text-[var(--critical)]">أدخل رقماً بين 0 و 100.</p>
+        <p className="mt-2 text-xs text-[var(--critical)]">أدخل رقماً بين 0 و 100، أو اترك الحقل فارغاً.</p>
       ) : (
-        <p className="mt-2 text-xs text-muted">تُخصم من كل طلب يُنفّذه مقدّم الخدمة.</p>
+        <p className="mt-2 text-xs text-muted">
+          {parsed === null
+            ? 'فارغ = تُطبَّق نسبة المنصة العامة من الإعدادات.'
+            : 'تُخصم من كل حجز يُنفّذه هذا الشريك بدل النسبة العامة.'}
+        </p>
       )}
     </Card>
   )

@@ -43,7 +43,7 @@ export function BarChart({
             onBlur={() => setHovered(null)}
             tabIndex={0}
           >
-            <span className="w-20 shrink-0 truncate text-xs text-ink-2" title={datum.label}>
+            <span className="w-28 shrink-0 truncate text-xs text-ink-2" title={datum.label}>
               {datum.label}
             </span>
             {/* Track height 24px keeps the hover/focus target above the minimum. */}
@@ -62,7 +62,7 @@ export function BarChart({
             <span
               role="status"
               className={cn(
-                'pointer-events-none absolute -top-8 start-24 z-10 rounded-lg border border-hairline bg-surface px-2.5 py-1 text-xs whitespace-nowrap text-ink shadow-lg transition-opacity',
+                'pointer-events-none absolute -top-8 start-32 z-10 rounded-lg border border-hairline bg-surface px-2.5 py-1 text-xs whitespace-nowrap text-ink shadow-lg transition-opacity',
                 hovered === datum.label ? 'opacity-100' : 'opacity-0',
               )}
             >

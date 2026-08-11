@@ -14,8 +14,13 @@ import { useAsync } from '@/hooks/useAsync'
 import { useDebounced } from '@/hooks/useDebounced'
 import { cn } from '@/lib/cn'
 import { PLATFORM_LABEL, formatDate, formatNumber, formatRelative } from '@/lib/format'
-import type { AppUser, Platform, UserStatus } from '@/lib/types'
-import { USER_STATUS_LABEL, listUsers, updateUserStatus } from '@/services/users'
+import type { AppUser, UserStatus } from '@/lib/types'
+import {
+  GOVERNORATES,
+  USER_STATUS_LABEL,
+  listUsers,
+  updateUserStatus,
+} from '@/services/directory'
 
 const PAGE_SIZE = 10
 /** Upper bound on a single CSV export, so a huge table cannot hang the browser. */
@@ -31,7 +36,7 @@ export function UsersPage() {
   const { canWrite } = useAuth()
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState<UserStatus | 'all'>('all')
-  const [platform, setPlatform] = useState<Platform | 'all'>('all')
+  const [governorate, setGovernorate] = useState<string | 'all'>('all')
   const [page, setPage] = useState(0)
   const [toast, setToast] = useState<string | null>(null)
   const [pending, setPending] = useState<AppUser | null>(null)
@@ -43,16 +48,16 @@ export function UsersPage() {
   // set is meaningless against the new one.
   useEffect(() => {
     setPage(0)
-  }, [debouncedSearch, status, platform])
+  }, [debouncedSearch, status, governorate])
 
   const load = useCallback(
-    () => listUsers({ search: debouncedSearch, status, platform, page, pageSize: PAGE_SIZE }),
-    [debouncedSearch, status, platform, page],
+    () => listUsers({ search: debouncedSearch, status, governorate, page, pageSize: PAGE_SIZE }),
+    [debouncedSearch, status, governorate, page],
   )
   const { data, error, loading, refetching, reload } = useAsync(load, [
     debouncedSearch,
     status,
-    platform,
+    governorate,
     page,
   ])
 
@@ -87,18 +92,18 @@ export function UsersPage() {
     const all = await listUsers({
       search: debouncedSearch,
       status,
-      platform,
+      governorate,
       page: 0,
       pageSize: EXPORT_LIMIT,
     })
     return {
-      columns: ['الاسم', 'البريد', 'الجوال', 'المنصة', 'الدولة', 'الإصدار', 'الجلسات', 'الحالة', 'تاريخ التسجيل', 'آخر ظهور'],
+      columns: ['الاسم', 'البريد', 'الجوال', 'المنصة', 'المحافظة', 'الإصدار', 'الجلسات', 'الحالة', 'تاريخ التسجيل', 'آخر ظهور'],
       rows: all.rows.map((user) => [
         user.full_name,
         user.email,
         user.phone ?? '',
         PLATFORM_LABEL[user.platform],
-        user.country,
+        user.governorate,
         user.app_version,
         user.sessions_count,
         USER_STATUS_LABEL[user.status],
@@ -106,7 +111,7 @@ export function UsersPage() {
         user.last_seen_at ? formatDate(user.last_seen_at) : '',
       ]),
     }
-  }, [debouncedSearch, status, platform])
+  }, [debouncedSearch, status, governorate])
 
   return (
     <div className="flex flex-col gap-4">
@@ -122,7 +127,7 @@ export function UsersPage() {
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             placeholder="ابحث بالاسم أو البريد أو الجوال…"
-            aria-label="بحث في المستخدمين"
+            aria-label="بحث في العملاء"
             className="ps-9"
           />
         </div>
@@ -141,15 +146,18 @@ export function UsersPage() {
           </Select>
         </div>
 
-        <div className="w-36">
+        <div className="w-40">
           <Select
-            value={platform}
-            onChange={(event) => setPlatform(event.target.value as Platform | 'all')}
-            aria-label="تصفية حسب المنصة"
+            value={governorate}
+            onChange={(event) => setGovernorate(event.target.value)}
+            aria-label="تصفية حسب المحافظة"
           >
-            <option value="all">كل المنصات</option>
-            <option value="ios">{PLATFORM_LABEL.ios}</option>
-            <option value="android">{PLATFORM_LABEL.android}</option>
+            <option value="all">كل المحافظات</option>
+            {GOVERNORATES.map((name) => (
+              <option key={name} value={name}>
+                {name}
+              </option>
+            ))}
           </Select>
         </div>
 
@@ -176,7 +184,7 @@ export function UsersPage() {
             <table className="w-full border-collapse text-sm">
               <thead>
                 <tr className="bg-surface-2">
-                  {['المستخدم', 'المنصة', 'الإصدار', 'الدولة', 'الجلسات', 'آخر ظهور', 'الحالة', ''].map(
+                  {['العميل', 'المنصة', 'الإصدار', 'المحافظة', 'الجلسات', 'آخر ظهور', 'الحالة', ''].map(
                     (heading, index) => (
                       <th
                         key={index}
@@ -209,7 +217,7 @@ export function UsersPage() {
                     <td className="tnum px-4 py-3 text-xs whitespace-nowrap text-ink-2">
                       {user.app_version || '—'}
                     </td>
-                    <td className="px-4 py-3 text-xs whitespace-nowrap text-ink-2">{user.country || '—'}</td>
+                    <td className="px-4 py-3 text-xs whitespace-nowrap text-ink-2">{user.governorate || '—'}</td>
                     <td className="tnum px-4 py-3 text-xs whitespace-nowrap text-ink-2">
                       {formatNumber(user.sessions_count)}
                     </td>

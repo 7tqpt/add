@@ -29,6 +29,33 @@ const dateTime = new Intl.DateTimeFormat(LOCALE, {
 
 export const formatNumber = (n: number) => int.format(n)
 
+/** The four Arabic forms a counted noun takes: مفرد، مثنّى، جمع قلّة، تمييز مفرد. */
+export interface ArabicNoun {
+  one: string
+  two: string
+  few: string
+  many: string
+}
+
+export const DAY_FORMS: ArabicNoun = { one: 'يوم', two: 'يومين', few: 'أيام', many: 'يوماً' }
+export const HOUR_FORMS: ArabicNoun = { one: 'ساعة', two: 'ساعتين', few: 'ساعات', many: 'ساعة' }
+export const MINUTE_FORMS: ArabicNoun = { one: 'دقيقة', two: 'دقيقتين', few: 'دقائق', many: 'دقيقة' }
+
+/**
+ * "3 أيام" / "يومين" / "12 يوماً".
+ *
+ * Arabic agreement is not a plural `s`: two takes its own dual form and drops
+ * the numeral, 3–10 take the broken plural, and 11 and up take a singular
+ * accusative. Printing "2 يوم" reads as broken text, not as a rounding choice.
+ */
+export function formatCount(count: number, forms: ArabicNoun): string {
+  const n = Math.abs(count)
+  if (n === 1) return forms.one
+  if (n === 2) return forms.two
+  if (n >= 3 && n <= 10) return `${int.format(n)} ${forms.few}`
+  return `${int.format(n)} ${forms.many}`
+}
+
 /** 12_400 → "12.4 ألف". Used on axis ticks and tight stat tiles. */
 export function formatCompact(n: number): string {
   const abs = Math.abs(n)
@@ -41,11 +68,14 @@ export function formatCompact(n: number): string {
 export const formatPercent = (fraction: number) => percent.format(fraction)
 
 /**
- * The currency suffix is appended manually rather than via `style: 'currency'`:
- * the CLDR symbol for SAR ends in a period, which bidi reordering strands at the
- * far edge of the number ("‎.145,873 ر.س").
+ * Yemeni Rial. The suffix is appended manually rather than via
+ * `style: 'currency'`: the CLDR symbol carries a trailing period that bidi
+ * reordering strands at the far edge of the number ("‎.145,873 ر.ي").
  */
-export const formatMoney = (n: number) => `${int.format(n)} ر.س`
+export const formatMoney = (n: number) => `${int.format(n)} ر.ي`
+
+/** For tight columns where the full figure would wrap: "1.2 م ر.ي". */
+export const formatMoneyCompact = (n: number) => `${formatCompact(n)} ر.ي`
 
 /** Signed percentage for delta cues: "+12.4%" / "−3.1%". */
 export function formatDelta(fraction: number): string {
@@ -65,11 +95,11 @@ export function formatRelative(iso: string | null): string {
   const diffMs = Date.now() - new Date(iso).getTime()
   const minutes = Math.round(diffMs / 60_000)
   if (minutes < 1) return 'الآن'
-  if (minutes < 60) return `منذ ${int.format(minutes)} دقيقة`
+  if (minutes < 60) return `منذ ${formatCount(minutes, MINUTE_FORMS)}`
   const hours = Math.round(minutes / 60)
-  if (hours < 24) return `منذ ${int.format(hours)} ساعة`
+  if (hours < 24) return `منذ ${formatCount(hours, HOUR_FORMS)}`
   const days = Math.round(hours / 24)
-  if (days < 30) return `منذ ${int.format(days)} يوم`
+  if (days < 30) return `منذ ${formatCount(days, DAY_FORMS)}`
   return fullDate.format(new Date(iso))
 }
 
@@ -87,4 +117,14 @@ export function formatDuration(seconds: number): string {
 export const PLATFORM_LABEL: Record<string, string> = {
   ios: 'iOS',
   android: 'Android',
+}
+
+/** "20:00" → "8:00 م". Event times are stored as plain HH:MM. */
+export function formatTime(value: string | null): string {
+  if (!value) return '—'
+  const [h, m] = value.split(':').map(Number)
+  if (Number.isNaN(h)) return value
+  const period = h < 12 ? 'ص' : 'م'
+  const hour = h % 12 === 0 ? 12 : h % 12
+  return `${hour}:${String(m ?? 0).padStart(2, '0')} ${period}`
 }

@@ -376,8 +376,10 @@ create table if not exists public.bookings (
   constraint commission_within_total check (commission_amount <= total_price),
   constraint confirmed_needs_timestamp
     check (status <> 'confirmed' or confirmed_at is not null),
-  constraint cancelled_needs_timestamp
-    check ((status in ('cancelled', 'rejected')) = (cancelled_at is not null))
+  -- كل حالة إغلاق تحمل وقتها: الإلغاء والاعتذار وانقضاء المهلة سواء في ذلك،
+  -- ولا يحمل الوقت حجزٌ ما زال قائماً.
+  constraint closed_needs_timestamp
+    check ((status in ('cancelled', 'rejected', 'expired')) = (cancelled_at is not null))
 );
 
 create index if not exists bookings_status_idx     on public.bookings (status, created_at desc);

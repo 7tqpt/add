@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom'
 import { Smartphone, X } from 'lucide-react'
 import { cn } from '@/lib/cn'
-import { NAV_ITEMS } from './nav'
+import { NAV_GROUPS } from './nav'
 
 export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
   return (
@@ -32,7 +32,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
             </span>
             <div className="leading-tight">
               <p className="text-sm font-semibold text-ink">لوحة التحكم</p>
-              <p className="text-[11px] text-muted">إدارة تطبيق الجوال</p>
+              <p className="text-[11px] text-muted">منصة حجوزات الأعراس</p>
             </div>
           </div>
           <button
@@ -46,36 +46,45 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
         </div>
 
         <nav className="flex-1 overflow-y-auto p-3">
-          <ul className="flex flex-col gap-1">
-            {NAV_ITEMS.map((item) => (
-              <li key={item.to}>
-                <NavLink
-                  to={item.to}
-                  end={item.to === '/'}
-                  onClick={onClose}
-                  className={({ isActive }) =>
-                    cn(
-                      'flex h-10 items-center gap-2.5 rounded-lg px-3 text-sm font-medium transition-colors',
-                      isActive
-                        ? 'bg-surface-2 text-ink'
-                        : 'text-ink-2 hover:bg-surface-2 hover:text-ink',
-                    )
-                  }
-                >
-                  {({ isActive }) => (
-                    <>
-                      <item.icon
-                        size={17}
-                        aria-hidden
-                        className={isActive ? 'text-series-1' : 'text-muted'}
-                      />
-                      {item.label}
-                    </>
-                  )}
-                </NavLink>
-              </li>
-            ))}
-          </ul>
+          {NAV_GROUPS.map((group, index) => (
+            <div key={group.label ?? 'main'} className={index === 0 ? '' : 'mt-4'}>
+              {group.label ? (
+                <p className="px-3 pb-1.5 text-[11px] font-medium tracking-wide text-muted">
+                  {group.label}
+                </p>
+              ) : null}
+              <ul className="flex flex-col gap-1">
+                {group.items.map((item) => (
+                  <li key={item.to}>
+                    <NavLink
+                      to={item.to}
+                      end={item.to === '/'}
+                      onClick={onClose}
+                      className={({ isActive }) =>
+                        cn(
+                          'flex h-10 items-center gap-2.5 rounded-lg px-3 text-sm font-medium transition-colors',
+                          isActive
+                            ? 'bg-surface-2 text-ink'
+                            : 'text-ink-2 hover:bg-surface-2 hover:text-ink',
+                        )
+                      }
+                    >
+                      {({ isActive }) => (
+                        <>
+                          <item.icon
+                            size={17}
+                            aria-hidden
+                            className={isActive ? 'text-series-1' : 'text-muted'}
+                          />
+                          {item.label}
+                        </>
+                      )}
+                    </NavLink>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
         </nav>
 
         <p className="border-t border-hairline px-4 py-3 text-[11px] text-muted">الإصدار 0.1.0</p>

@@ -1,16 +1,17 @@
 import { requireSupabase } from '@/lib/supabase'
-import type { DailyBreakdown, DashboardStats, MetricPoint, Platform, RangeDays } from '@/lib/types'
+import type { Booking, DailyBreakdown, DashboardStats, MetricPoint, RangeDays } from '@/lib/types'
 import {
-  mockCrashFreeRate,
+  mockActiveByDay,
+  mockBookings,
+  mockBookingsByDay,
+  mockDisputes,
   mockInstallsByDay,
+  mockProviders,
   mockRevenueByDay,
-  mockSessionsByDay,
-  mockUsers,
+  mockReviews,
+  mockSettlements,
 } from '@/data/mock'
 import { delay, isSupabaseConfigured, isoDaysAgo, lastDays, periodChange, sum } from './base'
-
-/** Sessions-per-active-user, used to derive DAU from the sessions series in demo mode. */
-const SESSIONS_PER_ACTIVE_USER = 2.4
 
 function tally<T extends string>(items: T[]): Map<T, number> {
   const counts = new Map<T, number>()
@@ -18,11 +19,29 @@ function tally<T extends string>(items: T[]): Map<T, number> {
   return counts
 }
 
-function topCountriesFrom(countries: string[]) {
-  return [...tally(countries)]
-    .map(([country, users]) => ({ country, users }))
-    .sort((a, b) => b.users - a.users)
-    .slice(0, 5)
+/** الحجوزات الفعّالة فقط: الملغي والمرفوض لا يمثّلان طلباً على القسم. */
+const isLive = (booking: Booking) =>
+  booking.status === 'pending_provider' ||
+  booking.status === 'confirmed' ||
+  booking.status === 'completed'
+
+interface Series {
+  installs: DailyBreakdown[]
+  bookings: MetricPoint[]
+  revenue: MetricPoint[]
+  active: MetricPoint[]
+  commission: MetricPoint[]
+  categories: string[]
+  governorates: string[]
+  queue: Queue
+}
+
+/** ما ينتظر تدخّل الإدارة الآن — يُعرض كتنبيهات لا كمؤشرات اتجاه. */
+interface Queue {
+  pendingProviders: number
+  openDisputes: number
+  pendingSettlements: number
+  flaggedReviews: number
 }
 
 /**
@@ -36,44 +55,37 @@ export async function getDashboardStats(range: RangeDays): Promise<DashboardStat
   return delay(buildStats(range, demoSeries()))
 }
 
-interface Series {
-  installs: DailyBreakdown[]
-  sessions: MetricPoint[]
-  revenue: MetricPoint[]
-  active: MetricPoint[]
-  countries: string[]
-  crashFreeRate: number
-}
-
 function demoSeries(): Series {
+  const live = mockBookings.filter(isLive)
   return {
     installs: mockInstallsByDay,
-    sessions: mockSessionsByDay,
+    bookings: mockBookingsByDay,
     revenue: mockRevenueByDay,
-    active: mockSessionsByDay.map((point, i) => ({
+    active: mockActiveByDay,
+    // The platform's own take, not the gross the couple paid.
+    commission: mockRevenueByDay.map((point) => ({
       date: point.date,
-      // Sessions-per-user drifts day to day, so a fixed sinusoid keeps DAU
-      // correlated with sessions without making it a scaled copy — otherwise
-      // both KPIs would report the identical period-over-period change.
-      value: Math.round(point.value / (SESSIONS_PER_ACTIVE_USER + 0.4 * Math.sin(i * 1.7))),
+      value: Math.round(point.value * 0.1),
     })),
-    countries: mockUsers.map((user) => user.country),
-    crashFreeRate: mockCrashFreeRate,
+    categories: live.map((booking) => booking.category_name),
+    governorates: live.map((booking) => booking.governorate),
+    queue: {
+      pendingProviders: mockProviders.filter((p) => p.status === 'pending').length,
+      openDisputes: mockDisputes.filter(
+        (d) => d.status === 'open' || d.status === 'investigating',
+      ).length,
+      pendingSettlements: mockSettlements.filter((s) => s.status === 'pending').length,
+      flaggedReviews: mockReviews.filter((r) => r.status === 'flagged').length,
+    },
   }
 }
 
 function buildStats(range: RangeDays, series: Series): DashboardStats {
-  const installsWindow = lastDays(series.installs, range)
-  const installTotals = series.installs.map((day) => day.ios + day.android)
-  const sessionValues = series.sessions.map((point) => point.value)
+  const bookingValues = series.bookings.map((point) => point.value)
   const revenueValues = series.revenue.map((point) => point.value)
+  const commissionValues = series.commission.map((point) => point.value)
   const activeValues = series.active.map((point) => point.value)
   const activeWindow = lastDays(activeValues, range)
-
-  const platformTotals: { platform: Platform; users: number }[] = [
-    { platform: 'ios', users: sum(series.installs.map((day) => day.ios)) },
-    { platform: 'android', users: sum(series.installs.map((day) => day.android)) },
-  ]
 
   return {
     // Average DAU reads as a level, not a total — summing daily actives would
@@ -82,76 +94,120 @@ function buildStats(range: RangeDays, series: Series): DashboardStats {
       value: activeWindow.length ? Math.round(sum(activeWindow) / activeWindow.length) : 0,
       change: periodChange(activeValues, range),
     },
-    installs: {
-      value: sum(lastDays(installTotals, range)),
-      change: periodChange(installTotals, range),
-    },
-    sessions: {
-      value: sum(lastDays(sessionValues, range)),
-      change: periodChange(sessionValues, range),
+    bookings: {
+      value: sum(lastDays(bookingValues, range)),
+      change: periodChange(bookingValues, range),
     },
     revenue: {
       value: sum(lastDays(revenueValues, range)),
       change: periodChange(revenueValues, range),
     },
-    installsByDay: installsWindow,
-    sessionsByDay: lastDays(series.sessions, range),
-    platformSplit: platformTotals,
-    topCountries: topCountriesFrom(series.countries),
-    crashFreeRate: series.crashFreeRate,
+    commission: {
+      value: sum(lastDays(commissionValues, range)),
+      change: periodChange(commissionValues, range),
+    },
+    bookingsByDay: lastDays(series.bookings, range),
+    installsByDay: lastDays(series.installs, range),
+    bookingsByCategory: [...tally(series.categories)]
+      .map(([category, count]) => ({ category, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 6),
+    topGovernorates: [...tally(series.governorates)]
+      .map(([governorate, bookings]) => ({ governorate, bookings }))
+      .sort((a, b) => b.bookings - a.bookings)
+      .slice(0, 5),
+    ...series.queue,
   }
 }
 
 interface MetricRow {
   day: string
-  platform: Platform
+  platform: 'ios' | 'android'
   installs: number
-  sessions: number
   active_users: number
-  revenue: number
 }
 
 async function fromSupabase(range: RangeDays): Promise<DashboardStats> {
   const client = requireSupabase()
-
   // Twice the range so each KPI can compare against the preceding window.
-  const [metrics, users] = await Promise.all([
+  const since = isoDaysAgo(range * 2)
+
+  const [metrics, bookings, queue] = await Promise.all([
     client
       .from('daily_metrics')
-      .select('day, platform, installs, sessions, active_users, revenue')
-      .gte('day', isoDaysAgo(range * 2))
+      .select('day, platform, installs, active_users')
+      .gte('day', since)
       .order('day', { ascending: true }),
-    client.from('app_users').select('country'),
+    client
+      .from('bookings')
+      .select('created_at, status, total_price, commission_amount, category_name, governorate')
+      .gte('created_at', since),
+    loadQueue(),
   ])
 
   if (metrics.error) throw metrics.error
-  if (users.error) throw users.error
+  if (bookings.error) throw bookings.error
 
-  const byDay = new Map<string, { ios: number; android: number; sessions: number; revenue: number; active: number }>()
+  const installsByDay = new Map<string, DailyBreakdown>()
+  const activeByDay = new Map<string, number>()
   for (const row of (metrics.data ?? []) as MetricRow[]) {
-    const entry = byDay.get(row.day) ?? { ios: 0, android: 0, sessions: 0, revenue: 0, active: 0 }
+    const entry = installsByDay.get(row.day) ?? { date: row.day, ios: 0, android: 0 }
     entry[row.platform] += row.installs
-    entry.sessions += row.sessions
-    entry.revenue += Number(row.revenue)
-    entry.active += row.active_users
-    byDay.set(row.day, entry)
+    installsByDay.set(row.day, entry)
+    activeByDay.set(row.day, (activeByDay.get(row.day) ?? 0) + row.active_users)
   }
 
-  const days = [...byDay.keys()].sort()
+  type Row = Pick<
+    Booking,
+    'created_at' | 'status' | 'total_price' | 'commission_amount' | 'category_name' | 'governorate'
+  >
+  const rows = ((bookings.data ?? []) as Row[]).filter((row) => isLive(row as Booking))
+
+  const bookingsByDay = new Map<string, number>()
+  const revenueByDay = new Map<string, number>()
+  const commissionByDay = new Map<string, number>()
+  for (const row of rows) {
+    const day = row.created_at.slice(0, 10)
+    bookingsByDay.set(day, (bookingsByDay.get(day) ?? 0) + 1)
+    revenueByDay.set(day, (revenueByDay.get(day) ?? 0) + Number(row.total_price))
+    commissionByDay.set(day, (commissionByDay.get(day) ?? 0) + Number(row.commission_amount))
+  }
+
+  // One axis for every series, so a day with no bookings is a zero rather than
+  // a gap that shifts the line.
+  const days = [
+    ...new Set([...installsByDay.keys(), ...bookingsByDay.keys()]),
+  ].sort()
+  const pointsFrom = (source: Map<string, number>): MetricPoint[] =>
+    days.map((date) => ({ date, value: source.get(date) ?? 0 }))
 
   return buildStats(range, {
-    installs: days.map((date) => ({
-      date,
-      ios: byDay.get(date)!.ios,
-      android: byDay.get(date)!.android,
-    })),
-    sessions: days.map((date) => ({ date, value: byDay.get(date)!.sessions })),
-    revenue: days.map((date) => ({ date, value: byDay.get(date)!.revenue })),
-    active: days.map((date) => ({ date, value: byDay.get(date)!.active })),
-    countries: ((users.data ?? []) as { country: string }[])
-      .map((row) => row.country)
-      .filter(Boolean),
-    // No crash reporting table yet — the tile renders "—" rather than a guess.
-    crashFreeRate: Number.NaN,
+    installs: days.map((date) => installsByDay.get(date) ?? { date, ios: 0, android: 0 }),
+    bookings: pointsFrom(bookingsByDay),
+    revenue: pointsFrom(revenueByDay),
+    commission: pointsFrom(commissionByDay),
+    active: pointsFrom(activeByDay),
+    categories: rows.map((row) => row.category_name),
+    governorates: rows.map((row) => row.governorate),
+    queue,
   })
+}
+
+async function loadQueue(): Promise<Queue> {
+  const client = requireSupabase()
+  const count = { count: 'exact' as const, head: true }
+
+  const [providers, disputes, settlements, reviews] = await Promise.all([
+    client.from('service_providers').select('id', count).eq('status', 'pending'),
+    client.from('disputes').select('id', count).in('status', ['open', 'investigating']),
+    client.from('settlements').select('id', count).eq('status', 'pending'),
+    client.from('reviews').select('id', count).eq('status', 'flagged'),
+  ])
+
+  return {
+    pendingProviders: providers.count ?? 0,
+    openDisputes: disputes.count ?? 0,
+    pendingSettlements: settlements.count ?? 0,
+    flaggedReviews: reviews.count ?? 0,
+  }
 }

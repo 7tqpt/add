@@ -10,6 +10,7 @@ import { cn } from '@/lib/cn'
 export function StatTile({
   label,
   value,
+  valueTitle,
   change,
   comparisonLabel,
   icon: Icon,
@@ -17,6 +18,8 @@ export function StatTile({
 }: {
   label: string
   value: string
+  /** The exact figure, when `value` is abbreviated to fit the tile. */
+  valueTitle?: string
   /** Fractional change vs. the previous period; omit when there is nothing to compare. */
   change?: number
   comparisonLabel?: string
@@ -34,7 +37,12 @@ export function StatTile({
       </div>
 
       {/* Proportional figures: tabular-nums makes large standalone numbers look loose. */}
-      <p className="mt-2 text-2xl font-semibold tracking-tight text-ink sm:text-3xl">{value}</p>
+      <p
+        title={valueTitle}
+        className="mt-2 text-2xl font-semibold tracking-tight text-ink sm:text-3xl"
+      >
+        {value}
+      </p>
 
       {direction ? (
         <p className="mt-2 flex items-center gap-1.5 text-xs">

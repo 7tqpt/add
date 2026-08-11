@@ -100,6 +100,8 @@ async function insertNotification(
 
 export const AUDIENCE_LABEL: Record<Audience, string> = {
   all: 'كل المستخدمين',
+  customers: 'العملاء',
+  providers: 'مقدّمو الخدمة',
   ios: 'مستخدمو iOS',
   android: 'مستخدمو Android',
   active: 'المستخدمون النشطون',

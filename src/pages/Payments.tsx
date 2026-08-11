@@ -15,7 +15,14 @@ import { useAuth } from '@/context/AuthContext'
 import { useAsync } from '@/hooks/useAsync'
 import { useDebounced } from '@/hooks/useDebounced'
 import { cn } from '@/lib/cn'
-import { formatDate, formatDateTime, formatMoney, formatNumber, formatPercent } from '@/lib/format'
+import {
+  formatDate,
+  formatDateTime,
+  formatMoney,
+  formatMoneyCompact,
+  formatNumber,
+  formatPercent,
+} from '@/lib/format'
 import type { Payment, PaymentKind, PaymentMethod, PaymentStatus } from '@/lib/types'
 import {
   PAYMENT_KIND_LABEL,
@@ -24,7 +31,7 @@ import {
   getPaymentTotals,
   listPayments,
   refundPayment,
-} from '@/services/payments'
+} from '@/services/finance'
 
 const PAGE_SIZE = 12
 const EXPORT_LIMIT = 5000
@@ -102,6 +109,7 @@ export function PaymentsPage() {
       columns: [
         'المرجع',
         'التاريخ',
+        'الحجز',
         'العميل',
         'مقدّم الخدمة',
         'النوع',
@@ -116,6 +124,7 @@ export function PaymentsPage() {
       rows: all.rows.map((payment) => [
         payment.reference,
         formatDate(payment.created_at),
+        payment.booking_reference,
         payment.user_name,
         payment.provider_name,
         PAYMENT_KIND_LABEL[payment.kind],
@@ -229,19 +238,22 @@ export function PaymentsPage() {
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <StatTile
               label="المبالغ المحصّلة"
-              value={formatMoney(totals.data.collected)}
+              value={formatMoneyCompact(totals.data.collected)}
+              valueTitle={formatMoney(totals.data.collected)}
               icon={Banknote}
               refetching={totals.refetching}
             />
             <StatTile
               label="حصة المنصة"
-              value={formatMoney(totals.data.platformShare)}
+              value={formatMoneyCompact(totals.data.platformShare)}
+              valueTitle={formatMoney(totals.data.platformShare)}
               icon={PercentCircle}
               refetching={totals.refetching}
             />
             <StatTile
               label={`المسترجع (${formatNumber(totals.data.refundedCount)} عملية)`}
-              value={formatMoney(totals.data.refunded)}
+              value={formatMoneyCompact(totals.data.refunded)}
+              valueTitle={formatMoney(totals.data.refunded)}
               icon={Undo2}
               refetching={totals.refetching}
             />
@@ -324,6 +336,15 @@ export function PaymentsPage() {
                         {payment.reference}
                       </p>
                       <p className="text-xs text-muted">{payment.description}</p>
+                      {payment.booking_id ? (
+                        <Link
+                          to={`/bookings/${payment.booking_id}`}
+                          dir="ltr"
+                          className="tnum block text-start text-[11px] text-muted underline-offset-4 hover:text-series-1 hover:underline"
+                        >
+                          {payment.booking_reference}
+                        </Link>
+                      ) : null}
                     </td>
                     <td className="px-4 py-3 text-xs whitespace-nowrap text-ink-2">
                       <Link
