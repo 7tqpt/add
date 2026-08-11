@@ -9,6 +9,8 @@
 begin;
 
 delete from public.payments;
+delete from public.order_offers;
+delete from public.orders;
 delete from public.provider_reviews;
 delete from public.provider_services;
 delete from public.provider_documents;
@@ -231,62 +233,169 @@ cross join generate_series(1, 4) as r
 where p.status in ('active', 'suspended');
 
 -- ----------------------------------------------------------------------------
--- سجل المدفوعات
---
--- طلبات الخدمة تُقسم بين المنصة ومقدّم الخدمة حسب نسبة عمولته، أما الاشتراكات
--- وشحن المحفظة فتبقى للمنصة بالكامل (net_amount = 0).
+-- الطلبات — بحالات متنوّعة تغطي دورة الحياة كاملة
 -- ----------------------------------------------------------------------------
-insert into public.payments
-  (reference, user_id, user_name, provider_id, provider_name, kind, description,
-   amount, platform_share, net_amount, method, status, gateway_ref, created_at, refunded_at)
+insert into public.orders
+  (reference, user_id, user_name, category, city, address, description, status,
+   scheduled_at, booking_fee, created_at, cancelled_at, cancel_reason)
 select
-  'TRX-' || to_char(now(), 'YYYY') || '-' || lpad(row_number() over ()::text, 6, '0'),
+  'ORD-' || to_char(now(), 'YYYY') || '-' || lpad(row_number() over ()::text, 6, '0'),
   u.id,
   u.full_name,
-  case when k.kind = 'order' then pr.id else null end,
-  case when k.kind = 'order' then pr.business_name else '' end,
-  k.kind,
-  case k.kind
-    when 'order'        then pr.category || ' — خدمة أساسية'
-    when 'subscription' then 'اشتراك شهري'
-    else 'شحن محفظة'
-  end,
-  k.amount,
-  case when k.kind = 'order'
-       then round(k.amount * coalesce(pr.commission_percent, 15) / 100.0, 2)
-       else k.amount end,
-  case when k.kind = 'order'
-       then k.amount - round(k.amount * coalesce(pr.commission_percent, 15) / 100.0, 2)
-       else 0 end,
-  (array['card','mada','apple_pay','stc_pay','wallet'])[1 + (k.n % 5)],
-  k.status,
-  'gw_' || substr(md5(u.id::text || k.n::text), 1, 12),
-  now() - ((k.n * 7) % 120 || ' days')::interval,
-  case when k.status = 'refunded'
-       then now() - ((k.n * 7) % 120 || ' days')::interval + interval '2 days'
-       else null end
+  (array['سباكة','كهرباء','تنظيف','تكييف','نجارة','دهان','نقل أثاث','صيانة أجهزة'])[1 + (n % 8)],
+  (array['الرياض','جدة','الدمام','مكة','المدينة','الخبر','أبها','تبوك'])[1 + (n % 8)],
+  'حي ' || (array['النرجس','الياسمين','الملقا','الروضة','السلامة','العزيزية'])[1 + (n % 6)]
+    || ' — شارع ' || (10 + n)::text,
+  (array[
+    'تسريب في مواسير المطبخ يحتاج معاينة عاجلة.',
+    'انقطاع كهرباء متكرر في غرفتين.',
+    'تنظيف شقة بعد الانتهاء من الترميم.',
+    'صيانة مكيّف سبليت لا يبرّد.',
+    'تركيب رفوف خشبية في غرفة المكتب.'
+  ])[1 + (n % 5)],
+  st.status,
+  now() + ((n % 14) - 5 || ' days')::interval,
+  25.00,
+  now() - ((n * 3) % 60 || ' days')::interval,
+  case when st.status = 'cancelled'
+       then now() - ((n * 3) % 60 || ' days')::interval + interval '1 day' else null end,
+  case when st.status = 'cancelled' then 'ألغى العميل الطلب قبل الموعد.' else '' end
 from public.app_users u
-cross join generate_series(1, 4) as n
+cross join generate_series(1, 2) as n
 cross join lateral (
-  select
-    n,
-    (array['order','order','order','subscription','topup'])[1 + ((abs(hashtext(u.id::text)) + n) % 5)] as kind,
-    (array[120.00, 220.00, 380.00, 29.00, 100.00])[1 + ((abs(hashtext(u.id::text)) + n) % 5)] as amount,
-    case
-      when (abs(hashtext(u.id::text)) + n) % 23 = 0 then 'refunded'
-      when (abs(hashtext(u.id::text)) + n) % 17 = 0 then 'failed'
-      when (abs(hashtext(u.id::text)) + n) % 13 = 0 then 'pending'
-      else 'paid'
-    end as status
-) as k
-left join lateral (
-  select id, business_name, category, commission_percent
-  from public.service_providers
-  where status = 'active'
-  order by md5(id::text || u.id::text)
-  limit 1
-) as pr on k.kind = 'order'
-where u.status <> 'pending';
+  select case
+    when (abs(hashtext(u.id::text)) + n) % 11 = 0 then 'cancelled'
+    when (abs(hashtext(u.id::text)) + n) % 5  = 0 then 'new'
+    when (abs(hashtext(u.id::text)) + n) % 7  = 0 then 'confirmed'
+    when (abs(hashtext(u.id::text)) + n) % 6  = 0 then 'in_progress'
+    when (abs(hashtext(u.id::text)) + n) % 4  = 0 then 'completed'
+    else 'closed'
+  end as status
+) as st
+where u.status = 'active';
+
+-- ----------------------------------------------------------------------------
+-- العروض — عدة عروض لكل طلب من مقدّمي خدمة نشطين في نفس الفئة
+-- ----------------------------------------------------------------------------
+insert into public.order_offers
+  (order_id, provider_id, provider_name, provider_rating, price, duration_minutes, note, status, created_at)
+select
+  o.id,
+  p.id,
+  p.business_name,
+  p.rating,
+  round((150 + (abs(hashtext(o.id::text || p.id::text)) % 700))::numeric, 2),
+  (array[60, 90, 120, 240])[1 + (abs(hashtext(p.id::text)) % 4)],
+  (array[
+    'أستطيع الحضور في الموعد المطلوب.',
+    'السعر شامل قطع الغيار الأساسية.',
+    'يشمل ضمان شهر على العمل.',
+    ''
+  ])[1 + (abs(hashtext(o.id::text || p.id::text)) % 4)],
+  'pending',
+  o.created_at + interval '2 hours'
+from public.orders o
+join lateral (
+  select id, business_name, rating
+  from public.service_providers sp
+  where sp.status = 'active' and sp.category = o.category
+  order by md5(sp.id::text || o.id::text)
+  limit 3
+) as p on true;
+
+-- الطلبات التي تجاوزت مرحلة العروض: يُقبل أرخص عرض ويُرفض الباقي.
+with winner as (
+  select distinct on (o.id) o.id as order_id, f.id as offer_id, f.price, f.provider_id, f.provider_name
+  from public.orders o
+  join public.order_offers f on f.order_id = o.id
+  where o.status not in ('new', 'cancelled')
+  order by o.id, f.price asc
+)
+update public.order_offers f
+set status = case when f.id = w.offer_id then 'accepted' else 'rejected' end
+from winner w
+where f.order_id = w.order_id;
+
+update public.orders o
+set provider_id       = w.provider_id,
+    provider_name     = w.provider_name,
+    accepted_offer_id = w.offer_id,
+    final_price       = w.price,
+    platform_share    = round(w.price * 0.15, 2),
+    accepted_at       = o.created_at + interval '5 hours',
+    completed_at      = case when o.status in ('completed', 'closed')
+                             then o.scheduled_at + interval '2 hours' else null end
+from (
+  select distinct on (f.order_id) f.order_id, f.id as offer_id, f.price, f.provider_id, f.provider_name
+  from public.order_offers f
+  where f.status = 'accepted'
+  order by f.order_id, f.price asc
+) as w
+where o.id = w.order_id;
+
+-- أي طلب تجاوز مرحلة العروض ولم يجد عرضاً (لا يوجد مقدّم خدمة في فئته) يعود مفتوحاً،
+-- وإلا لخالف قيد confirmed_needs_provider.
+update public.orders set status = 'new'
+where status not in ('new', 'cancelled') and accepted_offer_id is null;
+
+-- ----------------------------------------------------------------------------
+-- سجل المدفوعات
+--
+-- كل طلب يولّد دفعتين: رسم الحجز عند الإنشاء، والرصيد عند قبول العرض. أما
+-- الاشتراكات وشحن المحفظة فتبقى للمنصة بالكامل (net_amount = 0).
+-- ----------------------------------------------------------------------------
+insert into public.payments
+  (reference, user_id, user_name, provider_id, provider_name, order_id, order_reference,
+   kind, description, amount, platform_share, net_amount, method, status, gateway_ref,
+   created_at, refunded_at)
+select
+  'TRX-' || to_char(now(), 'YYYY') || '-' || lpad((1000 + row_number() over ())::text, 6, '0'),
+  o.user_id, o.user_name, null, '', o.id, o.reference,
+  'booking_fee', 'رسم حجز — ' || o.category,
+  o.booking_fee, o.booking_fee, 0,
+  (array['card','mada','apple_pay','stc_pay','wallet'])[1 + (abs(hashtext(o.id::text)) % 5)],
+  case when o.status = 'cancelled' then 'refunded' else 'paid' end,
+  'gw_' || substr(md5(o.id::text), 1, 12),
+  o.created_at,
+  case when o.status = 'cancelled' then o.cancelled_at else null end
+from public.orders o;
+
+insert into public.payments
+  (reference, user_id, user_name, provider_id, provider_name, order_id, order_reference,
+   kind, description, amount, platform_share, net_amount, method, status, gateway_ref,
+   created_at, refunded_at)
+select
+  'TRX-' || to_char(now(), 'YYYY') || '-' || lpad((5000 + row_number() over ())::text, 6, '0'),
+  o.user_id, o.user_name, o.provider_id, o.provider_name, o.id, o.reference,
+  'order', o.category || ' — رصيد الطلب',
+  o.final_price, o.platform_share, o.final_price - o.platform_share,
+  (array['card','mada','apple_pay','stc_pay','wallet'])[1 + (abs(hashtext(o.id::text)) % 5)],
+  'paid',
+  'gw_' || substr(md5(o.id::text || 'b'), 1, 12),
+  o.accepted_at,
+  null
+from public.orders o
+where o.accepted_offer_id is not null;
+
+insert into public.payments
+  (reference, user_id, user_name, order_id, order_reference, kind, description,
+   amount, platform_share, net_amount, method, status, gateway_ref, created_at, refunded_at)
+select
+  'TRX-' || to_char(now(), 'YYYY') || '-' || lpad((9000 + row_number() over ())::text, 6, '0'),
+  u.id, u.full_name, null, '',
+  (array['subscription','topup'])[1 + (s % 2)],
+  (array['اشتراك شهري','شحن محفظة'])[1 + (s % 2)],
+  (array[29.00, 100.00])[1 + (s % 2)],
+  (array[29.00, 100.00])[1 + (s % 2)],
+  0,
+  (array['card','mada','apple_pay','stc_pay','wallet'])[1 + (s % 5)],
+  case when (abs(hashtext(u.id::text)) + s) % 19 = 0 then 'failed' else 'paid' end,
+  'gw_' || substr(md5(u.id::text || s::text), 1, 12),
+  now() - ((s * 13) % 90 || ' days')::interval,
+  null
+from public.app_users u
+cross join generate_series(1, 2) as s
+where u.status <> 'pending' and abs(hashtext(u.id::text)) % 3 = 0;
 
 commit;
 

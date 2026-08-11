@@ -161,6 +161,73 @@ export async function listPaymentsFor(
   return (data ?? []) as Payment[]
 }
 
+/** Payments raised against one order — the booking fee and, later, the balance. */
+export async function listPaymentsForOrder(orderId: string): Promise<Payment[]> {
+  if (!isSupabaseConfigured) {
+    return delay(
+      demoPayments
+        .filter((payment) => payment.order_id === orderId)
+        .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()),
+    )
+  }
+
+  const { data, error } = await requireSupabase()
+    .from('payments')
+    .select('*')
+    .eq('order_id', orderId)
+    .order('created_at', { ascending: true })
+  if (error) throw error
+  return (data ?? []) as Payment[]
+}
+
+export type NewPayment = Pick<
+  Payment,
+  | 'user_id'
+  | 'user_name'
+  | 'provider_id'
+  | 'provider_name'
+  | 'order_id'
+  | 'order_reference'
+  | 'kind'
+  | 'description'
+  | 'amount'
+  | 'platform_share'
+  | 'net_amount'
+>
+
+/**
+ * Records a charge. Called by the order flow when a balance falls due, so the
+ * ledger and the orders never disagree about what was charged.
+ */
+export async function addPayment(draft: NewPayment): Promise<Payment> {
+  const created_at = new Date().toISOString()
+  const reference = `TRX-2026-${Date.now().toString().slice(-6)}`
+
+  if (!isSupabaseConfigured) {
+    const created: Payment = {
+      ...draft,
+      id: `pay_${Date.now().toString(36)}`,
+      reference,
+      // The gateway is not wired up, so the method is unknown until it is.
+      method: 'card',
+      status: 'paid',
+      gateway_ref: '',
+      created_at,
+      refunded_at: null,
+    }
+    demoPayments.unshift(created)
+    return delay(created, 200)
+  }
+
+  const { data, error } = await requireSupabase()
+    .from('payments')
+    .insert({ ...draft, reference, method: 'card', status: 'paid', created_at })
+    .select()
+    .single()
+  if (error) throw error
+  return data as Payment
+}
+
 export async function refundPayment(payment: Payment): Promise<void> {
   const refunded_at = new Date().toISOString()
 
@@ -207,7 +274,8 @@ export const PAYMENT_METHOD_LABEL: Record<PaymentMethod, string> = {
 }
 
 export const PAYMENT_KIND_LABEL: Record<PaymentKind, string> = {
-  order: 'طلب خدمة',
+  booking_fee: 'رسم حجز',
+  order: 'رصيد طلب',
   subscription: 'اشتراك',
   topup: 'شحن محفظة',
 }

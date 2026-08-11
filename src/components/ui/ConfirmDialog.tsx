@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
 import { AlertTriangle } from 'lucide-react'
 import { Button } from './Button'
 import { Spinner } from './Feedback'
@@ -19,6 +19,7 @@ export function ConfirmDialog({
   busy = false,
   onConfirm,
   onCancel,
+  children,
 }: {
   open: boolean
   title: string
@@ -29,6 +30,8 @@ export function ConfirmDialog({
   busy?: boolean
   onConfirm: () => void
   onCancel: () => void
+  /** Extra input the confirmation needs, e.g. a reason for the action. */
+  children?: ReactNode
 }) {
   const ref = useRef<HTMLDialogElement | null>(null)
 
@@ -63,6 +66,8 @@ export function ConfirmDialog({
             <p className="mt-1 text-xs leading-6 text-ink-2">{message}</p>
           </div>
         </div>
+
+        {children ? <div className="flex flex-col gap-3">{children}</div> : null}
 
         <div className="flex justify-start gap-2">
           <Button

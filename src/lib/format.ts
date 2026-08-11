@@ -78,7 +78,8 @@ export function formatDuration(seconds: number): string {
   if (!Number.isFinite(seconds) || seconds <= 0) return '—'
   const hours = Math.floor(seconds / 3600)
   const minutes = Math.floor((seconds % 3600) / 60)
-  if (hours > 0) return `${int.format(hours)} س ${int.format(minutes)} د`
+  // A whole number of hours reads as "4 س", not "4 س 0 د".
+  if (hours > 0) return minutes === 0 ? `${int.format(hours)} س` : `${int.format(hours)} س ${int.format(minutes)} د`
   if (minutes > 0) return `${int.format(minutes)} د`
   return `${int.format(Math.round(seconds))} ث`
 }

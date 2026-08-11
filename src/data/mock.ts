@@ -7,6 +7,10 @@ import type {
   MetricPoint,
   DocumentStatus,
   DocumentType,
+  OfferStatus,
+  Order,
+  OrderOffer,
+  OrderStatus,
   Payment,
   PaymentKind,
   PaymentMethod,
@@ -497,81 +501,227 @@ export const mockProviderReviews: ProviderReview[] = mockProviders
 
 const PAYMENT_METHODS: PaymentMethod[] = ['card', 'mada', 'apple_pay', 'stc_pay', 'wallet']
 
-const SUBSCRIPTION_PRODUCTS = [
-  { description: 'اشتراك شهري', amount: 29 },
-  { description: 'اشتراك سنوي', amount: 299 },
-  { description: 'إزالة الإعلانات', amount: 49 },
-]
-
-const TOPUP_AMOUNTS = [50, 100, 200, 500]
-
 const activeProviders = mockProviders.filter((provider) => provider.status === 'active')
 
-/**
- * The money ledger. Service orders are split between the platform and the
- * provider by that provider's commission; subscriptions and wallet top-ups stay
- * with the platform in full.
- */
-export const mockPayments: Payment[] = mockUsers
-  .filter((user) => user.status !== 'pending')
+const ADDRESS_DISTRICTS = ['النرجس', 'الياسمين', 'الملقا', 'الروضة', 'السلامة', 'العزيزية']
+
+const ORDER_DESCRIPTIONS = [
+  'تسريب في مواسير المطبخ يحتاج معاينة عاجلة.',
+  'انقطاع كهرباء متكرر في غرفتين.',
+  'تنظيف شقة بعد الانتهاء من الترميم.',
+  'صيانة مكيّف سبليت لا يبرّد.',
+  'تركيب رفوف خشبية في غرفة المكتب.',
+]
+
+const OFFER_NOTES = [
+  'أستطيع الحضور في الموعد المطلوب.',
+  'السعر شامل قطع الغيار الأساسية.',
+  'يشمل ضمان شهر على العمل.',
+  '',
+]
+
+/** Weighted so the working queue (new / in-flight) is never empty. */
+function orderStatus(): OrderStatus {
+  const roll = rng()
+  if (roll > 0.9) return 'cancelled'
+  if (roll > 0.72) return 'new'
+  if (roll > 0.62) return 'confirmed'
+  if (roll > 0.52) return 'on_the_way'
+  if (roll > 0.42) return 'in_progress'
+  if (roll > 0.22) return 'completed'
+  return 'closed'
+}
+
+/** The platform's cut of an accepted offer, matching the seed data. */
+const ORDER_COMMISSION = 0.15
+
+const BOOKING_FEE = 25
+
+interface DraftOrder extends Order {}
+
+const draftOrders: DraftOrder[] = mockUsers
+  .filter((user) => user.status === 'active')
   .flatMap((user, userIndex) =>
-    Array.from({ length: intBetween(1, 5) }, (_, i) => {
-      const roll = rng()
-      const kind: PaymentKind = roll > 0.75 ? 'subscription' : roll > 0.62 ? 'topup' : 'order'
-      const statusRoll = rng()
-      const status: PaymentStatus =
-        statusRoll > 0.965
-          ? 'refunded'
-          : statusRoll > 0.93
-            ? 'failed'
-            : statusRoll > 0.9
-              ? 'pending'
-              : 'paid'
-
-      const provider = kind === 'order' ? pick(activeProviders) : null
-      const product = pick(SUBSCRIPTION_PRODUCTS)
-      const amount =
-        kind === 'order'
-          ? pick([120, 220, 380, 650])
-          : kind === 'topup'
-            ? pick(TOPUP_AMOUNTS)
-            : product.amount
-
-      // Only an order owes money onward; everything else the platform keeps.
-      const platformFee =
-        kind === 'order' && provider
-          ? Math.round(amount * (provider.commission_percent / 100) * 100) / 100
-          : amount
-      const netAmount = kind === 'order' ? Math.round((amount - platformFee) * 100) / 100 : 0
-
-      const createdDaysAgo = intBetween(0, 120)
+    Array.from({ length: intBetween(1, 3) }, (_, i) => {
+      const status = orderStatus()
+      const createdDaysAgo = intBetween(0, 60)
+      const category = pick(PROVIDER_CATEGORIES)
 
       return {
-        id: `pay_${userIndex}_${i}`,
-        reference: `TRX-2026-${(userIndex * 5 + i + 1).toString().padStart(6, '0')}`,
+        id: `ord_${userIndex}_${i}`,
+        reference: `ORD-2026-${(userIndex * 3 + i + 1).toString().padStart(6, '0')}`,
         user_id: user.id,
         user_name: user.full_name,
-        provider_id: provider?.id ?? null,
-        provider_name: provider?.business_name ?? '',
-        kind,
-        description:
-          kind === 'order'
-            ? `${provider?.category ?? 'خدمة'} — خدمة أساسية`
-            : kind === 'topup'
-              ? 'شحن محفظة'
-              : product.description,
-        amount,
-        platform_share: platformFee,
-        net_amount: netAmount,
-        method: pick(PAYMENT_METHODS),
+        provider_id: null,
+        provider_name: '',
+        category,
+        city: pick(PROVIDER_CITIES),
+        address: `حي ${pick(ADDRESS_DISTRICTS)} — شارع ${intBetween(10, 60)}`,
+        description: pick(ORDER_DESCRIPTIONS),
         status,
-        gateway_ref: `gw_${(userIndex * 31 + i * 7).toString(36).padStart(8, '0')}`,
-        created_at: isoAt(createdDaysAgo, intBetween(8, 22)),
-        refunded_at: status === 'refunded' ? isoAt(Math.max(0, createdDaysAgo - 2), 12) : null,
+        // Scheduled visits straddle today: some upcoming, some already past.
+        scheduled_at: isoAt(createdDaysAgo - intBetween(-7, 3), intBetween(8, 19)),
+        booking_fee: BOOKING_FEE,
+        final_price: 0,
+        platform_share: 0,
+        accepted_offer_id: null,
+        cancel_reason: status === 'cancelled' ? 'ألغى العميل الطلب قبل الموعد.' : '',
+        created_at: isoAt(createdDaysAgo, intBetween(8, 20)),
+        accepted_at: null,
+        completed_at: null,
+        cancelled_at:
+          status === 'cancelled' ? isoAt(Math.max(0, createdDaysAgo - 1), 12) : null,
       }
     }),
   )
-  .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+
+const offers: OrderOffer[] = []
+
+for (const order of draftOrders) {
+  // Providers bid within their own category; if none serve it, the order simply
+  // gets no offers and stays open — the same thing that happens in production.
+  const candidates = activeProviders.filter(
+    (provider) => provider.category === order.category,
+  )
+  const bidders = candidates.slice(0, 3)
+
+  const orderOffers = bidders.map((provider, i) => ({
+    id: `off_${order.id}_${i}`,
+    order_id: order.id,
+    provider_id: provider.id,
+    provider_name: provider.business_name,
+    provider_rating: provider.rating,
+    price: intBetween(150, 850),
+    duration_minutes: pick([60, 90, 120, 240]),
+    note: pick(OFFER_NOTES),
+    status: 'pending' as OfferStatus,
+    created_at: isoAt(
+      Math.max(0, Math.round((Date.now() - new Date(order.created_at).getTime()) / 86_400_000)),
+      14,
+    ),
+  }))
+
+  const pastBidding = order.status !== 'new' && order.status !== 'cancelled'
+  if (pastBidding && orderOffers.length > 0) {
+    // The customer accepts the cheapest bid; the rest are rejected.
+    const winner = orderOffers.reduce((best, offer) => (offer.price < best.price ? offer : best))
+    for (const offer of orderOffers) {
+      offer.status = offer.id === winner.id ? 'accepted' : 'rejected'
+    }
+    order.provider_id = winner.provider_id
+    order.provider_name = winner.provider_name
+    order.accepted_offer_id = winner.id
+    order.final_price = winner.price
+    order.platform_share = Math.round(winner.price * ORDER_COMMISSION * 100) / 100
+    order.accepted_at = order.created_at
+    order.completed_at =
+      order.status === 'completed' || order.status === 'closed' ? order.scheduled_at : null
+  } else if (pastBidding) {
+    // Nothing to accept, so it cannot have moved past bidding.
+    order.status = 'new'
+  }
+
+  offers.push(...orderOffers)
+}
+
+export const mockOrders: Order[] = draftOrders.sort(
+  (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+)
+
+export const mockOffers: OrderOffer[] = offers
+
+let paymentSeq = 0
+const nextReference = () => `TRX-2026-${(++paymentSeq).toString().padStart(6, '0')}`
+
+/**
+ * The money ledger, derived from the orders above so the two always agree.
+ *
+ * Every order charges a booking fee up front; once an offer is accepted the
+ * balance is charged too and split with the provider. Subscriptions and wallet
+ * top-ups stay with the platform in full.
+ */
+const orderPayments: Payment[] = mockOrders.flatMap((order) => {
+  const method = pick(PAYMENT_METHODS)
+
+  const bookingFee: Payment = {
+    id: `pay_fee_${order.id}`,
+    reference: nextReference(),
+    user_id: order.user_id,
+    user_name: order.user_name,
+    provider_id: null,
+    provider_name: '',
+    order_id: order.id,
+    order_reference: order.reference,
+    kind: 'booking_fee',
+    description: `رسم حجز — ${order.category}`,
+    amount: order.booking_fee,
+    platform_share: order.booking_fee,
+    net_amount: 0,
+    method,
+    status: order.status === 'cancelled' ? 'refunded' : 'paid',
+    gateway_ref: `gw_${order.id}`,
+    created_at: order.created_at,
+    refunded_at: order.status === 'cancelled' ? order.cancelled_at : null,
+  }
+
+  if (!order.accepted_offer_id) return [bookingFee]
+
+  const balance: Payment = {
+    id: `pay_bal_${order.id}`,
+    reference: nextReference(),
+    user_id: order.user_id,
+    user_name: order.user_name,
+    provider_id: order.provider_id,
+    provider_name: order.provider_name,
+    order_id: order.id,
+    order_reference: order.reference,
+    kind: 'order',
+    description: `${order.category} — رصيد الطلب`,
+    amount: order.final_price,
+    platform_share: order.platform_share,
+    net_amount: Math.round((order.final_price - order.platform_share) * 100) / 100,
+    method,
+    status: 'paid',
+    gateway_ref: `gw_${order.id}_b`,
+    created_at: order.accepted_at ?? order.created_at,
+    refunded_at: null,
+  }
+
+  return [bookingFee, balance]
+})
+
+const standalonePayments: Payment[] = mockUsers
+  .filter((user) => user.status !== 'pending')
+  .flatMap((user, userIndex) =>
+    Array.from({ length: intBetween(0, 2) }, (_, i) => {
+      const isTopup = rng() > 0.5
+      const amount = isTopup ? pick([50, 100, 200, 500]) : pick([29, 299, 49])
+      return {
+        id: `pay_std_${userIndex}_${i}`,
+        reference: nextReference(),
+        user_id: user.id,
+        user_name: user.full_name,
+        provider_id: null,
+        provider_name: '',
+        order_id: null,
+        order_reference: '',
+        kind: (isTopup ? 'topup' : 'subscription') as PaymentKind,
+        description: isTopup ? 'شحن محفظة' : 'اشتراك التطبيق',
+        amount,
+        platform_share: amount,
+        net_amount: 0,
+        method: pick(PAYMENT_METHODS),
+        status: (rng() > 0.94 ? 'failed' : 'paid') as PaymentStatus,
+        gateway_ref: `gw_std_${userIndex}_${i}`,
+        created_at: isoAt(intBetween(0, 120), intBetween(8, 22)),
+        refunded_at: null,
+      }
+    }),
+  )
+
+export const mockPayments: Payment[] = [...orderPayments, ...standalonePayments].sort(
+  (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+)
 
 export const mockAdmins: AdminAccount[] = [
   {
@@ -602,6 +752,7 @@ export const mockSettings: AppSettings = {
   min_android_version: '3.2.0',
   support_email: 'support@example.com',
   default_locale: 'ar',
+  booking_fee: BOOKING_FEE,
 }
 
 export const mockCrashFreeRate = 0.9942

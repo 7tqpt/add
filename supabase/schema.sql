@@ -281,6 +281,82 @@ create index if not exists provider_reviews_provider_idx
   on public.provider_reviews (provider_id, created_at desc);
 
 -- ----------------------------------------------------------------------------
+-- الطلبات
+--
+-- دورة الحياة:
+--   new         : منشور ومفتوح لعروض مقدّمي الخدمة — لا مقدّم خدمة بعد
+--   confirmed   : قبل العميل عرضاً ودفع الباقي، والموعد محجوز
+--   on_the_way  : مقدّم الخدمة في الطريق
+--   in_progress : جارٍ التنفيذ
+--   completed   : نُفّذ
+--   closed      : أُغلق نهائياً بعد التنفيذ
+--   cancelled   : أُلغي — ممكن من أي مرحلة قبل التنفيذ
+-- ----------------------------------------------------------------------------
+create table if not exists public.orders (
+  id                uuid primary key default gen_random_uuid(),
+  reference         text not null unique,
+  user_id           uuid references public.app_users (id) on delete set null,
+  user_name         text not null default '',
+  provider_id       uuid references public.service_providers (id) on delete set null,
+  provider_name     text not null default '',
+  category          text not null default '',
+  city              text not null default '',
+  address           text not null default '',
+  description       text not null default '',
+  status            text not null default 'new'
+                    check (status in ('new', 'confirmed', 'on_the_way',
+                                      'in_progress', 'completed', 'closed', 'cancelled')),
+  scheduled_at      timestamptz not null,
+  booking_fee       numeric(12, 2) not null default 0 check (booking_fee >= 0),
+  final_price       numeric(12, 2) not null default 0 check (final_price >= 0),
+  platform_share    numeric(12, 2) not null default 0 check (platform_share >= 0),
+  accepted_offer_id uuid,
+  cancel_reason     text not null default '',
+  created_at        timestamptz not null default now(),
+  accepted_at       timestamptz,
+  completed_at      timestamptz,
+  cancelled_at      timestamptz,
+  -- طلب تجاوز مرحلة العروض لا بدّ أن يحمل مقدّم خدمة وسعراً وعرضاً مقبولاً
+  constraint confirmed_needs_provider check (
+    status in ('new', 'cancelled')
+    or (provider_id is not null and accepted_offer_id is not null and final_price > 0)
+  ),
+  -- حصة المنصة جزء من السعر النهائي، لا تتجاوزه
+  constraint share_within_price check (platform_share <= final_price),
+  constraint cancelled_needs_timestamp
+    check ((status = 'cancelled') = (cancelled_at is not null))
+);
+
+create index if not exists orders_status_idx    on public.orders (status, created_at desc);
+create index if not exists orders_user_idx      on public.orders (user_id, created_at desc);
+create index if not exists orders_provider_idx  on public.orders (provider_id, created_at desc);
+create index if not exists orders_scheduled_idx on public.orders (scheduled_at);
+
+-- ----------------------------------------------------------------------------
+-- عروض الأسعار — عرض واحد لكل مقدّم خدمة على كل طلب
+-- ----------------------------------------------------------------------------
+create table if not exists public.order_offers (
+  id               uuid primary key default gen_random_uuid(),
+  order_id         uuid not null references public.orders (id) on delete cascade,
+  provider_id      uuid not null references public.service_providers (id) on delete cascade,
+  provider_name    text not null default '',
+  provider_rating  numeric(2, 1) not null default 0 check (provider_rating between 0 and 5),
+  price            numeric(12, 2) not null check (price > 0),
+  duration_minutes integer not null default 60 check (duration_minutes > 0),
+  note             text not null default '',
+  status           text not null default 'pending'
+                   check (status in ('pending', 'accepted', 'rejected', 'withdrawn')),
+  created_at       timestamptz not null default now(),
+  unique (order_id, provider_id)
+);
+
+create index if not exists order_offers_order_idx on public.order_offers (order_id, price);
+
+-- عرض مقبول واحد على الأكثر لكل طلب
+create unique index if not exists order_offers_one_accepted_idx
+  on public.order_offers (order_id) where status = 'accepted';
+
+-- ----------------------------------------------------------------------------
 -- سجل المدفوعات — كل عملية دفع داخل التطبيق، مهما كان سببها
 --
 --   amount       : ما دُفع فعلياً من العميل
@@ -294,8 +370,10 @@ create table if not exists public.payments (
   user_name     text not null default '',
   provider_id   uuid references public.service_providers (id) on delete set null,
   provider_name text not null default '',
+  order_id      uuid references public.orders (id) on delete set null,
+  order_reference text not null default '',
   kind          text not null default 'order'
-                check (kind in ('order', 'subscription', 'topup')),
+                check (kind in ('booking_fee', 'order', 'subscription', 'topup')),
   description   text not null default '',
   amount        numeric(12, 2) not null check (amount >= 0),
   platform_share  numeric(12, 2) not null default 0 check (platform_share >= 0),
@@ -348,6 +426,7 @@ create table if not exists public.app_settings (
   min_android_version text not null default '1.0.0',
   support_email       text not null default '',
   default_locale      text not null default 'ar',
+  booking_fee         numeric(12, 2) not null default 25 check (booking_fee >= 0),
   updated_at          timestamptz not null default now()
 );
 
@@ -360,6 +439,8 @@ alter table public.admins             enable row level security;
 alter table public.app_users          enable row level security;
 alter table public.user_sessions      enable row level security;
 alter table public.user_devices       enable row level security;
+alter table public.orders             enable row level security;
+alter table public.order_offers       enable row level security;
 alter table public.payments           enable row level security;
 alter table public.daily_metrics      enable row level security;
 alter table public.push_notifications enable row level security;
@@ -391,7 +472,7 @@ begin
     'app_users', 'user_sessions', 'user_devices', 'payments', 'daily_metrics',
     'push_notifications', 'app_versions', 'support_tickets', 'ticket_messages',
     'service_providers', 'provider_documents', 'provider_services',
-    'provider_reviews', 'app_settings'
+    'provider_reviews', 'orders', 'order_offers', 'app_settings'
   ] loop
     execute format('drop policy if exists %I_read on public.%I', t, t);
     execute format(

@@ -24,8 +24,12 @@ const EXPORT_LIMIT = 5000
 function describe(details: Record<string, unknown>): string {
   const parts: string[] = []
 
-  if ('from' in details || 'to' in details) {
+  // Some actions have no "before" — accepting an offer assigns a provider where
+  // there was none — so a one-sided change reads as a destination, not a move.
+  if ('from' in details && 'to' in details) {
     parts.push(`من «${format(details.from)}» إلى «${format(details.to)}»`)
+  } else if ('to' in details) {
+    parts.push(`إلى «${format(details.to)}»`)
   }
   if (Array.isArray(details.changed) && details.changed.length > 0) {
     parts.push(`الحقول: ${details.changed.join('، ')}`)
@@ -38,6 +42,9 @@ function describe(details: Record<string, unknown>): string {
   }
   if (typeof details.user === 'string') {
     parts.push(`العميل: ${details.user}`)
+  }
+  if (typeof details.reason === 'string' && details.reason) {
+    parts.push(`السبب: ${details.reason}`)
   }
 
   return parts.join(' · ')

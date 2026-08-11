@@ -138,6 +138,7 @@ export const AUDIT_ENTITY_LABEL: Record<string, string> = {
   admin: 'مسؤول',
   provider: 'مقدّم خدمة',
   payment: 'عملية دفع',
+  order: 'طلب',
 }
 
 export const AUDIT_ACTION_LABEL: Record<string, string> = {
@@ -159,4 +160,7 @@ export const AUDIT_ACTION_LABEL: Record<string, string> = {
   'provider.commission': 'تغيير نسبة العمولة',
   'provider.document': 'مراجعة مستند',
   'payment.refund': 'استرجاع مبلغ',
+  'order.accept_offer': 'قبول عرض سعر',
+  'order.status': 'تغيير حالة طلب',
+  'order.cancel': 'إلغاء طلب',
 }

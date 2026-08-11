@@ -51,6 +51,8 @@ export interface AppSettings {
   min_android_version: string
   support_email: string
   default_locale: string
+  /** Fixed fee a customer pays to open an order for offers. */
+  booking_fee: number
 }
 
 /**
@@ -87,12 +89,75 @@ export interface UserDevice {
   last_used_at: string
 }
 
+/**
+ * Order lifecycle.
+ *
+ * `new` is open for offers — no provider is attached yet. `confirmed` means the
+ * customer accepted an offer and paid the balance; everything after that is
+ * execution. `cancelled` can be reached from any stage before completion.
+ */
+export type OrderStatus =
+  | 'new'
+  | 'confirmed'
+  | 'on_the_way'
+  | 'in_progress'
+  | 'completed'
+  | 'closed'
+  | 'cancelled'
+
+export interface Order {
+  id: string
+  reference: string
+  user_id: string
+  user_name: string
+  /** Null until an offer is accepted — a new order has no provider yet. */
+  provider_id: string | null
+  provider_name: string
+  category: string
+  city: string
+  address: string
+  description: string
+  status: OrderStatus
+  /** When the visit is booked for. */
+  scheduled_at: string
+  /** Fixed fee paid to open the order for offers. */
+  booking_fee: number
+  /** The accepted offer's price. Zero while still open for offers. */
+  final_price: number
+  /** The platform's cut of `final_price`, set when the offer is accepted. */
+  platform_share: number
+  accepted_offer_id: string | null
+  cancel_reason: string
+  created_at: string
+  accepted_at: string | null
+  completed_at: string | null
+  cancelled_at: string | null
+}
+
+export type OfferStatus = 'pending' | 'accepted' | 'rejected' | 'withdrawn'
+
+export interface OrderOffer {
+  id: string
+  order_id: string
+  provider_id: string
+  provider_name: string
+  provider_rating: number
+  price: number
+  duration_minutes: number
+  note: string
+  status: OfferStatus
+  created_at: string
+}
+
 export type PaymentStatus = 'paid' | 'pending' | 'failed' | 'refunded'
 
 export type PaymentMethod = 'card' | 'mada' | 'apple_pay' | 'stc_pay' | 'wallet'
 
-/** What was paid for: a service order, a subscription, or a wallet top-up. */
-export type PaymentKind = 'order' | 'subscription' | 'topup'
+/**
+ * What was paid for. An order produces two rows: the `booking_fee` charged to
+ * open it for offers, then the `order` balance once an offer is accepted.
+ */
+export type PaymentKind = 'booking_fee' | 'order' | 'subscription' | 'topup'
 
 /**
  * One row of the money ledger — every in-app payment, whatever it was for.
@@ -109,6 +174,9 @@ export interface Payment {
   user_name: string
   provider_id: string | null
   provider_name: string
+  /** Set for booking fees and order balances; null for subscriptions and top-ups. */
+  order_id: string | null
+  order_reference: string
   kind: PaymentKind
   description: string
   amount: number
