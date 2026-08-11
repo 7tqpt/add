@@ -30,10 +30,15 @@ export function Badge({
   children,
 }: {
   tone?: Tone
-  icon?: boolean
+  /**
+   * `false` drops the icon; a component overrides the tone's default one, for
+   * states the tone alone would mislabel — a rejected item is neutral in
+   * severity but a clock would read as "still waiting".
+   */
+  icon?: boolean | LucideIcon
   children: ReactNode
 }) {
-  const Icon = TONE_ICON[tone]
+  const Icon = typeof icon === 'function' ? icon : TONE_ICON[tone]
   return (
     <span
       className={cn(
@@ -41,7 +46,7 @@ export function Badge({
         TONE_CLASS[tone],
       )}
     >
-      {icon ? <Icon size={13} aria-hidden className="shrink-0" /> : null}
+      {icon !== false ? <Icon size={13} aria-hidden className="shrink-0" /> : null}
       {children}
     </span>
   )

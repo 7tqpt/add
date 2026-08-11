@@ -124,6 +124,65 @@ export interface TicketMessage {
   created_at: string
 }
 
+/**
+ * `pending` is awaiting document review, `rejected` was turned down at review,
+ * `suspended` was active and then stopped. Rejected and suspended are kept
+ * apart because they answer different questions: never approved vs. no longer
+ * trusted.
+ */
+export type ProviderStatus = 'pending' | 'active' | 'suspended' | 'rejected'
+
+export interface ServiceProvider {
+  id: string
+  full_name: string
+  business_name: string
+  email: string
+  phone: string
+  category: string
+  city: string
+  status: ProviderStatus
+  /** Mean of `reviews_count` ratings, 0–5. Zero when there are no reviews yet. */
+  rating: number
+  reviews_count: number
+  completed_orders: number
+  total_earnings: number
+  /** Platform cut, as a percentage of each order. */
+  commission_percent: number
+  joined_at: string
+  verified_at: string | null
+}
+
+export type DocumentType = 'id_card' | 'commercial_register' | 'certificate' | 'insurance'
+export type DocumentStatus = 'pending' | 'approved' | 'rejected'
+
+export interface ProviderDocument {
+  id: string
+  provider_id: string
+  type: DocumentType
+  file_name: string
+  status: DocumentStatus
+  note: string
+  uploaded_at: string
+}
+
+export interface ProviderService {
+  id: string
+  provider_id: string
+  title: string
+  price: number
+  duration_minutes: number
+  active: boolean
+}
+
+export interface ProviderReview {
+  id: string
+  provider_id: string
+  user_name: string
+  rating: number
+  comment: string
+  created_at: string
+}
+
 export interface AuditEntry {
   id: string
   actor_email: string

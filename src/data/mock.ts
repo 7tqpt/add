@@ -5,10 +5,17 @@ import type {
   AppVersion,
   DailyBreakdown,
   MetricPoint,
+  DocumentStatus,
+  DocumentType,
   Platform,
+  ProviderDocument,
+  ProviderReview,
+  ProviderService,
+  ProviderStatus,
   Purchase,
   PurchaseStatus,
   PushNotification,
+  ServiceProvider,
   SupportTicket,
   TicketCategory,
   TicketMessage,
@@ -376,6 +383,139 @@ export const mockTicketMessages: TicketMessage[] = mockTickets.flatMap((ticket, 
     },
   ]
 })
+
+export const PROVIDER_CATEGORIES = [
+  'سباكة',
+  'كهرباء',
+  'تنظيف',
+  'تكييف',
+  'نجارة',
+  'دهان',
+  'نقل أثاث',
+  'صيانة أجهزة',
+]
+
+export const PROVIDER_CITIES = [
+  'الرياض',
+  'جدة',
+  'الدمام',
+  'مكة',
+  'المدينة',
+  'الخبر',
+  'أبها',
+  'تبوك',
+]
+
+const BUSINESS_NAMES = ['الإتقان', 'النخبة', 'الرواد', 'البناء', 'السرعة', 'الأمانة']
+
+const PROVIDER_FIRST = ['سعد', 'ماجد', 'فهد', 'بدر', 'تركي', 'ريان', 'هند', 'لمياء', 'غادة', 'منى']
+const PROVIDER_LAST = [
+  'السبيعي',
+  'الغامدي',
+  'الرشيد',
+  'البقمي',
+  'المطيري',
+  'الجهني',
+  'العنزي',
+  'الخالدي',
+]
+
+/** Roughly two thirds active, with a working queue of pending applications. */
+function providerStatus(index: number): ProviderStatus {
+  if (index % 9 === 0) return 'rejected'
+  if (index % 5 === 0) return 'pending'
+  if (index % 11 === 0) return 'suspended'
+  return 'active'
+}
+
+export const mockProviders: ServiceProvider[] = Array.from({ length: 32 }, (_, i) => {
+  const status = providerStatus(i + 1)
+  const trading = status === 'active' || status === 'suspended'
+  const joinedDaysAgo = intBetween(5, 400)
+
+  return {
+    id: `prv_${(200 + i).toString(36)}`,
+    full_name: `${pick(PROVIDER_FIRST)} ${pick(PROVIDER_LAST)}`,
+    business_name: `مؤسسة ${pick(BUSINESS_NAMES)} للخدمات`,
+    email: `provider${(i + 1).toString().padStart(3, '0')}@example.com`,
+    phone: `+9665${intBetween(20_000_000, 89_999_999)}`,
+    category: pick(PROVIDER_CATEGORIES),
+    city: pick(PROVIDER_CITIES),
+    status,
+    rating: trading ? Math.round(between(3.4, 5) * 10) / 10 : 0,
+    reviews_count: trading ? intBetween(4, 120) : 0,
+    completed_orders: trading ? intBetween(12, 380) : 0,
+    total_earnings: trading ? intBetween(1500, 68_000) : 0,
+    commission_percent: pick([10, 12, 15, 15, 18, 20]),
+    joined_at: isoAt(joinedDaysAgo, intBetween(8, 20)),
+    // Verification lands a couple of days after the application.
+    verified_at: trading ? isoAt(Math.max(0, joinedDaysAgo - 3), intBetween(8, 20)) : null,
+  }
+}).sort((a, b) => new Date(b.joined_at).getTime() - new Date(a.joined_at).getTime())
+
+const DOCUMENT_TYPES: DocumentType[] = ['id_card', 'commercial_register', 'certificate']
+
+export const mockProviderDocuments: ProviderDocument[] = mockProviders.flatMap((provider, index) =>
+  DOCUMENT_TYPES.map((type, i) => {
+    const status: DocumentStatus =
+      provider.status === 'pending'
+        ? 'pending'
+        : provider.status === 'rejected' && type === 'commercial_register'
+          ? 'rejected'
+          : 'approved'
+
+    return {
+      id: `doc_${index}_${i}`,
+      provider_id: provider.id,
+      type,
+      file_name: `${type}-${provider.id}.pdf`,
+      status,
+      note: status === 'rejected' ? 'السجل التجاري منتهي الصلاحية.' : '',
+      uploaded_at: provider.joined_at,
+    }
+  }),
+)
+
+const SERVICE_TEMPLATES = [
+  { suffix: 'زيارة معاينة', price: 80, duration: 30 },
+  { suffix: 'خدمة أساسية', price: 220, duration: 90 },
+  { suffix: 'باقة صيانة شاملة', price: 650, duration: 240 },
+]
+
+export const mockProviderServices: ProviderService[] = mockProviders
+  .filter((provider) => provider.status === 'active' || provider.status === 'suspended')
+  .flatMap((provider, index) =>
+    SERVICE_TEMPLATES.map((template, i) => ({
+      id: `psv_${index}_${i}`,
+      provider_id: provider.id,
+      title: `${provider.category} — ${template.suffix}`,
+      price: template.price,
+      duration_minutes: template.duration,
+      active: provider.status === 'active',
+    })),
+  )
+
+const REVIEW_COMMENTS = [
+  'خدمة ممتازة والتزام بالموعد.',
+  'العمل جيد لكن التأخير كان ملحوظاً.',
+  'أنصح به، سعر مناسب وجودة عالية.',
+  'أنهى المهمة بسرعة وترك المكان نظيفاً.',
+  'تعامل محترم وشرح المشكلة بوضوح.',
+]
+
+export const mockProviderReviews: ProviderReview[] = mockProviders
+  .filter((provider) => provider.status === 'active' || provider.status === 'suspended')
+  .flatMap((provider, index) =>
+    Array.from({ length: intBetween(3, 6) }, (_, i) => ({
+      id: `rev_${index}_${i}`,
+      provider_id: provider.id,
+      user_name: `${pick(FIRST_NAMES)} ${pick(LAST_NAMES)}`,
+      // Scatter around the provider's headline rating rather than repeating it.
+      rating: Math.max(1, Math.min(5, Math.round(provider.rating + between(-1.2, 0.6)))),
+      comment: pick(REVIEW_COMMENTS),
+      created_at: isoAt(intBetween(0, 120), intBetween(9, 21)),
+    })),
+  )
 
 export const mockAdmins: AdminAccount[] = [
   {

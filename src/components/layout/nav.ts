@@ -1,5 +1,6 @@
 import {
   Bell,
+  BriefcaseBusiness,
   LayoutDashboard,
   LifeBuoy,
   ScrollText,
@@ -18,6 +19,7 @@ export interface NavItem {
 export const NAV_ITEMS: NavItem[] = [
   { to: '/', label: 'لوحة المعلومات', icon: LayoutDashboard },
   { to: '/users', label: 'المستخدمون', icon: Users },
+  { to: '/providers', label: 'مقدّمو الخدمة', icon: BriefcaseBusiness },
   { to: '/tickets', label: 'البلاغات والدعم', icon: LifeBuoy },
   { to: '/notifications', label: 'الإشعارات', icon: Bell },
   { to: '/versions', label: 'إصدارات التطبيق', icon: Smartphone },

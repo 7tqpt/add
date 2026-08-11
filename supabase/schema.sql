@@ -222,6 +222,80 @@ create index if not exists ticket_messages_ticket_idx
   on public.ticket_messages (ticket_id, created_at);
 
 -- ----------------------------------------------------------------------------
+-- مقدّمو الخدمة
+--
+--   pending  : قدّم طلبه وينتظر مراجعة المستندات
+--   active   : موثّق ويستقبل الطلبات
+--   suspended: كان مفعّلاً ثم أُوقف
+--   rejected : رُفض عند المراجعة ولم يُفعّل قط
+-- ----------------------------------------------------------------------------
+create table if not exists public.service_providers (
+  id                uuid primary key default gen_random_uuid(),
+  full_name         text not null,
+  business_name     text not null default '',
+  email             text not null unique,
+  phone             text not null default '',
+  category          text not null default '',
+  city              text not null default '',
+  status            text not null default 'pending'
+                    check (status in ('pending', 'active', 'suspended', 'rejected')),
+  rating            numeric(2, 1) not null default 0 check (rating between 0 and 5),
+  reviews_count     integer not null default 0 check (reviews_count >= 0),
+  completed_orders  integer not null default 0 check (completed_orders >= 0),
+  total_earnings    numeric(12, 2) not null default 0 check (total_earnings >= 0),
+  commission_percent integer not null default 15
+                    check (commission_percent between 0 and 100),
+  joined_at         timestamptz not null default now(),
+  verified_at       timestamptz
+);
+
+create index if not exists service_providers_status_idx
+  on public.service_providers (status, joined_at desc);
+create index if not exists service_providers_category_idx
+  on public.service_providers (category);
+create index if not exists service_providers_city_idx
+  on public.service_providers (city);
+
+create table if not exists public.provider_documents (
+  id          uuid primary key default gen_random_uuid(),
+  provider_id uuid not null references public.service_providers (id) on delete cascade,
+  type        text not null
+              check (type in ('id_card', 'commercial_register', 'certificate', 'insurance')),
+  file_name   text not null,
+  status      text not null default 'pending'
+              check (status in ('pending', 'approved', 'rejected')),
+  note        text not null default '',
+  uploaded_at timestamptz not null default now()
+);
+
+create index if not exists provider_documents_provider_idx
+  on public.provider_documents (provider_id);
+
+create table if not exists public.provider_services (
+  id               uuid primary key default gen_random_uuid(),
+  provider_id      uuid not null references public.service_providers (id) on delete cascade,
+  title            text not null,
+  price            numeric(12, 2) not null check (price >= 0),
+  duration_minutes integer not null default 60 check (duration_minutes > 0),
+  active           boolean not null default true
+);
+
+create index if not exists provider_services_provider_idx
+  on public.provider_services (provider_id);
+
+create table if not exists public.provider_reviews (
+  id          uuid primary key default gen_random_uuid(),
+  provider_id uuid not null references public.service_providers (id) on delete cascade,
+  user_name   text not null default '',
+  rating      integer not null check (rating between 1 and 5),
+  comment     text not null default '',
+  created_at  timestamptz not null default now()
+);
+
+create index if not exists provider_reviews_provider_idx
+  on public.provider_reviews (provider_id, created_at desc);
+
+-- ----------------------------------------------------------------------------
 -- سجل عمليات المسؤولين — للإلحاق فقط، لا تعديل ولا حذف
 -- ----------------------------------------------------------------------------
 create table if not exists public.audit_log (
@@ -268,6 +342,10 @@ alter table public.push_notifications enable row level security;
 alter table public.app_versions       enable row level security;
 alter table public.support_tickets    enable row level security;
 alter table public.ticket_messages    enable row level security;
+alter table public.service_providers  enable row level security;
+alter table public.provider_documents enable row level security;
+alter table public.provider_services  enable row level security;
+alter table public.provider_reviews   enable row level security;
 alter table public.audit_log          enable row level security;
 alter table public.app_settings       enable row level security;
 
@@ -288,7 +366,8 @@ begin
   foreach t in array array[
     'app_users', 'user_sessions', 'user_devices', 'purchases', 'daily_metrics',
     'push_notifications', 'app_versions', 'support_tickets', 'ticket_messages',
-    'app_settings'
+    'service_providers', 'provider_documents', 'provider_services',
+    'provider_reviews', 'app_settings'
   ] loop
     execute format('drop policy if exists %I_read on public.%I', t, t);
     execute format(

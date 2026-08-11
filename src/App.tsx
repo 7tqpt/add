@@ -7,6 +7,8 @@ import { DashboardPage } from '@/pages/Dashboard'
 import { LoginPage } from '@/pages/Login'
 import { NotFoundPage } from '@/pages/NotFound'
 import { NotificationsPage } from '@/pages/Notifications'
+import { ProviderDetailPage } from '@/pages/ProviderDetail'
+import { ProvidersPage } from '@/pages/Providers'
 import { SettingsPage } from '@/pages/Settings'
 import { TicketsPage } from '@/pages/Tickets'
 import { UserDetailPage } from '@/pages/UserDetail'
@@ -31,6 +33,8 @@ export function App() {
         <Route path="/" element={<DashboardPage />} />
         <Route path="/users" element={<UsersPage />} />
         <Route path="/users/:id" element={<UserDetailPage />} />
+        <Route path="/providers" element={<ProvidersPage />} />
+        <Route path="/providers/:id" element={<ProviderDetailPage />} />
         <Route path="/tickets" element={<TicketsPage />} />
         <Route path="/notifications" element={<NotificationsPage />} />
         <Route path="/versions" element={<VersionsPage />} />

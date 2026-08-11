@@ -8,6 +8,10 @@
 
 begin;
 
+delete from public.provider_reviews;
+delete from public.provider_services;
+delete from public.provider_documents;
+delete from public.service_providers;
 delete from public.ticket_messages;
 delete from public.support_tickets;
 delete from public.purchases;
@@ -154,6 +158,85 @@ select t.id, 'admin', 'support@example.com',
        t.created_at + interval '3 hours'
 from public.support_tickets t
 where t.status <> 'open';
+
+-- ----------------------------------------------------------------------------
+-- مقدّمو الخدمة ومستنداتهم وخدماتهم وتقييماتهم
+-- ----------------------------------------------------------------------------
+insert into public.service_providers
+  (full_name, business_name, email, phone, category, city, status, rating,
+   reviews_count, completed_orders, total_earnings, commission_percent, joined_at, verified_at)
+select
+  (array['سعد','ماجد','فهد','بدر','تركي','ريان','هند','لمياء','غادة','منى'])[1 + (i % 10)]
+    || ' ' ||
+  (array['السبيعي','الغامدي','الرشيد','البقمي','المطيري','الجهني','العنزي','الخالدي'])[1 + (i % 8)],
+  'مؤسسة ' || (array['الإتقان','النخبة','الرواد','البناء','السرعة','الأمانة'])[1 + (i % 6)] || ' للخدمات',
+  'provider' || lpad(i::text, 3, '0') || '@example.com',
+  '+9665' || lpad((20000000 + i * 971)::text, 8, '0'),
+  (array['سباكة','كهرباء','تنظيف','تكييف','نجارة','دهان','نقل أثاث','صيانة أجهزة'])[1 + (i % 8)],
+  (array['الرياض','جدة','الدمام','مكة','المدينة','الخبر','أبها','تبوك'])[1 + (i % 8)],
+  st.status,
+  case when st.status in ('active', 'suspended') then round((3.4 + (i % 16) * 0.1)::numeric, 1) else 0 end,
+  case when st.status in ('active', 'suspended') then 4 + (i * 7) % 120 else 0 end,
+  case when st.status in ('active', 'suspended') then 12 + (i * 13) % 380 else 0 end,
+  case when st.status in ('active', 'suspended') then round((1500 + (i * 811) % 68000)::numeric, 2) else 0 end,
+  (array[10, 12, 15, 15, 18, 20])[1 + (i % 6)],
+  now() - ((i * 6) % 400 || ' days')::interval,
+  case when st.status in ('active', 'suspended')
+       then now() - ((i * 6) % 400 || ' days')::interval + interval '3 days'
+       else null end
+from generate_series(1, 32) as i
+cross join lateral (
+  select case
+    when i % 9 = 0 then 'rejected'
+    when i % 5 = 0 then 'pending'
+    when i % 11 = 0 then 'suspended'
+    else 'active'
+  end as status
+) as st;
+
+insert into public.provider_documents (provider_id, type, file_name, status, note, uploaded_at)
+select p.id,
+       d.type,
+       d.type || '-' || left(p.id::text, 8) || '.pdf',
+       case
+         when p.status = 'pending' then 'pending'
+         when p.status = 'rejected' and d.type = 'commercial_register' then 'rejected'
+         else 'approved'
+       end,
+       case
+         when p.status = 'rejected' and d.type = 'commercial_register'
+         then 'السجل التجاري منتهي الصلاحية.'
+         else ''
+       end,
+       p.joined_at + interval '1 day'
+from public.service_providers p
+cross join lateral (values ('id_card'), ('commercial_register'), ('certificate')) as d(type);
+
+insert into public.provider_services (provider_id, title, price, duration_minutes, active)
+select p.id,
+       p.category || ' — ' || (array['زيارة معاينة','خدمة أساسية','باقة صيانة شاملة'])[s],
+       (array[80, 220, 650])[s],
+       (array[30, 90, 240])[s],
+       p.status = 'active'
+from public.service_providers p
+cross join generate_series(1, 3) as s
+where p.status in ('active', 'suspended');
+
+insert into public.provider_reviews (provider_id, user_name, rating, comment, created_at)
+select p.id,
+       (array['أحمد العتيبي','مريم حسن','خالد الحربي','نورة القحطاني','يوسف صالح'])[1 + (r % 5)],
+       greatest(1, least(5, round(p.rating)::int + (case when r % 4 = 0 then -1 else 0 end))),
+       (array[
+         'خدمة ممتازة والتزام بالموعد.',
+         'العمل جيد لكن التأخير كان ملحوظاً.',
+         'أنصح به، سعر مناسب وجودة عالية.',
+         'أنهى المهمة بسرعة وترك المكان نظيفاً.',
+         'تعامل محترم وشرح المشكلة بوضوح.'
+       ])[1 + (r % 5)],
+       now() - ((r * 9) % 120 || ' days')::interval
+from public.service_providers p
+cross join generate_series(1, 4) as r
+where p.status in ('active', 'suspended');
 
 commit;
 

@@ -1,0 +1,537 @@
+import { useCallback, useEffect, useState, type ReactNode } from 'react'
+import { Link, useParams } from 'react-router-dom'
+import {
+  ArrowRight,
+  BadgeCheck,
+  Ban,
+  Check,
+  FileText,
+  Package,
+  RotateCcw,
+  Wallet,
+  X,
+  XCircle,
+} from 'lucide-react'
+import { StatTile } from '@/components/charts/StatTile'
+import { Badge, type Tone } from '@/components/ui/Badge'
+import { Button } from '@/components/ui/Button'
+import { Card, CardBody, CardHeader } from '@/components/ui/Card'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
+import { EmptyState, ErrorState, LoadingBlock, Toast } from '@/components/ui/Feedback'
+import { Input } from '@/components/ui/Field'
+import { Rating } from '@/components/ui/Rating'
+import { useAuth } from '@/context/AuthContext'
+import { useAsync } from '@/hooks/useAsync'
+import { cn } from '@/lib/cn'
+import { formatDate, formatDuration, formatMoney, formatNumber } from '@/lib/format'
+import type {
+  DocumentStatus,
+  ProviderDocument,
+  ProviderStatus,
+  ServiceProvider,
+} from '@/lib/types'
+import {
+  DOCUMENT_STATUS_LABEL,
+  DOCUMENT_TYPE_LABEL,
+  PROVIDER_STATUS_LABEL,
+  getProvider,
+  getProviderPortfolio,
+  setDocumentStatus,
+  setProviderCommission,
+  setProviderStatus,
+} from '@/services/providers'
+
+const STATUS_TONE: Record<ProviderStatus, Tone> = {
+  active: 'good',
+  pending: 'warning',
+  suspended: 'critical',
+  rejected: 'neutral',
+}
+
+const DOCUMENT_TONE: Record<DocumentStatus, Tone> = {
+  approved: 'good',
+  pending: 'warning',
+  rejected: 'critical',
+}
+
+interface PendingAction {
+  status: ProviderStatus
+  title: string
+  message: string
+  confirmLabel: string
+  tone: 'danger' | 'primary'
+}
+
+export function ProviderDetailPage() {
+  const { id = '' } = useParams()
+  const { canWrite } = useAuth()
+  const [toast, setToast] = useState<string | null>(null)
+  const [pending, setPending] = useState<PendingAction | null>(null)
+  const [busy, setBusy] = useState(false)
+
+  const loadProvider = useCallback(() => getProvider(id), [id])
+  const loadPortfolio = useCallback(() => getProviderPortfolio(id), [id])
+
+  const provider = useAsync(loadProvider, [id])
+  const portfolio = useAsync(loadPortfolio, [id])
+
+  useEffect(() => {
+    if (!toast) return
+    const timer = setTimeout(() => setToast(null), 2600)
+    return () => clearTimeout(timer)
+  }, [toast])
+
+  async function applyStatus(record: ServiceProvider, status: ProviderStatus) {
+    setBusy(true)
+    try {
+      await setProviderStatus(record, status)
+      setToast(`تم تحديث الحالة إلى «${PROVIDER_STATUS_LABEL[status]}».`)
+      provider.reload()
+    } catch (cause) {
+      setToast(cause instanceof Error ? cause.message : 'تعذّر تحديث الحالة.')
+    } finally {
+      setBusy(false)
+      setPending(null)
+    }
+  }
+
+  async function reviewDocument(
+    record: ServiceProvider,
+    document: ProviderDocument,
+    status: DocumentStatus,
+  ) {
+    setBusy(true)
+    try {
+      await setDocumentStatus(
+        record,
+        document,
+        status,
+        status === 'rejected' ? 'المستند غير مقبول — يرجى إعادة الرفع.' : '',
+      )
+      setToast(status === 'approved' ? 'تم قبول المستند.' : 'تم رفض المستند.')
+      portfolio.reload()
+    } catch (cause) {
+      setToast(cause instanceof Error ? cause.message : 'تعذّر تحديث المستند.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  if (provider.loading) return <LoadingBlock />
+  if (provider.error && !provider.data) {
+    return <ErrorState message={provider.error} onRetry={provider.reload} />
+  }
+  if (!provider.data) {
+    return (
+      <Card>
+        <EmptyState
+          title="مقدّم الخدمة غير موجود"
+          description="ربما حُذف الحساب أو أن الرابط غير صحيح."
+          action={
+            <Link
+              to="/providers"
+              className="text-sm font-medium text-series-1 underline underline-offset-4"
+            >
+              العودة إلى القائمة
+            </Link>
+          }
+        />
+      </Card>
+    )
+  }
+
+  const record = provider.data
+  const documents = portfolio.data?.documents ?? []
+  const services = portfolio.data?.services ?? []
+  const reviews = portfolio.data?.reviews ?? []
+  const allApproved = documents.length > 0 && documents.every((doc) => doc.status === 'approved')
+
+  return (
+    <div className="flex flex-col gap-4">
+      <Link
+        to="/providers"
+        className="inline-flex w-fit items-center gap-1.5 text-xs font-medium text-ink-2 hover:text-ink"
+      >
+        {/* Under RTL "back" points toward the start edge, which is the right. */}
+        <ArrowRight size={14} aria-hidden />
+        كل مقدّمي الخدمة
+      </Link>
+
+      <Card>
+        <CardHeader
+          title={record.full_name}
+          subtitle={`${record.business_name} · ${record.category} · ${record.city}`}
+          actions={
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge
+                tone={STATUS_TONE[record.status]}
+                icon={record.status === 'rejected' ? XCircle : true}
+              >
+                {PROVIDER_STATUS_LABEL[record.status]}
+              </Badge>
+
+              {record.status === 'pending' ? (
+                <>
+                  <Button
+                    size="sm"
+                    variant="primary"
+                    disabled={busy || !canWrite || !allApproved}
+                    title={
+                      !canWrite
+                        ? 'دورك الحالي للقراءة فقط'
+                        : allApproved
+                          ? undefined
+                          : 'راجع كل المستندات واقبلها قبل التوثيق'
+                    }
+                    onClick={() =>
+                      setPending({
+                        status: 'active',
+                        title: 'توثيق مقدّم الخدمة؟',
+                        message: `سيصبح ${record.business_name || record.full_name} قادراً على استقبال الطلبات فوراً. سيُسجَّل هذا الإجراء باسمك في سجل العمليات.`,
+                        confirmLabel: 'توثيق وتفعيل',
+                        tone: 'primary',
+                      })
+                    }
+                  >
+                    <BadgeCheck size={14} aria-hidden />
+                    توثيق
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    disabled={busy || !canWrite}
+                    title={canWrite ? undefined : 'دورك الحالي للقراءة فقط'}
+                    onClick={() =>
+                      setPending({
+                        status: 'rejected',
+                        title: 'رفض الطلب؟',
+                        message: `سيُرفض طلب ${record.business_name || record.full_name} ولن يتمكن من استقبال الطلبات. يمكنك إعادته للمراجعة لاحقاً.`,
+                        confirmLabel: 'رفض الطلب',
+                        tone: 'danger',
+                      })
+                    }
+                  >
+                    <X size={14} aria-hidden />
+                    رفض
+                  </Button>
+                </>
+              ) : null}
+
+              {record.status === 'active' ? (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  disabled={busy || !canWrite}
+                  title={canWrite ? undefined : 'دورك الحالي للقراءة فقط'}
+                  onClick={() =>
+                    setPending({
+                      status: 'suspended',
+                      title: 'إيقاف مقدّم الخدمة؟',
+                      message: `سيتوقف ${record.business_name || record.full_name} عن استقبال أي طلبات جديدة فوراً. الطلبات الجارية لا تتأثر.`,
+                      confirmLabel: 'إيقاف',
+                      tone: 'danger',
+                    })
+                  }
+                >
+                  <Ban size={14} aria-hidden />
+                  إيقاف
+                </Button>
+              ) : null}
+
+              {record.status === 'suspended' || record.status === 'rejected' ? (
+                <Button
+                  size="sm"
+                  disabled={busy || !canWrite}
+                  title={canWrite ? undefined : 'دورك الحالي للقراءة فقط'}
+                  onClick={() =>
+                    applyStatus(record, record.status === 'suspended' ? 'active' : 'pending')
+                  }
+                >
+                  <RotateCcw size={14} aria-hidden />
+                  {record.status === 'suspended' ? 'إعادة التفعيل' : 'إعادة للمراجعة'}
+                </Button>
+              ) : null}
+            </div>
+          }
+        />
+        <CardBody>
+          <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-xs sm:grid-cols-3 lg:grid-cols-5">
+            <Detail label="البريد" value={record.email} ltr />
+            <Detail label="الجوال" value={record.phone} ltr />
+            <Detail label="التقييم" node={<Rating value={record.rating} count={record.reviews_count} />} />
+            <Detail label="تاريخ الانضمام" value={formatDate(record.joined_at)} />
+            <Detail
+              label="تاريخ التوثيق"
+              value={record.verified_at ? formatDate(record.verified_at) : '—'}
+            />
+          </dl>
+        </CardBody>
+      </Card>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <StatTile
+          label="الطلبات المكتملة"
+          value={formatNumber(record.completed_orders)}
+          icon={Package}
+          refetching={provider.refetching}
+        />
+        <StatTile
+          label="إجمالي الأرباح"
+          value={formatMoney(record.total_earnings)}
+          icon={Wallet}
+          refetching={provider.refetching}
+        />
+        <CommissionCard record={record} onDone={setToast} onSaved={provider.reload} />
+      </div>
+
+      {portfolio.loading ? (
+        <Card>
+          <LoadingBlock />
+        </Card>
+      ) : portfolio.error && !portfolio.data ? (
+        <Card>
+          <ErrorState message={portfolio.error} onRetry={portfolio.reload} />
+        </Card>
+      ) : (
+        <>
+          <Card className={cn(portfolio.refetching && 'is-refetching')}>
+            <CardHeader
+              title="مستندات التوثيق"
+              subtitle={
+                allApproved
+                  ? 'كل المستندات مقبولة'
+                  : `${formatNumber(documents.filter((doc) => doc.status !== 'approved').length)} مستند بحاجة إلى مراجعة`
+              }
+            />
+            {documents.length === 0 ? (
+              <EmptyState title="لم تُرفع أي مستندات" />
+            ) : (
+              <ul className="divide-y divide-[var(--border)]">
+                {documents.map((document) => (
+                  <li
+                    key={document.id}
+                    className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-5"
+                  >
+                    <div className="flex min-w-0 items-center gap-3">
+                      <FileText size={16} aria-hidden className="shrink-0 text-muted" />
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-ink">
+                          {DOCUMENT_TYPE_LABEL[document.type] ?? document.type}
+                        </p>
+                        <p dir="ltr" className="truncate text-start text-[11px] text-muted">
+                          {document.file_name}
+                        </p>
+                        {document.note ? (
+                          <p className="mt-0.5 text-[11px] text-[var(--critical)]">{document.note}</p>
+                        ) : null}
+                      </div>
+                    </div>
+
+                    <div className="flex shrink-0 items-center gap-2">
+                      <Badge tone={DOCUMENT_TONE[document.status]}>
+                        {DOCUMENT_STATUS_LABEL[document.status]}
+                      </Badge>
+                      {document.status !== 'approved' ? (
+                        <Button
+                          size="sm"
+                          disabled={busy || !canWrite}
+                          title={canWrite ? undefined : 'دورك الحالي للقراءة فقط'}
+                          onClick={() => reviewDocument(record, document, 'approved')}
+                        >
+                          <Check size={14} aria-hidden />
+                          قبول
+                        </Button>
+                      ) : null}
+                      {document.status !== 'rejected' ? (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          disabled={busy || !canWrite}
+                          title={canWrite ? undefined : 'دورك الحالي للقراءة فقط'}
+                          onClick={() => reviewDocument(record, document, 'rejected')}
+                        >
+                          <X size={14} aria-hidden />
+                          رفض
+                        </Button>
+                      ) : null}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
+
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+            <Card className="overflow-hidden">
+              <CardHeader title="الخدمات المعروضة" subtitle={`${formatNumber(services.length)} خدمة`} />
+              {services.length === 0 ? (
+                <EmptyState title="لا توجد خدمات معروضة" />
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse text-xs">
+                    <thead>
+                      <tr className="bg-surface-2">
+                        {['الخدمة', 'السعر', 'المدة', 'الحالة'].map((heading) => (
+                          <th
+                            key={heading}
+                            scope="col"
+                            className="border-b border-hairline px-4 py-2 text-start font-medium whitespace-nowrap text-ink-2"
+                          >
+                            {heading}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {services.map((service) => (
+                        <tr key={service.id} className="border-b border-hairline last:border-0">
+                          <td className="px-4 py-2.5 text-ink">{service.title}</td>
+                          <td className="tnum px-4 py-2.5 whitespace-nowrap text-ink-2">
+                            {formatMoney(service.price)}
+                          </td>
+                          <td className="tnum px-4 py-2.5 whitespace-nowrap text-ink-2">
+                            {formatDuration(service.duration_minutes * 60)}
+                          </td>
+                          <td className="px-4 py-2.5">
+                            <Badge tone={service.active ? 'good' : 'neutral'}>
+                              {service.active ? 'معروضة' : 'مخفية'}
+                            </Badge>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </Card>
+
+            <Card>
+              <CardHeader
+                title="تقييمات العملاء"
+                subtitle={`${formatNumber(reviews.length)} تقييم`}
+              />
+              {reviews.length === 0 ? (
+                <EmptyState title="لا توجد تقييمات بعد" />
+              ) : (
+                <ul className="max-h-96 divide-y divide-[var(--border)] overflow-auto">
+                  {reviews.map((review) => (
+                    <li key={review.id} className="flex flex-col gap-1.5 px-4 py-3 sm:px-5">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <p className="text-sm font-medium text-ink">{review.user_name}</p>
+                        <Rating value={review.rating} />
+                      </div>
+                      <p className="text-xs leading-6 text-ink-2">{review.comment}</p>
+                      <p className="tnum text-[11px] text-muted">{formatDate(review.created_at)}</p>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Card>
+          </div>
+        </>
+      )}
+
+      <ConfirmDialog
+        open={pending !== null}
+        title={pending?.title ?? ''}
+        message={pending?.message ?? ''}
+        confirmLabel={pending?.confirmLabel}
+        tone={pending?.tone}
+        busy={busy}
+        onConfirm={() => pending && applyStatus(record, pending.status)}
+        onCancel={() => setPending(null)}
+      />
+
+      {toast ? <Toast message={toast} /> : null}
+    </div>
+  )
+}
+
+function CommissionCard({
+  record,
+  onDone,
+  onSaved,
+}: {
+  record: ServiceProvider
+  onDone: (message: string) => void
+  onSaved: () => void
+}) {
+  const { canWrite } = useAuth()
+  const [value, setValue] = useState(String(record.commission_percent))
+  const [busy, setBusy] = useState(false)
+
+  useEffect(() => {
+    setValue(String(record.commission_percent))
+  }, [record.commission_percent])
+
+  const parsed = Number(value)
+  const valid = Number.isFinite(parsed) && parsed >= 0 && parsed <= 100
+  const changed = valid && parsed !== record.commission_percent
+
+  async function save() {
+    if (!changed) return
+    setBusy(true)
+    try {
+      await setProviderCommission(record, parsed)
+      onDone('تم تحديث نسبة العمولة.')
+      onSaved()
+    } catch (cause) {
+      onDone(cause instanceof Error ? cause.message : 'تعذّر حفظ العمولة.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Card className="p-4 sm:p-5">
+      <p className="text-xs font-medium text-ink-2">نسبة عمولة المنصة</p>
+      <div className="mt-2 flex items-center gap-2">
+        <div className="w-24">
+          <Input
+            type="number"
+            min={0}
+            max={100}
+            value={value}
+            disabled={busy || !canWrite}
+            aria-label="نسبة العمولة بالمئة"
+            title={canWrite ? undefined : 'دورك الحالي للقراءة فقط'}
+            onChange={(event) => setValue(event.target.value)}
+          />
+        </div>
+        <span className="text-sm text-ink-2">%</span>
+        <Button size="sm" variant="primary" disabled={!changed || busy || !canWrite} onClick={save}>
+          حفظ
+        </Button>
+      </div>
+      {!valid ? (
+        <p className="mt-2 text-xs text-[var(--critical)]">أدخل رقماً بين 0 و 100.</p>
+      ) : (
+        <p className="mt-2 text-xs text-muted">تُخصم من كل طلب يُنفّذه مقدّم الخدمة.</p>
+      )}
+    </Card>
+  )
+}
+
+function Detail({
+  label,
+  value,
+  node,
+  ltr,
+}: {
+  label: string
+  value?: string
+  node?: ReactNode
+  ltr?: boolean
+}) {
+  return (
+    <div className="min-w-0">
+      <dt className="text-muted">{label}</dt>
+      <dd
+        dir={ltr ? 'ltr' : undefined}
+        className={`mt-0.5 truncate font-medium text-ink ${ltr ? 'text-start' : ''}`}
+      >
+        {node ?? value}
+      </dd>
+    </div>
+  )
+}

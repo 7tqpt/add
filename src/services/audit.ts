@@ -136,6 +136,7 @@ export const AUDIT_ENTITY_LABEL: Record<string, string> = {
   settings: 'إعدادات',
   ticket: 'بلاغ',
   admin: 'مسؤول',
+  provider: 'مقدّم خدمة',
 }
 
 export const AUDIT_ACTION_LABEL: Record<string, string> = {
@@ -150,4 +151,10 @@ export const AUDIT_ACTION_LABEL: Record<string, string> = {
   'ticket.priority': 'تغيير أولوية بلاغ',
   'ticket.reply': 'الرد على بلاغ',
   'admin.role': 'تغيير دور مسؤول',
+  'provider.active': 'توثيق مقدّم خدمة',
+  'provider.rejected': 'رفض مقدّم خدمة',
+  'provider.suspended': 'إيقاف مقدّم خدمة',
+  'provider.pending': 'إعادة مقدّم خدمة للمراجعة',
+  'provider.commission': 'تغيير نسبة العمولة',
+  'provider.document': 'مراجعة مستند',
 }
