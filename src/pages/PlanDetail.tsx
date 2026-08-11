@@ -39,7 +39,7 @@ export function PlanDetailPage() {
           action={
             <Link
               to="/plans"
-              className="text-sm font-medium text-series-1 underline underline-offset-4"
+              className="text-sm font-medium text-accent underline underline-offset-4"
             >
               العودة إلى الخطط
             </Link>
@@ -72,7 +72,7 @@ export function PlanDetailPage() {
           subtitle={
             <Link
               to={`/users/${record.user_id}`}
-              className="underline-offset-4 hover:text-series-1 hover:underline"
+              className="underline-offset-4 hover:text-accent hover:underline"
             >
               {record.user_name}
             </Link>
@@ -176,7 +176,7 @@ export function PlanDetailPage() {
                     <td className="px-4 py-2.5">
                       <Link
                         to={`/bookings/${booking.id}`}
-                        className="font-medium text-ink underline-offset-4 hover:text-series-1 hover:underline"
+                        className="font-medium text-ink underline-offset-4 hover:text-accent hover:underline"
                       >
                         {booking.service_title}
                       </Link>
@@ -185,7 +185,7 @@ export function PlanDetailPage() {
                     <td className="px-4 py-2.5 whitespace-nowrap text-ink-2">
                       <Link
                         to={`/providers/${booking.provider_id}`}
-                        className="underline-offset-4 hover:text-series-1 hover:underline"
+                        className="underline-offset-4 hover:text-accent hover:underline"
                       >
                         {booking.provider_name}
                       </Link>

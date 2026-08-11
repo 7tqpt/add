@@ -27,7 +27,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
       >
         <div className="flex h-16 shrink-0 items-center justify-between gap-2 border-b border-hairline px-4">
           <div className="flex items-center gap-2.5">
-            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-series-1 text-white">
+            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent text-accent-ink">
               <Smartphone size={18} aria-hidden />
             </span>
             <div className="leading-tight">
@@ -74,7 +74,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
                           <item.icon
                             size={17}
                             aria-hidden
-                            className={isActive ? 'text-series-1' : 'text-muted'}
+                            className={isActive ? 'text-accent' : 'text-muted'}
                           />
                           {item.label}
                         </>

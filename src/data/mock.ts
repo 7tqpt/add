@@ -285,8 +285,27 @@ export const mockUserDevices: UserDevice[] = mockUsers
 
 const PROVIDER_FIRST = ['سعد', 'ماجد', 'فهد', 'بدر', 'ريان', 'هند', 'لمياء', 'غادة', 'منى', 'وليد']
 const PROVIDER_LAST = ['باعوم', 'الحبيشي', 'الرداعي', 'السقاف', 'الجنيد', 'المخلافي', 'بن شملان']
-const BUSINESS_PREFIX = ['قاعة', 'مؤسسة', 'استوديو', 'مركز', 'معرض', 'فرقة']
 const BUSINESS_NAME = ['اللؤلؤة', 'الأصالة', 'النخبة', 'الياسمين', 'بلقيس', 'السعادة', 'الفردوس', 'التاج']
+
+/**
+ * صدر الاسم التجاري تابع لقسم مقدّم الخدمة.
+ *
+ * «قاعة التاج» التي تبيع خدمات طباعة تبدو بياناتٍ مولَّدة لا سوقاً حقيقية،
+ * ويُفقد الثقة بالشاشة كلها قبل أن يُقرأ رقم واحد فيها.
+ */
+const PREFIX_BY_CATEGORY: Record<string, string> = {
+  halls: 'قاعة',
+  photography: 'استوديو',
+  attire: 'معرض',
+  beauty: 'صالون',
+  artists: 'فرقة',
+  sound: 'مركز',
+  cars: 'معرض',
+  planners: 'مؤسسة',
+  printing: 'مطبعة',
+  support: 'مؤسسة',
+  decor: 'مركز',
+}
 
 function providerStatus(i: number): ProviderStatus {
   if (i % 12 === 0) return 'rejected'
@@ -306,7 +325,7 @@ export const mockProviders: ServiceProvider[] = Array.from({ length: 44 }, (_, i
   return {
     id: `prv_${i}`,
     full_name: `${pick(PROVIDER_FIRST)} ${pick(PROVIDER_LAST)}`,
-    business_name: `${pick(BUSINESS_PREFIX)} ${pick(BUSINESS_NAME)}`,
+    business_name: `${PREFIX_BY_CATEGORY[category.slug] ?? 'مؤسسة'} ${pick(BUSINESS_NAME)}`,
     email: `provider${i.toString().padStart(3, '0')}@example.com`,
     phone: `+9677${intBetween(70_000_000, 79_999_999)}`,
     bio: `خبرة تتجاوز ${intBetween(3, 15)} سنوات في تجهيز الأعراس.`,
@@ -392,6 +411,17 @@ export const mockServices: ProviderService[] = mockProviders
 
 const bookableServices = mockServices.filter((s) => s.is_active)
 
+/**
+ * الخدمات المتاحة مجمَّعة حسب القسم.
+ *
+ * العرس يحجز قاعة ومصوّراً وفرقة — لا ثلاث باقات من القاعة نفسها. الاختيار من
+ * أقسام مختلفة هو ما يجعل تضارب المواعيد، حين يقع، تضارباً حقيقياً بين عرسين
+ * على مقدّم الخدمة نفسه لا مجرّد باقات متجاورة لعرس واحد.
+ */
+const servicesByCategory = [...new Set(bookableServices.map((s) => s.category_name))].map(
+  (name) => bookableServices.filter((s) => s.category_name === name),
+)
+
 interface PlanDraft extends Omit<WeddingPlan, 'services_count' | 'total_cost' | 'paid_amount' | 'remaining_amount'> {}
 
 const planDrafts: PlanDraft[] = mockUsers
@@ -438,11 +468,13 @@ const DISTRICTS = ['السنينة', 'حدة', 'الصافية', 'المعلا',
 
 let bookingSeq = 0
 
-export const mockBookings: Booking[] = planDrafts.flatMap((plan, planIndex) => {
+const planBookings: Booking[] = planDrafts.flatMap((plan, planIndex) => {
   const planPast = new Date(plan.wedding_date) < new Date()
 
   return Array.from({ length: intBetween(1, 4) }, (_, n) => {
-    const service = bookableServices[(planIndex * 3 + n) % bookableServices.length]
+    // قسم مختلف لكل خدمة في العرس الواحد، وباقة واحدة من داخله.
+    const pool = servicesByCategory[(planIndex + n) % servicesByCategory.length]
+    const service = pool[(planIndex * 7 + n * 3) % pool.length]
     const provider = mockProviders.find((p) => p.id === service.provider_id)!
     const status = bookingStatusFor(planPast, planIndex + n)
     const settled = status === 'confirmed' || status === 'completed'
@@ -505,6 +537,75 @@ export const mockBookings: Booking[] = planDrafts.flatMap((plan, planIndex) => {
     }
   })
 })
+
+/**
+ * طلبات مزدوجة على مقدّم الخدمة نفسه.
+ *
+ * القاعة المطلوبة يطلبها عرسان في الليلة ذاتها: الأول مؤكد والثاني ما زال
+ * ينتظر الرد. هذه هي الحالة التي يوجد «مراقب تضارب المواعيد» من أجلها، ولا
+ * تُولّدها التوزيعة العشوائية وحدها، فتُضاف صراحةً.
+ */
+const doubleRequests: Booking[] = planDrafts
+  .filter((plan) => new Date(plan.wedding_date) > new Date() && plan.status !== 'cancelled')
+  // أقرب الأعراس أولاً، فالتضارب المعروض يقع ضمن ما يراه المسؤول الآن لا بعد أشهر.
+  .sort((a, b) => a.wedding_date.localeCompare(b.wedding_date))
+  .slice(0, 3)
+  .flatMap((plan, i) => {
+    // مورد مختلف لكل حالة، وإلا بدت الشاشة وكأنها تكرّر التنبيه نفسه ثلاثاً.
+    const candidates = planBookings.filter(
+      (booking) =>
+        booking.status === 'confirmed' &&
+        booking.event_date !== plan.wedding_date &&
+        booking.plan_id !== plan.id,
+    )
+    const taken = candidates[(i * 11) % Math.max(1, candidates.length)]
+    if (!taken) return []
+
+    bookingSeq += 1
+    return [
+      {
+        ...taken,
+        id: `bkg_${bookingSeq}`,
+        reference: `BK-2026-${bookingSeq.toString().padStart(6, '0')}`,
+        user_id: plan.user_id,
+        user_name: plan.user_name,
+        plan_id: plan.id,
+        // نفس مقدّم الخدمة ونفس الساعة، في يوم عرس هذا العميل.
+        event_date: plan.wedding_date,
+        event_time: taken.event_time,
+        governorate: plan.governorate,
+        guests_count: plan.guests_count,
+        status: 'pending_provider' as const,
+        paid_amount: taken.deposit_amount,
+        refunded_amount: 0,
+        commission_amount: 0,
+        confirmed_at: null,
+        completed_at: null,
+        cancelled_at: null,
+        created_at: isoAt(intBetween(1, 12), 10 + i),
+      },
+    ]
+  })
+
+/** الحجز الآخر في اليوم نفسه لدى المزوّد نفسه — يصنع التضارب المعروض. */
+const contested: Booking[] = doubleRequests.map((request) => {
+  bookingSeq += 1
+  const host = planDrafts.find((plan) => plan.wedding_date === request.event_date)
+  return {
+    ...request,
+    id: `bkg_${bookingSeq}`,
+    reference: `BK-2026-${bookingSeq.toString().padStart(6, '0')}`,
+    user_id: host?.user_id ?? request.user_id,
+    user_name: host?.user_name ?? request.user_name,
+    plan_id: host?.id ?? null,
+    status: 'confirmed' as const,
+    paid_amount: request.total_price,
+    commission_amount: Math.round((request.total_price * request.commission_percent) / 100),
+    confirmed_at: isoAt(intBetween(14, 40), 12),
+  }
+})
+
+export const mockBookings: Booking[] = [...planBookings, ...doubleRequests, ...contested]
 
 /** المجاميع تُحسب من الحجوزات، لا تُخزَّن — فلا تتباعد الأرقام أبداً. */
 export const mockPlans: WeddingPlan[] = planDrafts.map((plan) => {

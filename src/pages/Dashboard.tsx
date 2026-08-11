@@ -14,6 +14,9 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { BarChart } from '@/components/charts/BarChart'
+import { ConflictCalendar } from '@/components/dashboard/ConflictCalendar'
+import { PaymentsFeed } from '@/components/dashboard/PaymentsFeed'
+import { ProviderQueue } from '@/components/dashboard/ProviderQueue'
 import { ChartCard } from '@/components/charts/ChartCard'
 import { SERIES_COLORS } from '@/components/charts/chart-utils'
 import { StatTile } from '@/components/charts/StatTile'
@@ -156,25 +159,14 @@ export function DashboardPage() {
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
         <div className="xl:col-span-2">
-          <ChartCard
-            title="الحجوزات اليومية"
-            subtitle="الحجوزات القائمة والمنفّذة — المحور الأفقي يبدأ من الأقدم على اليمين"
-            refetching={refetching}
-            table={{
-              columns: ['التاريخ', 'الحجوزات'],
-              rows: [...data.bookingsByDay]
-                .reverse()
-                .map((point) => [formatDate(point.date), formatNumber(point.value)]),
-            }}
-          >
-            <TimeSeriesChart
-              points={bookingPoints}
-              series={[{ label: 'الحجوزات', color: SERIES_COLORS[0] }]}
-              fill
-              formatValue={formatNumber}
-              formatTick={formatCompact}
-            />
-          </ChartCard>
+          <ProviderQueue />
+        </div>
+        <PaymentsFeed />
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
+        <div className="xl:col-span-2">
+          <ConflictCalendar />
         </div>
 
         <Card>
@@ -192,7 +184,7 @@ export function DashboardPage() {
                     <entry.icon
                       size={16}
                       aria-hidden
-                      className={count > 0 ? 'text-series-1' : 'text-muted'}
+                      className={count > 0 ? 'text-accent' : 'text-muted'}
                     />
                     <span className="truncate text-xs text-ink-2">{entry.label}</span>
                   </span>
@@ -215,6 +207,26 @@ export function DashboardPage() {
           </CardBody>
         </Card>
       </div>
+
+      <ChartCard
+        title="الحجوزات اليومية"
+        subtitle="الحجوزات القائمة والمنفّذة — المحور الأفقي يبدأ من الأقدم على اليمين"
+        refetching={refetching}
+        table={{
+          columns: ['التاريخ', 'الحجوزات'],
+          rows: [...data.bookingsByDay]
+            .reverse()
+            .map((point) => [formatDate(point.date), formatNumber(point.value)]),
+        }}
+      >
+        <TimeSeriesChart
+          points={bookingPoints}
+          series={[{ label: 'الحجوزات', color: SERIES_COLORS[0] }]}
+          fill
+          formatValue={formatNumber}
+          formatTick={formatCompact}
+        />
+      </ChartCard>
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
         <Card>

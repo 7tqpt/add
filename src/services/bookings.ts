@@ -112,6 +112,120 @@ export function refundableNow(booking: Booking): number {
   return Math.round((booking.paid_amount * (rule?.refund_percent ?? 0)) / 100)
 }
 
+// ---------------------------------------------------------------------------
+// تضارب المواعيد
+// ---------------------------------------------------------------------------
+
+/** حجزان أو أكثر على مقدّم الخدمة نفسه في وقت متداخل. */
+export interface Conflict {
+  provider_id: string
+  provider_name: string
+  event_date: string
+  bookings: Booking[]
+}
+
+/** A booking that still needs the slot: cancelled ones free it again. */
+const holdsSlot = (booking: Booking) =>
+  booking.status === 'pending_provider' || booking.status === 'confirmed'
+
+/** Minutes from midnight; a missing time is treated as the whole evening. */
+function startMinutes(booking: Booking): number | null {
+  if (!booking.event_time) return null
+  const [h, m] = booking.event_time.split(':').map(Number)
+  return Number.isNaN(h) ? null : h * 60 + (m || 0)
+}
+
+/**
+ * Two bookings clash when the same provider is due at both, on the same day,
+ * within `windowHours` of each other — a wedding is not a slot you can leave
+ * halfway through, so near-simultaneous is as bad as identical.
+ *
+ * A booking with no stated time is assumed to occupy the day, because a
+ * provider cannot be in two places without one.
+ */
+export function findConflicts(bookings: Booking[], windowHours = 4): Conflict[] {
+  const byKey = new Map<string, Booking[]>()
+  for (const booking of bookings) {
+    if (!holdsSlot(booking)) continue
+    const key = `${booking.provider_id}|${booking.event_date}`
+    byKey.set(key, [...(byKey.get(key) ?? []), booking])
+  }
+
+  const conflicts: Conflict[] = []
+  for (const group of byKey.values()) {
+    if (group.length < 2) continue
+
+    const clashing = group.filter((booking) =>
+      group.some((other) => {
+        if (other.id === booking.id) return false
+        const a = startMinutes(booking)
+        const b = startMinutes(other)
+        if (a === null || b === null) return true
+        return Math.abs(a - b) < windowHours * 60
+      }),
+    )
+    if (clashing.length < 2) continue
+
+    conflicts.push({
+      provider_id: clashing[0].provider_id,
+      provider_name: clashing[0].provider_name,
+      event_date: clashing[0].event_date,
+      bookings: clashing.sort((a, b) => (a.event_time ?? '').localeCompare(b.event_time ?? '')),
+    })
+  }
+
+  return conflicts.sort((a, b) => a.event_date.localeCompare(b.event_date))
+}
+
+export interface CalendarDay {
+  date: string
+  bookings: Booking[]
+  conflicts: Conflict[]
+}
+
+/** الحجوزات القادمة موزّعة على أيامها، مع تعليم أيام التضارب. */
+export async function getCalendar(days = 60): Promise<CalendarDay[]> {
+  const today = new Date().toISOString().slice(0, 10)
+  const until = new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10)
+
+  let upcoming: Booking[]
+  if (!isSupabaseConfigured) {
+    upcoming = demoBookings.filter(
+      (booking) => booking.event_date >= today && booking.event_date <= until,
+    )
+  } else {
+    const { data, error } = await requireSupabase()
+      .from('bookings')
+      .select('*')
+      .gte('event_date', today)
+      .lte('event_date', until)
+      .order('event_date', { ascending: true })
+    if (error) throw error
+    upcoming = (data ?? []) as Booking[]
+  }
+
+  const live = upcoming.filter(holdsSlot)
+  const conflicts = findConflicts(live)
+
+  const byDate = new Map<string, CalendarDay>()
+  for (const booking of live) {
+    const day = byDate.get(booking.event_date) ?? {
+      date: booking.event_date,
+      bookings: [],
+      conflicts: [],
+    }
+    day.bookings.push(booking)
+    byDate.set(booking.event_date, day)
+  }
+  for (const conflict of conflicts) {
+    const day = byDate.get(conflict.event_date)
+    if (day) day.conflicts.push(conflict)
+  }
+
+  const result = [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date))
+  return isSupabaseConfigured ? result : delay(result)
+}
+
 /**
  * Admin intervention on a booking. The customer and provider drive the normal
  * path from the apps; the dashboard steps in when something is stuck or

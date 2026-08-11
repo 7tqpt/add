@@ -203,7 +203,7 @@ export function UsersPage() {
                     <td className="px-4 py-3">
                       <Link
                         to={`/users/${user.id}`}
-                        className="font-medium text-ink underline-offset-4 hover:text-series-1 hover:underline"
+                        className="font-medium text-ink underline-offset-4 hover:text-accent hover:underline"
                       >
                         {user.full_name}
                       </Link>

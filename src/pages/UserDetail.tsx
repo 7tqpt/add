@@ -93,7 +93,7 @@ export function UserDetailPage() {
           title="العميل غير موجود"
           description="ربما حُذف الحساب أو أن الرابط غير صحيح."
           action={
-            <Link to="/users" className="text-sm font-medium text-series-1 underline underline-offset-4">
+            <Link to="/users" className="text-sm font-medium text-accent underline underline-offset-4">
               العودة إلى قائمة العملاء
             </Link>
           }
@@ -290,7 +290,7 @@ export function UserDetailPage() {
               actions={
                 <Link
                   to="/payments"
-                  className="text-xs font-medium text-series-1 underline underline-offset-4"
+                  className="text-xs font-medium text-accent underline underline-offset-4"
                 >
                   السجل الكامل
                 </Link>

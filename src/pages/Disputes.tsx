@@ -191,7 +191,7 @@ export function DisputesPage() {
                     <td className="px-4 py-3">
                       <Link
                         to={`/disputes/${dispute.id}`}
-                        className="text-xs font-medium text-ink underline-offset-4 hover:text-series-1 hover:underline"
+                        className="text-xs font-medium text-ink underline-offset-4 hover:text-accent hover:underline"
                       >
                         {dispute.subject}
                       </Link>

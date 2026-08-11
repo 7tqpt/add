@@ -3,6 +3,7 @@ import { LogOut, Menu, Moon, Sun } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { useTheme } from '@/context/ThemeContext'
 import { Button } from '@/components/ui/Button'
+import { GlobalSearch } from './GlobalSearch'
 
 export function Topbar({ title, onOpenMenu }: { title: string; onOpenMenu: () => void }) {
   const { user, signOut } = useAuth()
@@ -31,6 +32,8 @@ export function Topbar({ title, onOpenMenu }: { title: string; onOpenMenu: () =>
         </button>
         <h1 className="truncate text-base font-semibold text-ink">{title}</h1>
       </div>
+
+      <GlobalSearch />
 
       <div className="flex shrink-0 items-center gap-1.5">
         <button

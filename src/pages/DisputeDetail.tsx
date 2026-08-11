@@ -68,7 +68,7 @@ export function DisputeDetailPage() {
           action={
             <Link
               to="/disputes"
-              className="text-sm font-medium text-series-1 underline underline-offset-4"
+              className="text-sm font-medium text-accent underline underline-offset-4"
             >
               العودة إلى النزاعات
             </Link>
@@ -164,7 +164,7 @@ export function DisputeDetailPage() {
                 <Link
                   to={`/bookings/${record.booking_id}`}
                   dir="ltr"
-                  className="tnum block text-start underline-offset-4 hover:text-series-1 hover:underline"
+                  className="tnum block text-start underline-offset-4 hover:text-accent hover:underline"
                 >
                   {record.booking_reference}
                 </Link>
@@ -175,7 +175,7 @@ export function DisputeDetailPage() {
               node={
                 <Link
                   to={`/users/${record.user_id}`}
-                  className="underline-offset-4 hover:text-series-1 hover:underline"
+                  className="underline-offset-4 hover:text-accent hover:underline"
                 >
                   {record.user_name}
                 </Link>
@@ -186,7 +186,7 @@ export function DisputeDetailPage() {
               node={
                 <Link
                   to={`/providers/${record.provider_id}`}
-                  className="underline-offset-4 hover:text-series-1 hover:underline"
+                  className="underline-offset-4 hover:text-accent hover:underline"
                 >
                   {record.provider_name}
                 </Link>

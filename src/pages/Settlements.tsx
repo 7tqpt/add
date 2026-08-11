@@ -209,7 +209,7 @@ export function SettlementsPage() {
                       <td className="px-4 py-3">
                         <Link
                           to={`/providers/${row.provider_id}`}
-                          className="text-xs font-medium text-ink underline-offset-4 hover:text-series-1 hover:underline"
+                          className="text-xs font-medium text-ink underline-offset-4 hover:text-accent hover:underline"
                         >
                           {row.provider_name}
                         </Link>

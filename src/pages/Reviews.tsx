@@ -147,7 +147,7 @@ export function ReviewsPage() {
                       {review.user_name} ←{' '}
                       <Link
                         to={`/providers/${review.provider_id}`}
-                        className="font-medium text-ink underline-offset-4 hover:text-series-1 hover:underline"
+                        className="font-medium text-ink underline-offset-4 hover:text-accent hover:underline"
                       >
                         {review.provider_name}
                       </Link>
@@ -161,7 +161,7 @@ export function ReviewsPage() {
                     <Link
                       to={`/bookings/${review.booking_id}`}
                       dir="ltr"
-                      className="tnum text-[11px] text-muted underline-offset-4 hover:text-series-1 hover:underline"
+                      className="tnum text-[11px] text-muted underline-offset-4 hover:text-accent hover:underline"
                     >
                       {review.booking_reference}
                     </Link>

@@ -140,7 +140,7 @@ export function ProviderDetailPage() {
           action={
             <Link
               to="/providers"
-              className="text-sm font-medium text-series-1 underline underline-offset-4"
+              className="text-sm font-medium text-accent underline underline-offset-4"
             >
               العودة إلى القائمة
             </Link>
@@ -437,7 +437,7 @@ export function ProviderDetailPage() {
                 actions={
                   <Link
                     to="/reviews"
-                    className="text-xs font-medium text-series-1 underline underline-offset-4"
+                    className="text-xs font-medium text-accent underline underline-offset-4"
                   >
                     كل التقييمات
                   </Link>

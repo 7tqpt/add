@@ -20,7 +20,14 @@
   --grid: #e1e0d9;
   --axis: #c3c2b7;
   --border: rgba(11, 11, 11, 0.1);
-  --ring: rgba(42, 120, 214, 0.35);
+  --ring: rgba(154, 106, 0, 0.35);
+
+  /* Brand accent for chrome — buttons, active nav, links. Deliberately not a
+     series colour: the data palette is validated for categorical separation and
+     must not shift when the brand does.
+     #9a6a00 → 4.73:1 with white text, 4.61:1 on --surface. */
+  --accent: #9a6a00;
+  --accent-ink: #ffffff;
 
   /* categorical series — validated (light, surface #fcfcfb, --pairs all) */
   --series-1: #2a78d6;
@@ -55,7 +62,12 @@
   --grid: #2c2c2a;
   --axis: #383835;
   --border: rgba(255, 255, 255, 0.1);
-  --ring: rgba(57, 135, 229, 0.45);
+  --ring: rgba(217, 164, 65, 0.45);
+
+  /* A dark gold on a dark surface would vanish, so the fill lightens and the
+     text on it flips. 7.74:1 on --surface, 8.75:1 against its own ink. */
+  --accent: #d9a441;
+  --accent-ink: #0b0b0b;
 
   /* same eight hues, stepped for the dark surface — not an automatic flip */
   --series-1: #3987e5;
@@ -73,6 +85,9 @@
 }
 
 @theme inline {
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+
   --color-page: var(--page);
   --color-surface: var(--surface);
   --color-surface-2: var(--surface-2);

@@ -53,7 +53,7 @@ export function CatalogPage() {
             className={cn(
               'h-9 cursor-pointer rounded-lg border px-3 text-xs font-medium transition-colors',
               tab === entry.value
-                ? 'border-transparent bg-series-1 text-white'
+                ? 'border-transparent bg-accent text-accent-ink'
                 : 'border-hairline bg-surface text-ink-2 hover:bg-surface-2 hover:text-ink',
             )}
           >

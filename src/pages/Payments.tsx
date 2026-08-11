@@ -340,7 +340,7 @@ export function PaymentsPage() {
                         <Link
                           to={`/bookings/${payment.booking_id}`}
                           dir="ltr"
-                          className="tnum block text-start text-[11px] text-muted underline-offset-4 hover:text-series-1 hover:underline"
+                          className="tnum block text-start text-[11px] text-muted underline-offset-4 hover:text-accent hover:underline"
                         >
                           {payment.booking_reference}
                         </Link>
@@ -349,7 +349,7 @@ export function PaymentsPage() {
                     <td className="px-4 py-3 text-xs whitespace-nowrap text-ink-2">
                       <Link
                         to={`/users/${payment.user_id}`}
-                        className="underline-offset-4 hover:text-series-1 hover:underline"
+                        className="underline-offset-4 hover:text-accent hover:underline"
                       >
                         {payment.user_name}
                       </Link>
@@ -358,7 +358,7 @@ export function PaymentsPage() {
                       {payment.provider_id ? (
                         <Link
                           to={`/providers/${payment.provider_id}`}
-                          className="underline-offset-4 hover:text-series-1 hover:underline"
+                          className="underline-offset-4 hover:text-accent hover:underline"
                         >
                           {payment.provider_name}
                         </Link>

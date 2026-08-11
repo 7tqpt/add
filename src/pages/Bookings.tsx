@@ -259,7 +259,7 @@ export function BookingsPage() {
                       <Link
                         to={`/bookings/${booking.id}`}
                         dir="ltr"
-                        className="tnum block text-start font-medium whitespace-nowrap text-ink underline-offset-4 hover:text-series-1 hover:underline"
+                        className="tnum block text-start font-medium whitespace-nowrap text-ink underline-offset-4 hover:text-accent hover:underline"
                       >
                         {booking.reference}
                       </Link>

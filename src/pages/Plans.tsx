@@ -206,7 +206,7 @@ export function PlansPage() {
                       <td className="px-4 py-3">
                         <Link
                           to={`/plans/${plan.id}`}
-                          className="font-medium text-ink underline-offset-4 hover:text-series-1 hover:underline"
+                          className="font-medium text-ink underline-offset-4 hover:text-accent hover:underline"
                         >
                           {plan.title}
                         </Link>

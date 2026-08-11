@@ -8,7 +8,7 @@ import { useId } from 'react'
 import { cn } from '@/lib/cn'
 
 const CONTROL =
-  'w-full rounded-lg border border-hairline bg-surface px-3 text-sm text-ink placeholder:text-muted transition-colors focus:border-series-1 disabled:opacity-55'
+  'w-full rounded-lg border border-hairline bg-surface px-3 text-sm text-ink placeholder:text-muted transition-colors focus:border-accent disabled:opacity-55'
 
 export function Field({
   label,
@@ -81,7 +81,7 @@ export function Toggle({
         onClick={() => onChange(!checked)}
         className={cn(
           'relative h-6 w-11 shrink-0 cursor-pointer rounded-full border transition-colors disabled:cursor-not-allowed disabled:opacity-55',
-          checked ? 'border-transparent bg-series-1' : 'border-hairline bg-surface-2',
+          checked ? 'border-transparent bg-accent' : 'border-hairline bg-surface-2',
         )}
       >
         <span

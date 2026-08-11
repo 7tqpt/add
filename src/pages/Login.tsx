@@ -41,7 +41,7 @@ export function LoginPage() {
     <div className="flex min-h-full items-center justify-center bg-page px-4 py-10">
       <div className="w-full max-w-sm">
         <div className="mb-6 flex flex-col items-center gap-3 text-center">
-          <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-series-1 text-white">
+          <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-accent text-accent-ink">
             <Smartphone size={22} aria-hidden />
           </span>
           <div>

@@ -119,7 +119,7 @@ export function BookingDetailPage() {
           action={
             <Link
               to="/bookings"
-              className="text-sm font-medium text-series-1 underline underline-offset-4"
+              className="text-sm font-medium text-accent underline underline-offset-4"
             >
               العودة إلى الحجوزات
             </Link>
@@ -195,7 +195,7 @@ export function BookingDetailPage() {
               node={
                 <Link
                   to={`/users/${record.user_id}`}
-                  className="underline-offset-4 hover:text-series-1 hover:underline"
+                  className="underline-offset-4 hover:text-accent hover:underline"
                 >
                   {record.user_name}
                 </Link>
@@ -206,7 +206,7 @@ export function BookingDetailPage() {
               node={
                 <Link
                   to={`/providers/${record.provider_id}`}
-                  className="underline-offset-4 hover:text-series-1 hover:underline"
+                  className="underline-offset-4 hover:text-accent hover:underline"
                 >
                   {record.provider_name}
                 </Link>
@@ -223,7 +223,7 @@ export function BookingDetailPage() {
                 record.plan_id ? (
                   <Link
                     to={`/plans/${record.plan_id}`}
-                    className="underline-offset-4 hover:text-series-1 hover:underline"
+                    className="underline-offset-4 hover:text-accent hover:underline"
                   >
                     عرض الخطة
                   </Link>
@@ -304,7 +304,7 @@ export function BookingDetailPage() {
             actions={
               <Link
                 to="/payments"
-                className="text-xs font-medium text-series-1 underline underline-offset-4"
+                className="text-xs font-medium text-accent underline underline-offset-4"
               >
                 السجل الكامل
               </Link>
@@ -413,7 +413,7 @@ function BookingTrail({ status }: { status: BookingStatus }) {
             <span
               className={cn(
                 'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs whitespace-nowrap',
-                done ? 'border-transparent bg-series-1 text-white' : 'border-hairline text-muted',
+                done ? 'border-transparent bg-accent text-accent-ink' : 'border-hairline text-muted',
               )}
             >
               {/* The tick is what marks a completed stage, not the fill alone. */}
