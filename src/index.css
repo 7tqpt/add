@@ -1,0 +1,143 @@
+@import 'tailwindcss';
+
+/* Theme is driven by a single `data-theme` attribute on <html>, stamped by
+   ThemeProvider (and by the inline script in index.html before first paint).
+   OS preference is resolved in JS, so CSS only ever has one dark scope. */
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
+
+:root {
+  /* surfaces */
+  --page: #f9f9f7;
+  --surface: #fcfcfb;
+  --surface-2: #f2f1ed;
+
+  /* ink */
+  --text-primary: #0b0b0b;
+  --text-secondary: #52514e;
+  --text-muted: #898781;
+
+  /* chrome */
+  --grid: #e1e0d9;
+  --axis: #c3c2b7;
+  --border: rgba(11, 11, 11, 0.1);
+  --ring: rgba(42, 120, 214, 0.35);
+
+  /* categorical series — validated (light, surface #fcfcfb, --pairs all) */
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+
+  /* sequential blue ramp */
+  --seq-200: #9ec5f4;
+  --seq-450: #2a78d6;
+  --seq-600: #184f95;
+
+  /* status — fixed, never themed */
+  --good: #0ca30c;
+  --warning: #fab219;
+  --serious: #ec835a;
+  --critical: #d03b3b;
+  --delta-up: #006300;
+  --delta-down: #d03b3b;
+
+  color-scheme: light;
+}
+
+[data-theme='dark'] {
+  --page: #0d0d0d;
+  --surface: #1a1a19;
+  --surface-2: #232322;
+
+  --text-primary: #ffffff;
+  --text-secondary: #c3c2b7;
+  --text-muted: #898781;
+
+  --grid: #2c2c2a;
+  --axis: #383835;
+  --border: rgba(255, 255, 255, 0.1);
+  --ring: rgba(57, 135, 229, 0.45);
+
+  /* same eight hues, stepped for the dark surface — not an automatic flip */
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --series-3: #199e70;
+
+  --seq-200: #184f95;
+  --seq-450: #3987e5;
+  --seq-600: #9ec5f4;
+
+  --delta-up: #0ca30c;
+  --delta-down: #e66767;
+
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-page: var(--page);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+
+  --color-ink: var(--text-primary);
+  --color-ink-2: var(--text-secondary);
+  --color-muted: var(--text-muted);
+
+  --color-grid: var(--grid);
+  --color-axis: var(--axis);
+  --color-hairline: var(--border);
+
+  --color-series-1: var(--series-1);
+  --color-series-2: var(--series-2);
+  --color-series-3: var(--series-3);
+
+  --color-good: var(--good);
+  --color-warning: var(--warning);
+  --color-serious: var(--serious);
+  --color-critical: var(--critical);
+
+  --font-sans: system-ui, -apple-system, 'Segoe UI', 'Noto Sans Arabic', 'Segoe UI Arabic', sans-serif;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  background-color: var(--page);
+  color: var(--text-primary);
+  font-family: system-ui, -apple-system, 'Segoe UI', 'Noto Sans Arabic', 'Segoe UI Arabic', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Axis ticks and table columns align vertically, so they take tabular figures.
+   Hero/stat values deliberately do not — see marks-and-anatomy. */
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+::selection {
+  background: var(--ring);
+}
+
+*:focus-visible {
+  outline: 2px solid var(--series-1);
+  outline-offset: 2px;
+}
+
+/* Refetches hold the previous render at reduced opacity instead of flashing a
+   skeleton, so the layout never jumps. */
+.is-refetching {
+  opacity: 0.55;
+  transition: opacity 150ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
