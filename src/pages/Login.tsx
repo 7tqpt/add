@@ -45,7 +45,7 @@ export function LoginPage() {
             <Smartphone size={22} aria-hidden />
           </span>
           <div>
-            <h1 className="text-lg font-semibold text-ink">لوحة تحكم التطبيق</h1>
+            <h1 className="text-lg font-semibold text-ink">منصة حجوزات الأعراس</h1>
             <p className="mt-1 text-xs text-muted">سجّل الدخول بحساب المسؤول للمتابعة</p>
           </div>
         </div>

@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { AppLayout } from '@/components/layout/AppLayout'
+import { NoAccess } from '@/components/layout/NoAccess'
 import { LoadingBlock } from '@/components/ui/Feedback'
 import { useAuth } from '@/context/AuthContext'
 import { AuditPage } from '@/pages/Audit'
@@ -26,12 +27,22 @@ import { UsersPage } from '@/pages/Users'
 import { VersionsPage } from '@/pages/Versions'
 
 function RequireAuth() {
-  const { user, loading } = useAuth()
+  const { user, role, loading, roleResolved } = useAuth()
   const location = useLocation()
 
   if (loading) return <LoadingBlock label="جارٍ التحقق من الجلسة…" />
   // `state` carries the attempted URL so login can return there.
   if (!user) return <Navigate to="/login" replace state={{ from: location.pathname }} />
+  if (!roleResolved) return <LoadingBlock label="جارٍ التحقق من الصلاحية…" />
+
+  /**
+   * موثَّق الهوية لا يعني مخوَّلاً. حساب بلا صف في `admins` — عميل أو مقدّم
+   * خدمة سجّل بحساب تطبيقه، أو مسؤول لم يُمنح الدور بعد — كانت RLS تمنعه من
+   * كل شيء فيرى لوحةً فارغة يظنّها عطلاً. الرفض الصريح أصدق، وهو نفسه الحدّ
+   * الذي يفصل التطبيقين عن اللوحة.
+   */
+  if (role === null) return <NoAccess />
+
   return <AppLayout />
 }
 

@@ -23,6 +23,12 @@ interface AuthValue {
   canManageAdmins: boolean
   /** True until the initial session lookup settles — routes wait on this. */
   loading: boolean
+  /**
+   * False until the `admins` lookup returns. Without this, `role === null`
+   * cannot be told apart from "still loading", and the access-denied screen
+   * would flash for a legitimate owner on every page load.
+   */
+  roleResolved: boolean
   signIn: (email: string, password: string) => Promise<void>
   signOut: () => Promise<void>
   /** Demo mode only: re-render the UI as another role to see gating at work. */
@@ -43,6 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<AdminRole | null>(null)
   const [roleNonce, setRoleNonce] = useState(0)
   const [loading, setLoading] = useState(true)
+  const [roleResolved, setRoleResolved] = useState(false)
 
   // The audit log stamps every mutation with whoever is signed in, so the actor
   // is published here rather than passed through each service call.
@@ -53,9 +60,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!user) {
       setRole(null)
+      setRoleResolved(false)
       return
     }
     let active = true
+    setRoleResolved(false)
     getMyRole(user.id)
       .then((next) => {
         if (active) setRole(next)
@@ -63,6 +72,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .catch(() => {
         // A failed role lookup must not read as "full access".
         if (active) setRole(null)
+      })
+      .finally(() => {
+        if (active) setRoleResolved(true)
       })
     return () => {
       active = false
@@ -140,7 +152,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return
     }
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    // شبكة بطيئة أو رابط مشروع خاطئ يجعلان الطلب يعلّق بلا نهاية، فيبقى
+    // المستخدم أمام مؤشّر دوّار لا يخبره بشيء. المهلة تحوّل الصمت إلى رسالة.
+    const TIMEOUT_MS = 20_000
+    const attempt = supabase.auth.signInWithPassword({ email, password })
+    const timeout = new Promise<never>((_, reject) =>
+      setTimeout(
+        () => reject(new Error('تعذّر الوصول إلى الخادم. تحقّق من اتصالك ثم أعد المحاولة.')),
+        TIMEOUT_MS,
+      ),
+    )
+
+    const { error } = await Promise.race([attempt, timeout])
     if (error) {
       throw new Error(
         error.message === 'Invalid login credentials'
@@ -171,11 +194,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       canWrite: canWrite(role),
       canManageAdmins: canManageAdmins(role),
       loading,
+      roleResolved,
       signIn,
       signOut,
       previewRole,
     }),
-    [user, role, loading, signIn, signOut, previewRole],
+    [user, role, loading, roleResolved, signIn, signOut, previewRole],
   )
 
   return <AuthContext value={value}>{children}</AuthContext>
