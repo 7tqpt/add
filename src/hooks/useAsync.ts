@@ -10,8 +10,29 @@ export interface AsyncState<T> {
   reload: () => void
 }
 
+/**
+ * Pulls a readable message out of whatever was thrown.
+ *
+ * Supabase rejects with a plain `{message, details, hint, code}` object, not an
+ * `Error`. Checking `instanceof Error` alone therefore swallowed every database
+ * error and showed «تعذّر تحميل البيانات» — a sentence that tells the reader
+ * nothing they did not already see on the screen. The real text ("relation
+ * v_admin_reviews does not exist") names the missing piece outright.
+ */
 function messageOf(error: unknown): string {
   if (error instanceof Error) return error.message
+
+  if (error && typeof error === 'object') {
+    const { message, hint, code } = error as { message?: unknown; hint?: unknown; code?: unknown }
+    if (typeof message === 'string' && message.trim()) {
+      // Postgres hints are written for whoever has to fix it — keep them.
+      const suffix = typeof hint === 'string' && hint.trim() ? ` — ${hint}` : ''
+      const prefix = typeof code === 'string' && code.trim() ? `[${code}] ` : ''
+      return `${prefix}${message}${suffix}`
+    }
+  }
+
+  if (typeof error === 'string' && error.trim()) return error
   return 'تعذّر تحميل البيانات.'
 }
 
