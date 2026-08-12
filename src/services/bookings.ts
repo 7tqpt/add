@@ -142,7 +142,15 @@ function startMinutes(booking: Booking): number | null {
  *
  * A booking with no stated time is assumed to occupy the day, because a
  * provider cannot be in two places without one.
+ *
+ * حجزان لعرس واحد ليسا تضارباً. مقدّم الخدمة الذي يوفّر الديكور والصوت لعرس
+ * مريم الحضرمي حاضرٌ في مكان واحد يخدم مناسبة واحدة، وقد يبيع أكثر من خدمة
+ * للعرس نفسه — وهذا مبيع لا خطأ. التنبيه عليه يعلّم المسؤول أن ينظر إلى
+ * التحذير الأحمر ثم يتجاهله، فيفقد التحذير قيمته حين يصدق.
  */
+const sameWedding = (a: Booking, b: Booking) =>
+  a.plan_id !== null && b.plan_id !== null ? a.plan_id === b.plan_id : a.user_id === b.user_id
+
 export function findConflicts(bookings: Booking[], windowHours = 4): Conflict[] {
   const byKey = new Map<string, Booking[]>()
   for (const booking of bookings) {
@@ -158,6 +166,7 @@ export function findConflicts(bookings: Booking[], windowHours = 4): Conflict[] 
     const clashing = group.filter((booking) =>
       group.some((other) => {
         if (other.id === booking.id) return false
+        if (sameWedding(booking, other)) return false
         const a = startMinutes(booking)
         const b = startMinutes(other)
         if (a === null || b === null) return true

@@ -40,6 +40,12 @@ export interface ArabicNoun {
 export const DAY_FORMS: ArabicNoun = { one: 'يوم', two: 'يومين', few: 'أيام', many: 'يوماً' }
 export const HOUR_FORMS: ArabicNoun = { one: 'ساعة', two: 'ساعتين', few: 'ساعات', many: 'ساعة' }
 export const MINUTE_FORMS: ArabicNoun = { one: 'دقيقة', two: 'دقيقتين', few: 'دقائق', many: 'دقيقة' }
+export const BOOKING_FORMS: ArabicNoun = {
+  one: 'حجز واحد',
+  two: 'حجزان',
+  few: 'حجوزات',
+  many: 'حجزاً',
+}
 
 /**
  * "3 أيام" / "يومين" / "12 يوماً".

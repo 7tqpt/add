@@ -599,17 +599,25 @@ const doubleRequests: Booking[] = planDrafts
     ]
   })
 
-/** الحجز الآخر في اليوم نفسه لدى المزوّد نفسه — يصنع التضارب المعروض. */
-const contested: Booking[] = doubleRequests.map((request) => {
+/**
+ * الحجز الآخر في اليوم نفسه لدى المزوّد نفسه — يصنع التضارب المعروض.
+ *
+ * صاحبه عميل آخر بلا خطة عرس، وهذا شرط لا زينة: التضارب هو ارتباط المزوّد
+ * بعرسين، فلو كان الحجزان لعرس واحد لم يكن تضارباً أصلاً — المزوّد يبيع أكثر
+ * من خدمة للمناسبة نفسها. وقد كان `find` هنا يلتقط خطة الطلب ذاتها لأنها أول
+ * ما يطابق التاريخ، فكانت كل «تضاربات» الوضع التجريبي زائفة، ولا يظهر ذلك إلا
+ * حين يبدأ الكشف بتجاهل الحجزين المنتميين لعرس واحد.
+ */
+const contested: Booking[] = doubleRequests.map((request, i) => {
   bookingSeq += 1
-  const host = planDrafts.find((plan) => plan.wedding_date === request.event_date)
+  const other = mockUsers[(i * 7 + 3) % mockUsers.length]
   return {
     ...request,
     id: `bkg_${bookingSeq}`,
     reference: `BK-2026-${bookingSeq.toString().padStart(6, '0')}`,
-    user_id: host?.user_id ?? request.user_id,
-    user_name: host?.user_name ?? request.user_name,
-    plan_id: host?.id ?? null,
+    user_id: other.id,
+    user_name: other.full_name,
+    plan_id: null,
     status: 'confirmed' as const,
     paid_amount: request.total_price,
     commission_amount: Math.round((request.total_price * request.commission_percent) / 100),
