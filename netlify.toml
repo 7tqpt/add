@@ -1,0 +1,41 @@
+# نشر لوحة التحكم على Netlify.
+#
+# البديل عن GitHub Pages: يقرأ المستودعات الخاصة مجاناً، ولا يحتاج المستودع
+# أن يصير عاماً.
+#
+# الربط (مرة واحدة، من الجوال أو الحاسوب):
+#   1. netlify.com ← Sign up with GitHub
+#   2. Add new site ← Import an existing project ← اختر 7tqpt/add
+#   3. الفرع: claude/mobile-app-dashboard-gsbgq6
+#      (الإعدادات أدناه تُقرأ تلقائياً، لا تكتب شيئاً)
+#   4. Site settings ← Environment variables ← أضف:
+#        VITE_SUPABASE_URL       = https://<project-ref>.supabase.co
+#        VITE_SUPABASE_ANON_KEY  = <publishable key>
+#   5. Deploys ← Trigger deploy
+#
+# بعدها ينشر تلقائياً مع كل دفعة.
+
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+  # لا تُضبط VITE_BASE هنا: Netlify يخدم الموقع من جذر النطاق، بخلاف
+  # GitHub Pages الذي يخدم المستودعات تحت /<repo>/.
+
+# الموجّه يعمل خلف ‎#‎ فلا يصل الخادمَ مسارٌ داخلي، لكن من يكتب /bookings
+# بيده يجب أن يصل التطبيق لا صفحة خطأ.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# الرؤوس الأمنية الأساسية. اللوحة لا تُحمّل أي شيء من نطاق خارجي عدا
+# Supabase، فالإطار المسموح ضيّق عمداً.
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
