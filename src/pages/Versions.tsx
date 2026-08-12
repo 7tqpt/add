@@ -54,7 +54,8 @@ function VersionCard({
   onDone: (message: string) => void
   onSaved: () => void
 }) {
-  const { canWrite } = useAuth()
+  const { can } = useAuth()
+  const canWrite = can('ops')
   // The slider tracks locally while dragging and only commits on release, so a
   // drag from 60 to 100 is one write instead of nine.
   const [rollout, setRolloutValue] = useState(version.rollout_percent)

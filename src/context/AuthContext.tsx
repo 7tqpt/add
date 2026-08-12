@@ -1,6 +1,7 @@
 import { createContext, use, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { isSupabaseConfigured, supabase } from '@/lib/supabase'
-import type { AdminRole } from '@/lib/types'
+import type { AdminArea, AdminRole } from '@/lib/types'
+import { canRead, canWriteArea } from '@/lib/permissions'
 import { canManageAdmins, canWrite, getMyRole, setDemoRole } from '@/services/admins'
 import { setAuditActor } from '@/services/audit'
 
@@ -21,6 +22,14 @@ interface AuthValue {
   canWrite: boolean
   /** May manage other admins. Mirrors the `is_owner()` RLS check. */
   canManageAdmins: boolean
+  /**
+   * صلاحية هذا الدور في مجال بعينه — تقابل `can_read_area` و`can_write_area`
+   * في السياسات.
+   *
+   * الواجهة تستعملها لتُخفي ما لا يملكه المستخدم، **وهي ليست الحماية**: RLS
+   * هي التي ترفض الطلب. الإخفاء هنا لئلا يرى المستخدم أزراراً تفشل بين يديه.
+   */
+  can: (area: AdminArea, level?: 'read' | 'write') => boolean
   /** True until the initial session lookup settles — routes wait on this. */
   loading: boolean
   /**
@@ -193,6 +202,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       role,
       canWrite: canWrite(role),
       canManageAdmins: canManageAdmins(role),
+      can: (area, level = 'write') =>
+        level === 'write' ? canWriteArea(role, area) : canRead(role, area),
       loading,
       roleResolved,
       signIn,

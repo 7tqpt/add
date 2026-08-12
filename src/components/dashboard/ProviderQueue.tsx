@@ -30,7 +30,8 @@ const TABS: { value: Tab; label: string; status: ProviderStatus | 'all' }[] = [
  * but rejection still asks for a reason, which reaches the applicant.
  */
 export function ProviderQueue() {
-  const { canWrite } = useAuth()
+  const { can } = useAuth()
+  const canWrite = can('directory')
   const [tab, setTab] = useState<Tab>('pending')
   const [pending, setPending] = useState<{ row: ServiceProvider; next: ProviderStatus } | null>(null)
   const [reason, setReason] = useState('')

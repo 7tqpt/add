@@ -1,10 +1,11 @@
 -- ============================================================================
---  تحقّق شامل — بعد install.sql و seed.sql و apply.sql و storage.sql و support.sql
+--  تحقّق شامل — بعد install.sql و seed.sql و apply.sql و storage.sql
+--  و support.sql و roles.sql
 --
 --  الصقه في SQL Editor واضغط Run. كل سطر يقارن الواقع بالمتوقَّع، والعمود
 --  الأخير يقول «سليم» أو «راجعه» فلا تحتاج أن تعدّ بنفسك.
 --
---  الأرقام المتوقَّعة ليست تخميناً: حُسبت بتشغيل الملفات الخمسة على Postgres
+--  الأرقام المتوقَّعة ليست تخميناً: حُسبت بتشغيل الملفات الستة على Postgres
 --  حقيقي، فما تراه هنا هو ما تنتجه فعلاً.
 -- ============================================================================
 
@@ -13,7 +14,7 @@ with checks as (
   select 1 as ord, 'الجداول' as البند,
          (select count(*) from information_schema.tables
            where table_schema = 'public' and table_type = 'BASE TABLE') as الواقع,
-         35 as المتوقع
+         36 as المتوقع
 
   union all
   select 2, 'طرق العرض',
@@ -26,7 +27,7 @@ with checks as (
 
   union all
   select 4, 'سياسات RLS',
-         (select count(*) from pg_policies where schemaname = 'public'), 70
+         (select count(*) from pg_policies where schemaname = 'public'), 72
 
   -- الصفر هو الصواب هنا: جدول بلا RLS مكشوف لكل من يملك المفتاح العام.
   union all
@@ -81,8 +82,24 @@ with checks as (
          (select count(*) from storage.buckets
            where id = 'provider-docs' and public), 0
 
+  -- ---- الصلاحيات (roles.sql) ----
   union all
-  select 13, 'سياسات التخزين',
+  select 13, 'صفوف مصفوفة الصلاحيات',
+         (select count(*) from public.admin_areas), 63
+
+  union all
+  select 14, 'الأدوار المتاحة',
+         (select count(distinct role) from public.admin_areas), 7
+
+  -- من بقي بالدور القديم لم يُرحَّل، ودوره لا يقابله صفٌّ في المصفوفة فيصير
+  -- بلا صلاحية في كل مجال.
+  union all
+  select 15, 'مسؤولون بدور قديم (يجب 0)',
+         (select count(*) from public.admins a
+           where not exists (select 1 from public.admin_areas x where x.role = a.role)), 0
+
+  union all
+  select 16, 'سياسات التخزين',
          (select count(*) from pg_policies
            where schemaname = 'storage' and tablename = 'objects'
              and policyname like '%documents%'), 4

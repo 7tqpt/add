@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { AppLayout } from '@/components/layout/AppLayout'
+import { AreaGuard } from '@/components/layout/AreaGuard'
 import { NoAccess } from '@/components/layout/NoAccess'
 import { LoadingBlock } from '@/components/ui/Feedback'
 import { useAuth } from '@/context/AuthContext'
@@ -53,33 +54,36 @@ export function App() {
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route element={<RequireAuth />}>
-        <Route path="/" element={<DashboardPage />} />
+        {/* حارس المجال داخل التخطيط: القائمة تبقى ظاهرة فيعرف المستخدم أين هو. */}
+        <Route element={<AreaGuard />}>
+          <Route path="/" element={<DashboardPage />} />
 
-        <Route path="/bookings" element={<BookingsPage />} />
-        <Route path="/bookings/:id" element={<BookingDetailPage />} />
-        <Route path="/plans" element={<PlansPage />} />
-        <Route path="/plans/:id" element={<PlanDetailPage />} />
+          <Route path="/bookings" element={<BookingsPage />} />
+          <Route path="/bookings/:id" element={<BookingDetailPage />} />
+          <Route path="/plans" element={<PlansPage />} />
+          <Route path="/plans/:id" element={<PlanDetailPage />} />
 
-        <Route path="/users" element={<UsersPage />} />
-        <Route path="/users/:id" element={<UserDetailPage />} />
-        <Route path="/providers" element={<ProvidersPage />} />
-        <Route path="/providers/:id" element={<ProviderDetailPage />} />
-        <Route path="/catalog" element={<CatalogPage />} />
+          <Route path="/users" element={<UsersPage />} />
+          <Route path="/users/:id" element={<UserDetailPage />} />
+          <Route path="/providers" element={<ProvidersPage />} />
+          <Route path="/providers/:id" element={<ProviderDetailPage />} />
+          <Route path="/catalog" element={<CatalogPage />} />
 
-        <Route path="/payments" element={<PaymentsPage />} />
-        <Route path="/settlements" element={<SettlementsPage />} />
-        <Route path="/promotions" element={<PromotionsPage />} />
+          <Route path="/payments" element={<PaymentsPage />} />
+          <Route path="/settlements" element={<SettlementsPage />} />
+          <Route path="/promotions" element={<PromotionsPage />} />
 
-        <Route path="/support" element={<SupportPage />} />
-        <Route path="/support/:id" element={<SupportTicketPage />} />
-        <Route path="/disputes" element={<DisputesPage />} />
-        <Route path="/disputes/:id" element={<DisputeDetailPage />} />
-        <Route path="/reviews" element={<ReviewsPage />} />
+          <Route path="/support" element={<SupportPage />} />
+          <Route path="/support/:id" element={<SupportTicketPage />} />
+          <Route path="/disputes" element={<DisputesPage />} />
+          <Route path="/disputes/:id" element={<DisputeDetailPage />} />
+          <Route path="/reviews" element={<ReviewsPage />} />
 
-        <Route path="/notifications" element={<NotificationsPage />} />
-        <Route path="/versions" element={<VersionsPage />} />
-        <Route path="/audit" element={<AuditPage />} />
-        <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/notifications" element={<NotificationsPage />} />
+          <Route path="/versions" element={<VersionsPage />} />
+          <Route path="/audit" element={<AuditPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
+        </Route>
       </Route>
       <Route path="*" element={<NotFoundPage />} />
     </Routes>

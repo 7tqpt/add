@@ -26,7 +26,8 @@ import { DISPUTE_STATUS_TONE } from './Disputes'
 
 export function DisputeDetailPage() {
   const { id = '' } = useParams()
-  const { user, canWrite } = useAuth()
+  const { user, can } = useAuth()
+  const canWrite = can('trust')
   const [toast, setToast] = useState<string | null>(null)
   const [reply, setReply] = useState('')
   const [sending, setSending] = useState(false)

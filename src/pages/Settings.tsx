@@ -1,24 +1,35 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
-import { Save } from 'lucide-react'
+import { Save, UserMinus, UserPlus } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card, CardBody, CardHeader } from '@/components/ui/Card'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { ErrorState, LoadingBlock, Spinner, Toast } from '@/components/ui/Feedback'
 import { Field, Input, Select, Textarea, Toggle } from '@/components/ui/Field'
 import { useAsync } from '@/hooks/useAsync'
 import { useAuth } from '@/context/AuthContext'
 import { formatDate } from '@/lib/format'
 import { isSupabaseConfigured } from '@/lib/supabase'
-import type { AdminRole, AppSettings } from '@/lib/types'
+import type { AdminAccount, AdminRole, AppSettings } from '@/lib/types'
+import {
+  AREAS_IN_ORDER,
+  AREA_LABEL,
+  LEVEL_LABEL,
+  ROLES_IN_ORDER,
+  ROLE_AREAS,
+} from '@/lib/permissions'
 import {
   ROLE_DESCRIPTION,
   ROLE_LABEL,
+  addAdmin,
   listAdmins,
+  removeAdmin,
   setAdminRole,
 } from '@/services/admins'
 import { getSettings, saveSettings } from '@/services/settings'
 
 export function SettingsPage() {
-  const { user, role, canWrite } = useAuth()
+  const { user, role, can } = useAuth()
+  const canWrite = can('settings')
   const load = useCallback(() => getSettings(), [])
   const { data, error, loading, reload } = useAsync(load, [])
 
@@ -273,15 +284,20 @@ export function SettingsPage() {
   )
 }
 
-const ROLES: AdminRole[] = ['owner', 'admin', 'viewer']
+
 
 function AdminsCard({ onToast }: { onToast: (message: string) => void }) {
-  const { user, role, canManageAdmins, previewRole } = useAuth()
+  const { user, canManageAdmins } = useAuth()
   const load = useCallback(() => listAdmins(), [])
   const { data, error, loading, refetching, reload } = useAsync(load, [])
   const [busyId, setBusyId] = useState<string | null>(null)
+  const [newId, setNewId] = useState('')
+  const [newEmail, setNewEmail] = useState('')
+  const [newRole, setNewRole] = useState<AdminRole>('support')
+  const [adding, setAdding] = useState(false)
+  const [removing, setRemoving] = useState<AdminAccount | null>(null)
 
-  async function changeRole(target: Parameters<typeof setAdminRole>[0], next: AdminRole) {
+  async function changeRole(target: AdminAccount, next: AdminRole) {
     setBusyId(target.user_id)
     try {
       await setAdminRole(target, next)
@@ -294,20 +310,103 @@ function AdminsCard({ onToast }: { onToast: (message: string) => void }) {
     }
   }
 
+  async function submitNew(event: FormEvent) {
+    event.preventDefault()
+    if (!newId.trim() || !newEmail.trim()) return
+    setAdding(true)
+    try {
+      await addAdmin(newId.trim(), newEmail.trim(), newRole)
+      onToast(`أُضيف ${newEmail.trim()} بدور ${ROLE_LABEL[newRole]}.`)
+      setNewId('')
+      setNewEmail('')
+      reload()
+    } catch (cause) {
+      onToast(cause instanceof Error ? cause.message : 'تعذّرت الإضافة.')
+    } finally {
+      setAdding(false)
+    }
+  }
+
+  async function confirmRemove() {
+    if (!removing) return
+    setBusyId(removing.user_id)
+    try {
+      await removeAdmin(removing)
+      onToast(`سُحبت صلاحية ${removing.email}.`)
+      reload()
+    } catch (cause) {
+      onToast(cause instanceof Error ? cause.message : 'تعذّر سحب الصلاحية.')
+    } finally {
+      setBusyId(null)
+      setRemoving(null)
+    }
+  }
+
   return (
     <Card className={refetching ? 'is-refetching' : undefined}>
       <CardHeader
         title="المسؤولون والصلاحيات"
-        subtitle="من يستطيع الدخول إلى اللوحة وما الذي يستطيع تغييره"
+        subtitle="من يدخل اللوحة، وما الذي يراه ويعدّله في كل مجال"
       />
       <CardBody className="flex flex-col gap-4">
-        <ul className="flex flex-col gap-1.5 text-xs text-ink-2">
-          {ROLES.map((key) => (
-            <li key={key}>
-              <span className="font-medium text-ink">{ROLE_LABEL[key]}</span> — {ROLE_DESCRIPTION[key]}
-            </li>
-          ))}
-        </ul>
+        {/*
+          المصفوفة كاملةً لا قائمة أوصاف: «مساعد المدير يعدّل المدفوعات والأقسام»
+          جملةٌ تُقرأ ولا تُقارَن. الجدول يُري الفرق بين دورين بنظرة واحدة.
+        */}
+        <div className="overflow-x-auto rounded-lg border border-hairline">
+          <table className="w-full border-collapse text-[11px]">
+            <thead>
+              <tr className="bg-surface-2">
+                <th scope="col" className="border-b border-hairline px-3 py-2 text-start font-medium whitespace-nowrap text-ink-2">
+                  المجال
+                </th>
+                {ROLES_IN_ORDER.map((key) => (
+                  <th
+                    key={key}
+                    scope="col"
+                    className="border-b border-hairline px-2 py-2 text-center font-medium whitespace-nowrap text-ink-2"
+                  >
+                    {ROLE_LABEL[key]}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {AREAS_IN_ORDER.map((area) => (
+                <tr key={area} className="border-b border-hairline last:border-0">
+                  <th scope="row" className="px-3 py-1.5 text-start font-normal whitespace-nowrap text-ink-2">
+                    {AREA_LABEL[area]}
+                  </th>
+                  {ROLES_IN_ORDER.map((key) => {
+                    const level = ROLE_AREAS[key][area]
+                    return (
+                      <td key={key} className="px-2 py-1.5 text-center" title={LEVEL_LABEL[level]}>
+                        {/* رمز ونصّ بديل معاً — اللون وحده لا يكفي قارئ شاشة. */}
+                        <span
+                          aria-label={LEVEL_LABEL[level]}
+                          className={
+                            level === 'write'
+                              ? 'text-accent'
+                              : level === 'read'
+                                ? 'text-ink-2'
+                                : 'text-muted'
+                          }
+                        >
+                          {level === 'write' ? '✏️' : level === 'read' ? '👁' : '—'}
+                        </span>
+                      </td>
+                    )
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <p className="text-[11px] text-muted">
+          ✏️ تعديل · 👁 قراءة · — محجوب. والحجب في المال يعني ألّا يرى المبالغ أصلاً، لا
+          ألّا يعدّلها.
+        </p>
 
         {loading ? (
           <LoadingBlock />
@@ -318,9 +417,9 @@ function AdminsCard({ onToast }: { onToast: (message: string) => void }) {
             <table className="w-full border-collapse text-xs">
               <thead>
                 <tr className="bg-surface-2">
-                  {['البريد', 'الدور', 'أُضيف في'].map((heading) => (
+                  {['البريد', 'الدور', 'أُضيف في', ''].map((heading, i) => (
                     <th
-                      key={heading}
+                      key={heading || i}
                       scope="col"
                       className="border-b border-hairline px-3 py-2 text-start font-medium whitespace-nowrap text-ink-2"
                     >
@@ -330,64 +429,151 @@ function AdminsCard({ onToast }: { onToast: (message: string) => void }) {
                 </tr>
               </thead>
               <tbody>
-                {(data ?? []).map((admin) => (
-                  <tr key={admin.user_id} className="border-b border-hairline last:border-0">
-                    <td dir="ltr" className="px-3 py-2 text-start whitespace-nowrap text-ink">
-                      {admin.email}
-                      {admin.user_id === user?.id ? (
-                        <span className="text-muted"> (أنت)</span>
-                      ) : null}
-                    </td>
-                    <td className="px-3 py-2">
-                      <div className="w-32">
-                        <Select
-                          value={admin.role}
-                          aria-label={`دور ${admin.email}`}
-                          disabled={busyId === admin.user_id || !canManageAdmins}
-                          title={canManageAdmins ? undefined : 'إدارة المسؤولين متاحة للمالك فقط'}
-                          onChange={(event) => changeRole(admin, event.target.value as AdminRole)}
-                        >
-                          {ROLES.map((key) => (
-                            <option key={key} value={key}>
-                              {ROLE_LABEL[key]}
-                            </option>
-                          ))}
-                        </Select>
-                      </div>
-                    </td>
-                    <td className="tnum px-3 py-2 whitespace-nowrap text-ink-2">
-                      {formatDate(admin.created_at)}
-                    </td>
-                  </tr>
-                ))}
+                {(data ?? []).map((admin) => {
+                  const isMe = admin.user_id === user?.id
+                  return (
+                    <tr key={admin.user_id} className="border-b border-hairline last:border-0">
+                      <td dir="ltr" className="px-3 py-2 text-start whitespace-nowrap text-ink">
+                        {admin.email}
+                        {isMe ? <span className="text-muted"> (أنت)</span> : null}
+                      </td>
+                      <td className="px-3 py-2">
+                        <div className="w-36">
+                          <Select
+                            value={admin.role}
+                            aria-label={`دور ${admin.email}`}
+                            disabled={busyId === admin.user_id || !canManageAdmins || isMe}
+                            title={
+                              isMe
+                                ? 'لا تستطيع تغيير دورك بنفسك'
+                                : canManageAdmins
+                                  ? undefined
+                                  : 'إدارة المسؤولين للمالك وحده'
+                            }
+                            onChange={(event) => changeRole(admin, event.target.value as AdminRole)}
+                          >
+                            {ROLES_IN_ORDER.map((key) => (
+                              <option key={key} value={key}>
+                                {ROLE_LABEL[key]}
+                              </option>
+                            ))}
+                          </Select>
+                        </div>
+                      </td>
+                      <td className="tnum px-3 py-2 whitespace-nowrap text-ink-2">
+                        {formatDate(admin.created_at)}
+                      </td>
+                      <td className="px-3 py-2">
+                        {/*
+                          المالك لا يسحب صلاحية نفسه: لوحةٌ بلا مالك لا يستطيع
+                          أحد أن يعيد إليها مالكاً من داخلها.
+                        */}
+                        {canManageAdmins && !isMe ? (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            disabled={busyId === admin.user_id}
+                            onClick={() => setRemoving(admin)}
+                          >
+                            <UserMinus size={13} aria-hidden />
+                            سحب الصلاحية
+                          </Button>
+                        ) : null}
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
         )}
 
-        {!isSupabaseConfigured ? (
-          <div className="flex flex-col gap-2 rounded-lg border border-hairline bg-surface-2 px-3 py-2.5">
-            <p className="text-xs leading-6 text-ink-2">
-              <strong className="font-semibold">معاينة الصلاحيات:</strong> بدّل دورك هنا لترى كيف
-              تتغيّر اللوحة. اختر «مطّلع» ولاحظ تعطّل كل أزرار التعديل في جميع الشاشات. متاح في
-              وضع العرض التجريبي فقط.
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {ROLES.map((key) => (
-                <Button
-                  key={key}
-                  type="button"
-                  size="sm"
-                  variant={role === key ? 'primary' : 'secondary'}
-                  onClick={() => previewRole(key)}
-                >
-                  {ROLE_LABEL[key]}
-                </Button>
-              ))}
+        {canManageAdmins ? (
+          <form
+            onSubmit={submitNew}
+            className="flex flex-col gap-3 rounded-lg border border-hairline bg-surface-2 px-3 py-3"
+          >
+            <div>
+              <p className="text-xs font-medium text-ink">إضافة مسؤول</p>
+              {/*
+                إنشاء حساب المصادقة يحتاج مفتاح الخدمة، وهو يتجاوز RLS كلها فلا
+                يوضع في صفحة يفتحها متصفّح. فالحساب يُنشأ من Supabase ويُمنح
+                الدور من هنا.
+              */}
+              <p className="mt-0.5 text-[11px] leading-5 text-muted">
+                أنشئ الحساب أولاً من Supabase ← Authentication ← Add user (مع تفعيل Auto
+                Confirm)، ثم انسخ الـ User UID والصقه هنا.
+              </p>
             </div>
-          </div>
+
+            <div className="flex flex-wrap items-end gap-2">
+              <div className="min-w-56 flex-1">
+                <Field label="معرّف المستخدم (UID)">
+                  {(fieldId) => (
+                    <Input
+                      id={fieldId}
+                      dir="ltr"
+                      value={newId}
+                      onChange={(event) => setNewId(event.target.value)}
+                      placeholder="00000000-0000-0000-0000-000000000000"
+                      required
+                    />
+                  )}
+                </Field>
+              </div>
+              <div className="min-w-48 flex-1">
+                <Field label="البريد">
+                  {(fieldId) => (
+                    <Input
+                      id={fieldId}
+                      dir="ltr"
+                      type="email"
+                      value={newEmail}
+                      onChange={(event) => setNewEmail(event.target.value)}
+                      placeholder="staff@example.com"
+                      required
+                    />
+                  )}
+                </Field>
+              </div>
+              <div className="w-40">
+                <Field label="الدور">
+                  {(fieldId) => (
+                    <Select
+                      id={fieldId}
+                      value={newRole}
+                      onChange={(event) => setNewRole(event.target.value as AdminRole)}
+                    >
+                      {ROLES_IN_ORDER.map((key) => (
+                        <option key={key} value={key}>
+                          {ROLE_LABEL[key]}
+                        </option>
+                      ))}
+                    </Select>
+                  )}
+                </Field>
+              </div>
+              <Button type="submit" variant="primary" disabled={adding}>
+                <UserPlus size={14} aria-hidden />
+                إضافة
+              </Button>
+            </div>
+
+            <p className="text-[11px] text-ink-2">{ROLE_DESCRIPTION[newRole]}</p>
+          </form>
         ) : null}
+
       </CardBody>
+
+      <ConfirmDialog
+        open={removing !== null}
+        title="سحب صلاحية الدخول"
+        message={`لن يستطيع ${removing?.email ?? ''} فتح لوحة التحكم بعد الآن. حساب المصادقة يبقى كما هو — قد يكون له حساب عميل على التطبيق.`}
+        confirmLabel="سحب الصلاحية"
+        tone="danger"
+        onConfirm={confirmRemove}
+        onCancel={() => setRemoving(null)}
+      />
     </Card>
   )
 }

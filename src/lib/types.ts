@@ -521,7 +521,28 @@ export interface AppSettings {
 // الصلاحيات وسجل العمليات
 // ---------------------------------------------------------------------------
 
-export type AdminRole = 'owner' | 'admin' | 'viewer'
+export type AdminRole =
+  | 'owner'
+  | 'manager'
+  | 'operations'
+  | 'finance'
+  | 'support'
+  | 'moderator'
+  | 'viewer'
+
+/** مجالات العمل التي تُقاس بها صلاحية كل دور. */
+export type AdminArea =
+  | 'bookings'
+  | 'directory'
+  | 'catalog'
+  | 'finance'
+  | 'trust'
+  | 'support'
+  | 'ops'
+  | 'settings'
+  | 'admins'
+
+export type AreaLevel = 'none' | 'read' | 'write'
 
 export interface AdminAccount {
   user_id: string

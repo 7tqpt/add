@@ -74,7 +74,8 @@ export function CatalogPage() {
 // ---------------------------------------------------------------------------
 
 function CategoriesTab({ onToast }: { onToast: (message: string) => void }) {
-  const { canWrite } = useAuth()
+  const { can } = useAuth()
+  const canWrite = can('catalog')
   const [busyId, setBusyId] = useState<string | null>(null)
   const { data, error, loading, refetching, reload } = useAsync(listCategories, [])
 
