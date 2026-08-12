@@ -10,7 +10,7 @@ await db.exec(`
   create or replace function auth.uid() returns uuid language sql stable as $$
     select nullif(current_setting('test.uid', true), '')::uuid $$;
   create role authenticated; create role anon; create role service_role;`)
-for (const f of ['install.sql', 'admin_views.sql', 'seed.sql']) {
+for (const f of ['install.sql', 'seed.sql', 'apply.sql']) {
   await db.exec(readFileSync(`../${f}`, 'utf8'))
 }
 

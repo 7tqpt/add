@@ -19,7 +19,7 @@ await db.exec(without)
 const before = await db.query(`select count(*)::int as n from public.service_categories`)
 console.log(`قبل: ${before.rows[0].n} قسماً`)
 
-const patch = readFileSync('../add_catering_category.sql', 'utf8')
+const patch = readFileSync('../apply.sql', 'utf8')
 await db.exec(patch)
 await db.exec(patch)   // مرة ثانية عمداً
 

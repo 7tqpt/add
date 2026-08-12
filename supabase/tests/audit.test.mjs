@@ -10,7 +10,7 @@ await db.exec(`
     select nullif(current_setting('test.uid', true), '')::uuid $$;
   create role authenticated; create role anon; create role service_role;`)
 await db.exec(readFileSync('../install.sql', 'utf8'))
-await db.exec(readFileSync('../admin_views.sql', 'utf8'))
+await db.exec(readFileSync('../apply.sql', 'utf8'))
 
 const rel = await db.query(`
   select table_name from information_schema.tables where table_schema='public'
