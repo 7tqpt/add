@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+# A new push to the same branch makes the in-flight run obsolete.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: فحص الأنواع والبناء
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      # `npm ci` installs exactly what the lockfile pins and fails if the
+      # lockfile and package.json have drifted apart.
+      - run: npm ci
+
+      # `npm run build` is tsc -b followed by vite build, so this covers both
+      # type errors and anything that only breaks in a production bundle.
+      - run: npm run build

@@ -1,0 +1,67 @@
+# نشر اللوحة على GitHub Pages — يدوي، وبديلٌ احتياطي.
+#
+# النشر الفعلي يجري على Netlify (انظر netlify.toml): هو من يبني وينشر مع كل
+# دفعة، ويعمل على المستودعات الخاصة والعامة سواء.
+#
+# تُرك هذا الملف لأن Pages بديل صالح لو أُلغي حساب Netlify يوماً: فعّل
+# Settings ← Pages ← Source: GitHub Actions، ثم شغّله من تبويب Actions.
+# لم يُترك على `push` لأن مسارَي نشر متوازيين يعني بناءين لكل دفعة، وفشلاً
+# دائماً من الطرف غير المفعّل يُخفي الأعطال الحقيقية.
+#
+# مفاتيح Supabase تُقرأ من متغيّرات المستودع لا من الكود، حتى يمكن تبديل
+# المشروع دون تعديل ملف. والمفتاح المطلوب هو publishable وحده — وهو مصمَّم
+# للعمل داخل المتصفح، لأن ما يحمي البيانات هو RLS لا سرّية المفتاح.
+name: نشر لوحة التحكم
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# دفعتان متتاليتان: تُلغى الأقدم بدل أن تتسابقا على النشر.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: البناء
+        env:
+          VITE_BASE: /${{ github.event.repository.name }}/
+          VITE_SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY }}
+        run: npm run build
+
+      - name: صفحة احتياطية للمسارات الداخلية
+        # Pages خادم ملفات ثابتة: طلب /bookings/123 مباشرةً لا يقابله ملف،
+        # فيردّ 404. نسخة من index.html باسم 404.html تجعله يعيد التطبيق نفسه
+        # فيتولّى الموجّه المسار.
+        run: cp dist/index.html dist/404.html
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
