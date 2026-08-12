@@ -7,6 +7,7 @@ import {
   HeartHandshake,
   LayoutDashboard,
   LayoutList,
+  LifeBuoy,
   Megaphone,
   ScrollText,
   Scale,
@@ -60,6 +61,7 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     label: 'الثقة',
     items: [
+      { to: '/support', label: 'خدمة العملاء', icon: LifeBuoy },
       { to: '/disputes', label: 'النزاعات', icon: Scale },
       { to: '/reviews', label: 'التقييمات', icon: Star },
     ],

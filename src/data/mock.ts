@@ -10,6 +10,11 @@ import type {
   Dispute,
   DisputeMessage,
   DisputeStatus,
+  SupportMessage,
+  SupportTicket,
+  TicketCategory,
+  TicketPriority,
+  TicketStatus,
   DocumentStatus,
   DocumentType,
   Governorate,
@@ -981,3 +986,136 @@ export const mockAdmins: AdminAccount[] = [
   { user_id: 'adm_2', email: 'ops@example.com', role: 'admin', created_at: isoAt(90, 11) },
   { user_id: 'adm_3', email: 'analyst@example.com', role: 'viewer', created_at: isoAt(30, 14) },
 ]
+
+// ---------------------------------------------------------------------------
+// خدمة العملاء
+//
+// مواضيع من خارج الحجز عمداً — التسجيل، والدفع، والعطل الفني — لأن هذا هو ما
+// يميّز التذكرة عن النزاع. النزاع خصومة على حجز، والتذكرة طلب مساعدة.
+// ---------------------------------------------------------------------------
+
+const TICKET_SEEDS: {
+  subject: string
+  category: TicketCategory
+  status: TicketStatus
+  priority: TicketPriority
+  body: string
+  reply?: string
+}[] = [
+  {
+    subject: 'خُصم المبلغ ولم يظهر الحجز',
+    category: 'payment',
+    status: 'open',
+    priority: 'urgent',
+    body: 'حوّلت العربون من محفظتي وخُصم المبلغ، لكن الحجز ما زال يظهر «بانتظار الدفع». أرجو المراجعة.',
+  },
+  {
+    subject: 'رمز التحقق لا يصل',
+    category: 'account',
+    status: 'waiting_customer',
+    priority: 'high',
+    body: 'أحاول تسجيل الدخول برقمي منذ أمس ولا يصلني رمز التحقق إطلاقاً.',
+    reply: 'تحققنا من السجل ووجدنا محاولات على رقم مختلف بخانة واحدة. أرسل لنا الرقم كاملاً لنعيد الضبط.',
+  },
+  {
+    subject: 'التطبيق يُغلق عند فتح الخريطة',
+    category: 'technical',
+    status: 'in_progress',
+    priority: 'high',
+    body: 'كل ما أضغط على موقع القاعة يخرج التطبيق فجأة. جهازي أندرويد ١٢.',
+    reply: 'وصلنا البلاغ وأعدنا إنتاج المشكلة على النسخة نفسها. الإصلاح في الإصدار القادم.',
+  },
+  {
+    subject: 'أريد تعديل تاريخ العرس',
+    category: 'booking',
+    status: 'resolved',
+    priority: 'normal',
+    body: 'اضطررنا لتأجيل العرس أسبوعاً، هل يمكن تعديل الحجوزات دون إلغائها؟',
+    reply: 'نسّقنا مع مقدّمي الخدمة ونُقلت الحجوزات إلى التاريخ الجديد دون رسوم.',
+  },
+  {
+    subject: 'اقتراح: إضافة قسم للطباخين',
+    category: 'suggestion',
+    status: 'closed',
+    priority: 'normal',
+    body: 'الطبخ من أكبر بنود العرس عندنا وما لقيته في الأقسام.',
+    reply: 'اقتراح في محلّه — أُضيف قسم «الطبخ والضيافة». شكراً لك.',
+  },
+  {
+    subject: 'لا أستطيع رفع السجل التجاري',
+    category: 'technical',
+    status: 'open',
+    priority: 'normal',
+    body: 'أحاول رفع السجل التجاري من حساب المنشأة ويفشل الرفع في كل مرة.',
+  },
+]
+
+export const mockTickets: SupportTicket[] = TICKET_SEEDS.map((seed, i) => {
+  const asProvider = seed.subject.includes('السجل التجاري')
+  const user = mockUsers[(i * 5 + 2) % mockUsers.length]
+  const provider = mockProviders[(i * 3 + 1) % mockProviders.length]
+  const settled = seed.status === 'resolved' || seed.status === 'closed'
+  const createdDays = 2 + i * 3
+  return {
+    id: `tkt_${i + 1}`,
+    reference: `SUP-2026-${(i + 1).toString().padStart(6, '0')}`,
+    opened_by: (asProvider ? 'provider' : 'customer') as 'customer' | 'provider',
+    user_id: asProvider ? null : user.id,
+    user_name: asProvider ? '' : user.full_name,
+    provider_id: asProvider ? provider.id : null,
+    provider_name: asProvider ? provider.business_name : '',
+    requester_name: asProvider ? provider.business_name : user.full_name,
+    subject: seed.subject,
+    category: seed.category,
+    booking_id: null,
+    booking_reference: '',
+    status: seed.status,
+    priority: seed.priority,
+    assigned_to: seed.reply ? 'admin@example.com' : '',
+    messages_count: seed.reply ? 2 : 1,
+    last_message: seed.reply ?? seed.body,
+    created_at: isoAt(createdDays, 10),
+    last_message_at: isoAt(seed.reply ? createdDays - 1 : createdDays, 15),
+    first_response_at: seed.reply ? isoAt(createdDays - 1, 15) : null,
+    resolved_at: settled ? isoAt(Math.max(0, createdDays - 2), 16) : null,
+  }
+})
+
+export const mockTicketMessages: SupportMessage[] = mockTickets.flatMap((ticket, i) => {
+  const seed = TICKET_SEEDS[i]
+  const messages: SupportMessage[] = [
+    {
+      id: `tmsg_${i}_0`,
+      ticket_id: ticket.id,
+      author: ticket.opened_by,
+      author_name: ticket.requester_name,
+      body: seed.body,
+      is_internal: false,
+      created_at: ticket.created_at,
+    },
+  ]
+  if (seed.reply) {
+    messages.push({
+      id: `tmsg_${i}_1`,
+      ticket_id: ticket.id,
+      author: 'admin',
+      author_name: 'فريق خدمة العملاء',
+      body: seed.reply,
+      is_internal: false,
+      created_at: ticket.last_message_at,
+    })
+  }
+  // ملاحظة داخلية على تذكرة واحدة، لتُرى في اللوحة كيف تظهر مميّزة.
+  if (i === 0) {
+    messages.push({
+      id: `tmsg_${i}_note`,
+      ticket_id: ticket.id,
+      author: 'admin',
+      author_name: 'فريق خدمة العملاء',
+      body: 'راجعنا سجل البوابة: العملية معلّقة لدى المزوّد ولم تُخصم فعلياً. ننتظر تأكيدهم قبل الرد.',
+      is_internal: true,
+      created_at: ticket.created_at,
+    })
+  }
+  return messages
+})

@@ -5,6 +5,7 @@ import {
   mockBookings,
   mockBookingsByDay,
   mockDisputes,
+  mockTickets,
   mockInstallsByDay,
   mockProviders,
   mockRevenueByDay,
@@ -39,6 +40,7 @@ interface Series {
 /** ما ينتظر تدخّل الإدارة الآن — يُعرض كتنبيهات لا كمؤشرات اتجاه. */
 interface Queue {
   pendingProviders: number
+  openTickets: number
   openDisputes: number
   pendingSettlements: number
   flaggedReviews: number
@@ -71,6 +73,9 @@ function demoSeries(): Series {
     governorates: live.map((booking) => booking.governorate),
     queue: {
       pendingProviders: mockProviders.filter((p) => p.status === 'pending').length,
+      openTickets: mockTickets.filter(
+        (t) => t.status === 'open' || t.status === 'in_progress',
+      ).length,
       openDisputes: mockDisputes.filter(
         (d) => d.status === 'open' || d.status === 'investigating',
       ).length,
@@ -197,8 +202,9 @@ async function loadQueue(): Promise<Queue> {
   const client = requireSupabase()
   const count = { count: 'exact' as const, head: true }
 
-  const [providers, disputes, settlements, reviews] = await Promise.all([
+  const [providers, tickets, disputes, settlements, reviews] = await Promise.all([
     client.from('service_providers').select('id', count).eq('status', 'pending'),
+    client.from('v_admin_tickets').select('id', count).in('status', ['open', 'in_progress']),
     client.from('disputes').select('id', count).in('status', ['open', 'investigating']),
     client.from('settlements').select('id', count).eq('status', 'pending'),
     client.from('reviews').select('id', count).eq('status', 'flagged'),
@@ -206,6 +212,7 @@ async function loadQueue(): Promise<Queue> {
 
   return {
     pendingProviders: providers.count ?? 0,
+    openTickets: tickets.count ?? 0,
     openDisputes: disputes.count ?? 0,
     pendingSettlements: settlements.count ?? 0,
     flaggedReviews: reviews.count ?? 0,

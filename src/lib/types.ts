@@ -384,6 +384,59 @@ export interface DisputeMessage {
 }
 
 // ---------------------------------------------------------------------------
+// خدمة العملاء
+// ---------------------------------------------------------------------------
+
+export type TicketCategory =
+  | 'account'
+  | 'payment'
+  | 'booking'
+  | 'technical'
+  | 'suggestion'
+  | 'other'
+
+export type TicketStatus = 'open' | 'in_progress' | 'waiting_customer' | 'resolved' | 'closed'
+
+export type TicketPriority = 'normal' | 'high' | 'urgent'
+
+export interface SupportTicket {
+  id: string
+  reference: string
+  opened_by: 'customer' | 'provider'
+  user_id: string | null
+  user_name: string
+  provider_id: string | null
+  provider_name: string
+  /** اسم صاحب التذكرة أياً كان تطبيقه — يأتي من طريقة العرض. */
+  requester_name: string
+  subject: string
+  category: TicketCategory
+  booking_id: string | null
+  booking_reference: string
+  status: TicketStatus
+  priority: TicketPriority
+  assigned_to: string
+  messages_count: number
+  last_message: string | null
+  created_at: string
+  last_message_at: string
+  /** أول ردّ من الإدارة — به يُقاس زمن الاستجابة. */
+  first_response_at: string | null
+  resolved_at: string | null
+}
+
+export interface SupportMessage {
+  id: string
+  ticket_id: string
+  author: 'customer' | 'provider' | 'admin'
+  author_name: string
+  body: string
+  /** ملاحظة بين المسؤولين لا يراها صاحب التذكرة — تحجبها RLS لا الواجهة. */
+  is_internal: boolean
+  created_at: string
+}
+
+// ---------------------------------------------------------------------------
 // الدخل: الاشتراكات والإعلانات
 // ---------------------------------------------------------------------------
 
@@ -521,6 +574,7 @@ export interface DashboardStats {
   topGovernorates: { governorate: string; bookings: number }[]
   /** ما ينتظر تدخّل الإدارة الآن. */
   pendingProviders: number
+  openTickets: number
   openDisputes: number
   pendingSettlements: number
   flaggedReviews: number

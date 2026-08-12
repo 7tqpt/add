@@ -8,6 +8,7 @@ import {
   ChevronLeft,
   PercentCircle,
   RefreshCw,
+  LifeBuoy,
   Scale,
   Star,
   Wallet,
@@ -47,6 +48,7 @@ const COMPARISON = 'مقارنة بالفترة السابقة'
 /** What is waiting on an admin right now, and where to go to clear it. */
 const QUEUE: { key: keyof DashboardStats; label: string; to: string; icon: LucideIcon }[] = [
   { key: 'pendingProviders', label: 'طلبات توثيق', to: '/providers', icon: BriefcaseBusiness },
+  { key: 'openTickets', label: 'تذاكر خدمة العملاء', to: '/support', icon: LifeBuoy },
   { key: 'openDisputes', label: 'نزاعات مفتوحة', to: '/disputes', icon: Scale },
   { key: 'pendingSettlements', label: 'تسويات بانتظار الاعتماد', to: '/settlements', icon: Banknote },
   { key: 'flaggedReviews', label: 'تقييمات مُبلَّغ عنها', to: '/reviews', icon: Star },

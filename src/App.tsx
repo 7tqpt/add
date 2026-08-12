@@ -22,6 +22,8 @@ import { ProvidersPage } from '@/pages/Providers'
 import { ReviewsPage } from '@/pages/Reviews'
 import { SettingsPage } from '@/pages/Settings'
 import { SettlementsPage } from '@/pages/Settlements'
+import { SupportPage } from '@/pages/Support'
+import { SupportTicketPage } from '@/pages/SupportTicket'
 import { UserDetailPage } from '@/pages/UserDetail'
 import { UsersPage } from '@/pages/Users'
 import { VersionsPage } from '@/pages/Versions'
@@ -68,6 +70,8 @@ export function App() {
         <Route path="/settlements" element={<SettlementsPage />} />
         <Route path="/promotions" element={<PromotionsPage />} />
 
+        <Route path="/support" element={<SupportPage />} />
+        <Route path="/support/:id" element={<SupportTicketPage />} />
         <Route path="/disputes" element={<DisputesPage />} />
         <Route path="/disputes/:id" element={<DisputeDetailPage />} />
         <Route path="/reviews" element={<ReviewsPage />} />

@@ -9,8 +9,12 @@ await db.exec(`
   create or replace function auth.uid() returns uuid language sql stable as $$
     select nullif(current_setting('test.uid', true), '')::uuid $$;
   create role authenticated; create role anon; create role service_role;`)
-await db.exec(readFileSync('../install.sql', 'utf8'))
-await db.exec(readFileSync('../apply.sql', 'utf8'))
+// كل ملف يُنفَّذ على القاعدة الحقيقية يجب أن يكون هنا، وإلا صار الاختبار
+// يبلّغ عن جداول «مفقودة» هي موجودة فعلاً — أو، وهو الأسوأ، تُضاف شاشة تقرأ
+// جدولاً لم يُنشأ ولا ينبّه أحد.
+for (const f of ['install.sql', 'seed.sql', 'apply.sql', 'support.sql']) {
+  await db.exec(readFileSync(`../${f}`, 'utf8'))
+}
 
 const rel = await db.query(`
   select table_name from information_schema.tables where table_schema='public'
@@ -63,3 +67,6 @@ const unique = [...new Set(problems)]
 if (unique.length === 0) console.log('✅ كل جدول وعمود ودالة يطلبها الكود موجودة في القاعدة')
 else { console.log(`❌ ${unique.length} مشكلة:`); for (const p of unique) console.log('  •', p) }
 await db.close()
+// الخروج بصفر مع وجود مشاكل يجعل الاختبار زينةً: مشغّل المجموعة يقرأ رمز
+// الخروج لا النصّ، فكان يعلن النجاح وهو يطبع الأخطاء.
+process.exit(unique.length === 0 ? 0 : 1)

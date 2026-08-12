@@ -10,8 +10,9 @@ await db.exec(`
   create or replace function auth.uid() returns uuid language sql stable as $$
     select nullif(current_setting('test.uid', true), '')::uuid $$;
   create role authenticated; create role anon; create role service_role;`)
-await db.exec(readFileSync('../install.sql', 'utf8'))
-await db.exec(readFileSync('../apply.sql', 'utf8'))
+for (const f of ['install.sql', 'seed.sql', 'apply.sql', 'support.sql']) {
+  await db.exec(readFileSync(`../${f}`, 'utf8'))
+}
 
 const cols = await db.query(
   `select table_name, column_name from information_schema.columns where table_schema='public'`)
@@ -32,6 +33,7 @@ const MAP = {
   ServiceCategory: 'service_categories', CancellationPolicy: 'cancellation_policies',
   Governorate: 'governorates', AppVersion: 'app_versions', AuditEntry: 'audit_log',
   AdminAccount: 'admins',
+  SupportTicket: 'v_admin_tickets', SupportMessage: 'support_messages',
 }
 
 const src = readFileSync('../../src/lib/types.ts', 'utf8')
@@ -52,3 +54,4 @@ for (const [type, relation] of Object.entries(MAP)) {
 if (missing.length === 0) console.log('✅ كل حقل في الأنواع له عمود مقابل')
 else { console.log(`❌ ${missing.length} حقلاً بلا عمود:`); for (const x of missing) console.log('  •', x) }
 await db.close()
+process.exit(missing.length === 0 ? 0 : 1)

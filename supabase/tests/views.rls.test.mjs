@@ -10,7 +10,7 @@ await db.exec(`
   create or replace function auth.uid() returns uuid language sql stable as $$
     select nullif(current_setting('test.uid', true), '')::uuid $$;
   create role authenticated; create role anon; create role service_role;`)
-for (const f of ['install.sql', 'seed.sql', 'apply.sql']) {
+for (const f of ['install.sql', 'seed.sql', 'apply.sql', 'support.sql']) {
   await db.exec(readFileSync(`../${f}`, 'utf8'))
 }
 
@@ -29,7 +29,10 @@ console.log(bad.rows.length === 0
 await db.exec(`set role anon`)
 const leaked = await db.query('select count(*)::int as n from public.v_admin_settlements')
 await db.exec('reset role')
-console.log(leaked.rows[0].n === 0
+const leakedRows = leaked.rows[0].n
+console.log(leakedRows === 0
   ? '✅ المجهول لا يرى مستحقات الشركاء عبر طريقة العرض'
-  : `❌ تسرّب: المجهول رأى ${leaked.rows[0].n} تسوية`)
+  : `❌ تسرّب: المجهول رأى ${leakedRows} تسوية`)
 await db.close()
+// فحص تسريب يخرج بصفر عند التسريب لا يفحص شيئاً — كان يطبع ❌ ويُعدّ ناجحاً.
+process.exit(leakedRows === 0 ? 0 : 1)
