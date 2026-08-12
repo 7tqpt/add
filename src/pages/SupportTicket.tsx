@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { ArrowRight, Lock, Send } from 'lucide-react'
+import { ArrowRight, Lock, Send, UserCheck } from 'lucide-react'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Card, CardBody, CardHeader } from '@/components/ui/Card'
@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/Feedback'
 import { Field, Select, Textarea } from '@/components/ui/Field'
 import { useAuth } from '@/context/AuthContext'
+import { listAdmins } from '@/services/admins'
 import { useAsync } from '@/hooks/useAsync'
 import { cn } from '@/lib/cn'
 import { formatDateTime, formatRelative } from '@/lib/format'
@@ -21,6 +22,7 @@ import {
   TICKET_CATEGORY_LABEL,
   TICKET_PRIORITY_LABEL,
   TICKET_STATUS_LABEL,
+  assignTicket,
   getTicket,
   listTicketMessages,
   replyToTicket,
@@ -37,7 +39,7 @@ const AUTHOR_LABEL: Record<'customer' | 'provider' | 'admin', string> = {
 
 export function SupportTicketPage() {
   const { id = '' } = useParams()
-  const { canWrite } = useAuth()
+  const { canWrite, user } = useAuth()
   const [reply, setReply] = useState('')
   const [internal, setInternal] = useState(false)
   const [nextStatus, setNextStatus] = useState<TicketStatus>('waiting_customer')
@@ -47,8 +49,10 @@ export function SupportTicketPage() {
 
   const loadTicket = useCallback(() => getTicket(id), [id])
   const loadMessages = useCallback(() => listTicketMessages(id), [id])
+  const loadAdmins = useCallback(() => listAdmins(), [])
   const ticket = useAsync(loadTicket, [id])
   const messages = useAsync(loadMessages, [id])
+  const admins = useAsync(loadAdmins, [])
 
   useEffect(() => {
     if (!toast) return
@@ -86,6 +90,21 @@ export function SupportTicketPage() {
       ticket.reload()
     } catch (cause) {
       setToast(cause instanceof Error ? cause.message : 'تعذّر تحديث الحالة.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function changeAssignee(email: string) {
+    const record = ticket.data
+    if (!record) return
+    setBusy(true)
+    try {
+      await assignTicket(record, email)
+      setToast(email ? `أُسندت إلى ${email}.` : 'رُفع الإسناد.')
+      ticket.reload()
+    } catch (cause) {
+      setToast(cause instanceof Error ? cause.message : 'تعذّر تغيير الإسناد.')
     } finally {
       setBusy(false)
     }
@@ -234,6 +253,42 @@ export function SupportTicketPage() {
               )}
             </Field>
           </div>
+          <div className="w-56">
+            <Field label="المسؤول عنها">
+              {(fieldId) => (
+                <Select
+                  id={fieldId}
+                  value={record.assigned_to}
+                  disabled={busy || !canWrite}
+                  onChange={(event) => changeAssignee(event.target.value)}
+                >
+                  <option value="">غير مُسندة</option>
+                  {/*
+                    البريد الحالي يُدرج ولو لم يظهر في قائمة المسؤولين بعد —
+                    وإلا اختفى الإسناد القائم من القائمة وبدا كأنه رُفع.
+                  */}
+                  {[
+                    ...new Set([
+                      ...(admins.data ?? []).map((a) => a.email),
+                      ...(record.assigned_to ? [record.assigned_to] : []),
+                    ]),
+                  ].map((email) => (
+                    <option key={email} value={email}>
+                      {email}
+                    </option>
+                  ))}
+                </Select>
+              )}
+            </Field>
+          </div>
+
+          {canWrite && user && record.assigned_to !== user.email ? (
+            <Button size="sm" disabled={busy} onClick={() => changeAssignee(user.email)}>
+              <UserCheck size={14} aria-hidden />
+              أسندها لي
+            </Button>
+          ) : null}
+
           {!canWrite ? (
             <p className="text-xs text-muted">دورك الحالي للقراءة فقط.</p>
           ) : null}

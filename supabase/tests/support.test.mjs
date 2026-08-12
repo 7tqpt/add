@@ -144,6 +144,26 @@ ok('مقدّم الخدمة يفتح تذكرة باسم منشأته', pt[0].op
 const { rows: notCustomer } = await as('customer', `select count(*)::int n from public.support_tickets`)
 ok('العميل لا يرى تذكرة مقدّم الخدمة', notCustomer[0].n === 1, `يرى ${notCustomer[0].n}`)
 
+console.log('\n=== الكتابة المباشرة على الجدول ===')
+// الدوال ليست الطريق الوحيد: PostgREST يعرض الجدول نفسه، فلا بدّ أن تمنع
+// السياسةُ صاحبَ التذكرة من تغيير حالتها أو أولويتها أو إسنادها بيده.
+const { rows: before } = await as('admin', `select status, priority, assigned_to from public.support_tickets where id=$1`, [ticket.id])
+await as('customer', `update public.support_tickets set status='resolved', priority='urgent', assigned_to='me@x.ye' where id=$1`, [ticket.id])
+const { rows: after } = await as('admin', `select status, priority, assigned_to from public.support_tickets where id=$1`, [ticket.id])
+ok('العميل لا يغيّر حالة تذكرته بيده', after[0].status === before[0].status, `${before[0].status} → ${after[0].status}`)
+ok('ولا أولويتها', after[0].priority === before[0].priority)
+ok('ولا يُسندها لنفسه', after[0].assigned_to === before[0].assigned_to)
+
+await expectFail('العميل يكتب رسالة باسم الإدارة', () =>
+  as('customer', `insert into public.support_messages (ticket_id, author, body) values ($1, 'admin', 'الإدارة تقول')`, [ticket.id]))
+await expectFail('العميل يكتب ملاحظة داخلية', () =>
+  as('customer', `insert into public.support_messages (ticket_id, author, body, is_internal) values ($1, 'customer', 'سرّي', true)`, [ticket.id]))
+
+console.log('\n=== الإسناد ===')
+await as('admin', `update public.support_tickets set assigned_to='admin@test.ye' where id=$1`, [ticket.id])
+const { rows: assigned } = await as('admin', `select assigned_to from public.support_tickets where id=$1`, [ticket.id])
+ok('المسؤول يُسند التذكرة', assigned[0].assigned_to === 'admin@test.ye', assigned[0].assigned_to)
+
 console.log('\n=== الإغلاق ===')
 await as('customer', `select public.api_close_ticket($1)`, [ticket.id])
 const { rows: closed } = await as('admin', `select status, resolved_at from public.support_tickets where id=$1`, [ticket.id])

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Search } from 'lucide-react'
+import { Clock, Inbox, MailQuestion, Search } from 'lucide-react'
+import { StatTile } from '@/components/charts/StatTile'
 import { Badge, type Tone } from '@/components/ui/Badge'
 import { Card } from '@/components/ui/Card'
 import { ExportButton } from '@/components/ui/ExportButton'
@@ -10,12 +11,13 @@ import { Pagination } from '@/components/ui/Pagination'
 import { useAsync } from '@/hooks/useAsync'
 import { useDebounced } from '@/hooks/useDebounced'
 import { cn } from '@/lib/cn'
-import { formatDate, formatRelative } from '@/lib/format'
+import { formatCount, formatDate, formatNumber, formatRelative, HOUR_FORMS } from '@/lib/format'
 import type { TicketCategory, TicketPriority, TicketStatus } from '@/lib/types'
 import {
   TICKET_CATEGORY_LABEL,
   TICKET_PRIORITY_LABEL,
   TICKET_STATUS_LABEL,
+  getTicketStats,
   listTickets,
 } from '@/services/support'
 
@@ -59,6 +61,10 @@ export function SupportPage() {
     category,
     page,
   ])
+
+  // مستقلّة عن التصفية عمداً: «كم ينتظرنا» سؤال عن الصندوق كلّه لا عن الشاشة.
+  const loadStats = useCallback(() => getTicketStats(), [])
+  const stats = useAsync(loadStats, [])
 
   useEffect(() => {
     if (!toast) return
@@ -104,8 +110,31 @@ export function SupportPage() {
     }
   }, [debouncedSearch, status, category])
 
+  const median = stats.data?.medianFirstResponseHours ?? null
+
   return (
     <div className="flex flex-col gap-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <StatTile
+          label="ينتظر ردّ الإدارة"
+          value={formatNumber(stats.data?.waitingOnUs ?? 0)}
+          icon={Inbox}
+          refetching={stats.refetching}
+        />
+        <StatTile
+          label="لم يُردّ عليها بعد"
+          value={formatNumber(stats.data?.neverAnswered ?? 0)}
+          icon={MailQuestion}
+          refetching={stats.refetching}
+        />
+        <StatTile
+          label="وسيط زمن أول ردّ"
+          value={median === null ? '—' : formatCount(Math.round(median), HOUR_FORMS)}
+          icon={Clock}
+          refetching={stats.refetching}
+        />
+      </div>
+
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative min-w-56 flex-1">
           <Search
@@ -204,6 +233,15 @@ export function SupportPage() {
                       </Link>
                       <p dir="ltr" className="tnum text-start text-[11px] text-muted">
                         {ticket.reference}
+                      </p>
+                      {/* من يملكها أهمّ سؤال في صندوق دعم — «غير مُسندة» جواب
+                          يستحق الظهور بقدر ما يستحقه الاسم. */}
+                      <p className="text-[11px] text-muted">
+                        {ticket.assigned_to ? (
+                          <span dir="ltr">{ticket.assigned_to}</span>
+                        ) : (
+                          <span className="text-[var(--critical)]">غير مُسندة</span>
+                        )}
                       </p>
                     </td>
                     <td className="px-4 py-3 text-xs whitespace-nowrap text-ink-2">
