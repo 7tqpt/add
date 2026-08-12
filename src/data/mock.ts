@@ -107,7 +107,16 @@ export const mockCategories: ServiceCategory[] = [
     ],
   },
   {
-    id: 'cat_artists', name: 'الفنانين والفرق', slug: 'artists', sort_order: 2, is_active: true,
+    id: 'cat_catering', name: 'الطبخ والضيافة', slug: 'catering', sort_order: 2, is_active: true,
+    description: 'طباخين، مطابخ مناسبات، بوفيهات، ذبائح، مندي وحنيذ، قهوة وشاي، وطاقم تقديم.',
+    custom_fields: [
+      { key: 'guests_capacity', label: 'عدد الأشخاص', type: 'number', required: true },
+      { key: 'menu_style', label: 'نمط الوجبة', type: 'text', required: false },
+      { key: 'includes_service', label: 'يشمل طاقم التقديم', type: 'boolean', required: false },
+    ],
+  },
+  {
+    id: 'cat_artists', name: 'الفنانين والفرق', slug: 'artists', sort_order: 3, is_active: true,
     description: 'فنانين، فرق فنية، منشدين، دي جي، زفة، وفنانين مع معداتهم.',
     custom_fields: [
       { key: 'members', label: 'عدد أفراد الفرقة', type: 'number', required: false },
@@ -115,12 +124,12 @@ export const mockCategories: ServiceCategory[] = [
     ],
   },
   {
-    id: 'cat_sound', name: 'الصوت والمعدات', slug: 'sound', sort_order: 3, is_active: true,
+    id: 'cat_sound', name: 'الصوت والمعدات', slug: 'sound', sort_order: 4, is_active: true,
     description: 'سماعات، مكبرات، ميكروفونات، أجهزة دي جي، معدات صوت وحفلات وتأجير المعدات.',
     custom_fields: [{ key: 'coverage_area', label: 'مساحة التغطية', type: 'text', required: false }],
   },
   {
-    id: 'cat_photo', name: 'التصوير والإضاءة', slug: 'photography', sort_order: 4, is_active: true,
+    id: 'cat_photo', name: 'التصوير والإضاءة', slug: 'photography', sort_order: 5, is_active: true,
     description: 'مصورين، فرق تصوير، تصوير فيديو وفوتوغرافي، كاميرات، درون، وإضاءة الحفلات.',
     custom_fields: [
       { key: 'has_drone', label: 'تصوير بالدرون', type: 'boolean', required: false },
@@ -128,13 +137,13 @@ export const mockCategories: ServiceCategory[] = [
     ],
   },
   {
-    id: 'cat_support', name: 'الموية والطليع والخدمات المساندة', slug: 'support', sort_order: 5,
+    id: 'cat_support', name: 'الموية والطليع والخدمات المساندة', slug: 'support', sort_order: 6,
     is_active: true,
     description: 'موية، قريح، طليع وأي خدمات مساندة يعتمدها النظام حسب المدينة.',
     custom_fields: [{ key: 'quantity_unit', label: 'وحدة القياس', type: 'text', required: false }],
   },
   {
-    id: 'cat_cars', name: 'السيارات', slug: 'cars', sort_order: 6, is_active: true,
+    id: 'cat_cars', name: 'السيارات', slug: 'cars', sort_order: 7, is_active: true,
     description: 'سيارات للعريس، الزفة، الضيوف، سيارات فخمة، باصات وخدمات نقل.',
     custom_fields: [
       { key: 'car_model', label: 'الطراز', type: 'text', required: false },
@@ -142,27 +151,27 @@ export const mockCategories: ServiceCategory[] = [
     ],
   },
   {
-    id: 'cat_attire', name: 'الملبوسات', slug: 'attire', sort_order: 7, is_active: true,
+    id: 'cat_attire', name: 'الملبوسات', slug: 'attire', sort_order: 8, is_active: true,
     description: 'ملابس العريس والعروس والضيوف والأطفال، شراء، إيجار، تفصيل وإكسسوارات.',
     custom_fields: [{ key: 'mode', label: 'نوع التعامل', type: 'text', required: false }],
   },
   {
-    id: 'cat_planners', name: 'متعهدين الحفلات', slug: 'planners', sort_order: 8, is_active: true,
+    id: 'cat_planners', name: 'متعهدين الحفلات', slug: 'planners', sort_order: 9, is_active: true,
     description: 'تنظيم وتجهيز شامل، باقات، تنسيق الخدمات، الديكور، الصوت، التصوير والزفة.',
     custom_fields: [{ key: 'package_scope', label: 'نطاق الباقة', type: 'text', required: false }],
   },
   {
-    id: 'cat_beauty', name: 'التجميل والكوافير', slug: 'beauty', sort_order: 9, is_active: true,
+    id: 'cat_beauty', name: 'التجميل والكوافير', slug: 'beauty', sort_order: 10, is_active: true,
     description: 'مكياج، تسريحات، كوافير، تجهيز العروس وخدمات التجميل.',
     custom_fields: [{ key: 'home_service', label: 'خدمة منزلية', type: 'boolean', required: false }],
   },
   {
-    id: 'cat_decor', name: 'الديكور والكوشة والورد', slug: 'decor', sort_order: 10, is_active: true,
+    id: 'cat_decor', name: 'الديكور والكوشة والورد', slug: 'decor', sort_order: 11, is_active: true,
     description: 'كوش، ورد، ديكور، خلفيات، طاولات، كراسي وتجهيزات المكان.',
     custom_fields: [{ key: 'style', label: 'الطراز', type: 'text', required: false }],
   },
   {
-    id: 'cat_print', name: 'الطباعة', slug: 'printing', sort_order: 11, is_active: true,
+    id: 'cat_print', name: 'الطباعة', slug: 'printing', sort_order: 12, is_active: true,
     description: 'بطاقات الدعوة، اللوحات، الاستيكرات، التوزيعات، أرقام الطاولات وبطاقات الشكر.',
     custom_fields: [{ key: 'min_quantity', label: 'أقل كمية', type: 'number', required: false }],
   },
@@ -170,7 +179,7 @@ export const mockCategories: ServiceCategory[] = [
 
 /** سعر الباقة الأساسية لكل قسم، بالريال اليمني. */
 const CATEGORY_BASE_PRICE: Record<string, number> = {
-  cat_halls: 300_000, cat_artists: 200_000, cat_sound: 90_000, cat_photo: 120_000,
+  cat_halls: 300_000, cat_catering: 250_000, cat_artists: 200_000, cat_sound: 90_000, cat_photo: 120_000,
   cat_support: 40_000, cat_cars: 60_000, cat_attire: 80_000, cat_planners: 400_000,
   cat_beauty: 50_000, cat_decor: 150_000, cat_print: 20_000,
 }
@@ -295,6 +304,7 @@ const BUSINESS_NAME = ['اللؤلؤة', 'الأصالة', 'النخبة', 'ال
  */
 const PREFIX_BY_CATEGORY: Record<string, string> = {
   halls: 'قاعة',
+  catering: 'مطابخ',
   photography: 'استوديو',
   attire: 'معرض',
   beauty: 'صالون',
