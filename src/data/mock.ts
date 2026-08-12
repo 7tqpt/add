@@ -378,6 +378,8 @@ export const mockDocuments: ProviderDocument[] = mockProviders.flatMap((provider
       provider_id: provider.id,
       type,
       file_name: `${type}-${provider.id}.pdf`,
+      // البيانات التجريبية بلا ملفات فعلية — الشاشة تعرضها «بلا ملف مرفوع».
+      file_url: '',
       status,
       note: status === 'rejected' ? 'السجل التجاري منتهي الصلاحية.' : '',
       uploaded_at: provider.applied_at,

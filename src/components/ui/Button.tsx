@@ -19,6 +19,21 @@ const SIZES: Record<Size, string> = {
   md: 'h-10 px-4 text-sm gap-2',
 }
 
+const BASE =
+  'inline-flex cursor-pointer items-center justify-center rounded-lg font-medium whitespace-nowrap transition-[background-color,filter,color] disabled:cursor-not-allowed disabled:opacity-55'
+
+/**
+ * أصناف الزرّ لعنصر ليس `<button>`.
+ *
+ * الرابط الذي يفتح في تبويب جديد يجب أن يكون `<a href>` فعلاً لا زرّاً يقلّده:
+ * الزرّ لا يُفتح بضغطة وسطى ولا «فتح في تبويب جديد»، وقارئ الشاشة يسمّيه زرّاً
+ * فلا يتوقّع المستخدم مغادرة الصفحة. وتحويل Button إلى مكوّن متعدّد الأشكال
+ * ثمنه أنواع معقّدة في كل موضع استعمال، فالأرخص أن تُعار الأصناف.
+ */
+export function buttonClass(variant: Variant = 'secondary', size: Size = 'md', className?: string) {
+  return cn(BASE, VARIANTS[variant], SIZES[size], className)
+}
+
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: Variant
   size?: Size
@@ -33,15 +48,7 @@ export function Button({
   ...rest
 }: ButtonProps) {
   return (
-    <button
-      className={cn(
-        'inline-flex cursor-pointer items-center justify-center rounded-lg font-medium whitespace-nowrap transition-[background-color,filter,color] disabled:cursor-not-allowed disabled:opacity-55',
-        VARIANTS[variant],
-        SIZES[size],
-        className,
-      )}
-      {...rest}
-    >
+    <button className={buttonClass(variant, size, className)} {...rest}>
       {children}
     </button>
   )

@@ -141,6 +141,12 @@ export interface ProviderDocument {
   provider_id: string
   type: DocumentType
   file_name: string
+  /**
+   * مسار الملف داخل حاوية `provider-docs`، بصيغة `<provider_id>/<doc_id>.<ext>`.
+   * ليس رابطاً يُفتح مباشرة: الحاوية خاصة، والرابط القابل للفتح يُصدَر موقَّتاً
+   * عند الطلب. يبقى فارغاً للمستندات المسجّلة قبل وجود التخزين.
+   */
+  file_url: string
   status: DocumentStatus
   note: string
   uploaded_at: string

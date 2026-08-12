@@ -5,6 +5,7 @@ import {
   BadgeCheck,
   Ban,
   Check,
+  ExternalLink,
   FileText,
   Package,
   RotateCcw,
@@ -14,7 +15,7 @@ import {
 } from 'lucide-react'
 import { StatTile } from '@/components/charts/StatTile'
 import { Badge, type Tone } from '@/components/ui/Badge'
-import { Button } from '@/components/ui/Button'
+import { Button, buttonClass } from '@/components/ui/Button'
 import { Card, CardBody, CardHeader } from '@/components/ui/Card'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { EmptyState, ErrorState, LoadingBlock, Toast } from '@/components/ui/Feedback'
@@ -153,6 +154,7 @@ export function ProviderDetailPage() {
   const record = provider.data
   const documents = portfolio.data?.documents ?? []
   const services = portfolio.data?.services ?? []
+  const documentUrls = portfolio.data?.documentUrls ?? {}
   const reviewRows = reviews.data ?? []
   const allApproved = documents.length > 0 && documents.every((doc) => doc.status === 'approved')
 
@@ -332,7 +334,9 @@ export function ProviderDetailPage() {
               <EmptyState title="لم تُرفع أي مستندات" />
             ) : (
               <ul className="divide-y divide-[var(--border)]">
-                {documents.map((document) => (
+                {documents.map((document) => {
+                  const url = documentUrls[document.id]
+                  return (
                   <li
                     key={document.id}
                     className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-5"
@@ -346,6 +350,11 @@ export function ProviderDetailPage() {
                         <p dir="ltr" className="truncate text-start text-[11px] text-muted">
                           {document.file_name}
                         </p>
+                        {url ? null : (
+                          <p className="mt-0.5 text-[11px] text-muted">
+                            لا يوجد ملف مرفوع — لا يمكن قبوله
+                          </p>
+                        )}
                         {document.note ? (
                           <p className="mt-0.5 text-[11px] text-[var(--critical)]">{document.note}</p>
                         ) : null}
@@ -356,11 +365,33 @@ export function ProviderDetailPage() {
                       <Badge tone={DOCUMENT_TONE[document.status]}>
                         {DOCUMENT_STATUS_LABEL[document.status]}
                       </Badge>
+                      {url ? (
+                        <a
+                          className={buttonClass('secondary', 'sm')}
+                          href={url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          <ExternalLink size={14} aria-hidden />
+                          عرض
+                        </a>
+                      ) : null}
+                      {/*
+                        القبول يتطلّب ملفاً يُقرأ. الموافقة على مستند لا تراه ليست
+                        مراجعة — وهي تمنح مقدّم الخدمة توثيقاً لم يُتحقّق منه أحد.
+                        الرفض يبقى متاحاً: «لم يرفع شيئاً» سبب وجيه للرفض.
+                      */}
                       {document.status !== 'approved' ? (
                         <Button
                           size="sm"
-                          disabled={busy || !canWrite}
-                          title={canWrite ? undefined : 'دورك الحالي للقراءة فقط'}
+                          disabled={busy || !canWrite || !url}
+                          title={
+                            !canWrite
+                              ? 'دورك الحالي للقراءة فقط'
+                              : url
+                                ? undefined
+                                : 'لا يوجد ملف مرفوع لمراجعته'
+                          }
                           onClick={() => reviewDocument(record, document, 'approved')}
                         >
                           <Check size={14} aria-hidden />
@@ -381,7 +412,8 @@ export function ProviderDetailPage() {
                       ) : null}
                     </div>
                   </li>
-                ))}
+                  )
+                })}
               </ul>
             )}
           </Card>

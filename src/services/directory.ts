@@ -223,13 +223,76 @@ export async function getProvider(id: string): Promise<ServiceProvider | null> {
 export interface ProviderPortfolio {
   documents: ProviderDocument[]
   services: ProviderService[]
+  /**
+   * روابط فتح المستندات، مفتاحها معرّف المستند. المستند بلا ملف مرفوع لا مفتاح
+   * له هنا — وهو ما تعتمد عليه الشاشة لتفرّق بين «افتح» و«لا يوجد ملف».
+   */
+  documentUrls: Record<string, string>
+}
+
+const DOCS_BUCKET = 'provider-docs'
+
+/** مدّة صلاحية رابط المستند. تكفي جلسة مراجعة، ولا تصلح للمشاركة. */
+const SIGNED_URL_TTL_SECONDS = 600
+
+/**
+ * يحوّل مسارات التخزين إلى روابط موقَّتة قابلة للفتح.
+ *
+ * الحاوية خاصة، فلا يوجد رابط دائم لصورة هوية — وهذا مقصود. الروابط تُصدَر
+ * دفعةً واحدة مع تحميل الصفحة لا عند الضغط: الإصدار عند الضغط يعني `await`
+ * قبل `window.open`، وحينها يحجب المتصفّح النافذة باعتبارها لم تنشأ عن نقرة.
+ *
+ * فشل الإصدار لا يُسقط الصفحة: المستند يظهر بلا زر فتح، وبقية الشاشة تعمل.
+ */
+async function signDocuments(documents: ProviderDocument[]): Promise<Record<string, string>> {
+  const stored = documents.filter((doc) => doc.file_url)
+  if (stored.length === 0) return {}
+
+  const { data, error } = await requireSupabase()
+    .storage.from(DOCS_BUCKET)
+    .createSignedUrls(
+      stored.map((doc) => doc.file_url),
+      SIGNED_URL_TTL_SECONDS,
+    )
+  if (error || !data) return {}
+
+  const urls: Record<string, string> = {}
+  data.forEach((entry, index) => {
+    const doc = stored[index]
+    if (doc && entry.signedUrl && !entry.error) urls[doc.id] = entry.signedUrl
+  })
+  return urls
+}
+
+/**
+ * مستند بديل للوضع التجريبي.
+ *
+ * بلا هذا يظهر الوضع التجريبي وكأن زرّ «عرض» غير موجود أصلاً، فيبدو النقص
+ * ميزةً ناقصة لا بيانات ناقصة. الصورة تُبنى في المتصفّح فلا ملف يُرفع ولا طلب
+ * شبكة يُرسل.
+ *
+ * blob: لا data:. المتصفّحات تمنع الانتقال بالمستوى الأعلى إلى روابط data:
+ * منذ سنوات — كانت وسيلةً شائعة للتصيّد — فالضغط على «عرض» ما كان ليفتح شيئاً.
+ */
+function demoDocumentUrl(label: string): string {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="820">
+    <rect width="100%" height="100%" fill="#f5f3ee"/>
+    <rect x="30" y="30" width="540" height="760" fill="#fff" stroke="#d9d2c5"/>
+    <text x="300" y="380" text-anchor="middle" font-family="sans-serif" font-size="30" fill="#9a6a00">${label}</text>
+    <text x="300" y="430" text-anchor="middle" font-family="sans-serif" font-size="20" fill="#8a8375">مستند تجريبي — لا يوجد ملف حقيقي</text>
+  </svg>`
+  return URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }))
 }
 
 export async function getProviderPortfolio(providerId: string): Promise<ProviderPortfolio> {
   if (!isSupabaseConfigured) {
+    const documents = demoDocuments.filter((d) => d.provider_id === providerId)
     return delay({
-      documents: demoDocuments.filter((d) => d.provider_id === providerId),
+      documents,
       services: mockServices.filter((s) => s.provider_id === providerId),
+      documentUrls: Object.fromEntries(
+        documents.map((doc) => [doc.id, demoDocumentUrl(DOCUMENT_TYPE_LABEL[doc.type] ?? doc.type)]),
+      ),
     })
   }
 
@@ -241,9 +304,11 @@ export async function getProviderPortfolio(providerId: string): Promise<Provider
   if (documents.error) throw documents.error
   if (services.error) throw services.error
 
+  const rows = (documents.data ?? []) as ProviderDocument[]
   return {
-    documents: (documents.data ?? []) as ProviderDocument[],
+    documents: rows,
     services: (services.data ?? []) as ProviderService[],
+    documentUrls: await signDocuments(rows),
   }
 }
 
