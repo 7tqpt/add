@@ -1,15 +1,16 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Save, UserMinus, UserPlus } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
+import { Badge } from '@/components/ui/Badge'
 import { Card, CardBody, CardHeader } from '@/components/ui/Card'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { ErrorState, LoadingBlock, Spinner, Toast } from '@/components/ui/Feedback'
 import { Field, Input, Select, Textarea, Toggle } from '@/components/ui/Field'
 import { useAsync } from '@/hooks/useAsync'
 import { useAuth } from '@/context/AuthContext'
-import { formatDate } from '@/lib/format'
+import { formatDate, formatRelative } from '@/lib/format'
 import { isSupabaseConfigured } from '@/lib/supabase'
-import type { AdminAccount, AdminRole, AppSettings } from '@/lib/types'
+import type { AdminAccount, AdminInvitation, AdminRole, AppSettings } from '@/lib/types'
 import {
   AREAS_IN_ORDER,
   AREA_LABEL,
@@ -20,8 +21,10 @@ import {
 import {
   ROLE_DESCRIPTION,
   ROLE_LABEL,
-  addAdmin,
+  cancelInvitation,
+  inviteAdmin,
   listAdmins,
+  listInvitations,
   removeAdmin,
   setAdminRole,
 } from '@/services/admins'
@@ -71,8 +74,15 @@ export function SettingsPage() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-      <Card>
+    <div className="flex flex-col gap-4">
+      {/*
+        بطاقة المسؤولين خارج نموذج الإعدادات لا داخله.
+        نموذجٌ داخل نموذج غير صالح في HTML، فيسقطه المتصفّح ولا يعمل onSubmit
+        الداخلي أبداً — يُرسَل الخارجي مكانه. وقع ذلك فعلاً: زرّ «إضافة مسؤول»
+        كان يبدو سليماً ولا يفعل شيئاً.
+      */}
+      <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <Card>
         <CardHeader title="حالة التطبيق" subtitle="تتحكم في وصول المستخدمين إلى التطبيق" />
         <CardBody className="flex flex-col gap-5">
           <Toggle
@@ -106,9 +116,9 @@ export function SettingsPage() {
             description="عند الإيقاف يُخفى نموذج الانضمام؛ الطلبات المعلّقة تبقى للمراجعة."
           />
         </CardBody>
-      </Card>
+        </Card>
 
-      <Card>
+        <Card>
         <CardHeader
           title="العمولة والعربون"
           subtitle="القيم الافتراضية للمنصة — تسري على الحجوزات الجديدة فقط"
@@ -166,9 +176,9 @@ export function SettingsPage() {
             )}
           </Field>
         </CardBody>
-      </Card>
+        </Card>
 
-      <Card>
+        <Card>
         <CardHeader title="الحد الأدنى للإصدارات" subtitle="أقدم إصدار مسموح بتشغيله" />
         <CardBody className="flex flex-col gap-5">
           <Field label="أقل إصدار مدعوم على iOS">
@@ -211,9 +221,9 @@ export function SettingsPage() {
             )}
           </Field>
         </CardBody>
-      </Card>
+        </Card>
 
-      <Card>
+        <Card>
         <CardHeader title="الدعم" subtitle="بيانات التواصل الظاهرة داخل التطبيق" />
         <CardBody className="flex flex-col gap-5">
           <Field label="بريد الدعم الفني">
@@ -243,9 +253,9 @@ export function SettingsPage() {
             )}
           </Field>
         </CardBody>
-      </Card>
+        </Card>
 
-      <Card>
+        <Card>
         <CardHeader title="الحساب ومصدر البيانات" />
         <CardBody className="flex flex-col gap-3 text-xs">
           <Row label="المسؤول الحالي" value={user?.email ?? '—'} />
@@ -261,26 +271,25 @@ export function SettingsPage() {
             </p>
           ) : null}
         </CardBody>
-      </Card>
+        </Card>
 
-      <div className="lg:col-span-2">
-        <AdminsCard onToast={setToast} />
-      </div>
+        <div className="lg:col-span-2">
+          <Button
+            type="submit"
+            variant="primary"
+            disabled={saving || !canWrite}
+            title={canWrite ? undefined : 'دورك الحالي للقراءة فقط'}
+          >
+            {saving ? <Spinner /> : <Save size={15} aria-hidden />}
+            حفظ الإعدادات
+          </Button>
+        </div>
+      </form>
 
-      <div className="lg:col-span-2">
-        <Button
-          type="submit"
-          variant="primary"
-          disabled={saving || !canWrite}
-          title={canWrite ? undefined : 'دورك الحالي للقراءة فقط'}
-        >
-          {saving ? <Spinner /> : <Save size={15} aria-hidden />}
-          حفظ الإعدادات
-        </Button>
-      </div>
+      <AdminsCard onToast={setToast} />
 
       {toast ? <Toast message={toast} /> : null}
-    </form>
+    </div>
   )
 }
 
@@ -290,8 +299,9 @@ function AdminsCard({ onToast }: { onToast: (message: string) => void }) {
   const { user, canManageAdmins } = useAuth()
   const load = useCallback(() => listAdmins(), [])
   const { data, error, loading, refetching, reload } = useAsync(load, [])
+  const loadInvitations = useCallback(() => listInvitations(), [])
+  const invitations = useAsync(loadInvitations, [])
   const [busyId, setBusyId] = useState<string | null>(null)
-  const [newId, setNewId] = useState('')
   const [newEmail, setNewEmail] = useState('')
   const [newRole, setNewRole] = useState<AdminRole>('support')
   const [adding, setAdding] = useState(false)
@@ -312,18 +322,37 @@ function AdminsCard({ onToast }: { onToast: (message: string) => void }) {
 
   async function submitNew(event: FormEvent) {
     event.preventDefault()
-    if (!newId.trim() || !newEmail.trim()) return
+    if (!newEmail.trim()) return
     setAdding(true)
     try {
-      await addAdmin(newId.trim(), newEmail.trim(), newRole)
-      onToast(`أُضيف ${newEmail.trim()} بدور ${ROLE_LABEL[newRole]}.`)
-      setNewId('')
+      const invitation = await inviteAdmin(newEmail.trim(), newRole)
+      onToast(`رمز الدعوة ${invitation.token} — أرسله إلى ${invitation.email}.`)
       setNewEmail('')
-      reload()
+      invitations.reload()
     } catch (cause) {
-      onToast(cause instanceof Error ? cause.message : 'تعذّرت الإضافة.')
+      onToast(cause instanceof Error ? cause.message : 'تعذّر إنشاء الدعوة.')
     } finally {
       setAdding(false)
+    }
+  }
+
+  async function copyToken(token: string) {
+    try {
+      await navigator.clipboard.writeText(token)
+      onToast('نُسخ الرمز.')
+    } catch {
+      // الحافظة محجوبة خارج السياقات الآمنة؛ الرمز ظاهر فيُنسخ باليد.
+      onToast(`الرمز: ${token}`)
+    }
+  }
+
+  async function dropInvitation(invitation: AdminInvitation) {
+    try {
+      await cancelInvitation(invitation)
+      onToast('أُلغيت الدعوة.')
+      invitations.reload()
+    } catch (cause) {
+      onToast(cause instanceof Error ? cause.message : 'تعذّر إلغاء الدعوة.')
     }
   }
 
@@ -494,35 +523,21 @@ function AdminsCard({ onToast }: { onToast: (message: string) => void }) {
             className="flex flex-col gap-3 rounded-lg border border-hairline bg-surface-2 px-3 py-3"
           >
             <div>
-              <p className="text-xs font-medium text-ink">إضافة مسؤول</p>
+              <p className="text-xs font-medium text-ink">دعوة موظف</p>
               {/*
-                إنشاء حساب المصادقة يحتاج مفتاح الخدمة، وهو يتجاوز RLS كلها فلا
-                يوضع في صفحة يفتحها متصفّح. فالحساب يُنشأ من Supabase ويُمنح
-                الدور من هنا.
+                الدعوة لا إنشاء الحساب: إنشاء حساب مصادقة يحتاج مفتاح الخدمة،
+                وهو يتجاوز RLS كلها فلا يُسلَّم لمتصفّح. والدعوة أسلم لا أضعف —
+                الموظف يختار كلمة مروره بيده، فلا يعرفها المالك ولا تمرّ في رسالة.
               */}
               <p className="mt-0.5 text-[11px] leading-5 text-muted">
-                أنشئ الحساب أولاً من Supabase ← Authentication ← Add user (مع تفعيل Auto
-                Confirm)، ثم انسخ الـ User UID والصقه هنا.
+                اكتب بريده واختر دوره، فيخرج لك رمز تُرسله إليه. يفتح صفحة الدخول ويسجّل نفسه
+                بالرمز، ويختار كلمة مروره بيده.
               </p>
             </div>
 
             <div className="flex flex-wrap items-end gap-2">
-              <div className="min-w-56 flex-1">
-                <Field label="معرّف المستخدم (UID)">
-                  {(fieldId) => (
-                    <Input
-                      id={fieldId}
-                      dir="ltr"
-                      value={newId}
-                      onChange={(event) => setNewId(event.target.value)}
-                      placeholder="00000000-0000-0000-0000-000000000000"
-                      required
-                    />
-                  )}
-                </Field>
-              </div>
-              <div className="min-w-48 flex-1">
-                <Field label="البريد">
+              <div className="min-w-52 flex-1">
+                <Field label="بريد الموظف">
                   {(fieldId) => (
                     <Input
                       id={fieldId}
@@ -554,13 +569,76 @@ function AdminsCard({ onToast }: { onToast: (message: string) => void }) {
                 </Field>
               </div>
               <Button type="submit" variant="primary" disabled={adding}>
-                <UserPlus size={14} aria-hidden />
-                إضافة
+                {adding ? <Spinner /> : <UserPlus size={14} aria-hidden />}
+                إنشاء دعوة
               </Button>
             </div>
 
             <p className="text-[11px] text-ink-2">{ROLE_DESCRIPTION[newRole]}</p>
           </form>
+        ) : null}
+
+        {canManageAdmins && (invitations.data ?? []).length > 0 ? (
+          <div className="overflow-x-auto rounded-lg border border-hairline">
+            <table className="w-full border-collapse text-xs">
+              <thead>
+                <tr className="bg-surface-2">
+                  {['الدعوة', 'الدور', 'الرمز', 'تنتهي', ''].map((heading, i) => (
+                    <th
+                      key={heading || i}
+                      scope="col"
+                      className="border-b border-hairline px-3 py-2 text-start font-medium whitespace-nowrap text-ink-2"
+                    >
+                      {heading}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {(invitations.data ?? []).map((invitation) => (
+                  <tr key={invitation.id} className="border-b border-hairline last:border-0">
+                    <td dir="ltr" className="px-3 py-2 text-start whitespace-nowrap text-ink">
+                      {invitation.email}
+                    </td>
+                    <td className="px-3 py-2 whitespace-nowrap text-ink-2">
+                      {ROLE_LABEL[invitation.role]}
+                    </td>
+                    <td className="px-3 py-2">
+                      {invitation.status === 'pending' ? (
+                        <button
+                          type="button"
+                          dir="ltr"
+                          onClick={() => copyToken(invitation.token)}
+                          title="انسخ الرمز"
+                          className="tnum cursor-pointer rounded-md border border-hairline bg-surface px-2 py-1 font-medium tracking-widest text-ink hover:border-accent"
+                        >
+                          {invitation.token}
+                        </button>
+                      ) : (
+                        <span className="text-muted">—</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2 whitespace-nowrap">
+                      {invitation.status === 'pending' ? (
+                        <span className="text-ink-2">{formatRelative(invitation.expires_at)}</span>
+                      ) : (
+                        <Badge tone={invitation.status === 'accepted' ? 'good' : 'neutral'}>
+                          {invitation.status === 'accepted' ? 'قُبلت' : 'انتهت'}
+                        </Badge>
+                      )}
+                    </td>
+                    <td className="px-3 py-2">
+                      {invitation.status === 'pending' ? (
+                        <Button size="sm" variant="ghost" onClick={() => dropInvitation(invitation)}>
+                          إلغاء
+                        </Button>
+                      ) : null}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         ) : null}
 
       </CardBody>

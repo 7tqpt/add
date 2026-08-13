@@ -39,6 +39,14 @@ interface AuthValue {
    */
   roleResolved: boolean
   signIn: (email: string, password: string) => Promise<void>
+  /**
+   * ينشئ حساب مصادقة للموظف المدعوّ.
+   *
+   * يُنشئه الموظف بنفسه لا المالك نيابةً عنه — إنشاء الحسابات من اللوحة يحتاج
+   * مفتاح الخدمة، وهو يتجاوز RLS كلها فلا يوضع في متصفّح. والحساب وحده لا يمنح
+   * شيئاً: الدور يأتي من قبول الدعوة بعده.
+   */
+  signUp: (email: string, password: string) => Promise<void>
   signOut: () => Promise<void>
   /** Demo mode only: re-render the UI as another role to see gating at work. */
   previewRole: (role: AdminRole) => void
@@ -182,6 +190,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
+  const signUp = useCallback(async (email: string, password: string) => {
+    if (!isSupabaseConfigured || !supabase) {
+      if (password.length < 8) {
+        throw new Error('كلمة المرور قصيرة جداً (٨ أحرف على الأقل).')
+      }
+      const demoUser: AdminUser = { id: 'demo-admin', email, name: nameFromEmail(email) }
+      localStorage.setItem(DEMO_STORAGE_KEY, JSON.stringify(demoUser))
+      setUser(demoUser)
+      return
+    }
+
+    const { data, error } = await supabase.auth.signUp({ email, password })
+    if (error) {
+      throw new Error(
+        error.message === 'User already registered'
+          ? 'هذا البريد مسجّل بالفعل — سجّل الدخول ثم استعمل الرمز.'
+          : error.message,
+      )
+    }
+    // تأكيد البريد مفعَّلٌ في المشروع؟ إذن لا جلسة الآن، ولا يمكن قبول الدعوة
+    // قبل فتح رسالة التأكيد. الرسالة تقول ذلك بدل أن يُترك المستخدم أمام صمت.
+    if (!data.session) {
+      throw new Error('أُنشئ حسابك — افتح رسالة التأكيد في بريدك ثم عُد وسجّل الدخول بالرمز.')
+    }
+  }, [])
+
   const signOut = useCallback(async () => {
     if (!isSupabaseConfigured || !supabase) {
       // Signing out clears the demo-only state as well — role preview and audit
@@ -207,10 +241,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loading,
       roleResolved,
       signIn,
+      signUp,
       signOut,
       previewRole,
     }),
-    [user, role, loading, roleResolved, signIn, signOut, previewRole],
+    [user, role, loading, roleResolved, signIn, signUp, signOut, previewRole],
   )
 
   return <AuthContext value={value}>{children}</AuthContext>

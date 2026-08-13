@@ -1,5 +1,5 @@
 import { requireSupabase } from '@/lib/supabase'
-import type { AdminAccount, AdminRole } from '@/lib/types'
+import type { AdminAccount, AdminInvitation, AdminRole } from '@/lib/types'
 import { ROLES_IN_ORDER, ROLE_AREAS, ROLE_LABEL, canWriteArea } from '@/lib/permissions'
 import { mockAdmins } from '@/data/mock'
 import { delay, isSupabaseConfigured } from './base'
@@ -145,3 +145,125 @@ export const canWrite = (role: AdminRole | null): boolean =>
 /** يدير المسؤولين — المالك وحده. */
 export const canManageAdmins = (role: AdminRole | null): boolean =>
   canWriteArea(role, 'admins')
+
+// ---------------------------------------------------------------------------
+// دعوات الموظفين
+// ---------------------------------------------------------------------------
+
+const demoInvitations: AdminInvitation[] = []
+
+/** رمز شبيه بما تولّده القاعدة، للوضع التجريبي وحده. */
+function demoToken(): string {
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+  return Array.from({ length: 10 }, () =>
+    alphabet[Math.floor(Math.random() * alphabet.length)],
+  ).join('')
+}
+
+/**
+ * ينشئ دعوةً ويعيد رمزها.
+ *
+ * لا يُنشأ حساب المصادقة هنا: ذلك يحتاج مفتاح الخدمة، وهو يتجاوز RLS كلها فلا
+ * يُسلَّم لمتصفّح. الموظف يسجّل نفسه بالرمز، فيختار كلمة مروره بيده — ولا يعرفها
+ * المالك ولا تمرّ في رسالة.
+ */
+export async function inviteAdmin(
+  email: string,
+  role: AdminRole,
+  note = '',
+): Promise<AdminInvitation> {
+  if (!isSupabaseConfigured) {
+    const now = new Date()
+    const invitation: AdminInvitation = {
+      id: `inv_${now.getTime().toString(36)}`,
+      email: email.trim().toLowerCase(),
+      role,
+      token: demoToken(),
+      invited_by: 'admin@example.com',
+      note,
+      created_at: now.toISOString(),
+      expires_at: new Date(now.getTime() + 7 * 86_400_000).toISOString(),
+      accepted_at: null,
+      status: 'pending',
+    }
+    demoInvitations.unshift(invitation)
+    await delay(null, 280)
+    await recordAudit({
+      action: 'admin.invite',
+      entity: 'admin',
+      entityId: invitation.id,
+      entityLabel: invitation.email,
+      details: { to: ROLE_LABEL[role] },
+    })
+    return invitation
+  }
+
+  const { data, error } = await requireSupabase().rpc('api_invite_admin', {
+    p_email: email.trim(),
+    p_role: role,
+    p_note: note,
+  })
+  if (error) throw error
+
+  const invitation = (Array.isArray(data) ? data[0] : data) as AdminInvitation
+  await recordAudit({
+    action: 'admin.invite',
+    entity: 'admin',
+    entityId: invitation.id,
+    entityLabel: invitation.email,
+    details: { to: ROLE_LABEL[role] },
+  })
+  return { ...invitation, status: 'pending' }
+}
+
+export async function listInvitations(): Promise<AdminInvitation[]> {
+  if (!isSupabaseConfigured) return delay([...demoInvitations])
+  const { data, error } = await requireSupabase()
+    .from('v_admin_invitations')
+    .select('*')
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  return (data ?? []) as AdminInvitation[]
+}
+
+export async function cancelInvitation(invitation: AdminInvitation): Promise<void> {
+  if (!isSupabaseConfigured) {
+    const index = demoInvitations.findIndex((candidate) => candidate.id === invitation.id)
+    if (index >= 0) demoInvitations.splice(index, 1)
+    await delay(null, 200)
+  } else {
+    const { error } = await requireSupabase()
+      .from('admin_invitations')
+      .delete()
+      .eq('id', invitation.id)
+    if (error) throw error
+  }
+
+  await recordAudit({
+    action: 'admin.invite_cancel',
+    entity: 'admin',
+    entityId: invitation.id,
+    entityLabel: invitation.email,
+    details: {},
+  })
+}
+
+/** يستدعيها الموظف بعد أن يسجّل حسابه بالبريد المدعوّ. */
+export async function acceptInvitation(token: string): Promise<AdminRole> {
+  if (!isSupabaseConfigured) {
+    const match = demoInvitations.find(
+      (candidate) => candidate.token === token.trim().toUpperCase(),
+    )
+    if (!match) throw new Error('الدعوة غير صالحة — تأكّد من الرمز.')
+    match.accepted_at = new Date().toISOString()
+    match.status = 'accepted'
+    await delay(null, 300)
+    return match.role
+  }
+
+  const { data, error } = await requireSupabase().rpc('api_accept_invitation', {
+    p_token: token.trim(),
+  })
+  if (error) throw error
+  return data as AdminRole
+}

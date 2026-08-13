@@ -544,6 +544,22 @@ export type AdminArea =
 
 export type AreaLevel = 'none' | 'read' | 'write'
 
+export type InvitationStatus = 'pending' | 'accepted' | 'expired'
+
+export interface AdminInvitation {
+  id: string
+  email: string
+  role: AdminRole
+  /** الرمز الذي يُسلَّم للموظف — يقرأه المالك وحده. */
+  token: string
+  invited_by: string
+  note: string
+  created_at: string
+  expires_at: string
+  accepted_at: string | null
+  status: InvitationStatus
+}
+
 export interface AdminAccount {
   user_id: string
   email: string

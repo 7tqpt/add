@@ -1,6 +1,8 @@
 import { useState, type FormEvent } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { AlertCircle, Smartphone } from 'lucide-react'
+import { acceptInvitation } from '@/services/admins'
+import { ROLE_LABEL } from '@/lib/permissions'
 import { Button } from '@/components/ui/Button'
 import { Field, Input } from '@/components/ui/Field'
 import { LoadingBlock, Spinner } from '@/components/ui/Feedback'
@@ -8,12 +10,15 @@ import { useAuth } from '@/context/AuthContext'
 import { isSupabaseConfigured } from '@/lib/supabase'
 
 export function LoginPage() {
-  const { user, loading, signIn } = useAuth()
+  const { user, loading, signIn, signUp } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
+  const [mode, setMode] = useState<'signin' | 'invite'>('signin')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [token, setToken] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
   if (loading) return <LoadingBlock label="جارٍ التحقق من الجلسة…" />
@@ -26,12 +31,34 @@ export function LoginPage() {
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
     setError(null)
+    setNotice(null)
     setSubmitting(true)
     try {
-      await signIn(email.trim(), password)
+      if (mode === 'signin') {
+        await signIn(email.trim(), password)
+        navigate('/', { replace: true })
+        return
+      }
+
+      /**
+       * الترتيب مقصود: يُنشأ الحساب أولاً ثم تُقبل الدعوة.
+       *
+       * قبول الدعوة يقرأ بريد المتصل من رمز الجلسة، فلا جلسة تعني لا بريد تعني
+       * رفضاً. ولو انقطع الاتصال بين الخطوتين بقي الحساب بلا دور — والرمز ما
+       * زال صالحاً، فيكفي تسجيل الدخول وإعادة إدخاله.
+       */
+      await signUp(email.trim(), password)
+      const role = await acceptInvitation(token)
+      setNotice(`أهلاً بك — دورك «${ROLE_LABEL[role]}».`)
       navigate('/', { replace: true })
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'تعذّر تسجيل الدخول.')
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : mode === 'signin'
+            ? 'تعذّر تسجيل الدخول.'
+            : 'تعذّر إكمال التسجيل.',
+      )
     } finally {
       setSubmitting(false)
     }
@@ -46,7 +73,11 @@ export function LoginPage() {
           </span>
           <div>
             <h1 className="text-lg font-semibold text-ink">منصة حجوزات الأعراس</h1>
-            <p className="mt-1 text-xs text-muted">سجّل الدخول بحساب المسؤول للمتابعة</p>
+            <p className="mt-1 text-xs text-muted">
+              {mode === 'signin'
+                ? 'سجّل الدخول بحساب المسؤول للمتابعة'
+                : 'أنشئ حسابك برمز الدعوة الذي وصلك'}
+            </p>
           </div>
         </div>
 
@@ -69,13 +100,17 @@ export function LoginPage() {
             )}
           </Field>
 
-          <Field label="كلمة المرور">
+          <Field
+            label="كلمة المرور"
+            hint={mode === 'invite' ? 'اختر كلمة مرور جديدة — ٨ أحرف فأكثر.' : undefined}
+          >
             {(id) => (
               <Input
                 id={id}
                 type="password"
                 required
-                autoComplete="current-password"
+                minLength={mode === 'invite' ? 8 : undefined}
+                autoComplete={mode === 'invite' ? 'new-password' : 'current-password'}
                 dir="ltr"
                 placeholder="••••••••"
                 value={password}
@@ -83,6 +118,22 @@ export function LoginPage() {
               />
             )}
           </Field>
+
+          {mode === 'invite' ? (
+            <Field label="رمز الدعوة" hint="عشر خانات، وصلتك من مالك المنصة.">
+              {(id) => (
+                <Input
+                  id={id}
+                  required
+                  dir="ltr"
+                  placeholder="A1B2C3D4E5"
+                  className="tnum tracking-widest"
+                  value={token}
+                  onChange={(event) => setToken(event.target.value.toUpperCase())}
+                />
+              )}
+            </Field>
+          ) : null}
 
           {error ? (
             <p
@@ -94,10 +145,28 @@ export function LoginPage() {
             </p>
           ) : null}
 
+          {notice ? (
+            <p role="status" className="text-xs text-[var(--good)]">
+              {notice}
+            </p>
+          ) : null}
+
           <Button type="submit" variant="primary" disabled={submitting}>
             {submitting ? <Spinner /> : null}
-            تسجيل الدخول
+            {mode === 'signin' ? 'تسجيل الدخول' : 'إنشاء الحساب والدخول'}
           </Button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setMode(mode === 'signin' ? 'invite' : 'signin')
+              setError(null)
+              setNotice(null)
+            }}
+            className="cursor-pointer text-center text-xs text-ink-2 underline underline-offset-4 hover:text-ink"
+          >
+            {mode === 'signin' ? 'وصلني رمز دعوة — أنشئ حسابي' : 'لديّ حساب — عودة لتسجيل الدخول'}
+          </button>
         </form>
 
         {!isSupabaseConfigured ? (

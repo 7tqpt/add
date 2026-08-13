@@ -99,6 +99,9 @@ export const formatDateTime = (iso: string) => dateTime.format(new Date(iso))
 export function formatRelative(iso: string | null): string {
   if (!iso) return '—'
   const diffMs = Date.now() - new Date(iso).getTime()
+  // المستقبل يُصاغ بـ«بعد» لا بـ«منذ». وبلا هذا كان كل تاريخ قادم يُقرأ «الآن»
+  // لأن الفرق سالب فيقع تحت الدقيقة — فبدت دعوةٌ تنتهي بعد أسبوع منتهيةً للتوّ.
+  if (diffMs < -60_000) return formatUntil(-diffMs)
   const minutes = Math.round(diffMs / 60_000)
   if (minutes < 1) return 'الآن'
   if (minutes < 60) return `منذ ${formatCount(minutes, MINUTE_FORMS)}`
@@ -107,6 +110,17 @@ export function formatRelative(iso: string | null): string {
   const days = Math.round(hours / 24)
   if (days < 30) return `منذ ${formatCount(days, DAY_FORMS)}`
   return fullDate.format(new Date(iso))
+}
+
+/** كم يبقى حتى لحظةٍ قادمة، بالمسافة الزمنية لا بالتاريخ. */
+function formatUntil(ms: number): string {
+  const minutes = Math.round(ms / 60_000)
+  if (minutes < 60) return `بعد ${formatCount(minutes, MINUTE_FORMS)}`
+  const hours = Math.round(minutes / 60)
+  if (hours < 24) return `بعد ${formatCount(hours, HOUR_FORMS)}`
+  const days = Math.round(hours / 24)
+  if (days < 30) return `بعد ${formatCount(days, DAY_FORMS)}`
+  return fullDate.format(new Date(Date.now() + ms))
 }
 
 /** 3_720 → "1 س 2 د". Session lengths, never wall-clock times. */

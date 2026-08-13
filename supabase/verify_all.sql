@@ -1,11 +1,11 @@
 -- ============================================================================
 --  تحقّق شامل — بعد install.sql و seed.sql و apply.sql و storage.sql
---  و support.sql و roles.sql
+--  و support.sql و roles.sql و invitations.sql
 --
 --  الصقه في SQL Editor واضغط Run. كل سطر يقارن الواقع بالمتوقَّع، والعمود
 --  الأخير يقول «سليم» أو «راجعه» فلا تحتاج أن تعدّ بنفسك.
 --
---  الأرقام المتوقَّعة ليست تخميناً: حُسبت بتشغيل الملفات الستة على Postgres
+--  الأرقام المتوقَّعة ليست تخميناً: حُسبت بتشغيل الملفات السبعة على Postgres
 --  حقيقي، فما تراه هنا هو ما تنتجه فعلاً.
 -- ============================================================================
 
@@ -14,20 +14,20 @@ with checks as (
   select 1 as ord, 'الجداول' as البند,
          (select count(*) from information_schema.tables
            where table_schema = 'public' and table_type = 'BASE TABLE') as الواقع,
-         36 as المتوقع
+         37 as المتوقع
 
   union all
   select 2, 'طرق العرض',
-         (select count(*) from information_schema.views where table_schema = 'public'), 10
+         (select count(*) from information_schema.views where table_schema = 'public'), 11
 
   union all
   select 3, 'دوال الـ API',
          (select count(*) from information_schema.routines
-           where routine_schema = 'public' and routine_name like 'api\_%'), 13
+           where routine_schema = 'public' and routine_name like 'api\_%'), 15
 
   union all
   select 4, 'سياسات RLS',
-         (select count(*) from pg_policies where schemaname = 'public'), 72
+         (select count(*) from pg_policies where schemaname = 'public'), 74
 
   -- الصفر هو الصواب هنا: جدول بلا RLS مكشوف لكل من يملك المفتاح العام.
   union all
@@ -55,7 +55,7 @@ with checks as (
   select 8, 'طرق عرض اللوحة',
          (select count(*) from pg_views
            where schemaname = 'public'
-             and (viewname like 'v\_admin\_%' or viewname = 'v_plan_summary')), 8
+             and (viewname like 'v\_admin\_%' or viewname = 'v_plan_summary')), 9
 
   -- ---- خدمة العملاء (support.sql) ----
   union all
@@ -98,8 +98,15 @@ with checks as (
          (select count(*) from public.admins a
            where not exists (select 1 from public.admin_areas x where x.role = a.role)), 0
 
+  -- ---- الدعوات (invitations.sql) ----
   union all
-  select 16, 'سياسات التخزين',
+  select 16, 'دوال الدعوة',
+         (select count(*) from information_schema.routines
+           where routine_schema = 'public'
+             and routine_name in ('api_invite_admin', 'api_accept_invitation')), 2
+
+  union all
+  select 17, 'سياسات التخزين',
          (select count(*) from pg_policies
            where schemaname = 'storage' and tablename = 'objects'
              and policyname like '%documents%'), 4
