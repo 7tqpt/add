@@ -106,7 +106,7 @@ export function DashboardPage() {
           type="button"
           onClick={reload}
           disabled={refetching}
-          className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-lg border border-hairline bg-surface px-3 text-xs font-medium text-ink-2 transition-colors hover:text-ink disabled:cursor-not-allowed disabled:opacity-55"
+          className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-lg border border-hairline bg-surface px-3 text-xs font-medium text-ink-2 transition-colors hover:text-ink disabled:opacity-55"
         >
           <RefreshCw size={13} aria-hidden className={refetching ? 'animate-spin' : undefined} />
           تحديث
@@ -130,6 +130,7 @@ export function DashboardPage() {
           comparisonLabel={COMPARISON}
           icon={CalendarCheck}
           refetching={refetching}
+          variant="blue"
         />
         <StatTile
           label="قيمة الحجوزات"
@@ -139,6 +140,7 @@ export function DashboardPage() {
           comparisonLabel={COMPARISON}
           icon={Wallet}
           refetching={refetching}
+          variant="orange"
         />
         <StatTile
           label="عمولة المنصة"
@@ -148,6 +150,7 @@ export function DashboardPage() {
           comparisonLabel={COMPARISON}
           icon={PercentCircle}
           refetching={refetching}
+          variant="orange"
         />
         <StatTile
           label="متوسط المستخدمين النشطين يومياً"
@@ -156,6 +159,7 @@ export function DashboardPage() {
           comparisonLabel={COMPARISON}
           icon={Activity}
           refetching={refetching}
+          variant="green"
         />
       </div>
 
