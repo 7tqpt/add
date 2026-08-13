@@ -7,6 +7,7 @@ import '../data/api.dart';
 import '../data/models.dart';
 import '../data/supabase.dart';
 import '../ui/kit.dart';
+import 'documents.dart';
 import 'labels.dart';
 import 'support.dart';
 
@@ -91,6 +92,16 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen> {
                       style: const TextStyle(color: AppColors.critical, fontSize: 13, height: 1.7),
                     ),
                   ],
+                  // الزرّ في البطاقة نفسها لا في آخر الشاشة: الجملة التي تطلب
+                  // المستندات مكتوبةٌ فوقه مباشرة، فيقع الطريق حيث يُطلب.
+                  const SizedBox(height: Space.md),
+                  OutlinedButton.icon(
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => DocumentsScreen(session: widget.session)),
+                    ),
+                    icon: const Icon(Icons.badge_outlined, size: 20),
+                    label: const Text('مستندات التوثيق'),
+                  ),
                 ],
               ),
               const SizedBox(height: Space.md),

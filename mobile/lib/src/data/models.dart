@@ -271,3 +271,76 @@ class ProviderProfile {
     rejectionReason: (m['rejection_reason'] ?? '') as String,
   );
 }
+
+/// خدمةٌ يملكها مقدّم الخدمة، كما يراها هو لا كما يراها المشتري.
+///
+/// غير `ServiceItem`: تلك صفٌّ من `v_services` مضمومٌ إلى اسم المزوّد وتقييمه
+/// لعرضه في الاستكشاف، وهذه صفّ الجدول نفسه بما يملك صاحبه تعديله — ومنه
+/// `isActive` الذي لا تُظهره الطريقة أصلاً لأنها تُخفي المعطَّل.
+class MyService {
+  const MyService({
+    required this.id,
+    required this.title,
+    required this.description,
+    required this.price,
+    required this.priceTo,
+    required this.unit,
+    required this.depositPercent,
+    required this.categoryId,
+    required this.isActive,
+  });
+
+  final String id;
+  final String title;
+  final String description;
+  final num price;
+  final num? priceTo;
+  final String unit;
+  final int depositPercent;
+  final String categoryId;
+  final bool isActive;
+
+  factory MyService.fromMap(Map<String, dynamic> m) => MyService(
+    id: m['id'] as String,
+    title: (m['title'] ?? '') as String,
+    description: (m['description'] ?? '') as String,
+    price: (m['price'] ?? 0) as num,
+    priceTo: m['price_to'] as num?,
+    unit: (m['unit'] ?? 'للحجز') as String,
+    depositPercent: ((m['deposit_percent'] ?? 30) as num).toInt(),
+    categoryId: (m['category_id'] ?? '') as String,
+    isActive: (m['is_active'] ?? true) as bool,
+  );
+}
+
+/// مستند توثيق. `fileUrl` مسارٌ داخل حاوية `provider-docs` لا رابطاً:
+/// الحاوية خاصّة، واللوحة توقّع رابطاً مؤقّتاً عند العرض.
+class ProviderDocument {
+  const ProviderDocument({
+    required this.id,
+    required this.type,
+    required this.fileName,
+    required this.fileUrl,
+    required this.status,
+    required this.note,
+    required this.uploadedAt,
+  });
+
+  final String id;
+  final String type;
+  final String fileName;
+  final String fileUrl;
+  final String status;
+  final String note;
+  final String uploadedAt;
+
+  factory ProviderDocument.fromMap(Map<String, dynamic> m) => ProviderDocument(
+    id: m['id'] as String,
+    type: (m['type'] ?? '') as String,
+    fileName: (m['file_name'] ?? '') as String,
+    fileUrl: (m['file_url'] ?? '') as String,
+    status: (m['status'] ?? 'pending') as String,
+    note: (m['note'] ?? '') as String,
+    uploadedAt: (m['uploaded_at'] ?? '') as String,
+  );
+}

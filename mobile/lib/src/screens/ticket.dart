@@ -19,6 +19,50 @@ class _TicketScreenState extends State<TicketScreen> {
   final _reply = TextEditingController();
   bool _busy = false;
 
+  /// الحالة تُتابَع محلّياً بعد الإغلاق: الشاشة لا تعيد جلب التذكرة نفسها،
+  /// فبلا ذلك يبقى زرّ الإغلاق ظاهراً بعد الضغط.
+  late String _status = widget.ticket.status;
+
+  /// المغلقة وحدها. و«resolved» ليست منها: القاعدة تقبل الردّ عليها فتُعيد
+  /// فتحها، فإخفاء حقل الردّ عندها يقطع طريقاً مشروعاً على من لم تُحلّ مشكلته.
+  bool get _closed => _status == 'closed';
+
+  Future<void> _close() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('إغلاق التذكرة'),
+        content: const Text(
+          'أغلقها إن حُلّت مشكلتك. تبقى المحادثة محفوظة، ويمكنك فتح تذكرة جديدة متى شئت.',
+          style: TextStyle(height: 1.7),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('تراجع'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('أغلقها'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    setState(() => _busy = true);
+    try {
+      await Api.closeTicket(widget.ticket.id);
+      if (!mounted) return;
+      setState(() => _status = 'closed');
+      showMessage(context, 'أُغلقت التذكرة.');
+    } catch (e) {
+      if (mounted) showMessage(context, messageOf(e));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -52,7 +96,12 @@ class _TicketScreenState extends State<TicketScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(widget.ticket.subject, maxLines: 1)),
+      appBar: AppBar(
+        title: Text(widget.ticket.subject, maxLines: 1),
+        actions: [
+          if (!_closed) TextButton(onPressed: _busy ? null : _close, child: const Text('إغلاق')),
+        ],
+      ),
       body: Column(
         children: [
           Expanded(
@@ -118,22 +167,26 @@ class _TicketScreenState extends State<TicketScreen> {
               color: AppColors.surface,
               border: Border(top: BorderSide(color: AppColors.hairline)),
             ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _reply,
-                    decoration: const InputDecoration(hintText: 'اكتب ردّك…'),
+            // المغلقة لا تُستقبل ردوداً — القاعدة ترفضها. وعرضُ حقلٍ يكتب فيه
+            // المستخدم ثم يُرفض ما كتبه أسوأ من ألّا يُعرض.
+            child: _closed
+                ? const Center(child: Muted('التذكرة مغلقة — افتح تذكرة جديدة إن عادت المشكلة.'))
+                : Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _reply,
+                          decoration: const InputDecoration(hintText: 'اكتب ردّك…'),
+                        ),
+                      ),
+                      const SizedBox(width: Space.sm),
+                      IconButton.filled(
+                        onPressed: _busy ? null : _send,
+                        icon: const Icon(Icons.send),
+                        style: IconButton.styleFrom(backgroundColor: AppColors.accent),
+                      ),
+                    ],
                   ),
-                ),
-                const SizedBox(width: Space.sm),
-                IconButton.filled(
-                  onPressed: _busy ? null : _send,
-                  icon: const Icon(Icons.send),
-                  style: IconButton.styleFrom(backgroundColor: AppColors.accent),
-                ),
-              ],
-            ),
           ),
         ],
       ),
