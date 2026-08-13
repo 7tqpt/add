@@ -4,6 +4,7 @@ import { useAuth } from '@/context/AuthContext'
 import { useTheme } from '@/context/ThemeContext'
 import { Button } from '@/components/ui/Button'
 import { GlobalSearch } from './GlobalSearch'
+import { Icon } from '@/components/ui/Icon'
 
 export function Topbar({ title, onOpenMenu }: { title: string; onOpenMenu: () => void }) {
   const { user, signOut } = useAuth()
@@ -25,10 +26,10 @@ export function Topbar({ title, onOpenMenu }: { title: string; onOpenMenu: () =>
         <button
           type="button"
           onClick={onOpenMenu}
-          className="cursor-pointer rounded-md p-2 text-ink-2 hover:bg-surface-2 lg:hidden"
+          className="cursor-pointer rounded-md p-2 text-ink-2 hover:bg-surface-2 lg:hidden icon-hoverable icon-btn"
           aria-label="فتح القائمة"
         >
-          <Menu size={18} aria-hidden />
+          <Icon icon={Menu} size={18} className="icon-anim" />
         </button>
         <h1 className="truncate text-base font-semibold text-ink">{title}</h1>
       </div>
@@ -39,10 +40,14 @@ export function Topbar({ title, onOpenMenu }: { title: string; onOpenMenu: () =>
         <button
           type="button"
           onClick={toggle}
-          className="cursor-pointer rounded-md p-2 text-ink-2 hover:bg-surface-2"
+          className="cursor-pointer rounded-md p-2 text-ink-2 hover:bg-surface-2 icon-hoverable icon-btn"
           aria-label={theme === 'dark' ? 'التبديل إلى الوضع النهاري' : 'التبديل إلى الوضع الليلي'}
         >
-          {theme === 'dark' ? <Sun size={17} aria-hidden /> : <Moon size={17} aria-hidden />}
+          {theme === 'dark' ? (
+            <Icon icon={Sun} size={17} className="icon-anim" />
+          ) : (
+            <Icon icon={Moon} size={17} className="icon-anim" />
+          )}
         </button>
 
         {user ? (
@@ -61,7 +66,9 @@ export function Topbar({ title, onOpenMenu }: { title: string; onOpenMenu: () =>
               disabled={signingOut}
               aria-label="تسجيل الخروج"
             >
-              <LogOut size={15} aria-hidden />
+              <span className="icon-hoverable icon-btn">
+                <Icon icon={LogOut} size={15} className="icon-anim" />
+              </span>
               <span className="hidden sm:inline">خروج</span>
             </Button>
           </div>
