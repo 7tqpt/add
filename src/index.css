@@ -7,89 +7,83 @@
 
 :root {
   /* surfaces */
-  --page: #f9f9f7;
-  --surface: #fcfcfb;
-  --surface-2: #f2f1ed;
+  --page: #f6f7f9; /* slightly cool, off-white */
+  --surface: #ffffff; /* card surfaces stay white */
+  --surface-2: #f3f4f6; /* subtle panel background */
 
   /* ink */
   --text-primary: #0b0b0b;
-  --text-secondary: #52514e;
-  --text-muted: #898781;
+  --text-secondary: #4b5563; /* slightly cooler muted */
+  --text-muted: #6b6b6b; /* darker for legibility */
 
   /* chrome */
-  --grid: #e1e0d9;
-  --axis: #c3c2b7;
-  --border: rgba(11, 11, 11, 0.1);
-  --ring: rgba(154, 106, 0, 0.35);
+  --grid: #e8e9eb;
+  --axis: #cbd5e1;
+  --border: rgba(16, 24, 40, 0.06);
+  --ring: rgba(59,130,246,0.12); /* blue focus ring subtle */
 
-  /* Brand accent for chrome — buttons, active nav, links. Deliberately not a
-     series colour: the data palette is validated for categorical separation and
-     must not shift when the brand does.
-     #9a6a00 → 4.73:1 with white text, 4.61:1 on --surface. */
-  --accent: #9a6a00;
+  /* Brand accent — choose an energetic orange for CTAs */
+  --accent: #ff7a00; /* warm orange */
   --accent-ink: #ffffff;
 
-  /* categorical series — validated (light, surface #fcfcfb, --pairs all) */
-  --series-1: #2a78d6;
-  --series-2: #eb6834;
-  --series-3: #1baf7a;
+  /* categorical series — tiles & KPIs */
+  --series-1: #2563eb; /* blue */
+  --series-2: #f97316; /* orange */
+  --series-3: #10b981; /* green */
 
-  /* sequential blue ramp */
-  --seq-200: #9ec5f4;
-  --seq-450: #2a78d6;
-  --seq-600: #184f95;
+  /* sequential ramp (for charts) */
+  --seq-200: #bfdbfe;
+  --seq-450: #60a5fa;
+  --seq-600: #2563eb;
 
-  /* status — fixed, never themed */
+  /* status */
   --good: #0ca30c;
-  --warning: #fab219;
-  --serious: #ec835a;
-  --critical: #d03b3b;
-  --delta-up: #006300;
-  --delta-down: #d03b3b;
+  --warning: #f59e0b;
+  --serious: #fb923c;
+  --critical: #ef4444;
+  --delta-up: #006400;
+  --delta-down: #ef4444;
 
   color-scheme: light;
 
   /* Motion & icon tokens */
   --icon-size: 18px;
   --icon-stroke: 1.5;
-  --motion-fast: 120ms;
+  --motion-fast: 110ms;
   --motion-medium: 240ms;
   --motion-slow: 420ms;
   --easing: cubic-bezier(.2,.9,.3,1);
-  --icon-hover-scale: 1.06;
+  --icon-hover-scale: 1.07;
   --focus-ring: var(--ring);
 }
 
 [data-theme='dark'] {
-  --page: #0d0d0d;
-  --surface: #1a1a19;
-  --surface-2: #232322;
+  --page: #0b1220;
+  --surface: #0f1724;
+  --surface-2: #0b1220;
 
-  --text-primary: #ffffff;
-  --text-secondary: #c3c2b7;
-  --text-muted: #898781;
+  --text-primary: #e6eef8;
+  --text-secondary: #94a3b8;
+  --text-muted: #9aa6b2;
 
-  --grid: #2c2c2a;
-  --axis: #383835;
-  --border: rgba(255, 255, 255, 0.1);
-  --ring: rgba(217, 164, 65, 0.45);
+  --grid: #0b1220;
+  --axis: #0b1220;
+  --border: rgba(255,255,255,0.06);
+  --ring: rgba(99,102,241,0.12);
 
-  /* A dark gold on a dark surface would vanish, so the fill lightens and the
-     text on it flips. 7.74:1 on --surface, 8.75:1 against its own ink. */
-  --accent: #d9a441;
+  --accent: #ff7a00;
   --accent-ink: #0b0b0b;
 
-  /* same eight hues, stepped for the dark surface — not an automatic flip */
-  --series-1: #3987e5;
-  --series-2: #d95926;
-  --series-3: #199e70;
+  --series-1: #60a5fa;
+  --series-2: #fb923c;
+  --series-3: #34d399;
 
-  --seq-200: #184f95;
-  --seq-450: #3987e5;
-  --seq-600: #9ec5f4;
+  --seq-200: #1e3a8a;
+  --seq-450: #2563eb;
+  --seq-600: #93c5fd;
 
-  --delta-up: #0ca30c;
-  --delta-down: #e66767;
+  --delta-up: #16a34a;
+  --delta-down: #fb7185;
 
   color-scheme: dark;
 }
@@ -129,9 +123,9 @@ body,
 }
 
 body {
-  background-color: var(--page);
-  color: var(--text-primary);
-  font-family: system-ui, -apple-system, 'Segoe UI', 'Noto Sans Arabic', 'Segoe UI Arabic', sans-serif;
+  background-color: var(--color-page);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
 }
 
@@ -142,11 +136,11 @@ body {
 }
 
 ::selection {
-  background: var(--ring);
+  background: var(--focus-ring);
 }
 
 *:focus-visible {
-  outline: 2px solid var(--series-1);
+  outline: 2px solid var(--seq-600);
   outline-offset: 2px;
 }
 
@@ -165,14 +159,20 @@ body {
 .card-elevated {
   border-radius: 10px;
   background: var(--color-surface);
-  box-shadow: 0 10px 30px rgba(16, 24, 40, 0.06);
+  box-shadow: 0 12px 40px rgba(2,6,23,0.06);
   border: 1px solid var(--color-hairline);
 }
 
 @keyframes card-in {
   from {
-    transform: translateY(8px) scale(0.995);
+    transform: translateY(10px) scale(0.995);
     opacity: 0;
+    filter: blur(4px);
+  }
+  60% {
+    transform: translateY(-4px) scale(1.01);
+    opacity: 1;
+    filter: blur(0);
   }
   to {
     transform: translateY(0) scale(1);
@@ -188,26 +188,43 @@ body {
 .btn-primary {
   transition: transform var(--motion-fast) var(--easing), box-shadow var(--motion-fast) var(--easing), filter var(--motion-fast) var(--easing);
   will-change: transform, box-shadow;
+  position: relative;
+  overflow: hidden;
 }
 
 .btn-primary:hover {
   transform: translateY(-3px);
-  box-shadow: 0 12px 26px rgba(163,111,0,0.12);
+  box-shadow: 0 18px 36px rgba(37,99,235,0.08), 0 6px 14px rgba(255,122,0,0.08);
 }
 
 .btn-primary:active {
   transform: translateY(-1px) scale(0.997);
 }
 
+/* subtle 'shine' overlay on hover for big hero buttons */
+.btn-primary::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(120deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.06) 50%, rgba(255,255,255,0) 100%);
+  transform: translateX(-120%);
+  transition: transform var(--motion-medium) var(--easing);
+  border-radius: inherit;
+}
+.btn-primary:hover::after { transform: translateX(0); }
+
 /* Inputs focus and subtle background */
 .input-soft {
-  background: color-mix(in srgb, var(--color-surface) 92%, white 8%);
+  background: color-mix(in srgb, var(--color-surface) 94%, white 6%);
   border: 1px solid var(--color-hairline);
   transition: box-shadow var(--motion-fast) var(--easing), border-color var(--motion-fast) var(--easing);
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
 }
 
 .input-soft:focus-visible {
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-accent) 12%, transparent 88%);
+  box-shadow: 0 6px 20px rgba(37,99,235,0.08), 0 0 0 6px color-mix(in srgb, var(--color-accent) 10%, transparent 90%);
   border-color: color-mix(in srgb, var(--color-accent) 22%, var(--color-hairline) 78%);
 }
 
@@ -230,6 +247,12 @@ body {
   justify-content: center;
   line-height: 0;
 }
+
+/* KPI tile helpers */
+.kpi-tile { border-radius: 10px; padding: 12px 14px; color: white; display: flex; align-items: center; gap: 12px; }
+.kpi-blue { background: linear-gradient(180deg, rgba(37,99,235,0.95), rgba(37,99,235,0.92)); }
+.kpi-orange { background: linear-gradient(180deg, rgba(249,115,22,0.95), rgba(249,115,22,0.92)); }
+.kpi-green { background: linear-gradient(180deg, rgba(16,185,129,0.95), rgba(16,185,129,0.92)); }
 
 /* Skeleton shimmer for loading states */
 .skeleton {
