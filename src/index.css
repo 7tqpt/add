@@ -48,6 +48,16 @@
   --delta-down: #d03b3b;
 
   color-scheme: light;
+
+  /* Motion & icon tokens */
+  --icon-size: 18px;
+  --icon-stroke: 1.5;
+  --motion-fast: 120ms;
+  --motion-medium: 240ms;
+  --motion-slow: 420ms;
+  --easing: cubic-bezier(.2,.9,.3,1);
+  --icon-hover-scale: 1.06;
+  --focus-ring: var(--ring);
 }
 
 [data-theme='dark'] {
@@ -147,12 +157,104 @@ body {
   transition: opacity 150ms ease;
 }
 
+/* ------------------
+   Animated UI tokens
+   ------------------ */
+
+/* Card elevation + entrance */
+.card-elevated {
+  border-radius: 10px;
+  background: var(--color-surface);
+  box-shadow: 0 10px 30px rgba(16, 24, 40, 0.06);
+  border: 1px solid var(--color-hairline);
+}
+
+@keyframes card-in {
+  from {
+    transform: translateY(8px) scale(0.995);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+.card-appear {
+  animation: card-in var(--motion-medium) var(--easing) both;
+}
+
+/* Button micro-interactions */
+.btn-primary {
+  transition: transform var(--motion-fast) var(--easing), box-shadow var(--motion-fast) var(--easing), filter var(--motion-fast) var(--easing);
+  will-change: transform, box-shadow;
+}
+
+.btn-primary:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 26px rgba(163,111,0,0.12);
+}
+
+.btn-primary:active {
+  transform: translateY(-1px) scale(0.997);
+}
+
+/* Inputs focus and subtle background */
+.input-soft {
+  background: color-mix(in srgb, var(--color-surface) 92%, white 8%);
+  border: 1px solid var(--color-hairline);
+  transition: box-shadow var(--motion-fast) var(--easing), border-color var(--motion-fast) var(--easing);
+}
+
+.input-soft:focus-visible {
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-accent) 12%, transparent 88%);
+  border-color: color-mix(in srgb, var(--color-accent) 22%, var(--color-hairline) 78%);
+}
+
+/* Icon micro-interactions */
+.icon-anim {
+  transform-origin: center;
+  transition: transform var(--motion-fast) var(--easing), opacity var(--motion-fast) var(--easing), color var(--motion-fast) var(--easing);
+  will-change: transform, opacity, color;
+}
+
+.icon-hoverable:hover .icon-anim,
+.icon-hoverable:focus-visible .icon-anim {
+  transform: scale(var(--icon-hover-scale));
+  color: var(--color-accent);
+}
+
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+}
+
+/* Skeleton shimmer for loading states */
+.skeleton {
+  background: linear-gradient(90deg, rgba(255,255,255,0.02) 0%, rgba(0,0,0,0.02) 50%, rgba(255,255,255,0.02) 100%);
+  background-size: 200% 100%;
+  animation: shimmer var(--motion-medium) linear infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* Accessibility: respect prefers-reduced-motion */
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
+  *, *::before, *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+
+  .card-appear, .skeleton, .icon-anim, .btn-primary {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
+    box-shadow: none !important;
   }
 }
