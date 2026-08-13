@@ -24,10 +24,30 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
   bool _busy = false;
   String? _error;
 
+  /// خطط العرس المتاحة للربط. تُقرأ مرّةً عند الفتح.
+  List<WeddingPlan> _plans = const [];
+  String? _planId;
+
   @override
   void initState() {
     super.initState();
     _future = Api.service(widget.serviceId);
+    _loadPlans();
+  }
+
+  Future<void> _loadPlans() async {
+    try {
+      final rows = await Api.myPlans();
+      if (!mounted) return;
+      setState(() {
+        _plans = rows;
+        // خطةٌ واحدة تُختار وحدها: سؤال المستخدم عن اختيارٍ لا بديل له عبثٌ،
+        // وتركُه فارغاً يُبقي الحجز خارج الخطة بلا أن ينتبه.
+        if (rows.length == 1) _planId = rows.first.id;
+      });
+    } catch (_) {
+      // الربط بالخطة إضافة: تعذُّر قراءتها لا يمنع الحجز.
+    }
   }
 
   @override
@@ -77,6 +97,7 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
         guests: guests,
         address: _address.text.trim(),
         notes: _notes.text.trim(),
+        planId: _planId,
       );
       if (!mounted) return;
       showMessage(
@@ -196,6 +217,32 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
                     ),
                   ),
                   const SizedBox(height: Space.md),
+                  if (_plans.isNotEmpty) ...[
+                    const SizedBox(height: Space.md),
+                    const Align(
+                      alignment: AlignmentDirectional.centerStart,
+                      child: Muted('أضِفه إلى خطة العرس'),
+                    ),
+                    const SizedBox(height: Space.sm),
+                    Wrap(
+                      spacing: Space.sm,
+                      runSpacing: Space.sm,
+                      children: [
+                        for (final p in _plans)
+                          PickChip(
+                            label: p.title,
+                            active: _planId == p.id,
+                            onTap: () => setState(() => _planId = p.id),
+                          ),
+                        PickChip(
+                          label: 'بلا خطة',
+                          active: _planId == null,
+                          onTap: () => setState(() => _planId = null),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: Space.md),
+                  ],
                   TextField(
                     controller: _notes,
                     maxLines: 3,

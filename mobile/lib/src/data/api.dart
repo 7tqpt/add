@@ -191,6 +191,13 @@ class Api {
     required int guests,
     required String address,
     String notes = '',
+
+    /// خطة العرس التي يُضاف إليها الحجز، إن كانت للعميل خطة.
+    ///
+    /// كان يُمرَّر `null` دائماً، فلا يرتبط حجزٌ بخطة أبداً، وتبقى «إجمالي
+    /// الحجوزات» و«المدفوع» و«المتبقّي عليك» أصفاراً في شاشة الخطة مهما حجز.
+    /// والبيانات التجريبية كانت تخفي ذلك لأن أرقامها مكتوبةٌ بخط اليد.
+    String? planId,
   }) async {
     if (!isSupabaseConfigured) {
       return demoDelay(demoCreateBooking(serviceId, eventDate, eventTime, guests, address));
@@ -201,7 +208,7 @@ class Api {
         'p_service_id': serviceId,
         'p_event_date': eventDate,
         'p_event_time': eventTime,
-        'p_plan_id': null,
+        'p_plan_id': planId,
         'p_guests_count': guests,
         'p_address': address,
         'p_notes': notes,
