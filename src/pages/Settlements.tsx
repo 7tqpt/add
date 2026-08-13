@@ -34,7 +34,8 @@ const NEXT: Partial<Record<SettlementStatus, { status: SettlementStatus; label: 
 }
 
 export function SettlementsPage() {
-  const { canWrite } = useAuth()
+  const { can } = useAuth()
+  const canWrite = can('finance')
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState<SettlementStatus | 'all'>('all')
   const [page, setPage] = useState(0)

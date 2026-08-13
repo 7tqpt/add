@@ -72,7 +72,8 @@ interface PendingAction {
 
 export function ProviderDetailPage() {
   const { id = '' } = useParams()
-  const { canWrite } = useAuth()
+  const { can } = useAuth()
+  const canWrite = can('directory')
   const [toast, setToast] = useState<string | null>(null)
   const [pending, setPending] = useState<PendingAction | null>(null)
   const [busy, setBusy] = useState(false)

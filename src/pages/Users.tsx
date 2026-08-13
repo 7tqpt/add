@@ -33,7 +33,8 @@ const STATUS_TONE: Record<UserStatus, Tone> = {
 }
 
 export function UsersPage() {
-  const { canWrite } = useAuth()
+  const { can } = useAuth()
+  const canWrite = can('directory')
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState<UserStatus | 'all'>('all')
   const [governorate, setGovernorate] = useState<string | 'all'>('all')

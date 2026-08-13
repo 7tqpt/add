@@ -983,8 +983,12 @@ export const mockSettings: AppSettings = {
 
 export const mockAdmins: AdminAccount[] = [
   { user_id: 'demo-admin', email: 'admin@example.com', role: 'owner', created_at: isoAt(200, 9) },
-  { user_id: 'adm_2', email: 'ops@example.com', role: 'admin', created_at: isoAt(90, 11) },
-  { user_id: 'adm_3', email: 'analyst@example.com', role: 'viewer', created_at: isoAt(30, 14) },
+  { user_id: 'adm_2', email: 'ops@example.com', role: 'manager', created_at: isoAt(90, 11) },
+  { user_id: 'adm_3', email: 'assistant@example.com', role: 'operations', created_at: isoAt(70, 10) },
+  { user_id: 'adm_4', email: 'finance@example.com', role: 'finance', created_at: isoAt(60, 13) },
+  { user_id: 'adm_5', email: 'support@example.com', role: 'support', created_at: isoAt(45, 9) },
+  { user_id: 'adm_6', email: 'moderator@example.com', role: 'moderator', created_at: isoAt(40, 15) },
+  { user_id: 'adm_7', email: 'analyst@example.com', role: 'viewer', created_at: isoAt(30, 14) },
 ]
 
 // ---------------------------------------------------------------------------

@@ -39,7 +39,8 @@ const AUTHOR_LABEL: Record<'customer' | 'provider' | 'admin', string> = {
 
 export function SupportTicketPage() {
   const { id = '' } = useParams()
-  const { canWrite, user } = useAuth()
+  const { can, user } = useAuth()
+  const canWrite = can('support')
   const [reply, setReply] = useState('')
   const [internal, setInternal] = useState(false)
   const [nextStatus, setNextStatus] = useState<TicketStatus>('waiting_customer')

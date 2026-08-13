@@ -1,3 +1,4 @@
+import type { AdminArea } from '@/lib/types'
 import {
   Banknote,
   Bell,
@@ -22,6 +23,11 @@ export interface NavItem {
   to: string
   label: string
   icon: LucideIcon
+  /**
+   * المجال الذي يحكم ظهور هذا البند. القائمة والحارس يقرآن منه معاً، فلا يقع
+   * ما وقع لو كُتب الشرطان منفصلين: بندٌ مخفيّ يفتحه من يكتب مساره بيده.
+   */
+  area: AdminArea
 }
 
 export interface NavGroup {
@@ -33,46 +39,46 @@ export interface NavGroup {
 export const NAV_GROUPS: NavGroup[] = [
   {
     label: null,
-    items: [{ to: '/', label: 'لوحة المعلومات', icon: LayoutDashboard }],
+    items: [{ to: '/', label: 'لوحة المعلومات', icon: LayoutDashboard, area: 'bookings' }],
   },
   {
     label: 'الحجوزات',
     items: [
-      { to: '/bookings', label: 'الحجوزات', icon: CalendarCheck },
-      { to: '/plans', label: 'خطط الأعراس', icon: HeartHandshake },
+      { to: '/bookings', label: 'الحجوزات', icon: CalendarCheck, area: 'bookings' },
+      { to: '/plans', label: 'خطط الأعراس', icon: HeartHandshake, area: 'bookings' },
     ],
   },
   {
     label: 'الأطراف',
     items: [
-      { to: '/users', label: 'العملاء', icon: Users },
-      { to: '/providers', label: 'مقدّمو الخدمة', icon: BriefcaseBusiness },
-      { to: '/catalog', label: 'الأقسام والخدمات', icon: LayoutList },
+      { to: '/users', label: 'العملاء', icon: Users, area: 'directory' },
+      { to: '/providers', label: 'مقدّمو الخدمة', icon: BriefcaseBusiness, area: 'directory' },
+      { to: '/catalog', label: 'الأقسام والخدمات', icon: LayoutList, area: 'catalog' },
     ],
   },
   {
     label: 'المالية',
     items: [
-      { to: '/payments', label: 'عمليات الدفع', icon: CreditCard },
-      { to: '/settlements', label: 'مستحقات الشركاء', icon: Banknote },
-      { to: '/promotions', label: 'الاشتراكات والإعلانات', icon: Megaphone },
+      { to: '/payments', label: 'عمليات الدفع', icon: CreditCard, area: 'finance' },
+      { to: '/settlements', label: 'مستحقات الشركاء', icon: Banknote, area: 'finance' },
+      { to: '/promotions', label: 'الاشتراكات والإعلانات', icon: Megaphone, area: 'finance' },
     ],
   },
   {
     label: 'الثقة',
     items: [
-      { to: '/support', label: 'خدمة العملاء', icon: LifeBuoy },
-      { to: '/disputes', label: 'النزاعات', icon: Scale },
-      { to: '/reviews', label: 'التقييمات', icon: Star },
+      { to: '/support', label: 'خدمة العملاء', icon: LifeBuoy, area: 'support' },
+      { to: '/disputes', label: 'النزاعات', icon: Scale, area: 'trust' },
+      { to: '/reviews', label: 'التقييمات', icon: Star, area: 'trust' },
     ],
   },
   {
     label: 'التشغيل',
     items: [
-      { to: '/notifications', label: 'الإشعارات', icon: Bell },
-      { to: '/versions', label: 'إصدارات التطبيق', icon: Smartphone },
-      { to: '/audit', label: 'سجل العمليات', icon: ScrollText },
-      { to: '/settings', label: 'الإعدادات', icon: Settings },
+      { to: '/notifications', label: 'الإشعارات', icon: Bell, area: 'ops' },
+      { to: '/versions', label: 'إصدارات التطبيق', icon: Smartphone, area: 'ops' },
+      { to: '/audit', label: 'سجل العمليات', icon: ScrollText, area: 'settings' },
+      { to: '/settings', label: 'الإعدادات', icon: Settings, area: 'settings' },
     ],
   },
 ]
@@ -89,4 +95,14 @@ export function titleForPath(pathname: string): string {
 
   const prefixed = ALL_ITEMS.find((item) => item.to !== '/' && pathname.startsWith(`${item.to}/`))
   return prefixed?.label ?? 'لوحة التحكم'
+}
+
+/** المجال الذي يحكم مساراً — يشمل مسارات التفاصيل التي ليست في القائمة. */
+export function areaForPath(pathname: string): AdminArea | null {
+  const exact = ALL_ITEMS.find((item) => item.to === pathname)
+  if (exact) return exact.area
+  const prefixed = ALL_ITEMS.find(
+    (item) => item.to !== '/' && pathname.startsWith(`${item.to}/`),
+  )
+  return prefixed?.area ?? null
 }

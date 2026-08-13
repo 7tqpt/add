@@ -61,7 +61,8 @@ export function PromotionsPage() {
 // ---------------------------------------------------------------------------
 
 function SubscriptionPlans({ onToast }: { onToast: (message: string) => void }) {
-  const { canWrite } = useAuth()
+  const { can } = useAuth()
+  const canWrite = can('finance')
   const [busyId, setBusyId] = useState<string | null>(null)
   const { data, error, loading, refetching, reload } = useAsync(listSubscriptionPlans, [])
 

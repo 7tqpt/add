@@ -33,7 +33,8 @@ const PAGE_SIZE = 8
 const EXPORT_LIMIT = 5000
 
 export function NotificationsPage() {
-  const { canWrite } = useAuth()
+  const { can } = useAuth()
+  const canWrite = can('ops')
   const [page, setPage] = useState(0)
   const load = useCallback(() => listNotifications(page, PAGE_SIZE), [page])
   const { data, error, loading, refetching, reload } = useAsync(load, [page])

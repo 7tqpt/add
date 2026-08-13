@@ -51,7 +51,8 @@ const RANGES: { value: number | 'all'; label: string }[] = [
 ]
 
 export function PaymentsPage() {
-  const { canWrite } = useAuth()
+  const { can } = useAuth()
+  const canWrite = can('finance')
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState<PaymentStatus | 'all'>('all')
   const [method, setMethod] = useState<PaymentMethod | 'all'>('all')

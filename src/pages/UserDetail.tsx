@@ -53,7 +53,8 @@ const PAYMENT_TONE: Record<PaymentStatus, Tone> = {
 
 export function UserDetailPage() {
   const { id = '' } = useParams()
-  const { canWrite } = useAuth()
+  const { can } = useAuth()
+  const canWrite = can('directory')
   const [toast, setToast] = useState<string | null>(null)
   const [confirming, setConfirming] = useState(false)
   const [busy, setBusy] = useState(false)

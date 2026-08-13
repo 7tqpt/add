@@ -36,7 +36,7 @@ await db.exec(`
     language sql immutable as $$ select string_to_array(name, '/') $$;
 `)
 
-for (const f of ['install.sql', 'seed.sql', 'apply.sql', 'storage.sql', 'support.sql']) {
+for (const f of ['install.sql', 'seed.sql', 'apply.sql', 'storage.sql', 'support.sql', 'roles.sql', 'invitations.sql']) {
   await db.exec(read(f))
   console.log(`✓ ${f}`)
 }

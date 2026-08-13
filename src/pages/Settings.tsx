@@ -1,24 +1,38 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
-import { Save } from 'lucide-react'
+import { Save, UserMinus, UserPlus } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
+import { Badge } from '@/components/ui/Badge'
 import { Card, CardBody, CardHeader } from '@/components/ui/Card'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { ErrorState, LoadingBlock, Spinner, Toast } from '@/components/ui/Feedback'
 import { Field, Input, Select, Textarea, Toggle } from '@/components/ui/Field'
 import { useAsync } from '@/hooks/useAsync'
 import { useAuth } from '@/context/AuthContext'
-import { formatDate } from '@/lib/format'
+import { formatDate, formatRelative } from '@/lib/format'
 import { isSupabaseConfigured } from '@/lib/supabase'
-import type { AdminRole, AppSettings } from '@/lib/types'
+import type { AdminAccount, AdminInvitation, AdminRole, AppSettings } from '@/lib/types'
+import {
+  AREAS_IN_ORDER,
+  AREA_LABEL,
+  LEVEL_LABEL,
+  ROLES_IN_ORDER,
+  ROLE_AREAS,
+} from '@/lib/permissions'
 import {
   ROLE_DESCRIPTION,
   ROLE_LABEL,
+  cancelInvitation,
+  inviteAdmin,
   listAdmins,
+  listInvitations,
+  removeAdmin,
   setAdminRole,
 } from '@/services/admins'
 import { getSettings, saveSettings } from '@/services/settings'
 
 export function SettingsPage() {
-  const { user, role, canWrite } = useAuth()
+  const { user, role, can } = useAuth()
+  const canWrite = can('settings')
   const load = useCallback(() => getSettings(), [])
   const { data, error, loading, reload } = useAsync(load, [])
 
@@ -60,8 +74,15 @@ export function SettingsPage() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-      <Card>
+    <div className="flex flex-col gap-4">
+      {/*
+        بطاقة المسؤولين خارج نموذج الإعدادات لا داخله.
+        نموذجٌ داخل نموذج غير صالح في HTML، فيسقطه المتصفّح ولا يعمل onSubmit
+        الداخلي أبداً — يُرسَل الخارجي مكانه. وقع ذلك فعلاً: زرّ «إضافة مسؤول»
+        كان يبدو سليماً ولا يفعل شيئاً.
+      */}
+      <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <Card>
         <CardHeader title="حالة التطبيق" subtitle="تتحكم في وصول المستخدمين إلى التطبيق" />
         <CardBody className="flex flex-col gap-5">
           <Toggle
@@ -95,9 +116,9 @@ export function SettingsPage() {
             description="عند الإيقاف يُخفى نموذج الانضمام؛ الطلبات المعلّقة تبقى للمراجعة."
           />
         </CardBody>
-      </Card>
+        </Card>
 
-      <Card>
+        <Card>
         <CardHeader
           title="العمولة والعربون"
           subtitle="القيم الافتراضية للمنصة — تسري على الحجوزات الجديدة فقط"
@@ -155,9 +176,9 @@ export function SettingsPage() {
             )}
           </Field>
         </CardBody>
-      </Card>
+        </Card>
 
-      <Card>
+        <Card>
         <CardHeader title="الحد الأدنى للإصدارات" subtitle="أقدم إصدار مسموح بتشغيله" />
         <CardBody className="flex flex-col gap-5">
           <Field label="أقل إصدار مدعوم على iOS">
@@ -200,9 +221,9 @@ export function SettingsPage() {
             )}
           </Field>
         </CardBody>
-      </Card>
+        </Card>
 
-      <Card>
+        <Card>
         <CardHeader title="الدعم" subtitle="بيانات التواصل الظاهرة داخل التطبيق" />
         <CardBody className="flex flex-col gap-5">
           <Field label="بريد الدعم الفني">
@@ -232,9 +253,9 @@ export function SettingsPage() {
             )}
           </Field>
         </CardBody>
-      </Card>
+        </Card>
 
-      <Card>
+        <Card>
         <CardHeader title="الحساب ومصدر البيانات" />
         <CardBody className="flex flex-col gap-3 text-xs">
           <Row label="المسؤول الحالي" value={user?.email ?? '—'} />
@@ -250,38 +271,43 @@ export function SettingsPage() {
             </p>
           ) : null}
         </CardBody>
-      </Card>
+        </Card>
 
-      <div className="lg:col-span-2">
-        <AdminsCard onToast={setToast} />
-      </div>
+        <div className="lg:col-span-2">
+          <Button
+            type="submit"
+            variant="primary"
+            disabled={saving || !canWrite}
+            title={canWrite ? undefined : 'دورك الحالي للقراءة فقط'}
+          >
+            {saving ? <Spinner /> : <Save size={15} aria-hidden />}
+            حفظ الإعدادات
+          </Button>
+        </div>
+      </form>
 
-      <div className="lg:col-span-2">
-        <Button
-          type="submit"
-          variant="primary"
-          disabled={saving || !canWrite}
-          title={canWrite ? undefined : 'دورك الحالي للقراءة فقط'}
-        >
-          {saving ? <Spinner /> : <Save size={15} aria-hidden />}
-          حفظ الإعدادات
-        </Button>
-      </div>
+      <AdminsCard onToast={setToast} />
 
       {toast ? <Toast message={toast} /> : null}
-    </form>
+    </div>
   )
 }
 
-const ROLES: AdminRole[] = ['owner', 'admin', 'viewer']
+
 
 function AdminsCard({ onToast }: { onToast: (message: string) => void }) {
-  const { user, role, canManageAdmins, previewRole } = useAuth()
+  const { user, canManageAdmins } = useAuth()
   const load = useCallback(() => listAdmins(), [])
   const { data, error, loading, refetching, reload } = useAsync(load, [])
+  const loadInvitations = useCallback(() => listInvitations(), [])
+  const invitations = useAsync(loadInvitations, [])
   const [busyId, setBusyId] = useState<string | null>(null)
+  const [newEmail, setNewEmail] = useState('')
+  const [newRole, setNewRole] = useState<AdminRole>('support')
+  const [adding, setAdding] = useState(false)
+  const [removing, setRemoving] = useState<AdminAccount | null>(null)
 
-  async function changeRole(target: Parameters<typeof setAdminRole>[0], next: AdminRole) {
+  async function changeRole(target: AdminAccount, next: AdminRole) {
     setBusyId(target.user_id)
     try {
       await setAdminRole(target, next)
@@ -294,20 +320,122 @@ function AdminsCard({ onToast }: { onToast: (message: string) => void }) {
     }
   }
 
+  async function submitNew(event: FormEvent) {
+    event.preventDefault()
+    if (!newEmail.trim()) return
+    setAdding(true)
+    try {
+      const invitation = await inviteAdmin(newEmail.trim(), newRole)
+      onToast(`رمز الدعوة ${invitation.token} — أرسله إلى ${invitation.email}.`)
+      setNewEmail('')
+      invitations.reload()
+    } catch (cause) {
+      onToast(cause instanceof Error ? cause.message : 'تعذّر إنشاء الدعوة.')
+    } finally {
+      setAdding(false)
+    }
+  }
+
+  async function copyToken(token: string) {
+    try {
+      await navigator.clipboard.writeText(token)
+      onToast('نُسخ الرمز.')
+    } catch {
+      // الحافظة محجوبة خارج السياقات الآمنة؛ الرمز ظاهر فيُنسخ باليد.
+      onToast(`الرمز: ${token}`)
+    }
+  }
+
+  async function dropInvitation(invitation: AdminInvitation) {
+    try {
+      await cancelInvitation(invitation)
+      onToast('أُلغيت الدعوة.')
+      invitations.reload()
+    } catch (cause) {
+      onToast(cause instanceof Error ? cause.message : 'تعذّر إلغاء الدعوة.')
+    }
+  }
+
+  async function confirmRemove() {
+    if (!removing) return
+    setBusyId(removing.user_id)
+    try {
+      await removeAdmin(removing)
+      onToast(`سُحبت صلاحية ${removing.email}.`)
+      reload()
+    } catch (cause) {
+      onToast(cause instanceof Error ? cause.message : 'تعذّر سحب الصلاحية.')
+    } finally {
+      setBusyId(null)
+      setRemoving(null)
+    }
+  }
+
   return (
     <Card className={refetching ? 'is-refetching' : undefined}>
       <CardHeader
         title="المسؤولون والصلاحيات"
-        subtitle="من يستطيع الدخول إلى اللوحة وما الذي يستطيع تغييره"
+        subtitle="من يدخل اللوحة، وما الذي يراه ويعدّله في كل مجال"
       />
       <CardBody className="flex flex-col gap-4">
-        <ul className="flex flex-col gap-1.5 text-xs text-ink-2">
-          {ROLES.map((key) => (
-            <li key={key}>
-              <span className="font-medium text-ink">{ROLE_LABEL[key]}</span> — {ROLE_DESCRIPTION[key]}
-            </li>
-          ))}
-        </ul>
+        {/*
+          المصفوفة كاملةً لا قائمة أوصاف: «مساعد المدير يعدّل المدفوعات والأقسام»
+          جملةٌ تُقرأ ولا تُقارَن. الجدول يُري الفرق بين دورين بنظرة واحدة.
+        */}
+        <div className="overflow-x-auto rounded-lg border border-hairline">
+          <table className="w-full border-collapse text-[11px]">
+            <thead>
+              <tr className="bg-surface-2">
+                <th scope="col" className="border-b border-hairline px-3 py-2 text-start font-medium whitespace-nowrap text-ink-2">
+                  المجال
+                </th>
+                {ROLES_IN_ORDER.map((key) => (
+                  <th
+                    key={key}
+                    scope="col"
+                    className="border-b border-hairline px-2 py-2 text-center font-medium whitespace-nowrap text-ink-2"
+                  >
+                    {ROLE_LABEL[key]}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {AREAS_IN_ORDER.map((area) => (
+                <tr key={area} className="border-b border-hairline last:border-0">
+                  <th scope="row" className="px-3 py-1.5 text-start font-normal whitespace-nowrap text-ink-2">
+                    {AREA_LABEL[area]}
+                  </th>
+                  {ROLES_IN_ORDER.map((key) => {
+                    const level = ROLE_AREAS[key][area]
+                    return (
+                      <td key={key} className="px-2 py-1.5 text-center" title={LEVEL_LABEL[level]}>
+                        {/* رمز ونصّ بديل معاً — اللون وحده لا يكفي قارئ شاشة. */}
+                        <span
+                          aria-label={LEVEL_LABEL[level]}
+                          className={
+                            level === 'write'
+                              ? 'text-accent'
+                              : level === 'read'
+                                ? 'text-ink-2'
+                                : 'text-muted'
+                          }
+                        >
+                          {level === 'write' ? '✏️' : level === 'read' ? '👁' : '—'}
+                        </span>
+                      </td>
+                    )
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <p className="text-[11px] text-muted">
+          ✏️ تعديل · 👁 قراءة · — محجوب. والحجب في المال يعني ألّا يرى المبالغ أصلاً، لا
+          ألّا يعدّلها.
+        </p>
 
         {loading ? (
           <LoadingBlock />
@@ -318,9 +446,9 @@ function AdminsCard({ onToast }: { onToast: (message: string) => void }) {
             <table className="w-full border-collapse text-xs">
               <thead>
                 <tr className="bg-surface-2">
-                  {['البريد', 'الدور', 'أُضيف في'].map((heading) => (
+                  {['البريد', 'الدور', 'أُضيف في', ''].map((heading, i) => (
                     <th
-                      key={heading}
+                      key={heading || i}
                       scope="col"
                       className="border-b border-hairline px-3 py-2 text-start font-medium whitespace-nowrap text-ink-2"
                     >
@@ -330,64 +458,200 @@ function AdminsCard({ onToast }: { onToast: (message: string) => void }) {
                 </tr>
               </thead>
               <tbody>
-                {(data ?? []).map((admin) => (
-                  <tr key={admin.user_id} className="border-b border-hairline last:border-0">
+                {(data ?? []).map((admin) => {
+                  const isMe = admin.user_id === user?.id
+                  return (
+                    <tr key={admin.user_id} className="border-b border-hairline last:border-0">
+                      <td dir="ltr" className="px-3 py-2 text-start whitespace-nowrap text-ink">
+                        {admin.email}
+                        {isMe ? <span className="text-muted"> (أنت)</span> : null}
+                      </td>
+                      <td className="px-3 py-2">
+                        <div className="w-36">
+                          <Select
+                            value={admin.role}
+                            aria-label={`دور ${admin.email}`}
+                            disabled={busyId === admin.user_id || !canManageAdmins || isMe}
+                            title={
+                              isMe
+                                ? 'لا تستطيع تغيير دورك بنفسك'
+                                : canManageAdmins
+                                  ? undefined
+                                  : 'إدارة المسؤولين للمالك وحده'
+                            }
+                            onChange={(event) => changeRole(admin, event.target.value as AdminRole)}
+                          >
+                            {ROLES_IN_ORDER.map((key) => (
+                              <option key={key} value={key}>
+                                {ROLE_LABEL[key]}
+                              </option>
+                            ))}
+                          </Select>
+                        </div>
+                      </td>
+                      <td className="tnum px-3 py-2 whitespace-nowrap text-ink-2">
+                        {formatDate(admin.created_at)}
+                      </td>
+                      <td className="px-3 py-2">
+                        {/*
+                          المالك لا يسحب صلاحية نفسه: لوحةٌ بلا مالك لا يستطيع
+                          أحد أن يعيد إليها مالكاً من داخلها.
+                        */}
+                        {canManageAdmins && !isMe ? (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            disabled={busyId === admin.user_id}
+                            onClick={() => setRemoving(admin)}
+                          >
+                            <UserMinus size={13} aria-hidden />
+                            سحب الصلاحية
+                          </Button>
+                        ) : null}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {canManageAdmins ? (
+          <form
+            onSubmit={submitNew}
+            className="flex flex-col gap-3 rounded-lg border border-hairline bg-surface-2 px-3 py-3"
+          >
+            <div>
+              <p className="text-xs font-medium text-ink">دعوة موظف</p>
+              {/*
+                الدعوة لا إنشاء الحساب: إنشاء حساب مصادقة يحتاج مفتاح الخدمة،
+                وهو يتجاوز RLS كلها فلا يُسلَّم لمتصفّح. والدعوة أسلم لا أضعف —
+                الموظف يختار كلمة مروره بيده، فلا يعرفها المالك ولا تمرّ في رسالة.
+              */}
+              <p className="mt-0.5 text-[11px] leading-5 text-muted">
+                اكتب بريده واختر دوره، فيخرج لك رمز تُرسله إليه. يفتح صفحة الدخول ويسجّل نفسه
+                بالرمز، ويختار كلمة مروره بيده.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-end gap-2">
+              <div className="min-w-52 flex-1">
+                <Field label="بريد الموظف">
+                  {(fieldId) => (
+                    <Input
+                      id={fieldId}
+                      dir="ltr"
+                      type="email"
+                      value={newEmail}
+                      onChange={(event) => setNewEmail(event.target.value)}
+                      placeholder="staff@example.com"
+                      required
+                    />
+                  )}
+                </Field>
+              </div>
+              <div className="w-40">
+                <Field label="الدور">
+                  {(fieldId) => (
+                    <Select
+                      id={fieldId}
+                      value={newRole}
+                      onChange={(event) => setNewRole(event.target.value as AdminRole)}
+                    >
+                      {ROLES_IN_ORDER.map((key) => (
+                        <option key={key} value={key}>
+                          {ROLE_LABEL[key]}
+                        </option>
+                      ))}
+                    </Select>
+                  )}
+                </Field>
+              </div>
+              <Button type="submit" variant="primary" disabled={adding}>
+                {adding ? <Spinner /> : <UserPlus size={14} aria-hidden />}
+                إنشاء دعوة
+              </Button>
+            </div>
+
+            <p className="text-[11px] text-ink-2">{ROLE_DESCRIPTION[newRole]}</p>
+          </form>
+        ) : null}
+
+        {canManageAdmins && (invitations.data ?? []).length > 0 ? (
+          <div className="overflow-x-auto rounded-lg border border-hairline">
+            <table className="w-full border-collapse text-xs">
+              <thead>
+                <tr className="bg-surface-2">
+                  {['الدعوة', 'الدور', 'الرمز', 'تنتهي', ''].map((heading, i) => (
+                    <th
+                      key={heading || i}
+                      scope="col"
+                      className="border-b border-hairline px-3 py-2 text-start font-medium whitespace-nowrap text-ink-2"
+                    >
+                      {heading}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {(invitations.data ?? []).map((invitation) => (
+                  <tr key={invitation.id} className="border-b border-hairline last:border-0">
                     <td dir="ltr" className="px-3 py-2 text-start whitespace-nowrap text-ink">
-                      {admin.email}
-                      {admin.user_id === user?.id ? (
-                        <span className="text-muted"> (أنت)</span>
-                      ) : null}
+                      {invitation.email}
+                    </td>
+                    <td className="px-3 py-2 whitespace-nowrap text-ink-2">
+                      {ROLE_LABEL[invitation.role]}
                     </td>
                     <td className="px-3 py-2">
-                      <div className="w-32">
-                        <Select
-                          value={admin.role}
-                          aria-label={`دور ${admin.email}`}
-                          disabled={busyId === admin.user_id || !canManageAdmins}
-                          title={canManageAdmins ? undefined : 'إدارة المسؤولين متاحة للمالك فقط'}
-                          onChange={(event) => changeRole(admin, event.target.value as AdminRole)}
+                      {invitation.status === 'pending' ? (
+                        <button
+                          type="button"
+                          dir="ltr"
+                          onClick={() => copyToken(invitation.token)}
+                          title="انسخ الرمز"
+                          className="tnum cursor-pointer rounded-md border border-hairline bg-surface px-2 py-1 font-medium tracking-widest text-ink hover:border-accent"
                         >
-                          {ROLES.map((key) => (
-                            <option key={key} value={key}>
-                              {ROLE_LABEL[key]}
-                            </option>
-                          ))}
-                        </Select>
-                      </div>
+                          {invitation.token}
+                        </button>
+                      ) : (
+                        <span className="text-muted">—</span>
+                      )}
                     </td>
-                    <td className="tnum px-3 py-2 whitespace-nowrap text-ink-2">
-                      {formatDate(admin.created_at)}
+                    <td className="px-3 py-2 whitespace-nowrap">
+                      {invitation.status === 'pending' ? (
+                        <span className="text-ink-2">{formatRelative(invitation.expires_at)}</span>
+                      ) : (
+                        <Badge tone={invitation.status === 'accepted' ? 'good' : 'neutral'}>
+                          {invitation.status === 'accepted' ? 'قُبلت' : 'انتهت'}
+                        </Badge>
+                      )}
+                    </td>
+                    <td className="px-3 py-2">
+                      {invitation.status === 'pending' ? (
+                        <Button size="sm" variant="ghost" onClick={() => dropInvitation(invitation)}>
+                          إلغاء
+                        </Button>
+                      ) : null}
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-        )}
-
-        {!isSupabaseConfigured ? (
-          <div className="flex flex-col gap-2 rounded-lg border border-hairline bg-surface-2 px-3 py-2.5">
-            <p className="text-xs leading-6 text-ink-2">
-              <strong className="font-semibold">معاينة الصلاحيات:</strong> بدّل دورك هنا لترى كيف
-              تتغيّر اللوحة. اختر «مطّلع» ولاحظ تعطّل كل أزرار التعديل في جميع الشاشات. متاح في
-              وضع العرض التجريبي فقط.
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {ROLES.map((key) => (
-                <Button
-                  key={key}
-                  type="button"
-                  size="sm"
-                  variant={role === key ? 'primary' : 'secondary'}
-                  onClick={() => previewRole(key)}
-                >
-                  {ROLE_LABEL[key]}
-                </Button>
-              ))}
-            </div>
-          </div>
         ) : null}
+
       </CardBody>
+
+      <ConfirmDialog
+        open={removing !== null}
+        title="سحب صلاحية الدخول"
+        message={`لن يستطيع ${removing?.email ?? ''} فتح لوحة التحكم بعد الآن. حساب المصادقة يبقى كما هو — قد يكون له حساب عميل على التطبيق.`}
+        confirmLabel="سحب الصلاحية"
+        tone="danger"
+        onConfirm={confirmRemove}
+        onCancel={() => setRemoving(null)}
+      />
     </Card>
   )
 }

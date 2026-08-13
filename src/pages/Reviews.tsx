@@ -26,7 +26,8 @@ const STATUS_TONE: Record<ReviewStatus, Tone> = {
 }
 
 export function ReviewsPage() {
-  const { canWrite } = useAuth()
+  const { can } = useAuth()
+  const canWrite = can('trust')
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState<ReviewStatus | 'all'>('all')
   const [rating, setRating] = useState<number | 'all'>('all')

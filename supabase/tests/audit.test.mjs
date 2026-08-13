@@ -12,7 +12,7 @@ await db.exec(`
 // كل ملف يُنفَّذ على القاعدة الحقيقية يجب أن يكون هنا، وإلا صار الاختبار
 // يبلّغ عن جداول «مفقودة» هي موجودة فعلاً — أو، وهو الأسوأ، تُضاف شاشة تقرأ
 // جدولاً لم يُنشأ ولا ينبّه أحد.
-for (const f of ['install.sql', 'seed.sql', 'apply.sql', 'support.sql']) {
+for (const f of ['install.sql', 'seed.sql', 'apply.sql', 'support.sql', 'roles.sql', 'invitations.sql']) {
   await db.exec(readFileSync(`../${f}`, 'utf8'))
 }
 

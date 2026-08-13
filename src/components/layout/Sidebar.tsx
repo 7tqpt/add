@@ -1,9 +1,18 @@
 import { NavLink } from 'react-router-dom'
 import { Smartphone, X } from 'lucide-react'
 import { cn } from '@/lib/cn'
+import { useAuth } from '@/context/AuthContext'
 import { NAV_GROUPS } from './nav'
 
 export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { can } = useAuth()
+
+  // مجموعةٌ خلت من بنودها لا تُعرض بعنوانها وحده.
+  const groups = NAV_GROUPS.map((group) => ({
+    ...group,
+    items: group.items.filter((item) => can(item.area, 'read')),
+  })).filter((group) => group.items.length > 0)
+
   return (
     <>
       {/* Scrim, mobile only — the sidebar is always visible from lg up. */}
@@ -46,7 +55,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
         </div>
 
         <nav className="flex-1 overflow-y-auto p-3">
-          {NAV_GROUPS.map((group, index) => (
+          {groups.map((group, index) => (
             <div key={group.label ?? 'main'} className={index === 0 ? '' : 'mt-4'}>
               {group.label ? (
                 <p className="px-3 pb-1.5 text-[11px] font-medium tracking-wide text-muted">

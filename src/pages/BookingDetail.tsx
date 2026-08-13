@@ -72,7 +72,8 @@ function interventionsFor(status: BookingStatus): Intervention[] {
 
 export function BookingDetailPage() {
   const { id = '' } = useParams()
-  const { canWrite } = useAuth()
+  const { can } = useAuth()
+  const canWrite = can('bookings')
   const [toast, setToast] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [pending, setPending] = useState<Intervention | null>(null)
