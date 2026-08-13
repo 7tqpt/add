@@ -2,6 +2,7 @@ import { NavLink } from 'react-router-dom'
 import { Smartphone, X } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { NAV_GROUPS } from './nav'
+import { Icon } from '@/components/ui/Icon'
 
 export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
   return (
@@ -28,7 +29,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
         <div className="flex h-16 shrink-0 items-center justify-between gap-2 border-b border-hairline px-4">
           <div className="flex items-center gap-2.5">
             <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent text-accent-ink">
-              <Smartphone size={18} aria-hidden />
+              <Icon icon={Smartphone} size={18} className="shrink-0" />
             </span>
             <div className="leading-tight">
               <p className="text-sm font-semibold text-ink">لوحة التحكم</p>
@@ -38,10 +39,10 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
           <button
             type="button"
             onClick={onClose}
-            className="cursor-pointer rounded-md p-1.5 text-muted hover:bg-surface-2 hover:text-ink lg:hidden"
+            className="cursor-pointer rounded-md p-1.5 text-muted hover:bg-surface-2 hover:text-ink lg:hidden icon-hoverable icon-btn"
             aria-label="إغلاق القائمة"
           >
-            <X size={18} aria-hidden />
+            <Icon icon={X} size={18} className="" />
           </button>
         </div>
 
