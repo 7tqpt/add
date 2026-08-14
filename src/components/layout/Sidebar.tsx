@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { Smartphone, X } from 'lucide-react'
+import { PartyPopper, X } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { useAuth } from '@/context/AuthContext'
 import { NAV_GROUPS } from './nav'
@@ -37,7 +37,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
         <div className="flex h-16 shrink-0 items-center justify-between gap-2 border-b border-hairline px-4">
           <div className="flex items-center gap-2.5">
             <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent text-accent-ink">
-              <Smartphone size={18} aria-hidden />
+              <PartyPopper size={18} aria-hidden />
             </span>
             <div className="leading-tight">
               <p className="text-sm font-semibold text-ink">لوحة التحكم</p>

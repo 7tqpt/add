@@ -171,18 +171,21 @@ export function UserDetailPage() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <StatTile
           label="إجمالي الجلسات"
+          tone="indigo"
           value={formatNumber(record.sessions_count)}
           icon={Activity}
           refetching={activity.refetching}
         />
         <StatTile
           label="متوسط مدة الجلسة"
+          tone="palm"
           value={formatDuration(averageSession)}
           icon={Clock}
           refetching={activity.refetching}
         />
         <StatTile
           label="إجمالي المدفوعات"
+          tone="henna"
           value={formatMoneyCompact(totalSpent)}
           valueTitle={formatMoney(totalSpent)}
           icon={Wallet}

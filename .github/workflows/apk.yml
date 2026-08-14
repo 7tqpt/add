@@ -1,0 +1,77 @@
+name: بناء تطبيق أندرويد
+
+# يُشغَّل يدوياً من تبويب Actions، وتلقائياً عند وسم إصدار (v1.0.0 مثلاً).
+#
+# ليس على كل دفعة: بناء أندرويد يستغرق دقائق ويستهلك حصّة الدقائق، ولا فائدة
+# من حزمةٍ جديدة مع كل تعديل نصّي.
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+
+jobs:
+  apk:
+    name: حزمة APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+
+      # عدّة أندرويد كاملة مثبّتة أصلاً على عامل GitHub، وهي التي يتعذّر
+      # تنزيلها في بيئات مغلقة الشبكة.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.47.0
+          channel: stable
+          cache: true
+
+      - name: تهيئة مفاتيح المشروع
+        working-directory: mobile
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        # بلا أسرار يُبنى التطبيق على بياناته التجريبية فيبقى قابلاً للتصفّح.
+        # والمفتاح العام وحده هنا — لا `service_role` ولا كلمة مرور القاعدة،
+        # فالحزمة تُفكّ ويُستخرج ما فيها.
+        run: |
+          if [ -n "$SUPABASE_URL" ] && [ -n "$SUPABASE_ANON_KEY" ]; then
+            printf '{\n  "SUPABASE_URL": "%s",\n  "SUPABASE_ANON_KEY": "%s"\n}\n' \
+              "$SUPABASE_URL" "$SUPABASE_ANON_KEY" > env.json
+            echo "المفاتيح مهيّأة — التطبيق سيتصل بمشروعك."
+          else
+            echo '{}' > env.json
+            echo "لا أسرار مضبوطة — التطبيق سيعمل على البيانات التجريبية."
+          fi
+
+      - run: flutter pub get
+        working-directory: mobile
+
+      - run: flutter analyze
+        working-directory: mobile
+
+      - run: flutter test
+        working-directory: mobile
+
+      # حزمة لكل معمارية بدل واحدة سمينة: حزمة ARM64 وحدها أصغر بالثلثين،
+      # وشبكة الجوال في اليمن تجعل الفرق ملموساً عند التنزيل.
+      - name: بناء APK
+        working-directory: mobile
+        run: flutter build apk --release --split-per-abi --dart-define-from-file=env.json
+
+      - name: بناء حزمة النشر على Google Play
+        working-directory: mobile
+        run: flutter build appbundle --release --dart-define-from-file=env.json
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: aras-android
+          path: |
+            mobile/build/app/outputs/flutter-apk/*.apk
+            mobile/build/app/outputs/bundle/release/*.aab
+          if-no-files-found: error
+          retention-days: 30

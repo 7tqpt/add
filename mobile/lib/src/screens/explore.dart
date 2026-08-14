@@ -20,18 +20,46 @@ class _ExploreScreenState extends State<ExploreScreen> {
   String? _categoryId;
   late Future<List<ServiceCategory>> _categories;
   late Future<List<ServiceItem>> _services;
+  Set<String> _favourites = {};
 
   @override
   void initState() {
     super.initState();
     _categories = Api.categories();
     _reload();
+    _loadFavourites();
   }
 
   void _reload() {
     setState(() {
       _services = Api.services(search: _applied, categoryId: _categoryId);
     });
+  }
+
+  Future<void> _loadFavourites() async {
+    try {
+      final rows = await Api.myFavourites();
+      if (mounted) setState(() => _favourites = rows);
+    } catch (_) {
+      // المفضّلة زينةٌ لا شرط: فشلُ قراءتها لا يمنع تصفّح الخدمات.
+    }
+  }
+
+  Future<void> _toggleFavourite(String serviceId) async {
+    // التبديل يقع في الواجهة أولاً ثم يُرسَل: القلب يستجيب فوراً كما يتوقّع
+    // الإصبع، ويعود إن رفض الخادم.
+    setState(() {
+      if (!_favourites.remove(serviceId)) _favourites.add(serviceId);
+    });
+    try {
+      await Api.toggleFavourite(serviceId);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        if (!_favourites.remove(serviceId)) _favourites.add(serviceId);
+      });
+      showMessage(context, messageOf(e));
+    }
   }
 
   @override
@@ -114,7 +142,11 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 padding: const EdgeInsets.all(Space.lg),
                 itemCount: items.length,
                 separatorBuilder: (_, _) => const SizedBox(height: Space.md),
-                itemBuilder: (context, i) => _ServiceCard(item: items[i]),
+                itemBuilder: (context, i) => _ServiceCard(
+                  item: items[i],
+                  isFavourite: _favourites.contains(items[i].id),
+                  onToggleFavourite: () => _toggleFavourite(items[i].id),
+                ),
               );
             },
           ),
@@ -125,8 +157,14 @@ class _ExploreScreenState extends State<ExploreScreen> {
 }
 
 class _ServiceCard extends StatelessWidget {
-  const _ServiceCard({required this.item});
+  const _ServiceCard({
+    required this.item,
+    required this.isFavourite,
+    required this.onToggleFavourite,
+  });
   final ServiceItem item;
+  final bool isFavourite;
+  final VoidCallback onToggleFavourite;
 
   @override
   Widget build(BuildContext context) {
@@ -152,6 +190,18 @@ class _ServiceCard extends StatelessWidget {
               const SizedBox(width: Space.sm),
               const StatusBadge('مميّز', color: AppColors.warning),
             ],
+            // القلب داخل البطاقة على InkWell البطاقة نفسها: يُعطى مساحته
+            // الخاصة كي لا تفتح الضغطةُ عليه صفحةَ التفاصيل.
+            IconButton(
+              onPressed: onToggleFavourite,
+              visualDensity: VisualDensity.compact,
+              tooltip: isFavourite ? 'أزل من المفضّلة' : 'أضف للمفضّلة',
+              icon: Icon(
+                isFavourite ? Icons.favorite : Icons.favorite_border,
+                size: 20,
+                color: isFavourite ? AppColors.critical : AppColors.muted,
+              ),
+            ),
           ],
         ),
         const SizedBox(height: Space.xs),

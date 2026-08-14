@@ -388,3 +388,115 @@ void demoReply(String body) {
     ),
   ];
 }
+
+// ---------------------------------------------------------------------------
+// ما أُضيف مع إكمال التطبيق: الخدمات والمستندات والخطة والتقييم والمفضّلة.
+// ---------------------------------------------------------------------------
+
+/// خدمات المزوّد التجريبي. تبدأ فارغة كملفه: من أنشأ حسابه للتوّ لا خدمة له.
+List<MyService> demoMyServices = [];
+
+int _serviceSeq = 0;
+
+void demoSaveService({String? id, required Map<String, dynamic> values}) {
+  final next = MyService(
+    id: id ?? 'ms${++_serviceSeq}',
+    title: values['title'] as String,
+    description: values['description'] as String,
+    price: values['price'] as num,
+    priceTo: values['price_to'] as num?,
+    unit: values['unit'] as String,
+    depositPercent: values['deposit_percent'] as int,
+    categoryId: values['category_id'] as String,
+    isActive: id == null ? true : demoMyServices.firstWhere((s) => s.id == id).isActive,
+  );
+  demoMyServices = id == null
+      ? [next, ...demoMyServices]
+      : demoMyServices.map((s) => s.id == id ? next : s).toList();
+}
+
+void demoSetServiceActive(String id, bool active) {
+  demoMyServices = demoMyServices.map((s) {
+    if (s.id != id) return s;
+    return MyService(
+      id: s.id,
+      title: s.title,
+      description: s.description,
+      price: s.price,
+      priceTo: s.priceTo,
+      unit: s.unit,
+      depositPercent: s.depositPercent,
+      categoryId: s.categoryId,
+      isActive: active,
+    );
+  }).toList();
+}
+
+List<ProviderDocument> demoDocuments = [];
+
+int _docSeq = 0;
+
+void demoAddDocument(String type, String fileName) {
+  demoDocuments = [
+    ProviderDocument(
+      id: 'doc${++_docSeq}',
+      type: type,
+      fileName: fileName,
+      fileUrl: 'demo/$fileName',
+      status: 'pending',
+      note: '',
+      uploadedAt: DateTime.now().toIso8601String(),
+    ),
+    ...demoDocuments,
+  ];
+}
+
+int _planSeq = 0;
+
+void demoSavePlan({String? id, required Map<String, dynamic> values}) {
+  final budget = values['budget'] as num;
+  final existing = id == null ? null : demoPlans.firstWhere((p) => p.id == id);
+  final next = WeddingPlan(
+    id: id ?? 'pl${++_planSeq + 1}',
+    title: values['title'] as String,
+    weddingDate: values['wedding_date'] as String,
+    governorate: values['governorate'] as String,
+    guestsCount: values['guests_count'] as int,
+    budget: budget,
+    status: existing?.status ?? 'planning',
+    servicesCount: existing?.servicesCount ?? 0,
+    totalCost: existing?.totalCost ?? 0,
+    paidAmount: existing?.paidAmount ?? 0,
+    remainingAmount: budget - (existing?.paidAmount ?? 0),
+  );
+  demoPlans = id == null
+      ? [next, ...demoPlans]
+      : demoPlans.map((p) => p.id == id ? next : p).toList();
+}
+
+void demoCancel(String id) => _replace(id, BookingStatus.cancelled);
+
+/// الحجوزات المقيَّمة. القاعدة تمنع تقييم الحجز مرّتين بقيد فريد، والوضع
+/// التجريبي يحاكي المنع نفسه كي يختفي الزرّ بعد الضغط كما سيختفي فعلاً.
+Set<String> demoReviewedBookings = {};
+
+void demoReview(String bookingId, int rating) => demoReviewedBookings.add(bookingId);
+
+Set<String> demoFavourites = {};
+
+void demoToggleFavourite(String serviceId) {
+  if (!demoFavourites.remove(serviceId)) demoFavourites.add(serviceId);
+}
+
+void demoCloseTicket(String ticketId) {
+  demoTickets = demoTickets.map((t) {
+    if (t.id != ticketId) return t;
+    return SupportTicket(
+      id: t.id,
+      reference: t.reference,
+      subject: t.subject,
+      status: 'closed',
+      lastMessageAt: DateTime.now().toIso8601String(),
+    );
+  }).toList();
+}

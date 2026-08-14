@@ -1,11 +1,22 @@
+import 'dart:typed_data';
+
+import 'package:supabase_flutter/supabase_flutter.dart' show FileOptions;
+
 import 'models.dart';
 import 'supabase.dart';
 import 'demo.dart';
 
 /// كل ما يقرؤه التطبيق أو يكتبه.
 ///
-/// الكتابة كلها تمرّ بدوال `api_*` لا بالجداول: الخادم هو من يحسب السعر والعربون
-/// والعمولة وسلّم الإلغاء. لو قبِل سعراً من التطبيق لأمكن حجز قاعة بريال واحد.
+/// **كل ما يمسّ المال يمرّ بدالة `api_*`** لا بالجداول: الخادم هو من يحسب السعر
+/// والعربون والعمولة وسلّم الإلغاء. لو قبِل سعراً من التطبيق لأمكن حجز قاعة
+/// بريال واحد.
+///
+/// وما لا يمسّ المال — خدمات المزوّد وخطة العرس والمستندات — يُكتب مباشرةً على
+/// جداوله. ليس تساهلاً: سياسات RLS تحصر الكتابة في صاحب الصفّ
+/// (`services_owner_write` و `plans_owner` و `documents_owner_upload`)، ولا شيء
+/// في هذه الجداول يحسبه الخادم حتى يُحمى. ودالةٌ تكتفي بتمرير ما أُعطيت إلى
+/// `insert` تضيف طبقةً بلا حماية.
 class Api {
   // ----- المرجعيات والاستكشاف -----
 
@@ -180,6 +191,13 @@ class Api {
     required int guests,
     required String address,
     String notes = '',
+
+    /// خطة العرس التي يُضاف إليها الحجز، إن كانت للعميل خطة.
+    ///
+    /// كان يُمرَّر `null` دائماً، فلا يرتبط حجزٌ بخطة أبداً، وتبقى «إجمالي
+    /// الحجوزات» و«المدفوع» و«المتبقّي عليك» أصفاراً في شاشة الخطة مهما حجز.
+    /// والبيانات التجريبية كانت تخفي ذلك لأن أرقامها مكتوبةٌ بخط اليد.
+    String? planId,
   }) async {
     if (!isSupabaseConfigured) {
       return demoDelay(demoCreateBooking(serviceId, eventDate, eventTime, guests, address));
@@ -190,7 +208,7 @@ class Api {
         'p_service_id': serviceId,
         'p_event_date': eventDate,
         'p_event_time': eventTime,
-        'p_plan_id': null,
+        'p_plan_id': planId,
         'p_guests_count': guests,
         'p_address': address,
         'p_notes': notes,
@@ -220,6 +238,59 @@ class Api {
     await db.rpc('api_complete_booking', params: {'p_booking_id': id});
   }
 
+  /// الإلغاء من جهة العميل. المبلغ المستردّ يحسبه الخادم من سلّم الإلغاء
+  /// المنسوخ في الحجز وقت إنشائه، فلا يتغيّر بتغيّر سياسة المزوّد بعده.
+  static Future<void> cancelBooking(String id, {String reason = ''}) async {
+    if (!isSupabaseConfigured) {
+      demoCancel(id);
+      return;
+    }
+    await db.rpc('api_cancel_booking', params: {'p_booking_id': id, 'p_reason': reason});
+  }
+
+  // ----- التقييمات -----
+
+  static Future<void> submitReview(String bookingId, int rating, String comment) async {
+    if (!isSupabaseConfigured) {
+      demoReview(bookingId, rating);
+      return;
+    }
+    await db.rpc(
+      'api_submit_review',
+      params: {'p_booking_id': bookingId, 'p_rating': rating, 'p_comment': comment},
+    );
+  }
+
+  /// الحجوزات المنفَّذة التي قُيّمت — لإخفاء زرّ التقييم عمّا قُيّم.
+  ///
+  /// `reviews` فيه قيد `unique (booking_id)`، فالتقييم مرّةٌ واحدة؛ وإظهار الزرّ
+  /// بعدها يَعِد بما سيرفضه الخادم.
+  static Future<Set<String>> reviewedBookingIds(List<String> bookingIds) async {
+    // نسخةٌ لا الأصل: القاعدة تبني مجموعةً جديدة كل مرة، فلو أعاد الوضع
+    // التجريبي مجموعته نفسها لصارت حالةُ الشاشة هي حالةَ «الخادم» — فيلغي
+    // التبديلُ المتفائل في الواجهة تبديلَ الخادم، ولا يتغيّر شيء.
+    if (!isSupabaseConfigured) return {...demoReviewedBookings};
+    if (bookingIds.isEmpty) return {};
+    final rows = await db.from('reviews').select('booking_id').inFilter('booking_id', bookingIds);
+    return rows.map((r) => r['booking_id'] as String).toSet();
+  }
+
+  // ----- المفضّلة -----
+
+  static Future<Set<String>> myFavourites() async {
+    if (!isSupabaseConfigured) return {...demoFavourites};
+    final rows = await db.from('favourites').select('service_id');
+    return rows.map((r) => r['service_id'] as String).toSet();
+  }
+
+  static Future<void> toggleFavourite(String serviceId) async {
+    if (!isSupabaseConfigured) {
+      demoToggleFavourite(serviceId);
+      return;
+    }
+    await db.rpc('api_toggle_favourite', params: {'p_service_id': serviceId});
+  }
+
   // ----- خطة العرس -----
 
   static Future<List<WeddingPlan>> myPlans() async {
@@ -227,6 +298,139 @@ class Api {
     final rows = await db.from('v_plan_summary').select().order('wedding_date');
     return rows.map(WeddingPlan.fromMap).toList();
   }
+
+  /// إنشاء الخطة أو تعديلها. كتابةٌ مباشرة تحرسها سياسة `plans_owner`.
+  static Future<void> savePlan({
+    String? id,
+    required String appUserId,
+    required String title,
+    required String weddingDate,
+    required String governorate,
+    required int guests,
+    required num budget,
+  }) async {
+    final values = {
+      'title': title,
+      'wedding_date': weddingDate,
+      'governorate': governorate,
+      'guests_count': guests,
+      'budget': budget,
+    };
+    if (!isSupabaseConfigured) {
+      demoSavePlan(id: id, values: values);
+      return;
+    }
+    if (id == null) {
+      await db.from('wedding_plans').insert({...values, 'user_id': appUserId});
+    } else {
+      await db.from('wedding_plans').update(values).eq('id', id);
+    }
+  }
+
+  // ----- خدمات مقدّم الخدمة -----
+
+  /// خدماتي أنا — المعطَّلة منها كذلك، وهي التي تُخفيها `v_services`.
+  static Future<List<MyService>> myServices(String providerId) async {
+    if (!isSupabaseConfigured) return demoDelay(demoMyServices);
+    final rows = await db
+        .from('provider_services')
+        .select(
+          'id, title, description, price, price_to, unit, deposit_percent, category_id, is_active',
+        )
+        .eq('provider_id', providerId)
+        .order('created_at', ascending: false);
+    return rows.map(MyService.fromMap).toList();
+  }
+
+  static Future<void> saveService({
+    String? id,
+    required String providerId,
+    required String title,
+    required String description,
+    required String categoryId,
+    required num price,
+    num? priceTo,
+    required String unit,
+    required int depositPercent,
+  }) async {
+    final values = {
+      'title': title,
+      'description': description,
+      'category_id': categoryId,
+      'price': price,
+      'price_to': priceTo,
+      'unit': unit,
+      'deposit_percent': depositPercent,
+    };
+    if (!isSupabaseConfigured) {
+      demoSaveService(id: id, values: values);
+      return;
+    }
+    if (id == null) {
+      await db.from('provider_services').insert({...values, 'provider_id': providerId});
+    } else {
+      await db.from('provider_services').update(values).eq('id', id);
+    }
+  }
+
+  /// الإيقاف لا الحذف: الخدمة مرتبطةٌ بحجوزات قائمة، وحذفها يقطع سجلّها.
+  static Future<void> setServiceActive(String id, bool active) async {
+    if (!isSupabaseConfigured) {
+      demoSetServiceActive(id, active);
+      return;
+    }
+    await db.from('provider_services').update({'is_active': active}).eq('id', id);
+  }
+
+  // ----- مستندات التوثيق -----
+
+  static Future<List<ProviderDocument>> myDocuments(String providerId) async {
+    if (!isSupabaseConfigured) return demoDelay(demoDocuments);
+    final rows = await db
+        .from('provider_documents')
+        .select('id, type, file_name, file_url, status, note, uploaded_at')
+        .eq('provider_id', providerId)
+        .order('uploaded_at', ascending: false);
+    return rows.map(ProviderDocument.fromMap).toList();
+  }
+
+  /// يرفع الملف ثم يسجّله.
+  ///
+  /// الترتيب مقصود: لو سُجّل الصفّ أولاً وفشل الرفع لبقي في اللوحة مستندٌ
+  /// «قيد المراجعة» بلا ملف، ينتظره المسؤول ولا يجده.
+  ///
+  /// والمسار `<provider_id>/<uuid>.<ext>` كما تشترطه سياسة الحاوية: أول جزء
+  /// من المسار يجب أن يساوي معرّف المزوّد، وإلا رُفض الرفع.
+  static Future<void> uploadDocument({
+    required String providerId,
+    required String type,
+    required String fileName,
+    required Uint8List bytes,
+  }) async {
+    if (!isSupabaseConfigured) {
+      demoAddDocument(type, fileName);
+      return;
+    }
+    final ext = fileName.contains('.') ? fileName.split('.').last.toLowerCase() : 'bin';
+    final path = '$providerId/${DateTime.now().millisecondsSinceEpoch}.$ext';
+    await db.storage
+        .from('provider-docs')
+        .uploadBinary(path, bytes, fileOptions: FileOptions(contentType: _mimeOf(ext)));
+    await db.from('provider_documents').insert({
+      'provider_id': providerId,
+      'type': type,
+      'file_name': fileName,
+      'file_url': path,
+    });
+  }
+
+  /// الحاوية تقبل هذه الأنواع وحدها، ورفعُ ملفٍ بنوعٍ غيرها يُرفض من الخادم.
+  static String _mimeOf(String ext) => switch (ext) {
+    'png' => 'image/png',
+    'webp' => 'image/webp',
+    'pdf' => 'application/pdf',
+    _ => 'image/jpeg',
+  };
 
   // ----- خدمة العملاء -----
 
@@ -278,5 +482,13 @@ class Api {
       return;
     }
     await db.rpc('api_reply_ticket', params: {'p_ticket_id': ticketId, 'p_body': body});
+  }
+
+  static Future<void> closeTicket(String ticketId) async {
+    if (!isSupabaseConfigured) {
+      demoCloseTicket(ticketId);
+      return;
+    }
+    await db.rpc('api_close_ticket', params: {'p_ticket_id': ticketId});
   }
 }

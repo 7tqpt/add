@@ -22,7 +22,7 @@ class _CustomerShellState extends State<CustomerShell> {
     final pages = [
       const ExploreScreen(),
       MyBookingsScreen(session: widget.session),
-      const PlanScreen(),
+      PlanScreen(session: widget.session),
       AccountScreen(session: widget.session),
     ];
 

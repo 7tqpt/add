@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
-import { AlertCircle, Smartphone } from 'lucide-react'
+import { AlertCircle, PartyPopper } from 'lucide-react'
 import { acceptInvitation } from '@/services/admins'
 import { ROLE_LABEL } from '@/lib/permissions'
 import { Button } from '@/components/ui/Button'
@@ -69,7 +69,7 @@ export function LoginPage() {
       <div className="w-full max-w-sm">
         <div className="mb-6 flex flex-col items-center gap-3 text-center">
           <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-accent text-accent-ink">
-            <Smartphone size={22} aria-hidden />
+            <PartyPopper size={22} aria-hidden />
           </span>
           <div>
             <h1 className="text-lg font-semibold text-ink">منصة حجوزات الأعراس</h1>

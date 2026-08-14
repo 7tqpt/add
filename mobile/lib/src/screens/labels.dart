@@ -65,3 +65,27 @@ Color providerStatusColor(String s) => switch (s) {
   'suspended' => AppColors.critical,
   _ => AppColors.warning,
 };
+
+/// أنواع المستندات كما يقيّدها الجدول — أي قيمةٍ خارجها يرفضها القيد.
+const documentTypes = <({String value, String label})>[
+  (value: 'id_card', label: 'الهوية الشخصية'),
+  (value: 'commercial_register', label: 'السجل التجاري'),
+  (value: 'certificate', label: 'شهادة أو ترخيص'),
+  (value: 'insurance', label: 'تأمين'),
+  (value: 'work_samples', label: 'نماذج أعمال'),
+];
+
+String documentTypeLabel(String value) =>
+    documentTypes.where((t) => t.value == value).firstOrNull?.label ?? value;
+
+String documentStatusLabel(String s) => switch (s) {
+  'approved' => 'مقبول',
+  'rejected' => 'مرفوض',
+  _ => 'قيد المراجعة',
+};
+
+Color documentStatusColor(String s) => switch (s) {
+  'approved' => AppColors.good,
+  'rejected' => AppColors.critical,
+  _ => AppColors.warning,
+};

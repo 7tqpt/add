@@ -20,7 +20,7 @@ import { PaymentsFeed } from '@/components/dashboard/PaymentsFeed'
 import { ProviderQueue } from '@/components/dashboard/ProviderQueue'
 import { ChartCard } from '@/components/charts/ChartCard'
 import { SERIES_COLORS } from '@/components/charts/chart-utils'
-import { StatTile } from '@/components/charts/StatTile'
+import { StatTile, type Tone, toneChip } from '@/components/charts/StatTile'
 import { TimeSeriesChart } from '@/components/charts/TimeSeriesChart'
 import { Card, CardBody, CardHeader } from '@/components/ui/Card'
 import { ErrorState, LoadingBlock } from '@/components/ui/Feedback'
@@ -46,12 +46,18 @@ const RANGES: { value: RangeDays; label: string }[] = [
 const COMPARISON = 'مقارنة بالفترة السابقة'
 
 /** What is waiting on an admin right now, and where to go to clear it. */
-const QUEUE: { key: keyof DashboardStats; label: string; to: string; icon: LucideIcon }[] = [
-  { key: 'pendingProviders', label: 'طلبات توثيق', to: '/providers', icon: BriefcaseBusiness },
-  { key: 'openTickets', label: 'تذاكر خدمة العملاء', to: '/support', icon: LifeBuoy },
-  { key: 'openDisputes', label: 'نزاعات مفتوحة', to: '/disputes', icon: Scale },
-  { key: 'pendingSettlements', label: 'تسويات بانتظار الاعتماد', to: '/settlements', icon: Banknote },
-  { key: 'flaggedReviews', label: 'تقييمات مُبلَّغ عنها', to: '/reviews', icon: Star },
+const QUEUE: {
+  key: keyof DashboardStats
+  label: string
+  to: string
+  icon: LucideIcon
+  tone: Tone
+}[] = [
+  { key: 'pendingProviders', label: 'طلبات توثيق', to: '/providers', icon: BriefcaseBusiness, tone: 'indigo' },
+  { key: 'openTickets', label: 'تذاكر خدمة العملاء', to: '/support', icon: LifeBuoy, tone: 'palm' },
+  { key: 'openDisputes', label: 'نزاعات مفتوحة', to: '/disputes', icon: Scale, tone: 'henna' },
+  { key: 'pendingSettlements', label: 'تسويات بانتظار الاعتماد', to: '/settlements', icon: Banknote, tone: 'gold' },
+  { key: 'flaggedReviews', label: 'تقييمات مُبلَّغ عنها', to: '/reviews', icon: Star, tone: 'plum' },
 ]
 
 export function DashboardPage() {
@@ -125,6 +131,7 @@ export function DashboardPage() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatTile
           label="الحجوزات"
+          tone="gold"
           value={formatNumber(data.bookings.value)}
           change={data.bookings.change}
           comparisonLabel={COMPARISON}
@@ -133,6 +140,7 @@ export function DashboardPage() {
         />
         <StatTile
           label="قيمة الحجوزات"
+          tone="henna"
           value={formatMoneyCompact(data.revenue.value)}
           valueTitle={formatMoney(data.revenue.value)}
           change={data.revenue.change}
@@ -142,6 +150,7 @@ export function DashboardPage() {
         />
         <StatTile
           label="عمولة المنصة"
+          tone="indigo"
           value={formatMoneyCompact(data.commission.value)}
           valueTitle={formatMoney(data.commission.value)}
           change={data.commission.change}
@@ -151,6 +160,7 @@ export function DashboardPage() {
         />
         <StatTile
           label="متوسط المستخدمين النشطين يومياً"
+          tone="palm"
           value={formatNumber(data.activeUsers.value)}
           change={data.activeUsers.change}
           comparisonLabel={COMPARISON}
@@ -183,11 +193,17 @@ export function DashboardPage() {
                   className="flex items-center justify-between gap-3 rounded-lg px-3 py-2.5 transition-colors hover:bg-surface-2"
                 >
                   <span className="flex min-w-0 items-center gap-2.5">
-                    <entry.icon
-                      size={16}
-                      aria-hidden
-                      className={count > 0 ? 'text-accent' : 'text-muted'}
-                    />
+                    {/* الصبغة لمن ينتظر عملاً وحده: بطاقةٌ صفرها لا شيء فيها
+                        لا تستحق لوناً يجذب العين إليها. */}
+                    <span
+                      style={count > 0 ? toneChip(entry.tone) : undefined}
+                      className={cn(
+                        'flex size-7 shrink-0 items-center justify-center rounded-lg',
+                        count === 0 && 'bg-surface-2 text-muted',
+                      )}
+                    >
+                      <entry.icon size={15} aria-hidden />
+                    </span>
                     <span className="truncate text-xs text-ink-2">{entry.label}</span>
                   </span>
                   <span className="flex shrink-0 items-center gap-1">

@@ -109,6 +109,22 @@ ThemeData buildTheme() {
         ),
       ),
     ),
+    // الورقة السفلية والزرّ العائم يشتقّان لونهما من البذرة الذهبية في Material
+    // فيخرجان خوخيَّين وسط لوحةٍ محايدة. اللونان يُثبَّتان هنا: بياض البطاقات
+    // للورقة، والذهبي الصريح للزرّ.
+    bottomSheetTheme: const BottomSheetThemeData(
+      backgroundColor: AppColors.surface,
+      surfaceTintColor: Colors.transparent,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+    ),
+    dialogTheme: const DialogThemeData(
+      backgroundColor: AppColors.surface,
+      surfaceTintColor: Colors.transparent,
+    ),
+    floatingActionButtonTheme: const FloatingActionButtonThemeData(
+      backgroundColor: AppColors.accent,
+      foregroundColor: AppColors.accentInk,
+    ),
     navigationBarTheme: NavigationBarThemeData(
       backgroundColor: AppColors.surface,
       indicatorColor: AppColors.accent.withValues(alpha: 0.14),
