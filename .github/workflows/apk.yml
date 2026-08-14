@@ -133,8 +133,13 @@ jobs:
           # أسماءٌ تقول لمن هي: `app-arm64-v8a-release.apk` لا تعني شيئاً لمن
           # يقف أمام ملفات على جواله. ولاتينيّةٌ عمداً — GitHub يعبث بأسماء
           # الأصول غير اللاتينية، ولا أراهن باسمٍ على طريق التنزيل كلّه.
-          cp mobile/build/app/outputs/flutter-apk/app-arm64-v8a-release.apk   dist/aras-arm64.apk
-          cp mobile/build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk dist/aras-arm32.apk
+          #
+          # واسمُ كلٍّ في متغيّرٍ واحد يُنسخ إليه ثم يُرفع منه: كتبتُها أوّل مرّة
+          # مرتين، فغيّرتُ إحداهما ونسيت الأخرى، فسقط البناء عند الرفع.
+          ARM64=dist/aras-arm64.apk
+          ARM32=dist/aras-arm32.apk
+          cp mobile/build/app/outputs/flutter-apk/app-arm64-v8a-release.apk   "$ARM64"
+          cp mobile/build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk "$ARM32"
 
           cat > notes.md <<'NOTES'
           ## التثبيت على الجوال
@@ -165,10 +170,16 @@ jobs:
           gh release create "$TAG" \
             --title "أعراس اليمن — حزمة $TAG" \
             --notes-file notes.md \
-            dist/اعراس-اليمن-arm64.apk dist/اعراس-اليمن-arm32.apk
+            "$ARM64" "$ARM32"
 
-          echo "### التنزيل على الجوال" >> "$GITHUB_STEP_SUMMARY"
-          echo "افتح من جوالك: $(gh release view "$TAG" --json url --jq .url)" >> "$GITHUB_STEP_SUMMARY"
+          # الرابط يُركَّب لا يُستعلَم: شكله ثابت، والاستعلام نداءٌ زائد قد يفشل
+          # بعد أن يكون الإصدار قد نُشر فعلاً فيُسقط بناءً ناجحاً.
+          {
+            echo "### التنزيل على الجوال"
+            echo "افتح هذا من متصفّح جوالك:"
+            echo ""
+            echo "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/tag/$TAG"
+          } >> "$GITHUB_STEP_SUMMARY"
 
       # لا تُبنى مع كل تشغيل: بناءٌ ثانٍ كامل يضاعف الزمن، ولا يُنشر على Play
       # في كل تجربة. تُبنى عند وسم إصدار، أو عند طلبها في التشغيل اليدوي.
