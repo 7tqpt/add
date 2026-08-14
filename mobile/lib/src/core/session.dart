@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' show OtpType;
 
 import '../data/api.dart';
 import '../data/supabase.dart';
@@ -98,19 +99,33 @@ class Session extends ChangeNotifier {
     await db.auth.signInWithPassword(email: mail, password: password);
   }
 
-  Future<void> signUp(String mail, String password) async {
+  /// يُنشئ الحساب، ويُعيد `true` إن بقي بانتظار رمز التأكيد.
+  ///
+  /// التأكيد برمزٍ يُكتب لا برابطٍ يُفتح: رابط Supabase يقصد `Site URL`، وهو
+  /// `localhost` افتراضاً — فيفتحه صاحب الجوال فيقول متصفّحه «رفض الاتصال»،
+  /// إذ لا خادم على جواله بهذا العنوان. والرمز لا يحتاج عنواناً أصلاً.
+  Future<bool> signUp(String mail, String password) async {
     if (!isSupabaseConfigured) {
       if (password.length < 8) throw 'كلمة المرور قصيرة جداً (8 أحرف على الأقل).';
       userId = 'demo-user';
       email = mail;
       appUserId = 'demo-user';
       notifyListeners();
-      return;
+      return false;
     }
     final res = await db.auth.signUp(email: mail, password: password);
-    if (res.session == null) {
-      throw 'أُنشئ حسابك — افتح رسالة التأكيد في بريدك ثم سجّل الدخول.';
-    }
+    return res.session == null;
+  }
+
+  /// يؤكّد الحساب بالرمز الواصل إلى البريد. نجاحُه يفتح الجلسة من فوره.
+  Future<void> confirmSignUp(String mail, String code) async {
+    if (!isSupabaseConfigured) return;
+    await db.auth.verifyOTP(type: OtpType.signup, email: mail, token: code);
+  }
+
+  Future<void> resendSignUpCode(String mail) async {
+    if (!isSupabaseConfigured) return;
+    await db.auth.resend(type: OtpType.signup, email: mail);
   }
 
   Future<void> signOut() async {
