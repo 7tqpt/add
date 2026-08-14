@@ -11,3 +11,8 @@ npm-debug.log*
 .vite
 tsconfig.tsbuildinfo
 *.tsbuildinfo
+
+# ذاكرة بايثون المؤقّتة — تولّدها سكربتات مهارات `.claude/skills` عند تشغيلها،
+# وهي ناتجُ تصريفٍ يخصّ جهازاً ونسخةَ مفسّرٍ بعينهما، فلا تُودَع في مستودع.
+__pycache__/
+*.py[cod]

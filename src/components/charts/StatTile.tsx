@@ -3,26 +3,28 @@ import { formatDelta } from '@/lib/format'
 import { cn } from '@/lib/cn'
 
 /**
- * ألوان تعريف البطاقات — مأخوذة من عالم العرس اليمني، لا من دولاب ألوان.
+ * أصباغ تعريف البطاقات — والإسناد قاعدةٌ واحدة عبر اللوحة كلها، لا اختيارٌ
+ * في كل صفحة:
  *
- * والإسناد قاعدةٌ واحدة عبر اللوحة كلها، لا اختيارٌ في كل صفحة:
+ *   emerald  المال الداخل — المحصّل، الأرباح، المدفوعات
+ *   navy     العمولة وحصّة المنصة، وما يُعدّ من نشاطٍ إداري
+ *   cyan     الصحّة والنشاط — نِسب النجاح، المستخدمون، الأزمنة
+ *   azure    العدّ الأساسي لما تبيعه المنصة — الحجوزات والتذاكر
+ *   violet   ما خرج عن الأربعة — الاسترجاع مثلاً
  *
- *   henna   المال الداخل — المحصّل، الأرباح، المدفوعات
- *   indigo  العمولة وحصّة المنصة، وما يُعدّ من نشاطٍ إداري
- *   palm    الصحّة والنشاط — نِسب النجاح، المستخدمون، الأزمنة
- *   gold    العدّ الأساسي لما تبيعه المنصة — الحجوزات والتذاكر
- *   plum    ما خرج عن الأربعة — الاسترجاع مثلاً
+ * فمن رأى الأخضر في «المدفوعات» عرفه في «مقدّم الخدمة» بلا أن يقرأ.
  *
- * فمن رأى الحنّاء في «المدفوعات» عرفها في «مقدّم الخدمة» بلا أن يقرأ.
+ * وهي باردةٌ كلها تدور حول الأزرق إلا `emerald`: خمس درجاتٍ من أزرقٍ واحد
+ * لا تُفرَّق، والمال يستحقّ أن يُميَّز عمّا سواه.
  */
-export type Tone = 'gold' | 'henna' | 'indigo' | 'palm' | 'plum'
+export type Tone = 'azure' | 'emerald' | 'navy' | 'cyan' | 'violet'
 
 const TONE_VAR: Record<Tone, string> = {
-  gold: 'var(--tile-gold)',
-  henna: 'var(--tile-henna)',
-  indigo: 'var(--tile-indigo)',
-  palm: 'var(--tile-palm)',
-  plum: 'var(--tile-plum)',
+  azure: 'var(--tile-azure)',
+  emerald: 'var(--tile-emerald)',
+  navy: 'var(--tile-navy)',
+  cyan: 'var(--tile-cyan)',
+  violet: 'var(--tile-violet)',
 }
 
 /**
@@ -64,7 +66,7 @@ export function StatTile({
   change,
   comparisonLabel,
   icon: Icon,
-  tone = 'gold',
+  tone = 'azure',
   refetching,
 }: {
   label: string
@@ -86,7 +88,10 @@ export function StatTile({
     <section
       style={toneStyle(tone)}
       className={cn(
-        'rounded-xl border p-4 shadow-[0_1px_2px_rgba(11,11,11,0.04)] sm:p-5',
+        'rounded-xl border p-4 shadow-[0_1px_2px_rgba(11,18,32,0.05)] sm:p-5',
+        // بلا `rise` هنا: البطاقات تقع داخل شبكةٍ تحمل `stagger`، وهي التي
+        // تُدخلها متتابعةً. ولو حملت الاثنين لتضاربت الحركتان على العنصر نفسه.
+        'lift',
         refetching && 'is-refetching',
       )}
     >
@@ -103,7 +108,7 @@ export function StatTile({
       {/* Proportional figures: tabular-nums makes large standalone numbers look loose. */}
       <p
         title={valueTitle}
-        className="mt-2 text-2xl font-semibold tracking-tight text-ink sm:text-3xl"
+        className="mt-2 text-2xl font-semibold tracking-tight text-ink sm:text-[1.6rem]"
       >
         {value}
       </p>
