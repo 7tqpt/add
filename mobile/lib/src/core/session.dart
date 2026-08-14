@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' show OtpType;
 
 import '../data/api.dart';
 import '../data/supabase.dart';
@@ -15,6 +16,12 @@ class Session extends ChangeNotifier {
   String? providerId;
   bool asProvider = false;
   bool loading = true;
+
+  /// عطبٌ منع قراءة هوية المستخدم من القاعدة — لا انعدامَ ملفٍ.
+  ///
+  /// الفرق جوهري: من لا ملف له يُساق إلى شاشة الإكمال وهذا صواب، ومن تعذّرت
+  /// قراءته لعطبٍ في القاعدة لا يُساق إلى شيء بل يُقال له ما العطب.
+  String? identityError;
 
   bool get signedIn => userId != null;
   bool get needsProfile => userId != null && appUserId == null;
@@ -62,11 +69,17 @@ class Session extends ChangeNotifier {
 
   Future<void> refreshIdentity() async {
     loading = true;
+    identityError = null;
     notifyListeners();
     try {
       appUserId = await Api.myAppUserId();
       providerId = appUserId == null ? null : await Api.myProviderId(appUserId!);
-    } catch (_) {
+    } catch (e) {
+      // لا يُبتلع. `maybeSingle` تُعيد null حين لا صفّ ولا ترمي، فكلّ ما يصل
+      // هنا عطبٌ حقيقي: جدولٌ غير موجود، أو مخطّطٌ لم يُطبَّق على المشروع.
+      // وابتلاعه كان يجعل ذلك يبدو «مستخدماً بلا ملف»، فيُساق إلى شاشة
+      // الإكمال ليصطدم بالجدار نفسه من حيث لا يعرف سببه.
+      identityError = messageOf(e);
       appUserId = null;
       providerId = null;
     }
@@ -86,19 +99,33 @@ class Session extends ChangeNotifier {
     await db.auth.signInWithPassword(email: mail, password: password);
   }
 
-  Future<void> signUp(String mail, String password) async {
+  /// يُنشئ الحساب، ويُعيد `true` إن بقي بانتظار رمز التأكيد.
+  ///
+  /// التأكيد برمزٍ يُكتب لا برابطٍ يُفتح: رابط Supabase يقصد `Site URL`، وهو
+  /// `localhost` افتراضاً — فيفتحه صاحب الجوال فيقول متصفّحه «رفض الاتصال»،
+  /// إذ لا خادم على جواله بهذا العنوان. والرمز لا يحتاج عنواناً أصلاً.
+  Future<bool> signUp(String mail, String password) async {
     if (!isSupabaseConfigured) {
       if (password.length < 8) throw 'كلمة المرور قصيرة جداً (8 أحرف على الأقل).';
       userId = 'demo-user';
       email = mail;
       appUserId = 'demo-user';
       notifyListeners();
-      return;
+      return false;
     }
     final res = await db.auth.signUp(email: mail, password: password);
-    if (res.session == null) {
-      throw 'أُنشئ حسابك — افتح رسالة التأكيد في بريدك ثم سجّل الدخول.';
-    }
+    return res.session == null;
+  }
+
+  /// يؤكّد الحساب بالرمز الواصل إلى البريد. نجاحُه يفتح الجلسة من فوره.
+  Future<void> confirmSignUp(String mail, String code) async {
+    if (!isSupabaseConfigured) return;
+    await db.auth.verifyOTP(type: OtpType.signup, email: mail, token: code);
+  }
+
+  Future<void> resendSignUpCode(String mail) async {
+    if (!isSupabaseConfigured) return;
+    await db.auth.resend(type: OtpType.signup, email: mail);
   }
 
   Future<void> signOut() async {

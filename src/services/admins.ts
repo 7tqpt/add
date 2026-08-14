@@ -248,6 +248,46 @@ export async function cancelInvitation(invitation: AdminInvitation): Promise<voi
   })
 }
 
+/**
+ * هل الدعوة صالحة لهذا البريد؟ — تُستدعى **قبل** إنشاء الحساب.
+ *
+ * بدونها كان الترتيب: يُنشأ حساب المصادقة ثم تُقبل الدعوة. فرمزٌ خاطئ يُخلّف
+ * في Supabase حساباً يتيماً بلا دور، ولا تحذفه اللوحة لأن حذف مستخدمي
+ * المصادقة يحتاج `service_role`.
+ *
+ * وتُعيد `boolean` لا أكثر: سبب الرفض لا يُقال هنا ولا في القاعدة، فالتمييز
+ * بين «رمز خاطئ» و«رمز صحيح لبريد آخر» يحوّل النموذج إلى أداة تخمين.
+ */
+export async function checkInvitation(token: string, email: string): Promise<boolean> {
+  const clean = token.trim().toUpperCase()
+  if (!isSupabaseConfigured) {
+    const match = demoInvitations.find((candidate) => candidate.token === clean)
+    await delay(null, 200)
+    return Boolean(
+      match &&
+        !match.accepted_at &&
+        match.email.toLowerCase() === email.trim().toLowerCase(),
+    )
+  }
+
+  const { data, error } = await requireSupabase().rpc('api_check_invitation', {
+    p_token: clean,
+    p_email: email.trim(),
+  })
+  if (error) {
+    // الدالة حديثة، وقد تُنشر اللوحة قبل تشغيل `invitations.sql` على القاعدة.
+    // وحينها يردّ PostgREST بـPGRST202، فتظهر رسالةٌ عامّة لا تدلّ على شيء
+    // ويقف التسجيل كلّه بلا سبب ظاهر. الرسالة هنا تقول ما الناقص بالضبط.
+    if (error.code === 'PGRST202' || /api_check_invitation/.test(error.message)) {
+      throw new Error(
+        'قاعدة البيانات لم تُحدَّث بعد — شغّل supabase/invitations.sql في محرّر SQL ثم أعد المحاولة.',
+      )
+    }
+    throw new Error(error.message)
+  }
+  return data === true
+}
+
 /** يستدعيها الموظف بعد أن يسجّل حسابه بالبريد المدعوّ. */
 export async function acceptInvitation(token: string): Promise<AdminRole> {
   if (!isSupabaseConfigured) {

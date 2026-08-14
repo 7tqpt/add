@@ -24,6 +24,25 @@ class RootScreen extends StatelessWidget {
           return const Scaffold(body: LoadingBlock(label: 'جارٍ التحقق…'));
         }
         if (!session.signedIn) return AuthScreen(session: session);
+        // قبل شاشة الإكمال: من تعذّرت قراءة هويته لعطبٍ في القاعدة ليس
+        // «مستخدماً بلا ملف»، وسَوقُه إلى الإكمال يُخفي السبب ويُفشل الحفظ.
+        if (session.identityError != null) {
+          return Scaffold(
+            appBar: AppBar(
+              title: const Text('تعذّرت قراءة حسابك'),
+              actions: [TextButton(onPressed: session.signOut, child: const Text('خروج'))],
+            ),
+            body: ErrorBlock(
+              message:
+                  'دخولك نجح، لكن قراءة ملفك من قاعدة البيانات فشلت:\n\n'
+                  '${session.identityError}\n\n'
+                  'الغالب أن ملفات المخطّط في مجلّد supabase/ لم تُطبَّق على '
+                  'المشروع بعد — المصادقة تعمل بلا جداولنا، فالدخول ينجح '
+                  'وحده ثم يقف كل شيء.',
+              onRetry: session.refreshIdentity,
+            ),
+          );
+        }
         if (session.needsProfile) return OnboardingScreen(session: session);
         return session.asProvider
             ? ProviderShell(session: session)

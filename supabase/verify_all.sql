@@ -23,7 +23,7 @@ with checks as (
   union all
   select 3, 'دوال الـ API',
          (select count(*) from information_schema.routines
-           where routine_schema = 'public' and routine_name like 'api\_%'), 15
+           where routine_schema = 'public' and routine_name like 'api\_%'), 16
 
   union all
   select 4, 'سياسات RLS',
@@ -103,7 +103,7 @@ with checks as (
   select 16, 'دوال الدعوة',
          (select count(*) from information_schema.routines
            where routine_schema = 'public'
-             and routine_name in ('api_invite_admin', 'api_accept_invitation')), 2
+             and routine_name in ('api_invite_admin', 'api_accept_invitation', 'api_check_invitation')), 3
 
   union all
   select 17, 'سياسات التخزين',

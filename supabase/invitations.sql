@@ -158,10 +158,42 @@ begin
 end;
 $$;
 
+-- ----------------------------------------------------------------------------
+-- التحقّق من الدعوة قبل إنشاء الحساب
+--
+--  بدونها كان الترتيب: يُنشأ حساب المصادقة ثم تُقبل الدعوة. فإن كان الرمز
+--  خاطئاً بقي في مصادقة Supabase حسابٌ يتيمٌ بلا دور، لا تحذفه اللوحة لأن
+--  حذف مستخدمي المصادقة يحتاج `service_role`. والمحاولات الخاطئة تتراكم.
+--
+--  ولذلك تُستدعى هذه قبل التسجيل — وهي الدالة الوحيدة هنا المتاحة لـ`anon`،
+--  فوجب أن تكون أضيق ما يمكن:
+--
+--    · تُعيد `boolean` لا الدور ولا البريد ولا سبب الرفض. ومن عرف أن رمزاً
+--      صالح لم يعرف لِمن هو ولا بأي صلاحية.
+--    · تشترط الرمز **والبريد** معاً كما تشترطهما `api_accept_invitation`،
+--      فلا تُضعِف الحارس الذي بعدها ولا تلتفّ عليه.
+--    · وهي قراءةٌ محضة: لا تقبل الدعوة ولا تعلّمها ولا تنشئ شيئاً. القبول
+--      يبقى في دالته وحدها، بجلسةٍ حقيقية.
+-- ----------------------------------------------------------------------------
+create or replace function public.api_check_invitation(p_token text, p_email text)
+returns boolean
+language sql stable security definer set search_path = public as $$
+  select exists (
+    select 1 from public.admin_invitations
+     where token = upper(btrim(coalesce(p_token, '')))
+       and lower(email) = lower(btrim(coalesce(p_email, '')))
+       and accepted_at is null
+       and expires_at >= now()
+  );
+$$;
+
 revoke all on function public.api_invite_admin(text, text, text) from public;
 revoke all on function public.api_accept_invitation(text) from public;
+revoke all on function public.api_check_invitation(text, text) from public;
 grant execute on function public.api_invite_admin(text, text, text) to authenticated;
 grant execute on function public.api_accept_invitation(text) to authenticated;
+-- لـ`anon` وحدها من بين دوال هذا الملف: تُستدعى قبل وجود جلسة أصلاً.
+grant execute on function public.api_check_invitation(text, text) to anon, authenticated;
 
 -- طريقة عرض بلا الرمز، لقائمة الدعوات المعلّقة في اللوحة.
 drop view if exists public.v_admin_invitations;
@@ -192,7 +224,7 @@ union all
 select 'دوال الدعوة',
        count(*)::text from information_schema.routines
  where routine_schema = 'public'
-   and routine_name in ('api_invite_admin', 'api_accept_invitation')
+   and routine_name in ('api_invite_admin', 'api_accept_invitation', 'api_check_invitation')
 union all
 select 'دعوات معلّقة',
        count(*)::text from public.admin_invitations where accepted_at is null;
