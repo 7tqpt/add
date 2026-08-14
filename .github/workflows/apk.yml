@@ -14,6 +14,10 @@ on:
   push:
     tags: ['v*']
 
+# لكتابة الإصدار الذي يحمل الحزمة. وما عداه يبقى على القراءة وحدها.
+permissions:
+  contents: write
+
 jobs:
   apk:
     name: حزمة APK
@@ -115,6 +119,56 @@ jobs:
               echo "| \`$(basename "$f")\` | $(du -h "$f" | cut -f1) |"
             done
           } >> "$GITHUB_STEP_SUMMARY"
+
+      # حزمة Actions تنزل ملفَ zip ولا تُفتح إلا بحسابٍ على GitHub — وكلاهما
+      # عائقٌ على الجوال. أمّا أصول الإصدار فتُنزَّل بضغطةٍ من المتصفّح بلا
+      # حساب ولا فكّ ضغط، وأندرويد يعرض «تثبيت» مباشرةً بعدها.
+      - name: نشر الحزمة في الإصدارات
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: build-${{ github.run_number }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          # أسماءٌ تقول لمن هي: `app-arm64-v8a-release.apk` لا تعني شيئاً لمن
+          # يقف أمام ملفات على جواله. ولاتينيّةٌ عمداً — GitHub يعبث بأسماء
+          # الأصول غير اللاتينية، ولا أراهن باسمٍ على طريق التنزيل كلّه.
+          cp mobile/build/app/outputs/flutter-apk/app-arm64-v8a-release.apk   dist/aras-arm64.apk
+          cp mobile/build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk dist/aras-arm32.apk
+
+          cat > notes.md <<'NOTES'
+          ## التثبيت على الجوال
+
+          افتح هذه الصفحة **من متصفّح جوالك** ونزّل:
+
+          **`aras-arm64.apk`** — هذا هو المطلوب لكل جوال حديث.
+
+          فإن قال جوالك إن الحزمة غير متوافقة — وهذا نادر ولا يكون إلا في
+          أجهزة قديمة جداً — فنزّل `aras-arm32.apk` بدلاً منه.
+
+          بعد التنزيل يسألك أندرويد عن السماح بالتثبيت من هذا المتصفّح: اسمح،
+          ثم اضغط «تثبيت». السؤال طبيعي لأن الحزمة لا تأتي من متجر Play.
+
+          ## ملاحظتان
+
+          - الحزمة موقّعة بمفتاح تطوير: تعمل على جوالك تماماً، ولا تصلح للرفع
+            على Google Play. النشر على المتجر يحتاج مفتاح توقيعٍ خاصاً بك.
+          - إن لم تكن أسرار `SUPABASE_URL` و`SUPABASE_ANON_KEY` مضبوطةً في
+            المستودع، فهذه الحزمة تعمل على **بيانات تجريبية** لا على قاعدتك.
+            وملخّص تشغيل البناء يقول أيّهما.
+          NOTES
+
+          # إعادة تشغيل بناءٍ فاشل تُبقي الرقم نفسه، فيصطدم الإنشاء بإصدارٍ
+          # قائم. الحذف أوّلاً يجعل الخطوة تُعاد بلا أثر.
+          gh release delete "$TAG" --yes --cleanup-tag 2>/dev/null || true
+
+          gh release create "$TAG" \
+            --title "أعراس اليمن — حزمة $TAG" \
+            --notes-file notes.md \
+            dist/اعراس-اليمن-arm64.apk dist/اعراس-اليمن-arm32.apk
+
+          echo "### التنزيل على الجوال" >> "$GITHUB_STEP_SUMMARY"
+          echo "افتح من جوالك: $(gh release view "$TAG" --json url --jq .url)" >> "$GITHUB_STEP_SUMMARY"
 
       # لا تُبنى مع كل تشغيل: بناءٌ ثانٍ كامل يضاعف الزمن، ولا يُنشر على Play
       # في كل تجربة. تُبنى عند وسم إصدار، أو عند طلبها في التشغيل اليدوي.
