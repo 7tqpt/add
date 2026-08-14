@@ -236,10 +236,10 @@ export function PaymentsPage() {
         </Card>
       ) : totals.data ? (
         <>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="stagger grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <StatTile
               label="المبالغ المحصّلة"
-              tone="henna"
+              tone="emerald"
               value={formatMoneyCompact(totals.data.collected)}
               valueTitle={formatMoney(totals.data.collected)}
               icon={Banknote}
@@ -247,7 +247,7 @@ export function PaymentsPage() {
             />
             <StatTile
               label="حصة المنصة"
-              tone="indigo"
+              tone="navy"
               value={formatMoneyCompact(totals.data.platformShare)}
               valueTitle={formatMoney(totals.data.platformShare)}
               icon={PercentCircle}
@@ -255,7 +255,7 @@ export function PaymentsPage() {
             />
             <StatTile
               label={`المسترجع (${formatNumber(totals.data.refundedCount)} عملية)`}
-              tone="plum"
+              tone="violet"
               value={formatMoneyCompact(totals.data.refunded)}
               valueTitle={formatMoney(totals.data.refunded)}
               icon={Undo2}
@@ -263,7 +263,7 @@ export function PaymentsPage() {
             />
             <StatTile
               label="نسبة نجاح العمليات"
-              tone="palm"
+              tone="cyan"
               value={formatPercent(totals.data.successRate)}
               icon={TrendingUp}
               refetching={totals.refetching}

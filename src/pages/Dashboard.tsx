@@ -53,11 +53,11 @@ const QUEUE: {
   icon: LucideIcon
   tone: Tone
 }[] = [
-  { key: 'pendingProviders', label: 'طلبات توثيق', to: '/providers', icon: BriefcaseBusiness, tone: 'indigo' },
-  { key: 'openTickets', label: 'تذاكر خدمة العملاء', to: '/support', icon: LifeBuoy, tone: 'palm' },
-  { key: 'openDisputes', label: 'نزاعات مفتوحة', to: '/disputes', icon: Scale, tone: 'henna' },
-  { key: 'pendingSettlements', label: 'تسويات بانتظار الاعتماد', to: '/settlements', icon: Banknote, tone: 'gold' },
-  { key: 'flaggedReviews', label: 'تقييمات مُبلَّغ عنها', to: '/reviews', icon: Star, tone: 'plum' },
+  { key: 'pendingProviders', label: 'طلبات توثيق', to: '/providers', icon: BriefcaseBusiness, tone: 'navy' },
+  { key: 'openTickets', label: 'تذاكر خدمة العملاء', to: '/support', icon: LifeBuoy, tone: 'cyan' },
+  { key: 'openDisputes', label: 'نزاعات مفتوحة', to: '/disputes', icon: Scale, tone: 'emerald' },
+  { key: 'pendingSettlements', label: 'تسويات بانتظار الاعتماد', to: '/settlements', icon: Banknote, tone: 'azure' },
+  { key: 'flaggedReviews', label: 'تقييمات مُبلَّغ عنها', to: '/reviews', icon: Star, tone: 'violet' },
 ]
 
 export function DashboardPage() {
@@ -128,10 +128,10 @@ export function DashboardPage() {
         </p>
       ) : null}
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="stagger grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatTile
           label="الحجوزات"
-          tone="gold"
+          tone="azure"
           value={formatNumber(data.bookings.value)}
           change={data.bookings.change}
           comparisonLabel={COMPARISON}
@@ -140,7 +140,7 @@ export function DashboardPage() {
         />
         <StatTile
           label="قيمة الحجوزات"
-          tone="henna"
+          tone="emerald"
           value={formatMoneyCompact(data.revenue.value)}
           valueTitle={formatMoney(data.revenue.value)}
           change={data.revenue.change}
@@ -150,7 +150,7 @@ export function DashboardPage() {
         />
         <StatTile
           label="عمولة المنصة"
-          tone="indigo"
+          tone="navy"
           value={formatMoneyCompact(data.commission.value)}
           valueTitle={formatMoney(data.commission.value)}
           change={data.commission.change}
@@ -160,7 +160,7 @@ export function DashboardPage() {
         />
         <StatTile
           label="متوسط المستخدمين النشطين يومياً"
-          tone="palm"
+          tone="cyan"
           value={formatNumber(data.activeUsers.value)}
           change={data.activeUsers.change}
           comparisonLabel={COMPARISON}

@@ -6,27 +6,28 @@
 @custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
 
 :root {
-  /* surfaces */
-  --page: #f9f9f7;
-  --surface: #fcfcfb;
-  --surface-2: #f2f1ed;
+  /* surfaces — أبيضٌ منحازٌ إلى الأزرق قليلاً لا رماديٌّ محايد: الرمادي
+     المحايد يبدو غير مقصود، والانحياز الخفيف نحو لون العلامة يجعله مُختاراً. */
+  --page: #f4f7fc;
+  --surface: #ffffff;
+  --surface-2: #eef2f9;
 
-  /* ink */
-  --text-primary: #0b0b0b;
-  --text-secondary: #52514e;
-  --text-muted: #898781;
+  /* ink — أسودٌ مزرقّ لا أسود فحمي، ليجلس في العائلة نفسها */
+  --text-primary: #0b1220;
+  --text-secondary: #47536b;
+  --text-muted: #7b8699;
 
   /* chrome */
-  --grid: #e1e0d9;
-  --axis: #c3c2b7;
-  --border: rgba(11, 11, 11, 0.1);
-  --ring: rgba(154, 106, 0, 0.35);
+  --grid: #e3e9f3;
+  --axis: #c2cbdb;
+  --border: rgba(11, 18, 32, 0.1);
+  --ring: rgba(29, 78, 216, 0.35);
 
   /* Brand accent for chrome — buttons, active nav, links. Deliberately not a
      series colour: the data palette is validated for categorical separation and
      must not shift when the brand does.
-     #9a6a00 → 4.73:1 with white text, 4.61:1 on --surface. */
-  --accent: #9a6a00;
+     #1d4ed8 → 6.70:1 with white text. */
+  --accent: #1d4ed8;
   --accent-ink: #ffffff;
 
   /* categorical series — validated (light, surface #fcfcfb, --pairs all) */
@@ -41,17 +42,19 @@
 
 
   /* ---------------------------------------------------------------------
-     ألوان البطاقات — هويّة لا زينة.
-     مأخوذة من عالم العرس اليمني نفسه: الذهب، والحنّاء، والنيلي في الزيّ،
-     وخضرة النخيل. كل بطاقة تُعرف بلونها قبل قراءة عنوانها.
+     أصباغ البطاقات — هويّة لا زينة. كل بطاقة تُعرف بصبغتها قبل قراءة عنوانها.
      وهي منفصلة عن ألوان الحالة (good/warning/critical) عمداً: لونُ تعريفٍ
      لا يجوز أن يُقرأ حكماً على الرقم.
+
+     وكلّها باردة تدور حول الأزرق: `azure` قلبها، و`navy` أعمقها، و`cyan`
+     و`violet` جاراها في العائلة، و`emerald` وحدها خارجةٌ عنها — لأن المال
+     يستحقّ أن يُميَّز عمّا سواه، ولأن خمس درجاتٍ من أزرقٍ واحد لا تُفرَّق.
      --------------------------------------------------------------------- */
-  --tile-gold: #96650a;
-  --tile-henna: #a2432c;
-  --tile-indigo: #3a5599;
-  --tile-palm: #1c6f5e;
-  --tile-plum: #6b3a76;
+  --tile-azure: #1d4ed8;
+  --tile-emerald: #067a55;
+  --tile-navy: #2f3d99;
+  --tile-cyan: #0e6f8c;
+  --tile-violet: #5b34ba;
   /* الحبر الذي يقع فوق الصبغة الصريحة: الأصباغ داكنة هنا فالحبر أبيض */
   --tile-ink: #ffffff;
 
@@ -67,23 +70,24 @@
 }
 
 [data-theme='dark'] {
-  --page: #0d0d0d;
-  --surface: #1a1a19;
-  --surface-2: #232322;
+  /* أسودٌ مزرقّ لا فحمي — العائلة نفسها في الوضعين */
+  --page: #070c16;
+  --surface: #101827;
+  --surface-2: #182133;
 
-  --text-primary: #ffffff;
-  --text-secondary: #c3c2b7;
-  --text-muted: #898781;
+  --text-primary: #f5f8ff;
+  --text-secondary: #b3bed2;
+  --text-muted: #7f8ba0;
 
-  --grid: #2c2c2a;
-  --axis: #383835;
+  --grid: #1e293e;
+  --axis: #2c3a55;
   --border: rgba(255, 255, 255, 0.1);
-  --ring: rgba(217, 164, 65, 0.45);
+  --ring: rgba(96, 165, 250, 0.45);
 
-  /* A dark gold on a dark surface would vanish, so the fill lightens and the
-     text on it flips. 7.74:1 on --surface, 8.75:1 against its own ink. */
-  --accent: #d9a441;
-  --accent-ink: #0b0b0b;
+  /* الأزرق الداكن يذوب في أرضيةٍ داكنة، فيفتح الملء وينقلب حبره.
+     ‏#60a5fa → 6.99:1 على --surface. */
+  --accent: #60a5fa;
+  --accent-ink: #06101f;
 
   /* same eight hues, stepped for the dark surface — not an automatic flip */
   --series-1: #3987e5;
@@ -96,13 +100,13 @@
 
 
   /* الأصباغ نفسها مرفوعة الإضاءة للأرضية الداكنة — لا مقلوبة آلياً */
-  --tile-gold: #e0ac4a;
-  --tile-henna: #e8836c;
-  --tile-indigo: #8fa8e8;
-  --tile-palm: #5cbfa6;
-  --tile-plum: #c194cc;
+  --tile-azure: #6b9dff;
+  --tile-emerald: #34c795;
+  --tile-navy: #96a3ff;
+  --tile-cyan: #45b6d6;
+  --tile-violet: #a68af5;
   /* وهي فاتحة هناك، فينقلب الحبر */
-  --tile-ink: #14120d;
+  --tile-ink: #06101f;
 
   --delta-up: #0ca30c;
   --delta-down: #e66767;
@@ -130,11 +134,11 @@
   --color-series-2: var(--series-2);
   --color-series-3: var(--series-3);
 
-  --color-tile-gold: var(--tile-gold);
-  --color-tile-henna: var(--tile-henna);
-  --color-tile-indigo: var(--tile-indigo);
-  --color-tile-palm: var(--tile-palm);
-  --color-tile-plum: var(--tile-plum);
+  --color-tile-azure: var(--tile-azure);
+  --color-tile-emerald: var(--tile-emerald);
+  --color-tile-navy: var(--tile-navy);
+  --color-tile-cyan: var(--tile-cyan);
+  --color-tile-violet: var(--tile-violet);
   --color-tile-ink: var(--tile-ink);
 
   --color-good: var(--good);
@@ -180,6 +184,109 @@ body {
   transition: opacity 150ms ease;
 }
 
+/* ---------------------------------------------------------------------------
+   الحركة — رموزٌ واحدة تحكم إيقاع اللوحة كلّه.
+
+   ثلاث مدد لا واحدة: ردُّ الفعل على اللمسة أسرع من دخول بطاقة، ودخولُ بطاقة
+   أسرع من انتقال صفحة. ومدّةٌ واحدة لكل شيء تجعل الواجهة إمّا بطيئةً في
+   الاستجابة أو متشنّجةً في الدخول.
+
+   والتحريك على `transform` و`opacity` وحدهما — وهما ما تحسبه بطاقة الرسوم بلا
+   إعادة تخطيط. أمّا تحريك `width` أو `top` فيُجبر المتصفّح على إعادة حساب
+   الصفحة في كل إطار، فتتقطّع الحركة على الأجهزة الضعيفة.
+   --------------------------------------------------------------------------- */
+:root {
+  --dur-fast: 140ms;
+  --dur-base: 240ms;
+  --dur-slow: 420ms;
+  /* تباطؤٌ عند الوصول: الأشياء تصل فتهدأ، ولا ترتدّ. وتجنّبتُ الارتداد
+     (`back.out`) عمداً — يليق بصفحة تسويق، ويوحي في جدول بيانات أن الرقم
+     اهتزّ. */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 10px, 0);
+  }
+}
+
+@keyframes shimmer {
+  to {
+    background-position-x: -200%;
+  }
+}
+
+.rise {
+  animation: rise var(--dur-slow) var(--ease-out) both;
+}
+
+/* تتابعٌ للأبناء المباشرين: البطاقات تدخل واحدةً إثر أخرى فيُقرأ الترتيب،
+   بدل أن تقفز كلّها دفعةً واحدة. ‏55 مللي بينها — ما دونها لا يُرى، وما
+   فوقها يجعل آخر بطاقةٍ تنتظر طويلاً. */
+.stagger > * {
+  animation: rise var(--dur-slow) var(--ease-out) both;
+}
+.stagger > *:nth-child(1) { animation-delay: 0ms; }
+.stagger > *:nth-child(2) { animation-delay: 55ms; }
+.stagger > *:nth-child(3) { animation-delay: 110ms; }
+.stagger > *:nth-child(4) { animation-delay: 165ms; }
+.stagger > *:nth-child(5) { animation-delay: 220ms; }
+.stagger > *:nth-child(6) { animation-delay: 275ms; }
+.stagger > *:nth-child(7) { animation-delay: 330ms; }
+.stagger > *:nth-child(n + 8) { animation-delay: 385ms; }
+
+/* الارتفاع عند التحويم — و`hover: hover` تمنعه على اللمس، وإلا علِقت البطاقة
+   مرفوعةً بعد الضغط على الجوال حتى يُلمس غيرها. */
+.lift {
+  transition:
+    transform var(--dur-base) var(--ease-out),
+    box-shadow var(--dur-base) var(--ease-out),
+    border-color var(--dur-base) var(--ease-out);
+}
+@media (hover: hover) {
+  .lift:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 26px -12px color-mix(in oklab, var(--accent) 45%, transparent);
+    border-color: color-mix(in oklab, var(--accent) 30%, var(--border));
+  }
+}
+
+/* انكماشٌ يسير عند الضغط: تأكيدٌ لمسيٌّ بأن الضغطة وصلت. */
+.press {
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+.press:active {
+  transform: scale(0.985);
+}
+
+/* تنعيمٌ عام لتغيّر ألوان العناصر التفاعلية — بدونه تقفز الألوان قفزاً. */
+a,
+button,
+[role='button'],
+input,
+select,
+textarea {
+  transition:
+    color var(--dur-fast) var(--ease-out),
+    background-color var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out);
+}
+
+/* وميضٌ للهياكل العظمية أثناء التحميل الأول. */
+.shimmer {
+  background: linear-gradient(
+    100deg,
+    var(--surface-2) 40%,
+    color-mix(in oklab, var(--accent) 8%, var(--surface-2)) 50%,
+    var(--surface-2) 60%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.4s linear infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -187,5 +294,12 @@ body {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+    /* والتأخير أيضاً: تصفيرُ المدّة وحدها يُبقي آخر بطاقةٍ منتظرةً 385 مللي
+       ثم تظهر فجأةً — وهو أسوأ ممّا كان. */
+    animation-delay: 0ms !important;
+  }
+
+  .lift:hover {
+    transform: none;
   }
 }

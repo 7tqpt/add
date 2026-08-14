@@ -168,24 +168,24 @@ export function UserDetailPage() {
         </CardBody>
       </Card>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="stagger grid grid-cols-1 gap-4 sm:grid-cols-3">
         <StatTile
           label="إجمالي الجلسات"
-          tone="indigo"
+          tone="navy"
           value={formatNumber(record.sessions_count)}
           icon={Activity}
           refetching={activity.refetching}
         />
         <StatTile
           label="متوسط مدة الجلسة"
-          tone="palm"
+          tone="cyan"
           value={formatDuration(averageSession)}
           icon={Clock}
           refetching={activity.refetching}
         />
         <StatTile
           label="إجمالي المدفوعات"
-          tone="henna"
+          tone="emerald"
           value={formatMoneyCompact(totalSpent)}
           valueTitle={formatMoney(totalSpent)}
           icon={Wallet}
