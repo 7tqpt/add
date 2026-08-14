@@ -6,8 +6,15 @@
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<!-- الاسم المعروض تحت الأيقونة. أمّا CFBundleName أدناه فيبقى لاتينياً
+	     قصيراً: هو اسم الحزمة الداخلي لا ما يقرأه المستخدم. -->
 	<key>CFBundleDisplayName</key>
-	<string>Aras</string>
+	<string>أعراس اليمن</string>
+	<key>CFBundleLocalizations</key>
+	<array>
+		<string>ar</string>
+		<string>en</string>
+	</array>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -26,6 +33,14 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<!-- بلا هذين المفتاحين يسقط التطبيق على iOS لحظةَ فتح الكاميرا أو المعرض —
+	     لا يرفض الإذن بل يُنهيه النظام. وشاشة المستندات تفتح أحدهما، فهذا
+	     شرطُ عملها. والنصّان يظهران للمستخدم كما هما في نافذة الإذن، فكُتبا
+	     يقولان لماذا نطلب لا ماذا نطلب. -->
+	<key>NSCameraUsageDescription</key>
+	<string>لتصوير هويتك أو سجلك التجاري ورفعه لفريق التوثيق.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>لاختيار صورة هويتك أو سجلك التجاري من معرض جوالك ورفعها لفريق التوثيق.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
