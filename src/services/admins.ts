@@ -274,7 +274,17 @@ export async function checkInvitation(token: string, email: string): Promise<boo
     p_token: clean,
     p_email: email.trim(),
   })
-  if (error) throw error
+  if (error) {
+    // الدالة حديثة، وقد تُنشر اللوحة قبل تشغيل `invitations.sql` على القاعدة.
+    // وحينها يردّ PostgREST بـPGRST202، فتظهر رسالةٌ عامّة لا تدلّ على شيء
+    // ويقف التسجيل كلّه بلا سبب ظاهر. الرسالة هنا تقول ما الناقص بالضبط.
+    if (error.code === 'PGRST202' || /api_check_invitation/.test(error.message)) {
+      throw new Error(
+        'قاعدة البيانات لم تُحدَّث بعد — شغّل supabase/invitations.sql في محرّر SQL ثم أعد المحاولة.',
+      )
+    }
+    throw new Error(error.message)
+  }
   return data === true
 }
 
