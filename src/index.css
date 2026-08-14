@@ -39,6 +39,22 @@
   --seq-450: #2a78d6;
   --seq-600: #184f95;
 
+
+  /* ---------------------------------------------------------------------
+     ألوان البطاقات — هويّة لا زينة.
+     مأخوذة من عالم العرس اليمني نفسه: الذهب، والحنّاء، والنيلي في الزيّ،
+     وخضرة النخيل. كل بطاقة تُعرف بلونها قبل قراءة عنوانها.
+     وهي منفصلة عن ألوان الحالة (good/warning/critical) عمداً: لونُ تعريفٍ
+     لا يجوز أن يُقرأ حكماً على الرقم.
+     --------------------------------------------------------------------- */
+  --tile-gold: #96650a;
+  --tile-henna: #a2432c;
+  --tile-indigo: #3a5599;
+  --tile-palm: #1c6f5e;
+  --tile-plum: #6b3a76;
+  /* الحبر الذي يقع فوق الصبغة الصريحة: الأصباغ داكنة هنا فالحبر أبيض */
+  --tile-ink: #ffffff;
+
   /* status — fixed, never themed */
   --good: #0ca30c;
   --warning: #fab219;
@@ -78,6 +94,16 @@
   --seq-450: #3987e5;
   --seq-600: #9ec5f4;
 
+
+  /* الأصباغ نفسها مرفوعة الإضاءة للأرضية الداكنة — لا مقلوبة آلياً */
+  --tile-gold: #e0ac4a;
+  --tile-henna: #e8836c;
+  --tile-indigo: #8fa8e8;
+  --tile-palm: #5cbfa6;
+  --tile-plum: #c194cc;
+  /* وهي فاتحة هناك، فينقلب الحبر */
+  --tile-ink: #14120d;
+
   --delta-up: #0ca30c;
   --delta-down: #e66767;
 
@@ -103,6 +129,13 @@
   --color-series-1: var(--series-1);
   --color-series-2: var(--series-2);
   --color-series-3: var(--series-3);
+
+  --color-tile-gold: var(--tile-gold);
+  --color-tile-henna: var(--tile-henna);
+  --color-tile-indigo: var(--tile-indigo);
+  --color-tile-palm: var(--tile-palm);
+  --color-tile-plum: var(--tile-plum);
+  --color-tile-ink: var(--tile-ink);
 
   --color-good: var(--good);
   --color-warning: var(--warning);

@@ -1,7 +1,45 @@
 import { ArrowDownRight, ArrowUpRight, Minus, type LucideIcon } from 'lucide-react'
-import { Card } from '@/components/ui/Card'
 import { formatDelta } from '@/lib/format'
 import { cn } from '@/lib/cn'
+
+/** ألوان تعريف البطاقات — مأخوذة من عالم العرس اليمني، لا من دولاب ألوان. */
+export type Tone = 'gold' | 'henna' | 'indigo' | 'palm' | 'plum'
+
+const TONE_VAR: Record<Tone, string> = {
+  gold: 'var(--tile-gold)',
+  henna: 'var(--tile-henna)',
+  indigo: 'var(--tile-indigo)',
+  palm: 'var(--tile-palm)',
+  plum: 'var(--tile-plum)',
+}
+
+/**
+ * ألوان البطاقة مشتقّة من صبغةٍ واحدة بـ`color-mix`، لا مكتوبة يدوياً.
+ *
+ * فائدتها أنها تُمزج مع سطح الثيمة الحالي: الوشاح نفسه يخرج فاتحاً على الأبيض
+ * وداكناً على الأسود بلا جدولين، ويتغيّر مع الثيمة تلقائياً.
+ */
+export function toneStyle(tone: Tone) {
+  const hue = TONE_VAR[tone]
+  return {
+    background: `color-mix(in oklab, ${hue} 11%, var(--surface))`,
+    borderColor: `color-mix(in oklab, ${hue} 34%, var(--surface))`,
+  } as const
+}
+
+/** شارةٌ هادئة للقوائم: خمسة مربّعات صريحة في عمودٍ واحد تصير ضجيجاً. */
+export function toneChip(tone: Tone) {
+  const hue = TONE_VAR[tone]
+  return {
+    background: `color-mix(in oklab, ${hue} 18%, var(--surface))`,
+    color: hue,
+  } as const
+}
+
+/** وشارةٌ صريحة للبطاقات الكبيرة، وهي أربع فتحتمل الصراحة. */
+export function toneChipSolid(tone: Tone) {
+  return { background: TONE_VAR[tone], color: 'var(--tile-ink)' } as const
+}
 
 /**
  * A single headline number. When the story is one figure, this is the chart —
@@ -14,6 +52,7 @@ export function StatTile({
   change,
   comparisonLabel,
   icon: Icon,
+  tone = 'gold',
   refetching,
 }: {
   label: string
@@ -24,16 +63,29 @@ export function StatTile({
   change?: number
   comparisonLabel?: string
   icon: LucideIcon
+  /** صبغة التعريف. لا تحمل حكماً على الرقم — ذلك عمل لون الفرق وحده. */
+  tone?: Tone
   refetching?: boolean
 }) {
   const direction = change === undefined ? null : change > 0.0005 ? 'up' : change < -0.0005 ? 'down' : 'flat'
   const DeltaIcon = direction === 'up' ? ArrowUpRight : direction === 'down' ? ArrowDownRight : Minus
 
   return (
-    <Card className={cn('p-4 sm:p-5', refetching && 'is-refetching')}>
+    <section
+      style={toneStyle(tone)}
+      className={cn(
+        'rounded-xl border p-4 shadow-[0_1px_2px_rgba(11,11,11,0.04)] sm:p-5',
+        refetching && 'is-refetching',
+      )}
+    >
       <div className="flex items-start justify-between gap-3">
         <p className="text-xs font-medium text-ink-2">{label}</p>
-        <Icon size={16} className="shrink-0 text-muted" aria-hidden />
+        <span
+          style={toneChipSolid(tone)}
+          className="flex size-7 shrink-0 items-center justify-center rounded-lg"
+        >
+          <Icon size={15} aria-hidden />
+        </span>
       </div>
 
       {/* Proportional figures: tabular-nums makes large standalone numbers look loose. */}
@@ -64,6 +116,6 @@ export function StatTile({
           {comparisonLabel ? <span className="text-muted">{comparisonLabel}</span> : null}
         </p>
       ) : null}
-    </Card>
+    </section>
   )
 }
