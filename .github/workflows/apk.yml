@@ -6,6 +6,11 @@ name: بناء تطبيق أندرويد
 # من حزمةٍ جديدة مع كل تعديل نصّي.
 on:
   workflow_dispatch:
+    inputs:
+      appbundle:
+        description: 'ابنِ حزمة Google Play أيضاً (تضاعف الزمن)'
+        type: boolean
+        default: false
   push:
     tags: ['v*']
 
@@ -48,6 +53,17 @@ jobs:
             echo "لا أسرار مضبوطة — التطبيق سيعمل على البيانات التجريبية."
           fi
 
+      # أثقل ما في البناء البارد ليس الشيفرة بل ما يُنزَّل: توزيعة Gradle
+      # ومكتبات AGP و Kotlin و AndroidX. حفظها يختصر البناء التالي إلى دقائق.
+      - name: ذاكرة Gradle المؤقتة
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('mobile/android/**/*.gradle*', 'mobile/android/**/gradle-wrapper.properties') }}
+          restore-keys: gradle-${{ runner.os }}-
+
       - run: flutter pub get
         working-directory: mobile
 
@@ -63,7 +79,10 @@ jobs:
         working-directory: mobile
         run: flutter build apk --release --split-per-abi --dart-define-from-file=env.json
 
+      # لا تُبنى مع كل تشغيل: بناءٌ ثانٍ كامل يضاعف الزمن، ولا يُنشر على Play
+      # في كل تجربة. تُبنى عند وسم إصدار، أو عند طلبها في التشغيل اليدوي.
       - name: بناء حزمة النشر على Google Play
+        if: startsWith(github.ref, 'refs/tags/') || inputs.appbundle
         working-directory: mobile
         run: flutter build appbundle --release --dart-define-from-file=env.json
 
@@ -73,5 +92,5 @@ jobs:
           path: |
             mobile/build/app/outputs/flutter-apk/*.apk
             mobile/build/app/outputs/bundle/release/*.aab
-          if-no-files-found: error
+          if-no-files-found: warn
           retention-days: 30
