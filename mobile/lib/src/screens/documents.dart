@@ -1,5 +1,5 @@
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../core/format.dart';
 import '../core/session.dart';
@@ -15,6 +15,11 @@ import 'labels.dart';
 /// شاشة الملف تقول «لن تستقبل حجوزات حتى تُقبل مستنداتك» ولم يكن هناك طريقٌ
 /// لرفعها — فكان الوعد بابًا مغلقاً. الحاوية `provider-docs` خاصّة، والمسؤول
 /// وحده يوقّع رابطاً مؤقّتاً لرؤيتها من اللوحة.
+///
+/// الرفع صورةٌ لا ملفاً: `image_picker` من فريق Flutter نفسه، بعد أن تبيّن أن
+/// `file_picker` — وهي التي تفتح ملفات PDF أيضاً — لا تُبنى مع AGP 9 لأنها
+/// تثبّت Kotlin 1.8 في بنائها. وصاحب القاعة يصوّر هويته بجواله على كل حال،
+/// والحاوية تقبل الصور. أمّا PDF فتبقى مقبولةً في الحاوية لمن يرفع من اللوحة.
 class DocumentsScreen extends StatefulWidget {
   const DocumentsScreen({super.key, required this.session});
   final Session session;
@@ -44,17 +49,16 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
     });
   }
 
-  Future<void> _upload(String type) async {
-    final picked = await FilePicker.pickFiles(
-      type: FileType.custom,
-      // الحاوية تقبل هذه الامتدادات وحدها؛ تقييد المنتقي يمنع اختياراً سيُرفض
-      // بعد انتظار الرفع.
-      allowedExtensions: const ['jpg', 'jpeg', 'png', 'webp', 'pdf'],
-      withData: true,
+  Future<void> _upload(String type, ImageSource source) async {
+    final file = await ImagePicker().pickImage(
+      source: source,
+      // ضغطٌ عند الالتقاط: صورة هوية بدقّة الكاميرا كاملةً تتجاوز حدّ الحاوية
+      // على كثيرٍ من الأجهزة، وهي تُقرأ بلا تلك الدقّة.
+      maxWidth: 2200,
+      imageQuality: 85,
     );
-    final file = picked?.files.firstOrNull;
-    final bytes = file?.bytes;
-    if (file == null || bytes == null) return;
+    if (file == null) return;
+    final bytes = await file.readAsBytes();
 
     // حدّ الحاوية عشرة ميغابايت، ورفضُها يصل رسالةً غامضة بعد رفعٍ طويل على
     // شبكةٍ بطيئة. الفحص هنا يوفّر ذلك كلّه.
@@ -81,6 +85,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
     }
   }
 
+  /// النوع أوّلاً ثم المصدر: الكاميرا أو المعرض.
   Future<void> _pickType() async {
     final type = await showModalBottomSheet<String>(
       context: context,
@@ -101,7 +106,32 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
         ),
       ),
     );
-    if (type != null) await _upload(type);
+    if (type == null || !mounted) return;
+
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      useSafeArea: true,
+      builder: (_) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Padding(padding: EdgeInsets.all(Space.lg), child: SectionTitle('من أين؟')),
+            ListTile(
+              leading: const Icon(Icons.photo_camera_outlined, color: AppColors.accent),
+              title: const Text('التقط صورة'),
+              onTap: () => Navigator.of(context).pop(ImageSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined, color: AppColors.accent),
+              title: const Text('من المعرض'),
+              onTap: () => Navigator.of(context).pop(ImageSource.gallery),
+            ),
+            const SizedBox(height: Space.md),
+          ],
+        ),
+      ),
+    );
+    if (source != null) await _upload(type, source);
   }
 
   @override
@@ -135,7 +165,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
                   SectionTitle('ما المطلوب'),
                   SizedBox(height: Space.sm),
                   Text(
-                    'صورة الهوية الشخصية، والسجل التجاري إن وُجد. الملفات خاصّة '
+                    'صوّر هويتك الشخصية، والسجل التجاري إن وُجد. الصور خاصّة '
                     'لا يراها إلا فريق التوثيق، ولا تظهر للعملاء إطلاقاً.',
                     style: TextStyle(height: 1.7),
                   ),
@@ -147,7 +177,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
                   padding: EdgeInsets.only(top: Space.xl),
                   child: EmptyBlock(
                     title: 'لم ترفع شيئاً بعد',
-                    description: 'ارفع هويتك ليبدأ فريق التوثيق مراجعة ملفك.',
+                    description: 'صوّر هويتك ليبدأ فريق التوثيق مراجعة ملفك.',
                   ),
                 )
               else
