@@ -47,10 +47,12 @@ jobs:
           if [ -n "$SUPABASE_URL" ] && [ -n "$SUPABASE_ANON_KEY" ]; then
             printf '{\n  "SUPABASE_URL": "%s",\n  "SUPABASE_ANON_KEY": "%s"\n}\n' \
               "$SUPABASE_URL" "$SUPABASE_ANON_KEY" > env.json
+            echo "المفاتيح مضبوطة — التطبيق سيتصل بقاعدتك."
             echo "### المفاتيح: مضبوطة ✅" >> "$GITHUB_STEP_SUMMARY"
             echo "التطبيق في هذه الحزمة يتصل بقاعدتك." >> "$GITHUB_STEP_SUMMARY"
           else
             echo '{}' > env.json
+            echo "لا أسرار مضبوطة — التطبيق سيعمل على البيانات التجريبية."
             echo "### المفاتيح: غير مضبوطة ⚠️" >> "$GITHUB_STEP_SUMMARY"
             echo "الحزمة تعمل على **البيانات التجريبية** لا قاعدتك. لربطها: Settings ← Secrets and variables ← Actions، وأضِف \`SUPABASE_URL\` و\`SUPABASE_ANON_KEY\`، ثم أعِد التشغيل." >> "$GITHUB_STEP_SUMMARY"
           fi
