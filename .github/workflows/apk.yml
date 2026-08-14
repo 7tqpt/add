@@ -167,7 +167,11 @@ jobs:
           # قائم. الحذف أوّلاً يجعل الخطوة تُعاد بلا أثر.
           gh release delete "$TAG" --yes --cleanup-tag 2>/dev/null || true
 
+          # `--target` ضروري: بدونه يصنع gh الوسمَ على الفرع الافتراضي، فيشير
+          # `build-N` إلى شيفرةٍ غير التي بُنيت منها الحزمة المرفوعة فيه — وهو
+          # أسوأ من ألّا يكون هناك وسمٌ أصلاً.
           gh release create "$TAG" \
+            --target "$GITHUB_SHA" \
             --title "أعراس اليمن — حزمة $TAG" \
             --notes-file notes.md \
             "$ARM64" "$ARM32"
