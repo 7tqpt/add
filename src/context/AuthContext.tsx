@@ -45,8 +45,13 @@ interface AuthValue {
    * يُنشئه الموظف بنفسه لا المالك نيابةً عنه — إنشاء الحسابات من اللوحة يحتاج
    * مفتاح الخدمة، وهو يتجاوز RLS كلها فلا يوضع في متصفّح. والحساب وحده لا يمنح
    * شيئاً: الدور يأتي من قبول الدعوة بعده.
+   *
+   * يُعيد `true` إن بقي الحساب بانتظار رمز التأكيد — فتُعرض شاشة الرمز.
    */
-  signUp: (email: string, password: string) => Promise<void>
+  signUp: (email: string, password: string) => Promise<boolean>
+  /** يؤكّد الحساب بالرمز الواصل إلى البريد. نجاحُه يفتح الجلسة من فوره. */
+  verifySignUpCode: (email: string, code: string) => Promise<void>
+  resendSignUpCode: (email: string) => Promise<void>
   signOut: () => Promise<void>
   /** Demo mode only: re-render the UI as another role to see gating at work. */
   previewRole: (role: AdminRole) => void
@@ -198,7 +203,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const demoUser: AdminUser = { id: 'demo-admin', email, name: nameFromEmail(email) }
       localStorage.setItem(DEMO_STORAGE_KEY, JSON.stringify(demoUser))
       setUser(demoUser)
-      return
+      return false
     }
 
     const { data, error } = await supabase.auth.signUp({ email, password })
@@ -209,11 +214,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           : error.message,
       )
     }
-    // تأكيد البريد مفعَّلٌ في المشروع؟ إذن لا جلسة الآن، ولا يمكن قبول الدعوة
-    // قبل فتح رسالة التأكيد. الرسالة تقول ذلك بدل أن يُترك المستخدم أمام صمت.
-    if (!data.session) {
-      throw new Error('أُنشئ حسابك — افتح رسالة التأكيد في بريدك ثم عُد وسجّل الدخول بالرمز.')
+    // تأكيد البريد مفعَّلٌ في المشروع؟ إذن لا جلسة الآن. ولا يُرمى خطأ: تُعرض
+    // شاشة الرمز. أمّا رابط التأكيد فيقصد `Site URL` وهو `localhost` افتراضاً،
+    // فيفتحه الموظف على جواله فيقول متصفّحه «رفض الاتصال» ويقف كل شيء.
+    return !data.session
+  }, [])
+
+  const verifySignUpCode = useCallback(async (email: string, code: string) => {
+    if (!isSupabaseConfigured || !supabase) return
+    const { error } = await supabase.auth.verifyOtp({
+      email: email.trim(),
+      token: code.trim(),
+      type: 'signup',
+    })
+    if (error) {
+      throw new Error(
+        /expired|invalid/i.test(error.message)
+          ? 'الرمز غير صحيح أو انتهت صلاحيته — اطلب رمزاً جديداً.'
+          : error.message,
+      )
     }
+  }, [])
+
+  const resendSignUpCode = useCallback(async (email: string) => {
+    if (!isSupabaseConfigured || !supabase) return
+    const { error } = await supabase.auth.resend({ type: 'signup', email: email.trim() })
+    if (error) throw new Error(error.message)
   }, [])
 
   const signOut = useCallback(async () => {
@@ -242,10 +268,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       roleResolved,
       signIn,
       signUp,
+      verifySignUpCode,
+      resendSignUpCode,
       signOut,
       previewRole,
     }),
-    [user, role, loading, roleResolved, signIn, signUp, signOut, previewRole],
+    [
+      user, role, loading, roleResolved, signIn, signUp,
+      verifySignUpCode, resendSignUpCode, signOut, previewRole,
+    ],
   )
 
   return <AuthContext value={value}>{children}</AuthContext>
