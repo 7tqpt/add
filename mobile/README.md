@@ -91,6 +91,23 @@ flutter build appbundle --dart-define-from-file=env.json # للنشر على Goo
 flutter build ipa    --dart-define-from-file=env.json   # iOS (يحتاج macOS)
 ```
 
+## إعداد المنصّتين
+
+أربعة أشياء خارج شيفرة Dart، كلّها لا تظهر في التطوير ولا يكشفها `flutter
+analyze` ولا `flutter test`. **ولا تحذفها إن أعدتَ توليد مجلّدي `android/`
+أو `ios/`** — القالب يعيدها إلى حالها.
+
+| الملف | ما فيه | لِمَ يهمّ |
+| --- | --- | --- |
+| `android/app/src/main/AndroidManifest.xml` | `INTERNET` | القالب يضعه في بياني `debug` و`profile` وحدهما، فتخرج حزمة الإصدار بلا شبكة ويفشل كل نداء لـSupabase على الجهاز |
+| `ios/Runner/Info.plist` | `NSCameraUsageDescription`، `NSPhotoLibraryUsageDescription` | بدونهما يُنهي iOS التطبيق فوراً عند فتح منتقي الصور في شاشة المستندات |
+| `…/res/values/strings.xml` و`Info.plist` | «أعراس اليمن» | كان اسم القالب `aras` تحت الأيقونة |
+| `…/res/mipmap-*/` و`mipmap-anydpi-v26/` | القمرية | كانت أيقونة التطبيق شعار Flutter نفسه، مطابقةً بالبايت لملف القالب |
+
+وسير عمل `apk.yml` يفحص الحزمة المبنيّة بـ`aapt2` فيسقط البناء إن غاب إذن
+الإنترنت أو بقي اسم القالب — لأن أوّل بناءٍ حقيقي هو ما كشف هذه كلّها، بعد أن
+مرّت من تحت التحليل والاختبارات والتشغيل على الويب.
+
 ## البنية
 
 ```
