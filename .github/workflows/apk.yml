@@ -47,10 +47,12 @@ jobs:
           if [ -n "$SUPABASE_URL" ] && [ -n "$SUPABASE_ANON_KEY" ]; then
             printf '{\n  "SUPABASE_URL": "%s",\n  "SUPABASE_ANON_KEY": "%s"\n}\n' \
               "$SUPABASE_URL" "$SUPABASE_ANON_KEY" > env.json
-            echo "المفاتيح مهيّأة — التطبيق سيتصل بمشروعك."
+            echo "### المفاتيح: مضبوطة ✅" >> "$GITHUB_STEP_SUMMARY"
+            echo "التطبيق في هذه الحزمة يتصل بقاعدتك." >> "$GITHUB_STEP_SUMMARY"
           else
             echo '{}' > env.json
-            echo "لا أسرار مضبوطة — التطبيق سيعمل على البيانات التجريبية."
+            echo "### المفاتيح: غير مضبوطة ⚠️" >> "$GITHUB_STEP_SUMMARY"
+            echo "الحزمة تعمل على **البيانات التجريبية** لا قاعدتك. لربطها: Settings ← Secrets and variables ← Actions، وأضِف \`SUPABASE_URL\` و\`SUPABASE_ANON_KEY\`، ثم أعِد التشغيل." >> "$GITHUB_STEP_SUMMARY"
           fi
 
       # أثقل ما في البناء البارد ليس الشيفرة بل ما يُنزَّل: توزيعة Gradle
@@ -78,6 +80,39 @@ jobs:
       - name: بناء APK
         working-directory: mobile
         run: flutter build apk --release --split-per-abi --dart-define-from-file=env.json
+
+      # فحص الحزمة المبنيّة لا الشيفرة التي بُنيت منها. إذنُ الإنترنت مثالُ ما
+      # يوجب هذا: قالب Flutter يضعه في بياني التنقيح والتشخيص وحدهما، فيمرّ
+      # التحليل والاختبار والتشغيل المحلي كلّها، ثم تخرج حزمة إصدارٍ لا تصل
+      # إلى الشبكة. ولا يكشفه إلا سؤال الحزمة نفسها عمّا فيها.
+      - name: فحص الحزمة نفسها
+        working-directory: mobile
+        run: |
+          set -euo pipefail
+          APK=build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
+          AAPT=$(ls -d "$ANDROID_HOME"/build-tools/*/aapt2 2>/dev/null | sort -V | tail -1)
+          if [ -z "$AAPT" ]; then echo "::error::لم أجد aapt2"; exit 1; fi
+
+          "$AAPT" dump permissions "$APK" | tee /tmp/perms.txt
+          grep -q 'android.permission.INTERNET' /tmp/perms.txt || {
+            echo "::error::الحزمة بلا إذن إنترنت — كل نداء لـSupabase سيفشل على جهاز المستخدم."
+            exit 1
+          }
+
+          LABEL=$("$AAPT" dump badging "$APK" | sed -n "s/^application-label:'\(.*\)'/\1/p")
+          [ "$LABEL" != "aras" ] || { echo "::error::اسم التطبيق ما زال اسم القالب."; exit 1; }
+
+          {
+            echo "### الحزمة"
+            echo "- الاسم تحت الأيقونة: **$LABEL**"
+            echo "- إذن الإنترنت: موجود ✅"
+            echo ""
+            echo "| الحزمة | الحجم |"
+            echo "|---|---|"
+            for f in build/app/outputs/flutter-apk/*-release.apk; do
+              echo "| \`$(basename "$f")\` | $(du -h "$f" | cut -f1) |"
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
 
       # لا تُبنى مع كل تشغيل: بناءٌ ثانٍ كامل يضاعف الزمن، ولا يُنشر على Play
       # في كل تجربة. تُبنى عند وسم إصدار، أو عند طلبها في التشغيل اليدوي.
