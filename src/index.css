@@ -146,7 +146,7 @@
   --color-serious: var(--serious);
   --color-critical: var(--critical);
 
-  --font-sans: system-ui, -apple-system, 'Segoe UI', 'Noto Sans Arabic', 'Segoe UI Arabic', sans-serif;
+  --font-sans: 'IBM Plex Sans Arabic', system-ui, -apple-system, 'Segoe UI Arabic', sans-serif;
 }
 
 html,
@@ -158,7 +158,7 @@ body,
 body {
   background-color: var(--page);
   color: var(--text-primary);
-  font-family: system-ui, -apple-system, 'Segoe UI', 'Noto Sans Arabic', 'Segoe UI Arabic', sans-serif;
+  font-family: 'IBM Plex Sans Arabic', system-ui, -apple-system, 'Segoe UI Arabic', sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
