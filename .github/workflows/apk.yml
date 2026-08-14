@@ -6,8 +6,17 @@ name: بناء تطبيق أندرويد
 # من حزمةٍ جديدة مع كل تعديل نصّي.
 on:
   workflow_dispatch:
+    inputs:
+      appbundle:
+        description: 'ابنِ حزمة Google Play أيضاً (تضاعف الزمن)'
+        type: boolean
+        default: false
   push:
     tags: ['v*']
+
+# لكتابة الإصدار الذي يحمل الحزمة. وما عداه يبقى على القراءة وحدها.
+permissions:
+  contents: write
 
 jobs:
   apk:
@@ -42,11 +51,26 @@ jobs:
           if [ -n "$SUPABASE_URL" ] && [ -n "$SUPABASE_ANON_KEY" ]; then
             printf '{\n  "SUPABASE_URL": "%s",\n  "SUPABASE_ANON_KEY": "%s"\n}\n' \
               "$SUPABASE_URL" "$SUPABASE_ANON_KEY" > env.json
-            echo "المفاتيح مهيّأة — التطبيق سيتصل بمشروعك."
+            echo "المفاتيح مضبوطة — التطبيق سيتصل بقاعدتك."
+            echo "### المفاتيح: مضبوطة ✅" >> "$GITHUB_STEP_SUMMARY"
+            echo "التطبيق في هذه الحزمة يتصل بقاعدتك." >> "$GITHUB_STEP_SUMMARY"
           else
             echo '{}' > env.json
             echo "لا أسرار مضبوطة — التطبيق سيعمل على البيانات التجريبية."
+            echo "### المفاتيح: غير مضبوطة ⚠️" >> "$GITHUB_STEP_SUMMARY"
+            echo "الحزمة تعمل على **البيانات التجريبية** لا قاعدتك. لربطها: Settings ← Secrets and variables ← Actions، وأضِف \`SUPABASE_URL\` و\`SUPABASE_ANON_KEY\`، ثم أعِد التشغيل." >> "$GITHUB_STEP_SUMMARY"
           fi
+
+      # أثقل ما في البناء البارد ليس الشيفرة بل ما يُنزَّل: توزيعة Gradle
+      # ومكتبات AGP و Kotlin و AndroidX. حفظها يختصر البناء التالي إلى دقائق.
+      - name: ذاكرة Gradle المؤقتة
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('mobile/android/**/*.gradle*', 'mobile/android/**/gradle-wrapper.properties') }}
+          restore-keys: gradle-${{ runner.os }}-
 
       - run: flutter pub get
         working-directory: mobile
@@ -63,7 +87,108 @@ jobs:
         working-directory: mobile
         run: flutter build apk --release --split-per-abi --dart-define-from-file=env.json
 
+      # فحص الحزمة المبنيّة لا الشيفرة التي بُنيت منها. إذنُ الإنترنت مثالُ ما
+      # يوجب هذا: قالب Flutter يضعه في بياني التنقيح والتشخيص وحدهما، فيمرّ
+      # التحليل والاختبار والتشغيل المحلي كلّها، ثم تخرج حزمة إصدارٍ لا تصل
+      # إلى الشبكة. ولا يكشفه إلا سؤال الحزمة نفسها عمّا فيها.
+      - name: فحص الحزمة نفسها
+        working-directory: mobile
+        run: |
+          set -euo pipefail
+          APK=build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
+          AAPT=$(ls -d "$ANDROID_HOME"/build-tools/*/aapt2 2>/dev/null | sort -V | tail -1)
+          if [ -z "$AAPT" ]; then echo "::error::لم أجد aapt2"; exit 1; fi
+
+          "$AAPT" dump permissions "$APK" | tee /tmp/perms.txt
+          grep -q 'android.permission.INTERNET' /tmp/perms.txt || {
+            echo "::error::الحزمة بلا إذن إنترنت — كل نداء لـSupabase سيفشل على جهاز المستخدم."
+            exit 1
+          }
+
+          LABEL=$("$AAPT" dump badging "$APK" | sed -n "s/^application-label:'\(.*\)'/\1/p")
+          [ "$LABEL" != "aras" ] || { echo "::error::اسم التطبيق ما زال اسم القالب."; exit 1; }
+
+          {
+            echo "### الحزمة"
+            echo "- الاسم تحت الأيقونة: **$LABEL**"
+            echo "- إذن الإنترنت: موجود ✅"
+            echo ""
+            echo "| الحزمة | الحجم |"
+            echo "|---|---|"
+            for f in build/app/outputs/flutter-apk/*-release.apk; do
+              echo "| \`$(basename "$f")\` | $(du -h "$f" | cut -f1) |"
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # حزمة Actions تنزل ملفَ zip ولا تُفتح إلا بحسابٍ على GitHub — وكلاهما
+      # عائقٌ على الجوال. أمّا أصول الإصدار فتُنزَّل بضغطةٍ من المتصفّح بلا
+      # حساب ولا فكّ ضغط، وأندرويد يعرض «تثبيت» مباشرةً بعدها.
+      - name: نشر الحزمة في الإصدارات
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: build-${{ github.run_number }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          # أسماءٌ تقول لمن هي: `app-arm64-v8a-release.apk` لا تعني شيئاً لمن
+          # يقف أمام ملفات على جواله. ولاتينيّةٌ عمداً — GitHub يعبث بأسماء
+          # الأصول غير اللاتينية، ولا أراهن باسمٍ على طريق التنزيل كلّه.
+          #
+          # واسمُ كلٍّ في متغيّرٍ واحد يُنسخ إليه ثم يُرفع منه: كتبتُها أوّل مرّة
+          # مرتين، فغيّرتُ إحداهما ونسيت الأخرى، فسقط البناء عند الرفع.
+          ARM64=dist/aras-arm64.apk
+          ARM32=dist/aras-arm32.apk
+          cp mobile/build/app/outputs/flutter-apk/app-arm64-v8a-release.apk   "$ARM64"
+          cp mobile/build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk "$ARM32"
+
+          cat > notes.md <<'NOTES'
+          ## التثبيت على الجوال
+
+          افتح هذه الصفحة **من متصفّح جوالك** ونزّل:
+
+          **`aras-arm64.apk`** — هذا هو المطلوب لكل جوال حديث.
+
+          فإن قال جوالك إن الحزمة غير متوافقة — وهذا نادر ولا يكون إلا في
+          أجهزة قديمة جداً — فنزّل `aras-arm32.apk` بدلاً منه.
+
+          بعد التنزيل يسألك أندرويد عن السماح بالتثبيت من هذا المتصفّح: اسمح،
+          ثم اضغط «تثبيت». السؤال طبيعي لأن الحزمة لا تأتي من متجر Play.
+
+          ## ملاحظتان
+
+          - الحزمة موقّعة بمفتاح تطوير: تعمل على جوالك تماماً، ولا تصلح للرفع
+            على Google Play. النشر على المتجر يحتاج مفتاح توقيعٍ خاصاً بك.
+          - إن لم تكن أسرار `SUPABASE_URL` و`SUPABASE_ANON_KEY` مضبوطةً في
+            المستودع، فهذه الحزمة تعمل على **بيانات تجريبية** لا على قاعدتك.
+            وملخّص تشغيل البناء يقول أيّهما.
+          NOTES
+
+          # إعادة تشغيل بناءٍ فاشل تُبقي الرقم نفسه، فيصطدم الإنشاء بإصدارٍ
+          # قائم. الحذف أوّلاً يجعل الخطوة تُعاد بلا أثر.
+          gh release delete "$TAG" --yes --cleanup-tag 2>/dev/null || true
+
+          # `--target` ضروري: بدونه يصنع gh الوسمَ على الفرع الافتراضي، فيشير
+          # `build-N` إلى شيفرةٍ غير التي بُنيت منها الحزمة المرفوعة فيه — وهو
+          # أسوأ من ألّا يكون هناك وسمٌ أصلاً.
+          gh release create "$TAG" \
+            --target "$GITHUB_SHA" \
+            --title "أعراس اليمن — حزمة $TAG" \
+            --notes-file notes.md \
+            "$ARM64" "$ARM32"
+
+          # الرابط يُركَّب لا يُستعلَم: شكله ثابت، والاستعلام نداءٌ زائد قد يفشل
+          # بعد أن يكون الإصدار قد نُشر فعلاً فيُسقط بناءً ناجحاً.
+          {
+            echo "### التنزيل على الجوال"
+            echo "افتح هذا من متصفّح جوالك:"
+            echo ""
+            echo "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/tag/$TAG"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # لا تُبنى مع كل تشغيل: بناءٌ ثانٍ كامل يضاعف الزمن، ولا يُنشر على Play
+      # في كل تجربة. تُبنى عند وسم إصدار، أو عند طلبها في التشغيل اليدوي.
       - name: بناء حزمة النشر على Google Play
+        if: startsWith(github.ref, 'refs/tags/') || inputs.appbundle
         working-directory: mobile
         run: flutter build appbundle --release --dart-define-from-file=env.json
 
@@ -73,5 +198,5 @@ jobs:
           path: |
             mobile/build/app/outputs/flutter-apk/*.apk
             mobile/build/app/outputs/bundle/release/*.aab
-          if-no-files-found: error
+          if-no-files-found: warn
           retention-days: 30

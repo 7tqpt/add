@@ -1,6 +1,12 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- بلا هذا السطر لا يصل التطبيق إلى الشبكة في نسخة الإصدار إطلاقاً.
+         قالب Flutter يضع الإذن في بياني التنقيح والتشخيص وحدهما، فيعمل عندك
+         على السلك ويفشل كل نداء لـSupabase على جهاز المستخدم برسالةٍ غامضة.
+         والتطبيق كلّه قراءةٌ من الشبكة، فالإذن شرطُ عمله لا تحسينٌ فيه. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+
     <application
-        android:label="aras"
+        android:label="@string/app_name"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
