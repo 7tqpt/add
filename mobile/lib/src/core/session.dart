@@ -16,6 +16,12 @@ class Session extends ChangeNotifier {
   bool asProvider = false;
   bool loading = true;
 
+  /// عطبٌ منع قراءة هوية المستخدم من القاعدة — لا انعدامَ ملفٍ.
+  ///
+  /// الفرق جوهري: من لا ملف له يُساق إلى شاشة الإكمال وهذا صواب، ومن تعذّرت
+  /// قراءته لعطبٍ في القاعدة لا يُساق إلى شيء بل يُقال له ما العطب.
+  String? identityError;
+
   bool get signedIn => userId != null;
   bool get needsProfile => userId != null && appUserId == null;
   bool get hasProviderProfile => providerId != null;
@@ -62,11 +68,17 @@ class Session extends ChangeNotifier {
 
   Future<void> refreshIdentity() async {
     loading = true;
+    identityError = null;
     notifyListeners();
     try {
       appUserId = await Api.myAppUserId();
       providerId = appUserId == null ? null : await Api.myProviderId(appUserId!);
-    } catch (_) {
+    } catch (e) {
+      // لا يُبتلع. `maybeSingle` تُعيد null حين لا صفّ ولا ترمي، فكلّ ما يصل
+      // هنا عطبٌ حقيقي: جدولٌ غير موجود، أو مخطّطٌ لم يُطبَّق على المشروع.
+      // وابتلاعه كان يجعل ذلك يبدو «مستخدماً بلا ملف»، فيُساق إلى شاشة
+      // الإكمال ليصطدم بالجدار نفسه من حيث لا يعرف سببه.
+      identityError = messageOf(e);
       appUserId = null;
       providerId = null;
     }
