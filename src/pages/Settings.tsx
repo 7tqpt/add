@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
-import { Crown, Save, UserMinus, UserPlus } from 'lucide-react'
+import { Crown, Save, Trash2, UserMinus, UserPlus } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { Card, CardBody, CardHeader } from '@/components/ui/Card'
@@ -25,6 +25,7 @@ import {
   inviteAdmin,
   listAdmins,
   listInvitations,
+  deleteAdminAccount,
   removeAdmin,
   setAdminRole,
   transferOwnership,
@@ -311,6 +312,10 @@ function AdminsCard({ onToast }: { onToast: (message: string) => void }) {
   const [typedEmail, setTypedEmail] = useState('')
   const [handoverError, setHandoverError] = useState<string | null>(null)
   const [handingOver, setHandingOver] = useState(false)
+  const [erasing, setErasing] = useState<AdminAccount | null>(null)
+  const [typedErase, setTypedErase] = useState('')
+  const [eraseError, setEraseError] = useState<string | null>(null)
+  const [erasingBusy, setErasingBusy] = useState(false)
 
   async function changeRole(target: AdminAccount, next: AdminRole) {
     setBusyId(target.user_id)
@@ -383,6 +388,29 @@ function AdminsCard({ onToast }: { onToast: (message: string) => void }) {
       setHandoverError(cause instanceof Error ? cause.message : 'تعذّر نقل الملكية.')
     } finally {
       setHandingOver(false)
+    }
+  }
+
+  function openErase(target: AdminAccount) {
+    setTypedErase('')
+    setEraseError(null)
+    setErasing(target)
+  }
+
+  async function confirmErase() {
+    if (!erasing) return
+    setErasingBusy(true)
+    setEraseError(null)
+    try {
+      const mail = await deleteAdminAccount(erasing)
+      setErasing(null)
+      onToast(`مُحي حساب ${mail} من القاعدة.`)
+      reload()
+      invitations.reload()
+    } catch (cause) {
+      setEraseError(cause instanceof Error ? cause.message : 'تعذّر حذف الحساب.')
+    } finally {
+      setErasingBusy(false)
     }
   }
 
@@ -539,16 +567,29 @@ function AdminsCard({ onToast }: { onToast: (message: string) => void }) {
                               سحب الصلاحية
                             </Button>
                             {admin.role === 'owner' ? null : (
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                disabled={busyId === admin.user_id}
-                                onClick={() => openHandover(admin)}
-                                title="تُسلّمه اللوحة، وتنزل أنت إلى مدير"
-                              >
-                                <Crown size={13} aria-hidden />
-                                نقل الملكية
-                              </Button>
+                              <>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  disabled={busyId === admin.user_id}
+                                  onClick={() => openHandover(admin)}
+                                  title="تُسلّمه اللوحة، وتنزل أنت إلى مدير"
+                                >
+                                  <Crown size={13} aria-hidden />
+                                  نقل الملكية
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  disabled={busyId === admin.user_id}
+                                  onClick={() => openErase(admin)}
+                                  title="يمحو حسابه من القاعدة، لا صلاحيته فقط"
+                                  className="text-[var(--critical)]"
+                                >
+                                  <Trash2 size={13} aria-hidden />
+                                  حذف الحساب
+                                </Button>
+                              </>
                             )}
                           </div>
                         ) : null}
@@ -686,6 +727,39 @@ function AdminsCard({ onToast }: { onToast: (message: string) => void }) {
         ) : null}
 
       </CardBody>
+
+      <ConfirmDialog
+        open={erasing !== null}
+        title="حذف الحساب من القاعدة؟"
+        message={
+          `سيُمحى حساب ${erasing?.email ?? ''} نهائياً: صفّه في المسؤولين، ودعواته، ` +
+          'وحساب دخوله نفسه. ولن يستطيع التسجيل بالبريد نفسه إلا من جديد. ' +
+          'وإن كان له حسابٌ عميل على التطبيق فستمنع القاعدة الحذف حمايةً لحجوزاته — ' +
+          'اسحب صلاحيته حينئذٍ بدل حذفه. اكتب بريده للتأكيد.'
+        }
+        confirmLabel="نعم، احذف الحساب"
+        tone="danger"
+        busy={erasingBusy}
+        error={eraseError}
+        confirmDisabled={
+          typedErase.trim().toLowerCase() !== (erasing?.email ?? '').trim().toLowerCase()
+        }
+        onConfirm={confirmErase}
+        onCancel={() => setErasing(null)}
+      >
+        <Field label="اكتب بريد الموظف للتأكيد">
+          {(fieldId) => (
+            <Input
+              id={fieldId}
+              dir="ltr"
+              autoComplete="off"
+              value={typedErase}
+              onChange={(event) => setTypedErase(event.target.value)}
+              placeholder={erasing?.email ?? ''}
+            />
+          )}
+        </Field>
+      </ConfirmDialog>
 
       <ConfirmDialog
         open={handover !== null}
