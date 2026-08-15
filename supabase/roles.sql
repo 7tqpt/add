@@ -366,6 +366,61 @@ $$;
 revoke all on function public.api_clear_audit_log() from public;
 grant execute on function public.api_clear_audit_log() to authenticated;
 
+-- ----------------------------------------------------------------------------
+--  نقل الملكية
+--
+--  أخطر إجراءٍ في اللوحة: من ينقل الملكية يفقد سلطته على المسؤولين في اللحظة
+--  نفسها، ولا يستطيع استردادها بنفسه — بل يستأذن من نقلها إليه. فلا رجعة فيه
+--  من داخل اللوحة، والحرزُ فيه أشدّ ممّا في غيره.
+--
+--  ولماذا دالةٌ واحدة لا تعديلان من الواجهة؟ لأن الترقية والتنزيل يجب أن
+--  يقعا معاً أو لا يقعا. لو نُفِّذا نداءَين وانقطع الاتصال بينهما لبقيت اللوحة
+--  إمّا بمالكَين أو — وهو الأسوأ — بلا مالكٍ أصلاً، ولا أحد يستطيع أن يعيد
+--  إليها مالكاً من داخلها. والمعاملة الواحدة تجعل الحالتين مستحيلتين.
+--
+--  والمالك السابق ينزل إلى «مدير» لا يُطرد: كل الصلاحيات عدا إدارة المسؤولين.
+--  فمن نقل الملكية لم يُرد أن يخرج من عمله، بل أن يسلّم مفاتيح الباب.
+-- ----------------------------------------------------------------------------
+create or replace function public.api_transfer_ownership(p_target_user_id uuid)
+returns text
+language plpgsql security definer set search_path = public as $$
+declare
+  me     uuid := auth.uid();
+  my_mail     text;
+  target_mail text;
+begin
+  if not public.is_owner() then
+    raise exception 'نقل الملكية للمالك وحده';
+  end if;
+
+  if p_target_user_id is null or p_target_user_id = me then
+    raise exception 'اختر مسؤولاً آخر غيرك لتنقل إليه الملكية';
+  end if;
+
+  select email into target_mail from public.admins where user_id = p_target_user_id;
+  if target_mail is null then
+    raise exception 'لا يوجد مسؤولٌ بهذا الحساب — ادعُه إلى اللوحة أولاً، ثم انقل إليه الملكية';
+  end if;
+
+  select email into my_mail from public.admins where user_id = me;
+
+  -- يُرفَّع الجديد قبل أن يُنزَّل القديم. وهما في معاملةٍ واحدة فلا فرق عملياً،
+  -- لكنّ الترتيب يحفظ المعنى لمن يقرأ: لا تمرّ لحظةٌ بلا مالك.
+  update public.admins set role = 'owner'   where user_id = p_target_user_id;
+  update public.admins set role = 'manager' where user_id = me;
+
+  insert into public.audit_log (actor_email, action, entity, entity_id, entity_label, details)
+  values (coalesce(my_mail, ''), 'admin.ownership', 'admin',
+          p_target_user_id::text, target_mail,
+          jsonb_build_object('from', my_mail, 'to', target_mail));
+
+  return target_mail;
+end;
+$$;
+
+revoke all on function public.api_transfer_ownership(uuid) from public;
+grant execute on function public.api_transfer_ownership(uuid) to authenticated;
+
 -- can_write() القديمة تبقى لأن السياسات التي لم تُستبدل تستعملها، لكنها صارت
 -- تعني «يكتب في أي مجال» — أوسع من أن يُبنى عليها قرار، فلا تُستعمل في جديد.
 create or replace function public.can_write()

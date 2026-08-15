@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
-import { Save, UserMinus, UserPlus } from 'lucide-react'
+import { Crown, Save, UserMinus, UserPlus } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { Card, CardBody, CardHeader } from '@/components/ui/Card'
@@ -27,6 +27,7 @@ import {
   listInvitations,
   removeAdmin,
   setAdminRole,
+  transferOwnership,
 } from '@/services/admins'
 import { getSettings, saveSettings } from '@/services/settings'
 
@@ -296,7 +297,7 @@ export function SettingsPage() {
 
 
 function AdminsCard({ onToast }: { onToast: (message: string) => void }) {
-  const { user, canManageAdmins } = useAuth()
+  const { user, canManageAdmins, refreshRole } = useAuth()
   const load = useCallback(() => listAdmins(), [])
   const { data, error, loading, refetching, reload } = useAsync(load, [])
   const loadInvitations = useCallback(() => listInvitations(), [])
@@ -306,6 +307,10 @@ function AdminsCard({ onToast }: { onToast: (message: string) => void }) {
   const [newRole, setNewRole] = useState<AdminRole>('support')
   const [adding, setAdding] = useState(false)
   const [removing, setRemoving] = useState<AdminAccount | null>(null)
+  const [handover, setHandover] = useState<AdminAccount | null>(null)
+  const [typedEmail, setTypedEmail] = useState('')
+  const [handoverError, setHandoverError] = useState<string | null>(null)
+  const [handingOver, setHandingOver] = useState(false)
 
   async function changeRole(target: AdminAccount, next: AdminRole) {
     setBusyId(target.user_id)
@@ -353,6 +358,31 @@ function AdminsCard({ onToast }: { onToast: (message: string) => void }) {
       invitations.reload()
     } catch (cause) {
       onToast(cause instanceof Error ? cause.message : 'تعذّر إلغاء الدعوة.')
+    }
+  }
+
+  function openHandover(target: AdminAccount) {
+    setTypedEmail('')
+    setHandoverError(null)
+    setHandover(target)
+  }
+
+  async function confirmHandover() {
+    if (!handover) return
+    setHandingOver(true)
+    setHandoverError(null)
+    try {
+      const mail = await transferOwnership(handover)
+      setHandover(null)
+      onToast(`صار ${mail} مالك اللوحة، وأنت الآن مدير.`)
+      reload()
+      // دورك تغيّر من تحتك: تُعاد قراءته فتُقفل أزرار المالك من فورها بدل أن
+      // تبقى معروضةً حتى تُحدّث الصفحة، فتفشل بين يديك.
+      refreshRole()
+    } catch (cause) {
+      setHandoverError(cause instanceof Error ? cause.message : 'تعذّر نقل الملكية.')
+    } finally {
+      setHandingOver(false)
     }
   }
 
@@ -498,15 +528,29 @@ function AdminsCard({ onToast }: { onToast: (message: string) => void }) {
                           أحد أن يعيد إليها مالكاً من داخلها.
                         */}
                         {canManageAdmins && !isMe ? (
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            disabled={busyId === admin.user_id}
-                            onClick={() => setRemoving(admin)}
-                          >
-                            <UserMinus size={13} aria-hidden />
-                            سحب الصلاحية
-                          </Button>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              disabled={busyId === admin.user_id}
+                              onClick={() => setRemoving(admin)}
+                            >
+                              <UserMinus size={13} aria-hidden />
+                              سحب الصلاحية
+                            </Button>
+                            {admin.role === 'owner' ? null : (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                disabled={busyId === admin.user_id}
+                                onClick={() => openHandover(admin)}
+                                title="تُسلّمه اللوحة، وتنزل أنت إلى مدير"
+                              >
+                                <Crown size={13} aria-hidden />
+                                نقل الملكية
+                              </Button>
+                            )}
+                          </div>
                         ) : null}
                       </td>
                     </tr>
@@ -642,6 +686,38 @@ function AdminsCard({ onToast }: { onToast: (message: string) => void }) {
         ) : null}
 
       </CardBody>
+
+      <ConfirmDialog
+        open={handover !== null}
+        title="نقل ملكية اللوحة؟"
+        message={
+          `سيصير ${handover?.email ?? ''} مالك اللوحة، وتنزل أنت إلى «مدير» — ` +
+          'تحتفظ بكل الصلاحيات عدا إدارة المسؤولين. ولا تستطيع استرداد الملكية ' +
+          'بنفسك بعدها: المالك الجديد وحده يعيدها إليك. اكتب بريده للتأكيد.'
+        }
+        confirmLabel="نعم، انقل الملكية"
+        tone="danger"
+        busy={handingOver}
+        error={handoverError}
+        confirmDisabled={
+          typedEmail.trim().toLowerCase() !== (handover?.email ?? '').trim().toLowerCase()
+        }
+        onConfirm={confirmHandover}
+        onCancel={() => setHandover(null)}
+      >
+        <Field label="اكتب بريد المالك الجديد">
+          {(fieldId) => (
+            <Input
+              id={fieldId}
+              dir="ltr"
+              autoComplete="off"
+              value={typedEmail}
+              onChange={(event) => setTypedEmail(event.target.value)}
+              placeholder={handover?.email ?? ''}
+            />
+          )}
+        </Field>
+      </ConfirmDialog>
 
       <ConfirmDialog
         open={removing !== null}

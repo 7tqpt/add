@@ -194,6 +194,11 @@ export const AUDIT_ACTION_LABEL: Record<string, string> = {
   'version.rollout': 'تغيير نسبة الطرح',
   'settings.update': 'تحديث الإعدادات',
   'admin.role': 'تغيير دور مسؤول',
+  'admin.add': 'إضافة مسؤول',
+  'admin.remove': 'سحب صلاحية مسؤول',
+  'admin.invite': 'دعوة موظف',
+  'admin.invite_cancel': 'إلغاء دعوة',
+  'admin.ownership': 'نقل ملكية اللوحة',
   'audit.purge': 'تفريغ سجل العمليات',
 }
 

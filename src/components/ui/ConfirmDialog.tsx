@@ -18,6 +18,7 @@ export function ConfirmDialog({
   tone = 'danger',
   busy = false,
   error = null,
+  confirmDisabled = false,
   onConfirm,
   onCancel,
   children,
@@ -38,6 +39,12 @@ export function ConfirmDialog({
    * التطبيق يشرح له السبب في مكانٍ لا يصله بصره.
    */
   error?: string | null
+  /**
+   * يمنع التأكيد حتى يستوفي المستخدم شرطاً في `children` — كأن يكتب البريد
+   * الذي ينقل إليه الملكية. للإجراءات التي لا رجعة فيها: النقرة وحدها تُخطئ،
+   * والكتابة لا تُخطئ.
+   */
+  confirmDisabled?: boolean
   onConfirm: () => void
   onCancel: () => void
   /** Extra input the confirmation needs, e.g. a reason for the action. */
@@ -97,7 +104,7 @@ export function ConfirmDialog({
           <Button
             variant={tone === 'danger' ? 'danger' : 'primary'}
             size="sm"
-            disabled={busy}
+            disabled={busy || confirmDisabled}
             onClick={onConfirm}
           >
             {busy ? <Spinner /> : null}

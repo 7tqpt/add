@@ -77,6 +77,53 @@ export async function setAdminRole(admin: AdminAccount, role: AdminRole): Promis
 }
 
 /**
+ * ينقل ملكية اللوحة إلى مسؤولٍ آخر، ويُنزل الناقل إلى «مدير».
+ *
+ * نداءٌ واحد لا نداءان: الترقية والتنزيل يقعان معاً في معاملةٍ واحدة داخل
+ * القاعدة. ولو فُرِّقا هنا وانقطع الاتصال بينهما لبقيت اللوحة بمالكَين، أو —
+ * وهو الأسوأ — بلا مالكٍ أصلاً، ولا أحد يعيد إليها مالكاً من داخلها.
+ *
+ * ولا يُسجَّل الأثر هنا: الدالة نفسها تكتبه في المعاملة ذاتها، فلا يفترق
+ * الحدث عن أثره لو فشل أحدهما. وتسجيلُه هنا أيضاً يُثبته مرّتين.
+ *
+ * يُعيد بريد المالك الجديد كما تراه القاعدة.
+ */
+export async function transferOwnership(target: AdminAccount): Promise<string> {
+  if (!isSupabaseConfigured) {
+    const next = demoAdmins.find((candidate) => candidate.user_id === target.user_id)
+    const me = demoAdmins.find((candidate) => candidate.role === 'owner')
+    if (next) next.role = 'owner'
+    if (me && me.user_id !== target.user_id) me.role = 'manager'
+    // في وضع العرض الدور مخزَّنٌ محلياً لا في جدول، فيُنزَّل هناك أيضاً وإلا
+    // بقيت الواجهة تُريك أزرار المالك بعد أن تخلّيت عنها.
+    setDemoRole('manager')
+    await delay(null, 280)
+    await recordAudit({
+      action: 'admin.ownership',
+      entity: 'admin',
+      entityId: target.user_id,
+      entityLabel: target.email,
+      details: { from: me?.email ?? '', to: target.email },
+    })
+    return target.email
+  }
+
+  const { data, error } = await requireSupabase().rpc('api_transfer_ownership', {
+    p_target_user_id: target.user_id,
+  })
+  if (error) {
+    if (error.code === 'PGRST202') {
+      throw new Error(
+        'الدالة api_transfer_ownership غير موجودة في قاعدة بياناتك — شغّل ملف ' +
+          'supabase/roles.sql كاملاً في محرّر SQL، ثم أعد تحميل الصفحة.',
+      )
+    }
+    throw new Error(`تعذّر نقل الملكية${error.code ? ` (${error.code})` : ''}: ${error.message}`)
+  }
+  return (data as string) ?? target.email
+}
+
+/**
  * يضيف مسؤولاً بحسابٍ موجود في Supabase Auth.
  *
  * لا يُنشئ حساب مصادقة: إنشاء الحسابات يحتاج مفتاح الخدمة، وهو مفتاح يتجاوز
