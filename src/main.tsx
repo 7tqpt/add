@@ -4,6 +4,28 @@ import { HashRouter } from 'react-router-dom'
 import { App } from './App'
 import { AuthProvider } from './context/AuthContext'
 import { ThemeProvider } from './context/ThemeContext'
+
+/**
+ * الخطّ مُستضافٌ معنا لا مُحمَّلٌ من شبكة غوغل.
+ *
+ * وذلك لثلاثة: لا طلبَ إلى نطاقٍ ثالث قد يُحجب أو يبطؤ، ولا تسريبَ لعناوين
+ * زوّار اللوحة إليه، ولا انكسارَ للخطّ يوم تتغيّر تلك الشبكة. والحزمة تدخل
+ * بنية الموقع فتُخزَّن مع بقيّة ملفاته.
+ *
+ * والمجموعتان الفرعيتان وحدهما (`arabic` و`latin`) لا الملف الجامع: هذا
+ * يستدعي المجموعات كلّها — كيريلية ويونانية وفيتنامية — ولا سطرَ في اللوحة
+ * يحتاجها.
+ *
+ * وثلاثة أوزان تكفي الواجهة: نصٌّ عادي، ووسْطٌ للعناوين الصغيرة والتسميات،
+ * وشبهُ عريضٍ للأرقام الكبيرة. وكلُّ وزنٍ زائد ملفٌّ يُنزَّل ولا يُستعمل.
+ */
+import '@fontsource/ibm-plex-sans-arabic/arabic-400.css'
+import '@fontsource/ibm-plex-sans-arabic/arabic-500.css'
+import '@fontsource/ibm-plex-sans-arabic/arabic-600.css'
+import '@fontsource/ibm-plex-sans-arabic/latin-400.css'
+import '@fontsource/ibm-plex-sans-arabic/latin-500.css'
+import '@fontsource/ibm-plex-sans-arabic/latin-600.css'
+
 import './index.css'
 
 /**
