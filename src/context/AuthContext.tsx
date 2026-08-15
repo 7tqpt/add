@@ -1,4 +1,13 @@
-import { createContext, use, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
+import {
+  createContext,
+  use,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react'
 import { isSupabaseConfigured, supabase } from '@/lib/supabase'
 import type { AdminArea, AdminRole } from '@/lib/types'
 import { canRead, canWriteArea } from '@/lib/permissions'
@@ -53,6 +62,13 @@ interface AuthValue {
   verifySignUpCode: (email: string, code: string) => Promise<void>
   resendSignUpCode: (email: string) => Promise<void>
   signOut: () => Promise<void>
+  /**
+   * يُعيد قراءة دورك من القاعدة.
+   *
+   * يلزم بعد نقل الملكية: الدور تغيّر من تحت الواجهة، ولولا هذه لبقيت اللوحة
+   * تعرض عليك أزرار المالك حتى تُحدِّث الصفحة — أزرارٌ ترفضها RLS بين يديك.
+   */
+  refreshRole: () => void
   /** Demo mode only: re-render the UI as another role to see gating at work. */
   previewRole: (role: AdminRole) => void
 }
@@ -79,14 +95,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setAuditActor(user?.email ?? '')
   }, [user])
 
+  /**
+   * الحساب الذي استقرّ دوره بالفعل.
+   *
+   * الفرق بين «أقرأ دور مستخدمٍ جديد» و«أُعيد قراءة دور المستخدم نفسه» ليس
+   * تفصيلاً: حارسُ المسار يستبدل اللوحة كلّها بشاشة انتظارٍ ما دام الدور غير
+   * محسوم. فلو صُفِّرت الحالة عند كل إعادة قراءة لتفكّكت الشجرة وضاعت حالةُ
+   * الصفحة معها — وهو ما يحدث بعد نقل الملكية بالضبط: يختفي التنبيه الذي
+   * يخبرك بما جرى، وتومض الشاشة بلا سبب ظاهر.
+   */
+  const resolvedFor = useRef<string | null>(null)
+
   useEffect(() => {
     if (!user) {
       setRole(null)
       setRoleResolved(false)
+      resolvedFor.current = null
       return
     }
     let active = true
-    setRoleResolved(false)
+    // مستخدمٌ لم يُحسم دوره بعد: تُحجب اللوحة حتى يُحسم، لئلا تومض شاشة
+    // «لا صلاحية» في وجه مالكٍ شرعيّ. أمّا إعادة القراءة لمن حُسم دوره فتجري
+    // في مكانها بلا تفكيك.
+    if (resolvedFor.current !== user.id) setRoleResolved(false)
     getMyRole(user.id)
       .then((next) => {
         if (active) setRole(next)
@@ -96,12 +127,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (active) setRole(null)
       })
       .finally(() => {
-        if (active) setRoleResolved(true)
+        if (!active) return
+        resolvedFor.current = user.id
+        setRoleResolved(true)
       })
     return () => {
       active = false
     }
   }, [user, roleNonce])
+
+  const refreshRole = useCallback(() => {
+    setRoleNonce((value) => value + 1)
+  }, [])
 
   const previewRole = useCallback((next: AdminRole) => {
     setDemoRole(next)
@@ -271,11 +308,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       verifySignUpCode,
       resendSignUpCode,
       signOut,
+      refreshRole,
       previewRole,
     }),
     [
       user, role, loading, roleResolved, signIn, signUp,
-      verifySignUpCode, resendSignUpCode, signOut, previewRole,
+      verifySignUpCode, resendSignUpCode, signOut, refreshRole, previewRole,
     ],
   )
 

@@ -194,6 +194,11 @@ export const AUDIT_ACTION_LABEL: Record<string, string> = {
   'version.rollout': 'تغيير نسبة الطرح',
   'settings.update': 'تحديث الإعدادات',
   'admin.role': 'تغيير دور مسؤول',
+  'admin.add': 'إضافة مسؤول',
+  'admin.remove': 'سحب صلاحية مسؤول',
+  'admin.invite': 'دعوة موظف',
+  'admin.invite_cancel': 'إلغاء دعوة',
+  'admin.ownership': 'نقل ملكية اللوحة',
   'audit.purge': 'تفريغ سجل العمليات',
 }
 
@@ -227,10 +232,28 @@ export async function clearAuditLog(): Promise<number> {
 
   const { data, error } = await requireSupabase().rpc('api_clear_audit_log')
   if (error) {
-    if (error.code === 'PGRST202' || /api_clear_audit_log/.test(error.message)) {
-      throw new Error('قاعدة البيانات لم تُحدَّث بعد — شغّل supabase/roles.sql ثم أعد المحاولة.')
+    // الخطأ الخام من Postgres لا يقول للمستخدم ماذا يفعل، فيُترجم إلى سببٍ
+    // وإجراء. وما لا يُعرف يُعرض كما هو مع رمزه — رسالةٌ غامضة أفضل من
+    // رسالةٍ مطمئنة كاذبة، وأسوأ ما يمكن هنا هو طريقٌ مسدود بلا دليل.
+    if (error.code === 'PGRST202') {
+      throw new Error(
+        'الدالة api_clear_audit_log غير موجودة في قاعدة بياناتك — شغّل ملف ' +
+          'supabase/roles.sql كاملاً في محرّر SQL، ثم أعد تحميل الصفحة.',
+      )
     }
-    throw new Error(error.message)
+    if (/للمالك وحده/.test(error.message)) {
+      throw new Error(
+        'قاعدة البيانات لا ترى حسابك مالكاً. تحقّق أن صفّك في جدول admins ' +
+          'دوره owner وأن user_id فيه يطابق حسابك في المصادقة.',
+      )
+    }
+    if (error.code === '42501' || /permission denied/i.test(error.message)) {
+      throw new Error(
+        'حسابك ممنوع من تنفيذ الدالة — أعد تشغيل سطر GRANT في نهاية ' +
+          'supabase/roles.sql.',
+      )
+    }
+    throw new Error(`تعذّر التفريغ${error.code ? ` (${error.code})` : ''}: ${error.message}`)
   }
   return (data as number) ?? 0
 }

@@ -68,6 +68,7 @@ export function AuditPage() {
   const [toast, setToast] = useState<string | null>(null)
   const [confirmPurge, setConfirmPurge] = useState(false)
   const [purging, setPurging] = useState(false)
+  const [purgeError, setPurgeError] = useState<string | null>(null)
   const { role } = useAuth()
 
   const debouncedSearch = useDebounced(search)
@@ -112,8 +113,14 @@ export function AuditPage() {
     }
   }, [entity, debouncedSearch])
 
+  function openPurge() {
+    setPurgeError(null)
+    setConfirmPurge(true)
+  }
+
   async function handlePurge() {
     setPurging(true)
+    setPurgeError(null)
     try {
       const removed = await clearAuditLog()
       setConfirmPurge(false)
@@ -121,7 +128,9 @@ export function AuditPage() {
       setToast(`فُرِّغ السجل — أُزيل ${removed} سجلّاً، وبقي أثر التفريغ نفسه.`)
       reload()
     } catch (cause) {
-      setToast(cause instanceof Error ? cause.message : 'تعذّر تفريغ السجل.')
+      // يبقى الحوار مفتوحاً حاملاً السبب: إغلاقه مع رسالةٍ في `Toast` يدفنها
+      // تحت ستار النافذة، فيبدو الزر معطّلاً بلا تفسير.
+      setPurgeError(cause instanceof Error ? cause.message : 'تعذّر تفريغ السجل.')
     } finally {
       setPurging(false)
     }
@@ -172,7 +181,7 @@ export function AuditPage() {
         {role === 'owner' ? (
           <Button
             variant="ghost"
-            onClick={() => setConfirmPurge(true)}
+            onClick={openPurge}
             disabled={!data || data.total === 0 || purging}
             className="text-[var(--critical)]"
           >
@@ -257,6 +266,7 @@ export function AuditPage() {
         }
         confirmLabel="نعم، فرّغ السجل"
         busy={purging}
+        error={purgeError}
         onConfirm={handlePurge}
         onCancel={() => setConfirmPurge(false)}
       />
