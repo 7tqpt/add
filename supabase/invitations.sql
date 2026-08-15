@@ -38,11 +38,38 @@ create table if not exists public.admin_invitations (
   created_at  timestamptz not null default now(),
   expires_at  timestamptz not null default now() + interval '7 days',
   accepted_at timestamptz,
-  accepted_by uuid references auth.users (id) on delete set null,
+  -- `cascade` لا `set null`، وهذا ليس تفضيلاً بل تصحيح عطل:
+  --
+  --   `set null` يُصفّر هذا العمود عند حذف الحساب ويترك `accepted_at` كما هو،
+  --   فينكسر الشرط أسفله الذي يوجب أن يكونا معاً — فتفشل عملية الحذف كلّها.
+  --   والرسالة التي تصل إلى لوحة Supabase حينئذٍ «Database error deleting
+  --   user»: لا تذكر الجدول ولا الشرط، فيبدو العطل في Supabase وهو في مخططنا.
+  --
+  --   والدعوة ملكُ صاحبها لا سجلٌّ للمنصّة، فذهابها معه هو الصواب. وبقاؤها
+  --   بعده يترك في الجدول سطراً يقول «قُبلت» لشخصٍ لا وجود له.
+  accepted_by uuid references auth.users (id) on delete cascade,
 
   constraint invitation_accepted_has_user
     check ((accepted_at is null) = (accepted_by is null))
 );
+
+-- ترحيل القواعد القائمة: `create table if not exists` أعلاه لا يمسّ جدولاً
+-- موجوداً، فمن ثبّت نسخةً سابقة يبقى عنده `set null` وتبقى معه العلّة.
+do $$
+begin
+  if exists (
+    select 1 from pg_constraint
+     where conname = 'admin_invitations_accepted_by_fkey'
+       and conrelid = 'public.admin_invitations'::regclass
+       and confdeltype <> 'c')          -- c = cascade
+  then
+    alter table public.admin_invitations
+      drop constraint admin_invitations_accepted_by_fkey;
+    alter table public.admin_invitations
+      add constraint admin_invitations_accepted_by_fkey
+      foreign key (accepted_by) references auth.users (id) on delete cascade;
+  end if;
+end $$;
 
 create index if not exists admin_invitations_email_idx
   on public.admin_invitations (lower(email)) where accepted_at is null;

@@ -488,10 +488,16 @@ begin
           p_user_id::text, target_mail,
           jsonb_build_object('from', target_role, 'user', target_mail));
 
+  -- ولا يُترقَّب نقصُ الصلاحية وحده: أوّل عطلٍ حقيقيّ هنا كان قيداً في جدولٍ
+  -- ثالث ينكسر عند التسلسل، لا صلاحيةً ناقصة. فما لا يُعرف يُنقل بنصّه ورمزه
+  -- بدل أن يُبتلع تحت رسالةٍ واحدة تُخطئ التشخيص.
   begin
     delete from auth.users where id = p_user_id;
-  exception when insufficient_privilege then
-    raise exception 'القاعدة لا تسمح بحذف حسابات المصادقة من هنا — احذفه من Supabase ← Authentication ← Users';
+  exception
+    when insufficient_privilege then
+      raise exception 'القاعدة لا تسمح بحذف حسابات المصادقة من هنا — احذفه من Supabase ← Authentication ← Users';
+    when others then
+      raise exception 'تعذّر حذف حساب المصادقة (%): %', sqlstate, sqlerrm;
   end;
 
   return target_mail;
