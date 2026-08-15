@@ -17,6 +17,7 @@ export function ConfirmDialog({
   cancelLabel = 'إلغاء',
   tone = 'danger',
   busy = false,
+  error = null,
   onConfirm,
   onCancel,
   children,
@@ -28,6 +29,15 @@ export function ConfirmDialog({
   cancelLabel?: string
   tone?: 'danger' | 'primary'
   busy?: boolean
+  /**
+   * سبب فشل التأكيد، يُعرض داخل النافذة نفسها.
+   *
+   * ولا يجوز عرضه في `Toast` بدلاً من هنا: النافذة تُفتح بـ`showModal()` فتُرسم
+   * في الطبقة العليا للمتصفّح، وهي فوق كل `z-index` مهما ارتفع. فأيّ رسالةٍ
+   * خارجها تُدفن تحت ستارها، ويرى المستخدم زرّاً «لا يفعل شيئاً» بينما
+   * التطبيق يشرح له السبب في مكانٍ لا يصله بصره.
+   */
+  error?: string | null
   onConfirm: () => void
   onCancel: () => void
   /** Extra input the confirmation needs, e.g. a reason for the action. */
@@ -68,6 +78,20 @@ export function ConfirmDialog({
         </div>
 
         {children ? <div className="flex flex-col gap-3">{children}</div> : null}
+
+        {error ? (
+          <p
+            role="alert"
+            className="rounded-lg border px-3 py-2.5 text-xs leading-6"
+            style={{
+              borderColor: 'color-mix(in oklab, var(--critical) 35%, transparent)',
+              background: 'color-mix(in oklab, var(--critical) 8%, transparent)',
+              color: 'var(--text-primary)',
+            }}
+          >
+            {error}
+          </p>
+        ) : null}
 
         <div className="flex justify-start gap-2">
           <Button
