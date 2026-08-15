@@ -326,6 +326,46 @@ drop policy if exists audit_log_append on public.audit_log;
 create policy audit_log_append on public.audit_log
   for insert to authenticated with check (public.is_admin());
 
+-- ----------------------------------------------------------------------------
+-- تفريغ سجل العمليات — للمالك وحده
+--
+--  السجل مُلحَقٌ فقط بتصميمه: لا سياسة `update` ولا `delete` عليه إطلاقاً، حتى
+--  لا يمحو مسؤولٌ أثر ما فعله. وهذا يبقى كما هو — لم تُضَف سياسة حذف، لأن
+--  إضافتها تفتح الحذف الانتقائي لأي جلسةٍ تحمل الدور، فيُمحى صفٌّ بعينه ولا
+--  يُدرى.
+--
+--  والتفريغ هنا دالةٌ `security definer` تتجاوز السياسات بنفسها بعد أن تتحقّق
+--  من المالك — فالقدرة محصورةٌ في هذا الباب وحده، لا مبثوثةٌ في الجدول.
+--
+--  **والتفريغ يُسجَّل.** يُحذف كل شيء ثم يُكتب صفٌّ يقول: من فرّغ، ومتى، وكم
+--  صفّاً أزال. فلا يخرج السجل من التفريغ فارغاً بل شاهداً على أنه فُرِّغ —
+--  وإلا صار أداةً لإخفاء ما جرى بدل إثباته، وهو نقيض غرضه.
+-- ----------------------------------------------------------------------------
+create or replace function public.api_clear_audit_log()
+returns integer
+language plpgsql security definer set search_path = public as $$
+declare
+  removed integer;
+  mail text := lower(coalesce(nullif(current_setting('request.jwt.claim.email', true), ''), ''));
+begin
+  if not public.is_owner() then
+    raise exception 'تفريغ سجل العمليات للمالك وحده';
+  end if;
+
+  delete from public.audit_log;
+  get diagnostics removed = row_count;
+
+  insert into public.audit_log (actor_email, action, entity, entity_label, details)
+  values (mail, 'audit.purge', 'audit_log', 'سجل العمليات',
+          jsonb_build_object('removed', removed));
+
+  return removed;
+end;
+$$;
+
+revoke all on function public.api_clear_audit_log() from public;
+grant execute on function public.api_clear_audit_log() to authenticated;
+
 -- can_write() القديمة تبقى لأن السياسات التي لم تُستبدل تستعملها، لكنها صارت
 -- تعني «يكتب في أي مجال» — أوسع من أن يُبنى عليها قرار، فلا تُستعمل في جديد.
 create or replace function public.can_write()

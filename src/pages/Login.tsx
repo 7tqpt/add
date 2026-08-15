@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
-import { AlertCircle, PartyPopper } from 'lucide-react'
+import { AlertCircle, BarChart3, PartyPopper, ScrollText, ShieldCheck, Wallet } from 'lucide-react'
 import { acceptInvitation, checkInvitation } from '@/services/admins'
 import { ROLE_LABEL } from '@/lib/permissions'
 import { Button } from '@/components/ui/Button'
@@ -8,6 +8,14 @@ import { Field, Input } from '@/components/ui/Field'
 import { LoadingBlock, Spinner } from '@/components/ui/Feedback'
 import { useAuth } from '@/context/AuthContext'
 import { isSupabaseConfigured } from '@/lib/supabase'
+
+/** بطاقات لوح العلامة — أربعٌ تصف ما تفعله اللوحة فعلاً، لا شعاراتٍ عامة. */
+const BRAND_POINTS = [
+  { icon: BarChart3, title: 'أرقامٌ فورية', note: 'الحجوزات والإيرادات لحظةً بلحظة' },
+  { icon: Wallet, title: 'مالٌ محكوم', note: 'المدفوعات والتسويات والاسترجاع' },
+  { icon: ShieldCheck, title: 'صلاحياتٌ دقيقة', note: 'سبعة أدوار على تسعة محاور' },
+  { icon: ScrollText, title: 'سجلٌّ لا يُمحى', note: 'كل إجراء بمن فعله ومتى' },
+] as const
 
 export function LoginPage() {
   const { user, loading, signIn, signUp, verifySignUpCode, resendSignUpCode } = useAuth()
@@ -122,15 +130,71 @@ export function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-full items-center justify-center bg-page px-4 py-10">
-      <div className="w-full max-w-sm">
-        <div className="mb-6 flex flex-col items-center gap-3 text-center">
-          <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-accent text-accent-ink">
-            <PartyPopper size={22} aria-hidden />
-          </span>
-          <div>
-            <h1 className="text-lg font-semibold text-ink">منصة حجوزات الأعراس</h1>
-            <p className="mt-1 text-xs text-muted">
+    /**
+     * شاشةٌ منقسمة: النموذج في نصف، ولوحُ العلامة في الآخر.
+     *
+     * واللوح يختفي دون 1024 بكسل بدل أن ينضغط تحت النموذج: على الجوال ليس
+     * وقتَ التعريف بالمنصّة، بل وقتَ الدخول إليها بأقل عدد لمسات.
+     */
+    <div className="grid min-h-full lg:grid-cols-2">
+      {/* لوح العلامة — يُخفى عن قارئ الشاشة: زخرفةٌ لا معلومة، والنموذج يحمل
+          كل ما يلزم لإتمام المهمة. */}
+      <aside
+        aria-hidden
+        className="relative hidden overflow-hidden bg-[#070c16] p-12 text-white lg:flex lg:flex-col lg:justify-center"
+      >
+        <div
+          className="pointer-events-none absolute inset-0 opacity-90"
+          style={{
+            background:
+              'radial-gradient(1100px 620px at 78% 12%, #1d4ed8 0%, transparent 55%),' +
+              'radial-gradient(760px 520px at 12% 88%, #0e6f8c 0%, transparent 60%)',
+          }}
+        />
+        <div className="relative">
+          <div className="mb-9 flex items-center gap-3">
+            <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-accent text-accent-ink">
+              <PartyPopper size={24} aria-hidden />
+            </span>
+            <span className="text-xl font-semibold">منصة حجوزات الأعراس</span>
+          </div>
+
+          <h2 className="max-w-lg text-4xl leading-[1.35] font-bold text-balance xl:text-5xl">
+            أهلاً بك في
+            <span className="mt-1 block text-[#7fb2ff]">لوحة إدارة المنصّة</span>
+          </h2>
+          <p className="mt-5 max-w-md text-base leading-8 text-white/70">
+            الحجوزات ومقدّمو الخدمة والمدفوعات والتسويات — من مكانٍ واحد، بأرقامٍ
+            فوريةٍ وسجلٍّ لكل إجراء.
+          </p>
+
+          <div className="mt-11 grid max-w-lg grid-cols-2 gap-3.5">
+            {BRAND_POINTS.map(({ icon: Icon, title, note }) => (
+              <div
+                key={title}
+                className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur-sm"
+              >
+                <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/10">
+                  <Icon size={17} aria-hidden />
+                </span>
+                <p className="mt-3 text-sm font-semibold">{title}</p>
+                <p className="mt-0.5 text-xs leading-6 text-white/60">{note}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </aside>
+
+      <div className="flex items-center justify-center bg-page px-4 py-12">
+        <div className="w-full max-w-sm">
+          <div className="mb-7 flex flex-col items-center gap-3 text-center lg:hidden">
+            <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-accent text-accent-ink">
+              <PartyPopper size={22} aria-hidden />
+            </span>
+          </div>
+          <div className="mb-7 text-center lg:text-start">
+            <h1 className="text-2xl font-bold text-ink">منصة حجوزات الأعراس</h1>
+            <p className="mt-1.5 text-sm text-muted">
               {pending
                 ? 'خطوة أخيرة — أكّد بريدك'
                 : mode === 'signin'
@@ -138,7 +202,6 @@ export function LoginPage() {
                   : 'أنشئ حسابك برمز الدعوة الذي وصلك'}
             </p>
           </div>
-        </div>
 
         {pending ? (
           <form
@@ -317,7 +380,8 @@ export function LoginPage() {
             </code>
             .
           </p>
-        ) : null}
+          ) : null}
+        </div>
       </div>
     </div>
   )

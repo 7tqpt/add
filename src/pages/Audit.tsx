@@ -1,10 +1,13 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Search } from 'lucide-react'
+import { Search, Trash2 } from 'lucide-react'
+import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { ExportButton } from '@/components/ui/ExportButton'
 import { EmptyState, ErrorState, LoadingBlock, Toast } from '@/components/ui/Feedback'
 import { Input, Select } from '@/components/ui/Field'
 import { Pagination } from '@/components/ui/Pagination'
+import { useAuth } from '@/context/AuthContext'
 import { useAsync } from '@/hooks/useAsync'
 import { useDebounced } from '@/hooks/useDebounced'
 import { cn } from '@/lib/cn'
@@ -13,6 +16,7 @@ import { isSupabaseConfigured } from '@/lib/supabase'
 import {
   AUDIT_ACTION_LABEL,
   AUDIT_ENTITY_LABEL,
+  clearAuditLog,
   listAudit,
   type AuditQuery,
 } from '@/services/audit'
@@ -62,6 +66,9 @@ export function AuditPage() {
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(0)
   const [toast, setToast] = useState<string | null>(null)
+  const [confirmPurge, setConfirmPurge] = useState(false)
+  const [purging, setPurging] = useState(false)
+  const { role } = useAuth()
 
   const debouncedSearch = useDebounced(search)
 
@@ -105,6 +112,21 @@ export function AuditPage() {
     }
   }, [entity, debouncedSearch])
 
+  async function handlePurge() {
+    setPurging(true)
+    try {
+      const removed = await clearAuditLog()
+      setConfirmPurge(false)
+      setPage(0)
+      setToast(`فُرِّغ السجل — أُزيل ${removed} سجلّاً، وبقي أثر التفريغ نفسه.`)
+      reload()
+    } catch (cause) {
+      setToast(cause instanceof Error ? cause.message : 'تعذّر تفريغ السجل.')
+    } finally {
+      setPurging(false)
+    }
+  }
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-2">
@@ -145,6 +167,19 @@ export function AuditPage() {
           disabled={!data || data.total === 0}
           onError={setToast}
         />
+
+        {/* للمالك وحده — والقاعدة تتحقّق أيضاً، فإخفاؤه هنا راحةٌ لا حماية. */}
+        {role === 'owner' ? (
+          <Button
+            variant="ghost"
+            onClick={() => setConfirmPurge(true)}
+            disabled={!data || data.total === 0 || purging}
+            className="text-[var(--critical)]"
+          >
+            <Trash2 size={15} aria-hidden />
+            تفريغ السجل
+          </Button>
+        ) : null}
       </div>
 
       {!isSupabaseConfigured ? (
@@ -212,6 +247,19 @@ export function AuditPage() {
       </Card>
 
       {toast ? <Toast message={toast} /> : null}
+
+      <ConfirmDialog
+        open={confirmPurge}
+        title="تفريغ سجل العمليات؟"
+        message={
+          `سيُحذف ${data?.total ?? 0} سجلّاً حذفاً نهائياً لا رجعة فيه. ` +
+          'ويبقى في السجل صفٌّ واحد يُثبت أنك فرّغته ومتى وكم أزلت — فالأثر لا يُمحى كلّه.'
+        }
+        confirmLabel="نعم، فرّغ السجل"
+        busy={purging}
+        onConfirm={handlePurge}
+        onCancel={() => setConfirmPurge(false)}
+      />
     </div>
   )
 }

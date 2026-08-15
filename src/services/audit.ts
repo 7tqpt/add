@@ -194,4 +194,43 @@ export const AUDIT_ACTION_LABEL: Record<string, string> = {
   'version.rollout': 'تغيير نسبة الطرح',
   'settings.update': 'تحديث الإعدادات',
   'admin.role': 'تغيير دور مسؤول',
+  'audit.purge': 'تفريغ سجل العمليات',
+}
+
+/**
+ * يُفرِّغ سجل العمليات — للمالك وحده، والقاعدة هي التي تتحقّق لا الواجهة.
+ *
+ * والجدول يبقى بلا سياسة حذف: التفريغ دالةٌ `security definer` تتجاوز
+ * السياسات بعد أن تتأكّد من المالك، فلا يُفتح الحذف الانتقائي لأي جلسة.
+ *
+ * ويُخلّف التفريغ أثره — صفٌّ يقول من فرّغ وكم أزال — فلا يخرج السجل منه
+ * فارغاً بل شاهداً على أنه فُرِّغ. يُعيد عدد ما أُزيل.
+ */
+export async function clearAuditLog(): Promise<number> {
+  if (!isSupabaseConfigured) {
+    const removed = readDemoLog().length
+    const actor = 'demo-admin@aras.ye'
+    writeDemoLog([
+      {
+        id: `demo-purge-${Date.now()}`,
+        actor_email: actor,
+        action: 'audit.purge',
+        entity: 'audit_log',
+        entity_id: '',
+        entity_label: 'سجل العمليات',
+        details: { removed },
+        created_at: new Date().toISOString(),
+      },
+    ])
+    return delay(removed)
+  }
+
+  const { data, error } = await requireSupabase().rpc('api_clear_audit_log')
+  if (error) {
+    if (error.code === 'PGRST202' || /api_clear_audit_log/.test(error.message)) {
+      throw new Error('قاعدة البيانات لم تُحدَّث بعد — شغّل supabase/roles.sql ثم أعد المحاولة.')
+    }
+    throw new Error(error.message)
+  }
+  return (data as number) ?? 0
 }

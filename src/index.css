@@ -155,11 +155,25 @@ body,
   height: 100%;
 }
 
+/* المقاس الأساس 17 بكسل لا 16.
+   والزيادة على الجذر لا على كل صنف: مقاسات Tailwind (`text-sm` و`text-xs`)
+   مكتوبةٌ بوحدة `rem`، فرفعُ الجذر يرفعها كلّها معاً ويحفظ النِّسب بينها.
+   ولو كبّرتُ كل صنفٍ بيده لانهار التسلسل عند أول صنفٍ نسيتُه.
+
+   والعربية تحتاج هذه الزيادة أكثر من اللاتينية: حروفها متّصلة ونقاطها
+   مميِّزة، فما يُقرأ لاتينياً عند 16 يضيق عربياً. */
+html {
+  font-size: 17px;
+}
+
 body {
   background-color: var(--page);
   color: var(--text-primary);
   font-family: 'IBM Plex Sans Arabic', system-ui, -apple-system, 'Segoe UI Arabic', sans-serif;
   -webkit-font-smoothing: antialiased;
+  /* ارتفاعُ سطرٍ أوسع للعربية: تشابكُ الحروف يحتاج فراغاً بين السطور أكثر
+     ممّا تحتاجه اللاتينية عند المقاس نفسه. */
+  line-height: 1.7;
 }
 
 /* Axis ticks and table columns align vertically, so they take tabular figures.
