@@ -421,6 +421,81 @@ textarea {
 }
 
 /* ---------------------------------------------------------------------------
+   الشريط العلوي — زجاجٌ يتبدّل مع القسم.
+
+   وزجاجُه صادقٌ لا مصنوع: الشريط لاصقٌ فوق مساحةٍ تُمرَّر تحته، فالضباب يجد
+   محتوىً حقيقياً يضبّبه — وهو الموضع الوحيد في اللوحة الذي يعمل فيه
+   `backdrop-filter` على وجهه.
+
+   والصبغة تدخل من طرف البداية وتتلاشى: وشاحٌ يميل بالزجاج نحو لون القسم بلا
+   أن يصبغه كلّه، فيبقى النصّ على ورقٍ محايد.
+   --------------------------------------------------------------------------- */
+.topbar-glass {
+  background:
+    linear-gradient(
+      to var(--wash-dir, left),
+      color-mix(in oklab, var(--tone, var(--accent)) 12%, transparent),
+      transparent 55%
+    ),
+    color-mix(in oklab, var(--surface) 74%, transparent);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  backdrop-filter: blur(18px) saturate(160%);
+  box-shadow:
+    inset 0 1px 0 color-mix(in oklab, white 42%, transparent),
+    inset 0 -2px 0 0 color-mix(in oklab, var(--tone, var(--accent)) 62%, transparent),
+    0 12px 26px -24px var(--tone, var(--accent));
+}
+
+/* مشهدٌ صغير: منظورٌ قصير يجعل الدوران يُقرأ في عنصرٍ لا يتجاوز أربعين
+   بكسلاً. والمنظور الطويل يجعل الدوران يبدو انبعاجاً مسطّحاً. */
+.scene-sm {
+  perspective: 620px;
+}
+
+/* انقلابةُ القرص عند تبدّل القسم.
+   والمفتاح في React هو ما يُعيد تشغيلها: العنصر يُستبدل عند كل قسم، فتبدأ
+   الحركة من أوّلها. ولو بقي العنصر نفسه لما أُعيدت الحركة مهما تغيّر لونه. */
+@keyframes chip-flip {
+  from {
+    opacity: 0;
+    transform: rotateY(-84deg) scale(0.82);
+  }
+}
+.chip-3d {
+  animation: chip-flip var(--dur-slow) var(--ease-out) both;
+  transform-style: preserve-3d;
+}
+
+@keyframes title-in {
+  from {
+    opacity: 0;
+    transform: translate3d(10px, 0, 0);
+  }
+}
+.title-in {
+  animation: title-in var(--dur-base) var(--ease-out) both;
+}
+
+/* ميلانٌ مجسّم عند التحويم.
+   والتحويم على الأب لا على القرص وحده حين يكون القرص جزءاً من زرّ: من يقصد
+   زرّ الحساب يقصده كلّه، ومؤشّره يقع على كلمته أكثر ممّا يقع على قرصها —
+   فربطُ الميلان بالقرص وحده يجعله لا يظهر إلا بالمصادفة. و`tilt-group` هي
+   من يُعلن أنه أبٌ لميلان، فلا يسري على كل قرصٍ داخل كل مشهد. */
+.tilt-hover {
+  transition: transform var(--dur-base) var(--ease-out);
+  transform-style: preserve-3d;
+}
+.tilt-group {
+  perspective: 620px;
+}
+@media (hover: hover) {
+  .tilt-hover:hover,
+  .tilt-group:hover .tilt-hover {
+    transform: rotateX(-10deg) rotateY(8deg) translateZ(8px);
+  }
+}
+
+/* ---------------------------------------------------------------------------
    قرصٌ زجاجيٌّ لأيقونات التنقّل.
 
    والضبابُ وحده لا يكفي هنا: الشريط الجانبي سطحٌ مصمتٌ لا صورةَ خلفه، فتضبيب
@@ -655,6 +730,9 @@ textarea {
   /* الميلان والطفو والدوران تُلغى كلّها: تصفيرُ مدّتها وحدها يُبقي العنصر
      مائلاً أو مرفوعاً في وضعٍ ثابتٍ غريب. فتُعاد إلى وضعها المستوي. */
   .press-card:active,
+  .tilt-hover:hover,
+  .tilt-group:hover .tilt-hover,
+  .chip-3d,
   .tilt,
   .layer-1,
   .layer-2,
