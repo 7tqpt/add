@@ -352,8 +352,18 @@ begin
     raise exception 'تفريغ سجل العمليات للمالك وحده';
   end if;
 
-  delete from public.audit_log;
-  get diagnostics removed = row_count;
+  select count(*) into removed from public.audit_log;
+
+  -- `truncate` لا `delete`: مشاريع Supabase تحمّل إضافة `pg-safeupdate` على
+  -- أدوار الـAPI، وهي ترفض كل `DELETE` بلا شرط `WHERE` برمز 21000 — حمايةً من
+  -- محو جدولٍ كامل بالخطأ عبر الواجهة.
+  --
+  -- ولم ألتفّ عليها بشرطٍ صوريٍّ مثل `where true`: الشرط الثابت يُطوى في
+  -- التخطيط فلا يبقى له أثرٌ في الخطة، والإضافة تفحص الخطة لا النصّ — فيرجع
+  -- الرفض نفسه. والأهمّ أن الالتفاف على حمايةٍ بخداعها عادةٌ سيّئة تُنسى فتُطبّق
+  -- حيث لا يجوز. و`truncate` ليس التفافاً: هو الأمر الذي يعني «أفرغ الجدول»
+  -- صراحةً، والحماية هنا قائمةٌ في `is_owner()` قبله لا في شكل الجملة.
+  truncate table public.audit_log;
 
   insert into public.audit_log (actor_email, action, entity, entity_label, details)
   values (mail, 'audit.purge', 'audit_log', 'سجل العمليات',
@@ -420,6 +430,92 @@ $$;
 
 revoke all on function public.api_transfer_ownership(uuid) from public;
 grant execute on function public.api_transfer_ownership(uuid) to authenticated;
+
+-- ----------------------------------------------------------------------------
+--  حذف حساب موظف حذفاً تامّاً
+--
+--  الفرق بينه وبين «سحب الصلاحية» ليس في الدرجة بل في النوع: السحب يحذف صفّ
+--  المسؤول ويترك حساب المصادقة قائماً، وهذا يمحو الحساب نفسه فلا يبقى للموظف
+--  مدخلٌ إلى شيء.
+--
+--  **والخطر هنا ليس في الحذف بل فيما يتسلسل منه.** `auth.users` مرتبطٌ بـ
+--  `app_users` بـ`on delete cascade`، و`app_users` يتسلسل منه اثنا عشر جدولاً
+--  فيها خطط الأعراس والحجوزات والمفضّلات والتقييمات. فلو كان هذا الموظف عميلاً
+--  على التطبيق أيضاً — وهو وارد: الموظف عريسٌ أو أخو عروس — لمحا هذا الزرّ
+--  حجوزاته وأموالها معها، ولا أحد يربط بين «حذفتُ موظفاً» و«ضاع حجز».
+--
+--  فالدالة تفحص ذلك وترفض، وتدلّ على «سحب الصلاحية» بديلاً. والرفض هنا أنفع
+--  من التنفيذ: ما يُمحى لا يُستعاد، والموظف الذي بقي حسابه بلا صلاحية لا يضرّ.
+-- ----------------------------------------------------------------------------
+create or replace function public.api_delete_admin_account(p_user_id uuid)
+returns text
+language plpgsql security definer set search_path = public as $$
+declare
+  me          uuid := auth.uid();
+  my_mail     text;
+  target_mail text;
+  target_role text;
+  app_rows    integer;
+begin
+  if not public.is_owner() then
+    raise exception 'حذف حسابات الموظفين للمالك وحده';
+  end if;
+
+  if p_user_id is null or p_user_id = me then
+    raise exception 'لا تحذف حسابك بنفسك — انقل الملكية أولاً، ثم يحذفه مالكها الجديد';
+  end if;
+
+  select email, role into target_mail, target_role
+    from public.admins where user_id = p_user_id;
+  if target_mail is null then
+    raise exception 'لا يوجد مسؤولٌ بهذا الحساب';
+  end if;
+
+  if target_role = 'owner' then
+    raise exception 'لا يُحذف مالك — انقل الملكية عنه أولاً ثم احذفه';
+  end if;
+
+  select count(*) into app_rows
+    from public.app_users where auth_user_id = p_user_id;
+  if app_rows > 0 then
+    raise exception 'هذا الحساب مستخدمٌ في التطبيق أيضاً، وحذفه يمحو حجوزاته وخططه معه — اسحب صلاحيته بدل حذفه';
+  end if;
+
+  select email into my_mail from public.admins where user_id = me;
+
+  -- دعواته تُمحى معه: تركُها يُبقي في الجدول سطراً يقول «قُبلت» لشخصٍ لم يعد
+  -- له وجود، وهو أشدّ تضليلاً من غيابه.
+  if to_regclass('public.admin_invitations') is not null then
+    delete from public.admin_invitations where lower(email) = lower(target_mail);
+  end if;
+
+  delete from public.admins where user_id = p_user_id;
+
+  -- الأثر يُكتب قبل الحذف الأخير: لو رفضت القاعدة حذف حساب المصادقة تراجعت
+  -- المعاملة كلّها بما فيها هذا الصفّ، فلا يبقى في السجل أثرُ حذفٍ لم يقع.
+  insert into public.audit_log (actor_email, action, entity, entity_id, entity_label, details)
+  values (coalesce(my_mail, ''), 'admin.delete_account', 'admin',
+          p_user_id::text, target_mail,
+          jsonb_build_object('from', target_role, 'user', target_mail));
+
+  -- ولا يُترقَّب نقصُ الصلاحية وحده: أوّل عطلٍ حقيقيّ هنا كان قيداً في جدولٍ
+  -- ثالث ينكسر عند التسلسل، لا صلاحيةً ناقصة. فما لا يُعرف يُنقل بنصّه ورمزه
+  -- بدل أن يُبتلع تحت رسالةٍ واحدة تُخطئ التشخيص.
+  begin
+    delete from auth.users where id = p_user_id;
+  exception
+    when insufficient_privilege then
+      raise exception 'القاعدة لا تسمح بحذف حسابات المصادقة من هنا — احذفه من Supabase ← Authentication ← Users';
+    when others then
+      raise exception 'تعذّر حذف حساب المصادقة (%): %', sqlstate, sqlerrm;
+  end;
+
+  return target_mail;
+end;
+$$;
+
+revoke all on function public.api_delete_admin_account(uuid) from public;
+grant execute on function public.api_delete_admin_account(uuid) to authenticated;
 
 -- can_write() القديمة تبقى لأن السياسات التي لم تُستبدل تستعملها، لكنها صارت
 -- تعني «يكتب في أي مجال» — أوسع من أن يُبنى عليها قرار، فلا تُستعمل في جديد.

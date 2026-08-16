@@ -5,7 +5,14 @@
    OS preference is resolved in JS, so CSS only ever has one dark scope. */
 @custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
 
-:root {
+/* اللوحة الفاتحة على الجذر **وعلى أي عنصرٍ يطلبها صراحةً**.
+   ‏`[data-theme='light']` ليست تكراراً بلا داعٍ: بها تصير الفاتحة جزيرةً
+   تُزرع داخل صفحةٍ داكنة — كبطاقة الدخول البيضاء فوق أرضيةٍ زرقاء. ولولاها
+   لورث كل ما في البطاقة ألوان الوضع الداكن، فيصير حبرٌ فاتحٌ على ورقٍ أبيض.
+   والمشروع لا يستعمل صنف `dark:` إطلاقاً — كل لونٍ يمرّ بهذه المتغيّرات —
+   فالجزيرة تعمل بلا استثناء. */
+:root,
+[data-theme='light'] {
   /* surfaces — أبيضٌ منحازٌ إلى الأزرق قليلاً لا رماديٌّ محايد: الرمادي
      المحايد يبدو غير مقصود، والانحياز الخفيف نحو لون العلامة يجعله مُختاراً. */
   --page: #f4f7fc;
@@ -301,6 +308,206 @@ textarea {
   animation: shimmer 1.4s linear infinite;
 }
 
+/* ---------------------------------------------------------------------------
+   الزجاج.
+
+   وهو ليس شفافيةً وحدها: الشفافية بلا `backdrop-filter` تُظهر ما تحتها كما هو
+   فيتنازع المحتوى والخلفية على العين. والضبابُ هو ما يجعل السطح زجاجاً — يمرّر
+   اللون ويحجب التفصيل.
+
+   و`saturate` معه مقصود: الضباب وحده يبهت ما خلفه، فتبدو البطاقة رماديةً فوق
+   أزرق. ورفعُ التشبّع يعيد إلى الزجاج زرقةَ ما تحته فيبدو نافذةً لا غشاوة.
+   --------------------------------------------------------------------------- */
+.glass {
+  background: rgba(255, 255, 255, 0.09);
+  /* المسبوقة أوّلاً والقياسية بعدها، لا العكس.
+     المصغّر يعرف أنهما خاصّيةٌ واحدة فيُبقي الأخيرة ويشتقّ ما يلزم من سوابق.
+     ولمّا كتبتُ القياسية أوّلاً حُذفت وبقيت نسخة Safari وحدها — وكروم لا
+     يعرفها، فذهب الزجاج عن أكثر المستخدمين ولم يظهر شيءٌ في البناء ولا في
+     الأنواع. أمسكه فحصُ المتصفّح وحده. */
+  -webkit-backdrop-filter: blur(22px) saturate(150%);
+  backdrop-filter: blur(22px) saturate(150%);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow:
+    0 36px 90px -34px rgba(0, 0, 0, 0.75),
+    /* خطٌّ فاتحٌ على الحافّة العليا: انعكاسُ الضوء على حرف الزجاج، وهو ما
+       يفرّق الزجاج عن مستطيلٍ شفّافٍ فحسب. */ inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+
+/**
+ * جزيرةٌ داكنة بألوان زجاجية.
+ *
+ * الزجاج فوق أرضيةٍ زرقاءَ داكنة يبقى داكناً، فالحبر عليه يجب أن يكون فاتحاً —
+ * وهو عكس البطاقة البيضاء تماماً. فبدل تلوين كل عنصرٍ بيده تُعاد المتغيّرات
+ * هنا مرّةً واحدة: كل حقلٍ وحدٍّ وحبرٍ بداخلها يتبعها بلا أن يُذكر.
+ *
+ * والأسطح شفّافةٌ لا مصمتة، فيصير كل حقلٍ فيها زجاجاً صغيراً داخل الزجاج
+ * الكبير بلا صنفٍ إضافيّ عليه.
+ */
+.glass-island {
+  --surface: rgba(255, 255, 255, 0.1);
+  --surface-2: rgba(255, 255, 255, 0.06);
+  --border: rgba(255, 255, 255, 0.2);
+  --text-primary: #f7faff;
+  --text-secondary: rgba(233, 240, 255, 0.78);
+  --text-muted: rgba(214, 226, 245, 0.6);
+  --ring: rgba(147, 197, 253, 0.5);
+  color-scheme: dark;
+}
+
+/* زرٌّ أزرقُ زجاجيّ: تدرّجٌ رأسيّ لا لونٌ مصمت — الزجاج المضاء أعلاه أفتح
+   ممّا في أسفله، وهذا ما يجعله يبدو جسماً لا مساحة. */
+.btn-glass {
+  background: linear-gradient(180deg, rgba(96, 165, 250, 0.62), rgba(29, 78, 216, 0.55));
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+  backdrop-filter: blur(14px) saturate(160%);
+  border: 1px solid rgba(147, 197, 253, 0.45);
+  color: #ffffff;
+  box-shadow:
+    0 12px 30px -10px rgba(29, 78, 216, 0.75),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+@media (hover: hover) {
+  .btn-glass:hover:not(:disabled) {
+    background: linear-gradient(180deg, rgba(120, 180, 255, 0.72), rgba(37, 92, 235, 0.65));
+    border-color: rgba(191, 219, 254, 0.6);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   قرصٌ زجاجيٌّ لأيقونات التنقّل.
+
+   والضبابُ وحده لا يكفي هنا: الشريط الجانبي سطحٌ مصمتٌ لا صورةَ خلفه، فتضبيب
+   ما وراءه لا يُنتج شيئاً يُرى. فالزجاج يُبنى من عناصره الأخرى — تدرّجٌ شفّاف
+   من أعلى لأسفل، وحدٌّ رفيع، وخطُّ ضوءٍ على الحافّة العليا يقلّد انعكاس
+   الضوء على حرف الزجاج. وهذه الثلاثة هي ما يجعل السطح يبدو جسماً لا لوناً.
+
+   وكلّه بـ`color-mix` على الرموز لا بألوانٍ ثابتة، فيتبع الثيمين معاً: في
+   الفاتح زجاجٌ فوق أبيض، وفي الداكن زجاجٌ فوق كحليّ، بالنسب نفسها.
+   --------------------------------------------------------------------------- */
+.icon-glass {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  flex-shrink: 0;
+  border-radius: 0.65rem;
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--accent) 10%, transparent),
+    color-mix(in oklab, var(--accent) 3%, transparent)
+  );
+  border: 1px solid color-mix(in oklab, var(--accent) 18%, var(--border));
+  box-shadow: inset 0 1px 0 color-mix(in oklab, white 45%, transparent);
+  transition:
+    background var(--dur-base) var(--ease-out),
+    border-color var(--dur-base) var(--ease-out),
+    box-shadow var(--dur-base) var(--ease-out);
+}
+
+/* البند النشط: الزجاج نفسه مصبوغٌ أعمق ومضاءٌ من تحته. والفرق بين الحالتين
+   في الكثافة لا في الشكل، فيُقرأ ترقّياً في السلّم نفسه لا عنصراً آخر. */
+.icon-glass-active {
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--accent) 30%, transparent),
+    color-mix(in oklab, var(--accent) 14%, transparent)
+  );
+  border-color: color-mix(in oklab, var(--accent) 45%, transparent);
+  box-shadow:
+    inset 0 1px 0 color-mix(in oklab, white 55%, transparent),
+    0 6px 16px -8px var(--accent);
+}
+
+/* استدارةٌ تامّة للحقول والأزرار في صفحة الدخول.
+   وصنفٌ صريحٌ لا `rounded-full` من Tailwind: `cn` عندنا يَصِل الأصناف وصلاً
+   ولا يحلّ تعارضها، فلو اجتمع `rounded-lg` من المكوّن و`rounded-full` من موضع
+   الاستعمال لحسم الترتيبُ في ورقة الأنماط لا نيّةُ الكاتب. وهذا الصنف خارج
+   طبقات Tailwind، والقواعد خارج الطبقات تسبق ما بداخلها مهما كان ترتيبها. */
+.pill {
+  border-radius: 9999px;
+}
+
+/* ---------------------------------------------------------------------------
+   العلامة والعمق — ثلاثيّ الأبعاد حيث يخدم، لا حيث يُبهر.
+
+   الميلان على لوح صفحة الدخول وحده: هناك لا شيء ينافسه على الانتباه، والدخول
+   لحظةٌ واحدة في اليوم. أمّا داخل اللوحة فالمستخدم يقرأ أرقاماً ساعاتٍ
+   متّصلة، وسطحٌ يميل تحت مؤشّره يجعل قراءة الجدول عملاً.
+   --------------------------------------------------------------------------- */
+@keyframes brand-ring {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.brand-ring {
+  animation: brand-ring 14s linear infinite;
+}
+
+/* المشهد: المنظور على الحاوية لا على العنصر، فتشترك أبناؤه في نقطة تلاشٍ
+   واحدة. ولو وُضع على كلٍّ على حدة لبدا كلٌّ منها في غرفةٍ مستقلّة. */
+.scene {
+  perspective: 1400px;
+  perspective-origin: 50% 40%;
+}
+
+/* اللوح المائل. الزاويتان تُكتبان من JS في `--rx` و`--ry`، والانتقال يلحق
+   بهما فيصير التتبّع ناعماً بلا حساب إطاراتٍ في JS. */
+.tilt {
+  transform: rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
+  transform-style: preserve-3d;
+  transition: transform 260ms var(--ease-out);
+  will-change: transform;
+}
+
+/* الطبقات تطفو على أعماقٍ مختلفة، فيولد الفرق إحساسَ المجسّم عند الميل.
+   وبدونها يميل سطحٌ مسطّحٌ واحد، وهو ميلانٌ لا عمق. */
+.layer-1 { transform: translateZ(28px); }
+.layer-2 { transform: translateZ(56px); }
+.layer-3 { transform: translateZ(84px); }
+
+@keyframes float-y {
+  50% {
+    transform: translate3d(0, -10px, 0);
+  }
+}
+.float {
+  animation: float-y 6s ease-in-out infinite;
+}
+
+/* ---------------------------------------------------------------------------
+   ردّ فعل الأيقونات — تأكيدٌ لمسيّ.
+
+   الانكماش على الأيقونة وحدها لا على الزرّ كلّه: انكماش الزرّ يزحزح نصّه
+   فتتراقص السطور حوله، وانكماش الأيقونة يُقرأ ضغطةً دون أن يمسّ التخطيط.
+   --------------------------------------------------------------------------- */
+.icon-press svg {
+  transition:
+    transform var(--dur-fast) var(--ease-out),
+    opacity var(--dur-fast) var(--ease-out);
+}
+.icon-press:active svg {
+  transform: scale(0.86);
+}
+
+/* بندُ التنقّل: أيقونته تتقدّم قليلاً نحو النصّ عند التحويم. و`start` لا
+   `left`: اللوحة عربيةٌ والاتجاه من اليمين، فالتقدّم يجب أن يعكس معها. */
+.nav-item svg {
+  transition: transform var(--dur-base) var(--ease-out);
+}
+@media (hover: hover) {
+  .nav-item:hover svg {
+    transform: translateX(2px);
+  }
+}
+[dir='rtl'] .nav-item:hover svg {
+  transform: translateX(-2px);
+}
+.nav-item:active svg {
+  transform: scale(0.88);
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -315,5 +522,19 @@ textarea {
 
   .lift:hover {
     transform: none;
+  }
+
+  /* الميلان والطفو والدوران تُلغى كلّها: تصفيرُ مدّتها وحدها يُبقي العنصر
+     مائلاً أو مرفوعاً في وضعٍ ثابتٍ غريب. فتُعاد إلى وضعها المستوي. */
+  .tilt,
+  .layer-1,
+  .layer-2,
+  .layer-3,
+  .float,
+  .brand-ring {
+    transform: none !important;
+  }
+  .scene {
+    perspective: none;
   }
 }

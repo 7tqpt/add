@@ -77,6 +77,46 @@ export async function setAdminRole(admin: AdminAccount, role: AdminRole): Promis
 }
 
 /**
+ * يمحو الموظف من القاعدة: صفّ المسؤول، ودعواته، وحساب المصادقة نفسه.
+ *
+ * وهو غير `removeAdmin`: تلك تسحب الصلاحية وتُبقي الحساب — لأن صاحبه قد يكون
+ * عميلاً على التطبيق. وهذه تمحو الحساب، فترفضها القاعدة إن كان له بياناتٌ
+ * هناك، لأن الحذف يتسلسل إلى حجوزاته وخططه.
+ *
+ * ولا أثر يُكتب هنا: الدالة تكتبه داخل معاملتها، فإن تراجعت تراجع معها ولم
+ * يبقَ في السجل أثرُ حذفٍ لم يقع.
+ */
+export async function deleteAdminAccount(admin: AdminAccount): Promise<string> {
+  if (!isSupabaseConfigured) {
+    const index = demoAdmins.findIndex((candidate) => candidate.user_id === admin.user_id)
+    if (index >= 0) demoAdmins.splice(index, 1)
+    await delay(null, 260)
+    await recordAudit({
+      action: 'admin.delete_account',
+      entity: 'admin',
+      entityId: admin.user_id,
+      entityLabel: admin.email,
+      details: { from: ROLE_LABEL[admin.role], user: admin.email },
+    })
+    return admin.email
+  }
+
+  const { data, error } = await requireSupabase().rpc('api_delete_admin_account', {
+    p_user_id: admin.user_id,
+  })
+  if (error) {
+    if (error.code === 'PGRST202') {
+      throw new Error(
+        'الدالة api_delete_admin_account غير موجودة في قاعدة بياناتك — شغّل ملف ' +
+          'supabase/roles.sql كاملاً في محرّر SQL، ثم أعد تحميل الصفحة.',
+      )
+    }
+    throw new Error(`تعذّر الحذف${error.code ? ` (${error.code})` : ''}: ${error.message}`)
+  }
+  return (data as string) ?? admin.email
+}
+
+/**
  * ينقل ملكية اللوحة إلى مسؤولٍ آخر، ويُنزل الناقل إلى «مدير».
  *
  * نداءٌ واحد لا نداءان: الترقية والتنزيل يقعان معاً في معاملةٍ واحدة داخل

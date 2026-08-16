@@ -1,7 +1,8 @@
 import { NavLink } from 'react-router-dom'
-import { PartyPopper, X } from 'lucide-react'
+import { X } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { useAuth } from '@/context/AuthContext'
+import { BrandLockup } from '@/components/brand/Brand'
 import { NAV_GROUPS } from './nav'
 
 export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -35,15 +36,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
         )}
       >
         <div className="flex h-16 shrink-0 items-center justify-between gap-2 border-b border-hairline px-4">
-          <div className="flex items-center gap-2.5">
-            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent text-accent-ink">
-              <PartyPopper size={18} aria-hidden />
-            </span>
-            <div className="leading-tight">
-              <p className="text-sm font-semibold text-ink">لوحة التحكم</p>
-              <p className="text-[11px] text-muted">منصة حجوزات الأعراس</p>
-            </div>
-          </div>
+          <BrandLockup size={36} />
           <button
             type="button"
             onClick={onClose}
@@ -71,20 +64,32 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
                       onClick={onClose}
                       className={({ isActive }) =>
                         cn(
-                          'flex h-10 items-center gap-2.5 rounded-lg px-3 text-sm font-medium transition-colors',
+                          'nav-item relative flex h-10 items-center gap-2.5 rounded-lg px-3 text-sm font-medium transition-colors',
+                          // شريطٌ على الحافّة الداخلية للبند النشط: علامةٌ
+                          // ثانية غير اللون، فمن لا يفرّق الألوان يرى موضعه.
                           isActive
-                            ? 'bg-surface-2 text-ink'
+                            ? 'bg-surface-2 text-ink before:absolute before:inset-y-2 before:start-0 before:w-[3px] before:rounded-full before:bg-accent'
                             : 'text-ink-2 hover:bg-surface-2 hover:text-ink',
                         )
                       }
                     >
                       {({ isActive }) => (
                         <>
-                          <item.icon
-                            size={17}
-                            aria-hidden
-                            className={isActive ? 'text-accent' : 'text-muted'}
-                          />
+                          {/* الأيقونة في قرصٍ زجاجيّ: القرص يعطيها جسماً
+                              ويجعل صفَّ البنود مقروءاً بمسحةٍ واحدة، بدل
+                              رموزٍ عائمةٍ في الفراغ تتفاوت أوزانها. */}
+                          <span
+                            className={cn(
+                              'icon-glass',
+                              isActive && 'icon-glass-active',
+                            )}
+                          >
+                            <item.icon
+                              size={16}
+                              aria-hidden
+                              className={isActive ? 'text-accent' : 'text-ink-2'}
+                            />
+                          </span>
                           {item.label}
                         </>
                       )}

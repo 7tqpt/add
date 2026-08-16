@@ -199,6 +199,7 @@ export const AUDIT_ACTION_LABEL: Record<string, string> = {
   'admin.invite': 'دعوة موظف',
   'admin.invite_cancel': 'إلغاء دعوة',
   'admin.ownership': 'نقل ملكية اللوحة',
+  'admin.delete_account': 'حذف حساب موظف',
   'audit.purge': 'تفريغ سجل العمليات',
 }
 

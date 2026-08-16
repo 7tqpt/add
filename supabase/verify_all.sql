@@ -23,7 +23,7 @@ with checks as (
   union all
   select 3, 'دوال الـ API',
          (select count(*) from information_schema.routines
-           where routine_schema = 'public' and routine_name like 'api\_%'), 18
+           where routine_schema = 'public' and routine_name like 'api\_%'), 19
 
   union all
   select 4, 'سياسات RLS',
