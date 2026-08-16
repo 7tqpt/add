@@ -374,6 +374,52 @@ textarea {
   }
 }
 
+/* ---------------------------------------------------------------------------
+   قرصٌ زجاجيٌّ لأيقونات التنقّل.
+
+   والضبابُ وحده لا يكفي هنا: الشريط الجانبي سطحٌ مصمتٌ لا صورةَ خلفه، فتضبيب
+   ما وراءه لا يُنتج شيئاً يُرى. فالزجاج يُبنى من عناصره الأخرى — تدرّجٌ شفّاف
+   من أعلى لأسفل، وحدٌّ رفيع، وخطُّ ضوءٍ على الحافّة العليا يقلّد انعكاس
+   الضوء على حرف الزجاج. وهذه الثلاثة هي ما يجعل السطح يبدو جسماً لا لوناً.
+
+   وكلّه بـ`color-mix` على الرموز لا بألوانٍ ثابتة، فيتبع الثيمين معاً: في
+   الفاتح زجاجٌ فوق أبيض، وفي الداكن زجاجٌ فوق كحليّ، بالنسب نفسها.
+   --------------------------------------------------------------------------- */
+.icon-glass {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  flex-shrink: 0;
+  border-radius: 0.65rem;
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--accent) 10%, transparent),
+    color-mix(in oklab, var(--accent) 3%, transparent)
+  );
+  border: 1px solid color-mix(in oklab, var(--accent) 18%, var(--border));
+  box-shadow: inset 0 1px 0 color-mix(in oklab, white 45%, transparent);
+  transition:
+    background var(--dur-base) var(--ease-out),
+    border-color var(--dur-base) var(--ease-out),
+    box-shadow var(--dur-base) var(--ease-out);
+}
+
+/* البند النشط: الزجاج نفسه مصبوغٌ أعمق ومضاءٌ من تحته. والفرق بين الحالتين
+   في الكثافة لا في الشكل، فيُقرأ ترقّياً في السلّم نفسه لا عنصراً آخر. */
+.icon-glass-active {
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--accent) 30%, transparent),
+    color-mix(in oklab, var(--accent) 14%, transparent)
+  );
+  border-color: color-mix(in oklab, var(--accent) 45%, transparent);
+  box-shadow:
+    inset 0 1px 0 color-mix(in oklab, white 55%, transparent),
+    0 6px 16px -8px var(--accent);
+}
+
 /* استدارةٌ تامّة للحقول والأزرار في صفحة الدخول.
    وصنفٌ صريحٌ لا `rounded-full` من Tailwind: `cn` عندنا يَصِل الأصناف وصلاً
    ولا يحلّ تعارضها، فلو اجتمع `rounded-lg` من المكوّن و`rounded-full` من موضع

@@ -75,11 +75,21 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
                     >
                       {({ isActive }) => (
                         <>
-                          <item.icon
-                            size={17}
-                            aria-hidden
-                            className={isActive ? 'text-accent' : 'text-muted'}
-                          />
+                          {/* الأيقونة في قرصٍ زجاجيّ: القرص يعطيها جسماً
+                              ويجعل صفَّ البنود مقروءاً بمسحةٍ واحدة، بدل
+                              رموزٍ عائمةٍ في الفراغ تتفاوت أوزانها. */}
+                          <span
+                            className={cn(
+                              'icon-glass',
+                              isActive && 'icon-glass-active',
+                            )}
+                          >
+                            <item.icon
+                              size={16}
+                              aria-hidden
+                              className={isActive ? 'text-accent' : 'text-ink-2'}
+                            />
+                          </span>
                           {item.label}
                         </>
                       )}
