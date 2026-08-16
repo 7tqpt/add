@@ -1,3 +1,5 @@
+import { useId } from 'react'
+
 /**
  * علامة «سد للبرمجيات».
  *
@@ -34,6 +36,16 @@ export function BrandMark({
     )
   }
 
+  /*
+    معرّفٌ فريدٌ لكل نسخة.
+
+    الصفحة قد تحمل نسختين — واحدةٌ للحاسوب وأخرى للجوال، إحداهما مخفيّة
+    بـ`display:none`. ولو تشاركتا معرّف التدرّج لحُلّت الإشارة إلى الأولى في
+    ترتيب المستند، وهي المخفيّة، فلا يجد المتصفّح ما يطلي به الحرف: قرصٌ
+    أسود بلا شعار. وهو عطلٌ لا يظهر إلا على المقاس الذي تختفي فيه الأخرى.
+  */
+  const gradient = `sddBlue-${useId()}`
+
   return (
     <svg
       viewBox="0 0 64 64"
@@ -44,7 +56,7 @@ export function BrandMark({
       style={{ display: 'block' }}
     >
       <defs>
-        <linearGradient id="sddBlue" x1="0" y1="0" x2="1" y2="1">
+        <linearGradient id={gradient} x1="0" y1="0" x2="1" y2="1">
           <stop offset="0" stopColor="#7fc4ff" />
           <stop offset="0.5" stopColor="#2f80ff" />
           <stop offset="1" stopColor="#1436a8" />
@@ -88,7 +100,7 @@ export function BrandMark({
       <polyline
         points="45,17 20,17 20,30 44,30 44,47 19,47"
         fill="none"
-        stroke="url(#sddBlue)"
+        stroke={`url(#${gradient})`}
         strokeWidth="7.5"
         strokeLinecap="square"
       />
