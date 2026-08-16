@@ -5,7 +5,7 @@ export function Card({ className, children }: { className?: string; children: Re
   return (
     <section
       className={cn(
-        'rounded-xl border border-hairline bg-surface shadow-[0_1px_2px_rgba(11,18,32,0.05)]',
+        'glass-panel rounded-xl border border-hairline',
         // الدخول والارتفاع هنا لا في كل صفحة: البطاقة مكوّنٌ واحد تستعمله
         // اللوحة كلّها، فوضعُهما فيه يسري على كل شاشة بلا تكرار.
         'rise lift',
