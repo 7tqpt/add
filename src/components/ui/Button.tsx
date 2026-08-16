@@ -19,8 +19,10 @@ const SIZES: Record<Size, string> = {
   md: 'h-10 px-4 text-sm gap-2',
 }
 
+// `icon-press` هنا لا في كل موضع استعمال: الزرّ واحدٌ في المشروع كلّه،
+// فوضعُ ردّ الفعل في أساسه يجعله يشمل كل زرٍّ حاضرٍ ومستقبَل بلا أن يُنسى.
 const BASE =
-  'inline-flex cursor-pointer items-center justify-center rounded-lg font-medium whitespace-nowrap transition-[background-color,filter,color] disabled:cursor-not-allowed disabled:opacity-55'
+  'icon-press inline-flex cursor-pointer items-center justify-center rounded-lg font-medium whitespace-nowrap transition-[background-color,filter,color] disabled:cursor-not-allowed disabled:opacity-55'
 
 /**
  * أصناف الزرّ لعنصر ليس `<button>`.

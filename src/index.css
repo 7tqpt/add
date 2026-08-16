@@ -301,6 +301,85 @@ textarea {
   animation: shimmer 1.4s linear infinite;
 }
 
+/* ---------------------------------------------------------------------------
+   العلامة والعمق — ثلاثيّ الأبعاد حيث يخدم، لا حيث يُبهر.
+
+   الميلان على لوح صفحة الدخول وحده: هناك لا شيء ينافسه على الانتباه، والدخول
+   لحظةٌ واحدة في اليوم. أمّا داخل اللوحة فالمستخدم يقرأ أرقاماً ساعاتٍ
+   متّصلة، وسطحٌ يميل تحت مؤشّره يجعل قراءة الجدول عملاً.
+   --------------------------------------------------------------------------- */
+@keyframes brand-ring {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.brand-ring {
+  animation: brand-ring 14s linear infinite;
+}
+
+/* المشهد: المنظور على الحاوية لا على العنصر، فتشترك أبناؤه في نقطة تلاشٍ
+   واحدة. ولو وُضع على كلٍّ على حدة لبدا كلٌّ منها في غرفةٍ مستقلّة. */
+.scene {
+  perspective: 1400px;
+  perspective-origin: 50% 40%;
+}
+
+/* اللوح المائل. الزاويتان تُكتبان من JS في `--rx` و`--ry`، والانتقال يلحق
+   بهما فيصير التتبّع ناعماً بلا حساب إطاراتٍ في JS. */
+.tilt {
+  transform: rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
+  transform-style: preserve-3d;
+  transition: transform 260ms var(--ease-out);
+  will-change: transform;
+}
+
+/* الطبقات تطفو على أعماقٍ مختلفة، فيولد الفرق إحساسَ المجسّم عند الميل.
+   وبدونها يميل سطحٌ مسطّحٌ واحد، وهو ميلانٌ لا عمق. */
+.layer-1 { transform: translateZ(28px); }
+.layer-2 { transform: translateZ(56px); }
+.layer-3 { transform: translateZ(84px); }
+
+@keyframes float-y {
+  50% {
+    transform: translate3d(0, -10px, 0);
+  }
+}
+.float {
+  animation: float-y 6s ease-in-out infinite;
+}
+
+/* ---------------------------------------------------------------------------
+   ردّ فعل الأيقونات — تأكيدٌ لمسيّ.
+
+   الانكماش على الأيقونة وحدها لا على الزرّ كلّه: انكماش الزرّ يزحزح نصّه
+   فتتراقص السطور حوله، وانكماش الأيقونة يُقرأ ضغطةً دون أن يمسّ التخطيط.
+   --------------------------------------------------------------------------- */
+.icon-press svg {
+  transition:
+    transform var(--dur-fast) var(--ease-out),
+    opacity var(--dur-fast) var(--ease-out);
+}
+.icon-press:active svg {
+  transform: scale(0.86);
+}
+
+/* بندُ التنقّل: أيقونته تتقدّم قليلاً نحو النصّ عند التحويم. و`start` لا
+   `left`: اللوحة عربيةٌ والاتجاه من اليمين، فالتقدّم يجب أن يعكس معها. */
+.nav-item svg {
+  transition: transform var(--dur-base) var(--ease-out);
+}
+@media (hover: hover) {
+  .nav-item:hover svg {
+    transform: translateX(2px);
+  }
+}
+[dir='rtl'] .nav-item:hover svg {
+  transform: translateX(-2px);
+}
+.nav-item:active svg {
+  transform: scale(0.88);
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -315,5 +394,19 @@ textarea {
 
   .lift:hover {
     transform: none;
+  }
+
+  /* الميلان والطفو والدوران تُلغى كلّها: تصفيرُ مدّتها وحدها يُبقي العنصر
+     مائلاً أو مرفوعاً في وضعٍ ثابتٍ غريب. فتُعاد إلى وضعها المستوي. */
+  .tilt,
+  .layer-1,
+  .layer-2,
+  .layer-3,
+  .float,
+  .brand-ring {
+    transform: none !important;
+  }
+  .scene {
+    perspective: none;
   }
 }

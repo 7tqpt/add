@@ -1,11 +1,12 @@
-import { useState, type FormEvent } from 'react'
+import { useRef, useState, type FormEvent } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
-import { AlertCircle, BarChart3, PartyPopper, ScrollText, ShieldCheck, Wallet } from 'lucide-react'
+import { AlertCircle, BarChart3, ScrollText, ShieldCheck, Wallet } from 'lucide-react'
 import { acceptInvitation, checkInvitation } from '@/services/admins'
 import { ROLE_LABEL } from '@/lib/permissions'
 import { Button } from '@/components/ui/Button'
 import { Field, Input } from '@/components/ui/Field'
 import { LoadingBlock, Spinner } from '@/components/ui/Feedback'
+import { BrandLockup, BrandMark } from '@/components/brand/Brand'
 import { useAuth } from '@/context/AuthContext'
 import { isSupabaseConfigured } from '@/lib/supabase'
 
@@ -17,7 +18,37 @@ const BRAND_POINTS = [
   { icon: ScrollText, title: 'سجلٌّ لا يُمحى', note: 'كل إجراء بمن فعله ومتى' },
 ] as const
 
+/**
+ * ميلان اللوح خلف المؤشّر.
+ *
+ * الزاويتان تُكتبان في متغيّرَي CSS لا في حالة React: تحريك الحالة عند كل
+ * حركة مؤشّرٍ يُعيد بناء الشجرة عشرات المرّات في الثانية، والمتغيّر يُكتب على
+ * العنصر مباشرةً فيبقى التحريك في طبقة التركيب وحدها.
+ *
+ * والحدّ ±7 درجات: ما فوقه يقلب اللوح لوحةَ لعبٍ ويشوّه النصّ عليه.
+ */
+const MAX_TILT = 7
+
 export function LoginPage() {
+  const stage = useRef<HTMLElement | null>(null)
+
+  function follow(event: { clientX: number; clientY: number }) {
+    const el = stage.current
+    if (!el) return
+    const box = el.getBoundingClientRect()
+    const x = (event.clientX - box.left) / box.width - 0.5
+    const y = (event.clientY - box.top) / box.height - 0.5
+    // المحور المقلوب مقصود: تحريك المؤشّر لأعلى يميل أعلى اللوح بعيداً عنه،
+    // وهو ما تفعله لوحةٌ حقيقيةٌ تُمسك من حافّتها.
+    el.style.setProperty('--rx', `${(-y * MAX_TILT).toFixed(2)}deg`)
+    el.style.setProperty('--ry', `${(x * MAX_TILT).toFixed(2)}deg`)
+  }
+
+  function rest() {
+    stage.current?.style.setProperty('--rx', '0deg')
+    stage.current?.style.setProperty('--ry', '0deg')
+  }
+
   const { user, loading, signIn, signUp, verifySignUpCode, resendSignUpCode } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
@@ -140,8 +171,11 @@ export function LoginPage() {
       {/* لوح العلامة — يُخفى عن قارئ الشاشة: زخرفةٌ لا معلومة، والنموذج يحمل
           كل ما يلزم لإتمام المهمة. */}
       <aside
+        ref={stage}
         aria-hidden
-        className="relative hidden overflow-hidden bg-[#070c16] p-12 text-white lg:flex lg:flex-col lg:justify-center"
+        onPointerMove={follow}
+        onPointerLeave={rest}
+        className="scene relative hidden overflow-hidden bg-[#070c16] p-12 text-white lg:flex lg:flex-col lg:justify-center"
       >
         <div
           className="pointer-events-none absolute inset-0 opacity-90"
@@ -151,24 +185,31 @@ export function LoginPage() {
               'radial-gradient(760px 520px at 12% 88%, #0e6f8c 0%, transparent 60%)',
           }}
         />
-        <div className="relative">
-          <div className="mb-9 flex items-center gap-3">
-            <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-accent text-accent-ink">
-              <PartyPopper size={24} aria-hidden />
-            </span>
-            <span className="text-xl font-semibold">منصة حجوزات الأعراس</span>
+
+        {/* حلقةٌ ضخمةٌ طافية خلف المحتوى — عمقٌ في الخلفية لا زخرفةٌ فوقها */}
+        <div
+          className="float pointer-events-none absolute -end-24 top-1/2 h-[34rem] w-[34rem] -translate-y-1/2 rounded-full opacity-30"
+          style={{
+            border: '1px solid rgba(96,165,250,0.5)',
+            boxShadow: 'inset 0 0 120px rgba(29,78,216,0.45), 0 0 90px rgba(29,78,216,0.25)',
+          }}
+        />
+
+        <div className="tilt relative">
+          <div className="layer-1 mb-9">
+            <BrandLockup size={54} spin tone="invert" subtitle="SDD SOFTWARE" />
           </div>
 
-          <h2 className="max-w-lg text-4xl leading-[1.35] font-bold text-balance xl:text-5xl">
-            أهلاً بك في
-            <span className="mt-1 block text-[#7fb2ff]">لوحة إدارة المنصّة</span>
+          <h2 className="layer-2 max-w-lg text-4xl leading-[1.35] font-bold text-balance xl:text-5xl">
+            حيث تبدأ القوة
+            <span className="mt-1 block text-[#7fb2ff]">وتستمر التقنية</span>
           </h2>
-          <p className="mt-5 max-w-md text-base leading-8 text-white/70">
+          <p className="layer-2 mt-5 max-w-md text-base leading-8 text-white/70">
             الحجوزات ومقدّمو الخدمة والمدفوعات والتسويات — من مكانٍ واحد، بأرقامٍ
             فوريةٍ وسجلٍّ لكل إجراء.
           </p>
 
-          <div className="mt-11 grid max-w-lg grid-cols-2 gap-3.5">
+          <div className="layer-3 mt-11 grid max-w-lg grid-cols-2 gap-3.5">
             {BRAND_POINTS.map(({ icon: Icon, title, note }) => (
               <div
                 key={title}
@@ -188,9 +229,7 @@ export function LoginPage() {
       <div className="flex items-center justify-center bg-page px-4 py-12">
         <div className="w-full max-w-sm">
           <div className="mb-7 flex flex-col items-center gap-3 text-center lg:hidden">
-            <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-accent text-accent-ink">
-              <PartyPopper size={22} aria-hidden />
-            </span>
+            <BrandMark size={52} spin />
           </div>
           <div className="mb-7 text-center lg:text-start">
             <h1 className="text-2xl font-bold text-ink">منصة حجوزات الأعراس</h1>
