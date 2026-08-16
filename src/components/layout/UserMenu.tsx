@@ -67,7 +67,10 @@ export function UserMenu() {
         onClick={() => setOpen((on) => !on)}
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-label={`حساب ${user.email}`}
+        // النصّ المرئي كلمةٌ واحدة، والبريد لا يظهر إلا داخل القائمة. ولذلك
+        // يحمله `aria-label`: قارئ الشاشة يسمع «بروفيل» وحدها فلا يعرف أيّ
+        // حسابٍ هو، ومن يدير حسابين يحتاج أن يعرف قبل أن يضغط الخروج.
+        aria-label={`بروفيل — ${user.email}`}
         className="icon-press flex cursor-pointer items-center gap-2 rounded-full border border-hairline bg-surface-2 py-1 ps-1 pe-2.5 transition-colors hover:border-[color-mix(in_oklab,var(--accent)_40%,var(--border))]"
       >
         <span
@@ -76,7 +79,7 @@ export function UserMenu() {
         >
           {initial}
         </span>
-        <span className="hidden max-w-40 truncate text-xs text-ink-2 sm:inline">{user.email}</span>
+        <span className="hidden text-xs font-medium text-ink-2 sm:inline">بروفيل</span>
       </button>
 
       {open ? (
