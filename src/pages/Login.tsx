@@ -14,7 +14,7 @@ import { ROLE_LABEL } from "@/lib/permissions";
 import { Button } from "@/components/ui/Button";
 import { Field, Input } from "@/components/ui/Field";
 import { LoadingBlock, Spinner } from "@/components/ui/Feedback";
-import { BrandLockup, BrandMark } from "@/components/brand/Brand";
+import { BrandMark } from "@/components/brand/Brand";
 import { useAuth } from "@/context/AuthContext";
 import { isSupabaseConfigured } from "@/lib/supabase";
 
@@ -236,13 +236,10 @@ export function LoginPage() {
           كل ما يلزم لإتمام المهمة. */}
         <aside aria-hidden className="hidden lg:block">
           <div className="tilt relative">
+            {/* العلامة وحدها بلا نصٍّ بجانبها: اسم الشركة وشعارها مكتوبان
+                داخلها، وتكرارهما إلى جوارها حشوٌ لا تعريف. */}
             <div className="layer-1 mb-9">
-              <BrandLockup
-                size={54}
-                spin
-                tone="invert"
-                subtitle="SDD SOFTWARE"
-              />
+              <BrandMark size={196} spin />
             </div>
 
             <h2 className="layer-2 max-w-lg text-4xl leading-[1.35] font-bold text-balance xl:text-5xl">
@@ -286,7 +283,7 @@ export function LoginPage() {
         <div className="flex items-center justify-center">
           <div className="w-full max-w-sm">
             <div className="mb-7 flex flex-col items-center gap-3 text-center lg:hidden">
-              <BrandMark size={52} spin />
+              <BrandMark size={92} spin />
             </div>
             <div className="mb-6 text-center lg:text-start">
               <h1 className="text-2xl font-bold text-white">

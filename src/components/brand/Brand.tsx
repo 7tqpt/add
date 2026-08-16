@@ -1,141 +1,97 @@
-import { useId } from 'react'
-
 /**
  * علامة «سد للبرمجيات».
  *
- * مرسومةٌ شيفرةً لا صورةً، لثلاثة أسباب: تتبع الثيم فلا تحتاج نسخةً فاتحةً
- * وأخرى داكنة، وتبقى حادّةً في كل مقاسٍ وكثافة، ووزنها أقلّ من كيلوبايت فلا
- * يومض رأسُ اللوحة في انتظار تحميلها.
+ * وهي ملفُّ العلامة نفسه لا رسمٌ يشبهه: `public/brand/logo.png` مقصوصةً في
+ * قرصٍ شفّاف الحواف، فتجلس على أي أرضيةٍ بلا مربّعٍ داكنٍ حولها.
  *
- * ولاستبدالها بملفّ العلامة الأصلي: ضع الصورة في `public/brand/logo.png`،
- * ثم مرّر `src` إلى `BrandMark` — والباقي يعمل كما هو.
+ * ولا تدور: في العلامة اسمُ الشركة وشعارها مكتوبَين، ودورانُها يقلب الكلام
+ * رأساً على عقب. فالحركة — إن طُلبت — في حلقةٍ مرسومةٍ حولها تدور وحدها،
+ * والعلامة ثابتةٌ في مركزها.
  */
 
-/** الحلقة والحرف. الحلقة تدور دورةً بطيئةً واحدة عند الظهور ثم تهدأ. */
+const LOGO = "/brand/logo.png";
+
 export function BrandMark({
   size = 40,
   spin = false,
-  src,
 }: {
-  size?: number
-  /** دورانٌ دائم — لصفحة الدخول وحدها، حيث لا شيء ينافسها على الانتباه. */
-  spin?: boolean
-  /** مسار صورة العلامة الأصلية، إن وُضعت في `public/`. */
-  src?: string
+  size?: number;
+  /** حلقةٌ تدور حول العلامة — لصفحة الدخول، حيث لا شيء ينافسها على الانتباه. */
+  spin?: boolean;
 }) {
-  if (src) {
-    return (
+  return (
+    <span
+      className="relative inline-flex shrink-0 items-center justify-center"
+      style={{ width: size, height: size }}
+    >
+      {spin ? (
+        <svg
+          viewBox="0 0 100 100"
+          aria-hidden
+          className="brand-ring pointer-events-none absolute inset-0 h-full w-full"
+        >
+          <circle
+            cx="50"
+            cy="50"
+            r="48"
+            fill="none"
+            stroke="#60a5fa"
+            strokeOpacity="0.55"
+            strokeWidth="1"
+            strokeDasharray="26 10 14 8"
+            strokeLinecap="round"
+          />
+        </svg>
+      ) : null}
+
       <img
-        src={src}
+        src={LOGO}
         alt=""
         aria-hidden
         width={size}
         height={size}
-        className="shrink-0 rounded-xl object-cover"
+        // الحلقة تدور خارج العلامة، فتُصغَّر قليلاً لتترك لها مجالاً.
+        style={{ width: spin ? "84%" : "100%", height: spin ? "84%" : "100%" }}
+        className="object-contain"
       />
-    )
-  }
-
-  /*
-    معرّفٌ فريدٌ لكل نسخة.
-
-    الصفحة قد تحمل نسختين — واحدةٌ للحاسوب وأخرى للجوال، إحداهما مخفيّة
-    بـ`display:none`. ولو تشاركتا معرّف التدرّج لحُلّت الإشارة إلى الأولى في
-    ترتيب المستند، وهي المخفيّة، فلا يجد المتصفّح ما يطلي به الحرف: قرصٌ
-    أسود بلا شعار. وهو عطلٌ لا يظهر إلا على المقاس الذي تختفي فيه الأخرى.
-  */
-  const gradient = `sddBlue-${useId()}`
-
-  return (
-    <svg
-      viewBox="0 0 64 64"
-      width={size}
-      height={size}
-      aria-hidden
-      className="shrink-0"
-      style={{ display: 'block' }}
-    >
-      <defs>
-        <linearGradient id={gradient} x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#7fc4ff" />
-          <stop offset="0.5" stopColor="#2f80ff" />
-          <stop offset="1" stopColor="#1436a8" />
-        </linearGradient>
-      </defs>
-
-      {/* دائرةٌ لا مربّع: العلامة الأصلية قرصٌ، والقرص هو ما يعرفه الناس منها.
-          وأيقونة التبويب وحدها مربّعة — المتصفّح يعطيها 16 بكسلاً فلا تُهدر
-          زواياها على فراغ. */}
-      <circle cx="32" cy="32" r="31.2" fill="#070c16" />
-
-      {/* حلقةٌ تقنيةٌ مقطّعة — قوسان لا دائرةٌ تامّة، كما في العلامة */}
-      <g
-        className={spin ? 'brand-ring' : undefined}
-        style={{ transformOrigin: '32px 32px' }}
-      >
-        <circle
-          cx="32"
-          cy="32"
-          r="27"
-          fill="none"
-          stroke="#1d4ed8"
-          strokeOpacity="0.45"
-          strokeWidth="1.6"
-          strokeDasharray="34 12 18 10"
-          strokeLinecap="round"
-        />
-        <circle
-          cx="32"
-          cy="32"
-          r="23"
-          fill="none"
-          stroke="#60a5fa"
-          strokeOpacity="0.3"
-          strokeWidth="1"
-          strokeDasharray="8 14"
-        />
-      </g>
-
-      {/* حرف S زاويٌّ لا منحنٍ */}
-      <polyline
-        points="45,17 20,17 20,30 44,30 44,47 19,47"
-        fill="none"
-        stroke={`url(#${gradient})`}
-        strokeWidth="7.5"
-        strokeLinecap="square"
-      />
-    </svg>
-  )
+    </span>
+  );
 }
 
 /**
- * العلامة كاملةً: الحرف والاسمان.
+ * العلامة والاسمان بجانبها.
  *
- * والاسم العربي أوّلاً لا الإنجليزي: اللوحة عربيةٌ وقارئها عربي، والسطر
- * اللاتيني توقيعٌ تحته لا عنوان.
+ * ولمَ يُكتب الاسم وهو مكتوبٌ داخل العلامة؟ لأن العلامة في الشريط الجانبي
+ * ستّةٌ وثلاثون بكسلاً، وخطُّ «سد للبرمجيات» داخلها عندئذٍ أدقُّ من بكسلين —
+ * يُرى ولا يُقرأ. فالنصّ خارجها هو ما يُقرأ فعلاً.
+ *
+ * أمّا حيث تكبر العلامة — كلوح صفحة الدخول — فالاسم داخلها يكفي، ويُستعمل
+ * `BrandMark` وحده.
  */
 export function BrandLockup({
   size = 40,
   spin = false,
-  tone = 'auto',
-  subtitle = 'منصة حجوزات الأعراس',
+  tone = "auto",
+  subtitle = "منصة حجوزات الأعراس",
 }: {
-  size?: number
-  spin?: boolean
-  /** `invert` لأرضيةٍ داكنة دائماً — كلوح صفحة الدخول. */
-  tone?: 'auto' | 'invert'
-  subtitle?: string
+  size?: number;
+  spin?: boolean;
+  /** `invert` لأرضيةٍ داكنة دائماً. */
+  tone?: "auto" | "invert";
+  subtitle?: string;
 }) {
-  const strong = tone === 'invert' ? 'text-white' : 'text-ink'
-  const weak = tone === 'invert' ? 'text-white/60' : 'text-muted'
+  const strong = tone === "invert" ? "text-white" : "text-ink";
+  const weak = tone === "invert" ? "text-white/60" : "text-muted";
 
   return (
     <span className="flex items-center gap-2.5">
       <BrandMark size={size} spin={spin} />
       <span className="leading-tight">
-        <span className={`block text-sm font-semibold ${strong}`}>سد للبرمجيات</span>
+        <span className={`block text-sm font-semibold ${strong}`}>
+          سد للبرمجيات
+        </span>
         <span className={`block text-[11px] ${weak}`}>{subtitle}</span>
       </span>
     </span>
-  )
+  );
 }

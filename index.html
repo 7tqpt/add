@@ -7,13 +7,14 @@
     <title>سد للبرمجيات — لوحة إدارة المنصّة</title>
 
     <!--
-      شعار التبويب. لاستبداله بملفّ العلامة الأصلي: ضع الصورة في
-      `public/brand/logo.png` وبدّل السطر التالي بـ
-      <link rel="icon" type="image/png" href="/brand/logo.png" />
-      ويُفضّل أن تكون 512×512 بخلفيةٍ داكنة، لأن التبويب يعرضها 16 بكسلاً.
+      شعار التبويب هو العلامة نفسها، مقصوصةً في قرصٍ شفّاف الحواف.
+
+      ونسختان لا واحدة: التبويب يعرضها 16 بكسلاً، وتصغيرُ ملفٍّ 512 إلى 16
+      يذيب تفاصيلها في الطريق. فالنسخة الصغيرة تُصغَّر مرّةً واحدة عندنا
+      بخوارزميةٍ أدقّ، والكبيرة تبقى لشاشة الجوال حين تُضاف إلى الشاشة.
     -->
-    <link rel="icon" type="image/svg+xml" href="/brand/favicon.svg" />
-    <link rel="apple-touch-icon" href="/brand/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="64x64" href="/brand/favicon.png" />
+    <link rel="apple-touch-icon" href="/brand/logo.png" />
 
     <!-- لون شريط المتصفّح على الجوال — يتبع الثيم فلا ينشزّ عن الصفحة -->
     <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f4f7fc" />
