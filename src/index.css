@@ -274,6 +274,52 @@ body {
   }
 }
 
+/* ---------------------------------------------------------------------------
+   ضغطُ البطاقة.
+
+   والفخّ هنا أن `:active` تسري على الآباء: فالضغط على زرٍّ داخل البطاقة
+   يُفعّلها على البطاقة نفسها، فتنكمش اللوحة كلّها عند كل نقرةٍ على «قبول» أو
+   «رفض» — وهي حركةٌ كاذبة تقول إن المضغوط هو البطاقة وليس كذلك.
+
+   فقاعدةٌ ثانيةٌ تُلغي الانكماش متى كان بداخلها عنصرٌ تفاعليٌّ مضغوط. وفُصلت
+   عن الأولى عمداً: `:has()` غير مدعومةٍ في المتصفّحات القديمة، والمحرّك يُسقط
+   القاعدة التي لا يفهم محدّدها وحدها. فلو كُتبتا واحدةً لسقط الضغط كلّه هناك،
+   وبفصلهما يبقى الضغط عاملاً ويسقط استثناؤه فحسب — نقصٌ في التهذيب لا في
+   الوظيفة.
+   --------------------------------------------------------------------------- */
+.press-card {
+  transition:
+    transform var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-base) var(--ease-out),
+    border-color var(--dur-base) var(--ease-out);
+}
+
+.press-card:active {
+  /* أقلّ من واحدٍ بالمئة: البطاقة سطحٌ عريض، وما يُقرأ لمسةً على زرٍّ صغير
+     يُقرأ ارتجاجاً عليها. والحدّ الأدنى المحسوس هو المطلوب لا أكثر. */
+  transform: scale(0.991);
+  border-color: color-mix(in oklab, var(--accent) 55%, var(--border));
+  box-shadow:
+    0 2px 10px -6px color-mix(in oklab, var(--accent) 70%, transparent),
+    inset 0 0 0 1px color-mix(in oklab, var(--accent) 22%, transparent);
+}
+
+.press-card:has(
+    button:active,
+    a:active,
+    input:active,
+    select:active,
+    textarea:active,
+    [role='button']:active,
+    [role='tab']:active
+  ):active {
+  transform: none;
+  border-color: color-mix(in oklab, var(--accent) 12%, var(--border));
+  box-shadow:
+    0 1px 2px rgba(11, 18, 32, 0.05),
+    inset 0 1px 0 color-mix(in oklab, white 40%, transparent);
+}
+
 /* انكماشٌ يسير عند الضغط: تأكيدٌ لمسيٌّ بأن الضغطة وصلت. */
 .press {
   transition: transform var(--dur-fast) var(--ease-out);
@@ -468,6 +514,7 @@ textarea {
 /* بطاقات الأرقام: أرضيتها مصبوغةٌ بصبغتها فتُكتب في `style`، فلا يبقى للصنف
    إلا الضباب وخطّ الضوء. */
 .glass-tile {
+  border-color: var(--tile-border);
   -webkit-backdrop-filter: blur(16px) saturate(140%);
   backdrop-filter: blur(16px) saturate(140%);
   box-shadow:
@@ -581,6 +628,7 @@ textarea {
 
   /* الميلان والطفو والدوران تُلغى كلّها: تصفيرُ مدّتها وحدها يُبقي العنصر
      مائلاً أو مرفوعاً في وضعٍ ثابتٍ غريب. فتُعاد إلى وضعها المستوي. */
+  .press-card:active,
   .tilt,
   .layer-1,
   .layer-2,

@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react'
 import { ArrowDownRight, ArrowUpRight, Minus, type LucideIcon } from 'lucide-react'
 import { formatDelta } from '@/lib/format'
 import { cn } from '@/lib/cn'
@@ -40,8 +41,11 @@ export function toneStyle(tone: Tone) {
     // بالشفّاف مباشرةً يُذهب لونها مع كثافتها معاً، والمطلوب أن يبقى اللون
     // ويخفّ الحجاب وحده.
     background: `color-mix(in oklab, color-mix(in oklab, ${hue} 13%, var(--surface)) 78%, transparent)`,
-    borderColor: `color-mix(in oklab, ${hue} 34%, var(--surface))`,
-  } as const
+    // الحدّ في متغيّرٍ لا في `borderColor` مباشرةً: النمط المضمّن يسبق كل صنف،
+    // فحدٌّ مكتوبٌ هنا لا تستطيع حالةُ `:active` أن تغيّره — وتبقى قاعدة
+    // الضغط مكتوبةً وهي لا تفعل شيئاً، وذلك أسوأ من غيابها.
+    '--tile-border': `color-mix(in oklab, ${hue} 34%, var(--surface))`,
+  } as CSSProperties
 }
 
 /** شارةٌ هادئة للقوائم: خمسة مربّعات صريحة في عمودٍ واحد تصير ضجيجاً. */
@@ -94,7 +98,7 @@ export function StatTile({
         'glass-tile rounded-xl border p-4 sm:p-5',
         // بلا `rise` هنا: البطاقات تقع داخل شبكةٍ تحمل `stagger`، وهي التي
         // تُدخلها متتابعةً. ولو حملت الاثنين لتضاربت الحركتان على العنصر نفسه.
-        'lift',
+        'lift press-card',
         refetching && 'is-refetching',
       )}
     >

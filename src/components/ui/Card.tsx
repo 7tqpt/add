@@ -8,7 +8,7 @@ export function Card({ className, children }: { className?: string; children: Re
         'glass-panel rounded-xl border border-hairline',
         // الدخول والارتفاع هنا لا في كل صفحة: البطاقة مكوّنٌ واحد تستعمله
         // اللوحة كلّها، فوضعُهما فيه يسري على كل شاشة بلا تكرار.
-        'rise lift',
+        'rise lift press-card',
         className,
       )}
     >
