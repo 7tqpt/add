@@ -274,6 +274,52 @@ body {
   }
 }
 
+/* ---------------------------------------------------------------------------
+   ضغطُ البطاقة.
+
+   والفخّ هنا أن `:active` تسري على الآباء: فالضغط على زرٍّ داخل البطاقة
+   يُفعّلها على البطاقة نفسها، فتنكمش اللوحة كلّها عند كل نقرةٍ على «قبول» أو
+   «رفض» — وهي حركةٌ كاذبة تقول إن المضغوط هو البطاقة وليس كذلك.
+
+   فقاعدةٌ ثانيةٌ تُلغي الانكماش متى كان بداخلها عنصرٌ تفاعليٌّ مضغوط. وفُصلت
+   عن الأولى عمداً: `:has()` غير مدعومةٍ في المتصفّحات القديمة، والمحرّك يُسقط
+   القاعدة التي لا يفهم محدّدها وحدها. فلو كُتبتا واحدةً لسقط الضغط كلّه هناك،
+   وبفصلهما يبقى الضغط عاملاً ويسقط استثناؤه فحسب — نقصٌ في التهذيب لا في
+   الوظيفة.
+   --------------------------------------------------------------------------- */
+.press-card {
+  transition:
+    transform var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-base) var(--ease-out),
+    border-color var(--dur-base) var(--ease-out);
+}
+
+.press-card:active {
+  /* أقلّ من واحدٍ بالمئة: البطاقة سطحٌ عريض، وما يُقرأ لمسةً على زرٍّ صغير
+     يُقرأ ارتجاجاً عليها. والحدّ الأدنى المحسوس هو المطلوب لا أكثر. */
+  transform: scale(0.991);
+  border-color: color-mix(in oklab, var(--accent) 55%, var(--border));
+  box-shadow:
+    0 2px 10px -6px color-mix(in oklab, var(--accent) 70%, transparent),
+    inset 0 0 0 1px color-mix(in oklab, var(--accent) 22%, transparent);
+}
+
+.press-card:has(
+    button:active,
+    a:active,
+    input:active,
+    select:active,
+    textarea:active,
+    [role='button']:active,
+    [role='tab']:active
+  ):active {
+  transform: none;
+  border-color: color-mix(in oklab, var(--accent) 12%, var(--border));
+  box-shadow:
+    0 1px 2px rgba(11, 18, 32, 0.05),
+    inset 0 1px 0 color-mix(in oklab, white 40%, transparent);
+}
+
 /* انكماشٌ يسير عند الضغط: تأكيدٌ لمسيٌّ بأن الضغطة وصلت. */
 .press {
   transition: transform var(--dur-fast) var(--ease-out);
@@ -395,10 +441,10 @@ textarea {
   border-radius: 0.65rem;
   background: linear-gradient(
     180deg,
-    color-mix(in oklab, var(--accent) 10%, transparent),
-    color-mix(in oklab, var(--accent) 3%, transparent)
+    color-mix(in oklab, var(--tone, var(--accent)) 10%, transparent),
+    color-mix(in oklab, var(--tone, var(--accent)) 3%, transparent)
   );
-  border: 1px solid color-mix(in oklab, var(--accent) 18%, var(--border));
+  border: 1px solid color-mix(in oklab, var(--tone, var(--accent)) 18%, var(--border));
   box-shadow: inset 0 1px 0 color-mix(in oklab, white 45%, transparent);
   transition:
     background var(--dur-base) var(--ease-out),
@@ -411,13 +457,69 @@ textarea {
 .icon-glass-active {
   background: linear-gradient(
     180deg,
-    color-mix(in oklab, var(--accent) 30%, transparent),
-    color-mix(in oklab, var(--accent) 14%, transparent)
+    color-mix(in oklab, var(--tone, var(--accent)) 30%, transparent),
+    color-mix(in oklab, var(--tone, var(--accent)) 14%, transparent)
   );
-  border-color: color-mix(in oklab, var(--accent) 45%, transparent);
+  border-color: color-mix(in oklab, var(--tone, var(--accent)) 45%, transparent);
   box-shadow:
     inset 0 1px 0 color-mix(in oklab, white 55%, transparent),
-    0 6px 16px -8px var(--accent);
+    0 6px 16px -8px var(--tone, var(--accent));
+}
+
+/* ---------------------------------------------------------------------------
+   وشاحُ مساحة العمل.
+
+   وهو شرطُ الزجاج لا زينةٌ فوقه: السطح الشفّاف لا يُظهر شيئاً إن لم يكن خلفه
+   شيء، فبطاقةٌ زجاجية فوق لونٍ مسطّحٍ واحد تُقرأ مستطيلاً باهتاً.
+
+   وموضعه على حاوية المحتوى لا على الجسم: وضعتُه أوّلاً على `body` فاختفى —
+   الشريط الجانبي سطحٌ مصمتٌ يغطّي جانبه، ونصفه الآخر خارج الشاشة. والحاوية
+   هي ما يقع خلف البطاقات فعلاً، فهي موضعه.
+
+   والشدّة منخفضةٌ عمداً: أرضيةٌ تُحسّ ولا تُرى، فالمقروء هو الأرقام لا ما
+   تحتها. وهي لا تتحرّك مع التمرير لأن الخلفية تُثبَّت على صندوق العنصر لا
+   على محتواه.
+   --------------------------------------------------------------------------- */
+.workspace {
+  background-image:
+    radial-gradient(
+      760px 460px at 84% 2%,
+      color-mix(in oklab, var(--accent) 24%, transparent),
+      transparent 64%
+    ),
+    radial-gradient(
+      680px 420px at 10% 96%,
+      color-mix(in oklab, var(--tile-cyan) 20%, transparent),
+      transparent 64%
+    );
+}
+
+/* ---------------------------------------------------------------------------
+   بطاقات اللوحة الزجاجية.
+
+   والنسبة 76% لا أقلّ: البطاقة تحمل جداول وأرقاماً تُقرأ ساعاتٍ متّصلة، وسطحٌ
+   شفّافٌ أكثر يُمرّر الوشاح من تحته فيتغيّر لون الورق تحت السطر الواحد.
+   فالشفافية هنا محسوسةٌ لا صريحة — تُعطي العمق ولا تنازع النصّ.
+   --------------------------------------------------------------------------- */
+.glass-panel {
+  background: color-mix(in oklab, var(--surface) 76%, transparent);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  backdrop-filter: blur(16px) saturate(140%);
+  border-color: color-mix(in oklab, var(--accent) 12%, var(--border));
+  box-shadow:
+    0 1px 2px rgba(11, 18, 32, 0.05),
+    inset 0 1px 0 color-mix(in oklab, white 40%, transparent);
+}
+
+/* بطاقات الأرقام: أرضيتها مصبوغةٌ بصبغتها فتُكتب في `style`، فلا يبقى للصنف
+   إلا الضباب وخطّ الضوء. */
+.glass-tile {
+  border-color: var(--tile-border);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  backdrop-filter: blur(16px) saturate(140%);
+  box-shadow:
+    0 1px 2px rgba(11, 18, 32, 0.05),
+    inset 0 1px 0 color-mix(in oklab, white 45%, transparent);
 }
 
 /* استدارةٌ تامّة للحقول والأزرار في صفحة الدخول.
@@ -526,6 +628,7 @@ textarea {
 
   /* الميلان والطفو والدوران تُلغى كلّها: تصفيرُ مدّتها وحدها يُبقي العنصر
      مائلاً أو مرفوعاً في وضعٍ ثابتٍ غريب. فتُعاد إلى وضعها المستوي. */
+  .press-card:active,
   .tilt,
   .layer-1,
   .layer-2,

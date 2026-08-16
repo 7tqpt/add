@@ -1,8 +1,18 @@
+import type { CSSProperties } from 'react'
 import { NavLink } from 'react-router-dom'
 import { X } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { useAuth } from '@/context/AuthContext'
 import { BrandLockup } from '@/components/brand/Brand'
+
+/** الصبغات نفسها التي يستعملها رأس الصفحة، فيتطابق القرصان لوناً. */
+const TONE_VAR = {
+  azure: 'var(--tile-azure)',
+  emerald: 'var(--tile-emerald)',
+  navy: 'var(--tile-navy)',
+  cyan: 'var(--tile-cyan)',
+  violet: 'var(--tile-violet)',
+} as const
 import { NAV_GROUPS } from './nav'
 
 export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -83,11 +93,16 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
                               'icon-glass',
                               isActive && 'icon-glass-active',
                             )}
+                            // الصبغة تُمرَّر متغيّراً فيقرأها الصنف: بذلك
+                            // يبقى شكل الزجاج في ورقة الأنماط واللونُ في
+                            // البيانات، ولا يُكتب التدرّج مرّتين.
+                            style={{ '--tone': TONE_VAR[item.tone] } as CSSProperties}
                           >
                             <item.icon
                               size={16}
                               aria-hidden
-                              className={isActive ? 'text-accent' : 'text-ink-2'}
+                              style={{ color: isActive ? TONE_VAR[item.tone] : undefined }}
+                              className={isActive ? undefined : 'text-ink-2'}
                             />
                           </span>
                           {item.label}

@@ -8,20 +8,20 @@ import { isSupabaseConfigured } from '@/lib/supabase'
 import type { AdminRole } from '@/lib/types'
 import { Sidebar } from './Sidebar'
 import { Topbar } from './Topbar'
-import { titleForPath } from './nav'
+import { sectionForPath } from './nav'
 
 export function AppLayout() {
   const { role, previewRole } = useAuth()
   const [menuOpen, setMenuOpen] = useState(false)
   const { pathname } = useLocation()
-  const title = titleForPath(pathname)
+  const section = sectionForPath(pathname)
 
   return (
     <div className="flex h-full">
       <Sidebar open={menuOpen} onClose={() => setMenuOpen(false)} />
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <Topbar title={title} onOpenMenu={() => setMenuOpen(true)} />
+        <Topbar section={section} onOpenMenu={() => setMenuOpen(true)} />
 
         {!isSupabaseConfigured ? (
           <p className="flex items-center gap-2 border-b border-hairline bg-surface-2 px-4 py-2 text-xs text-ink-2 sm:px-6">
@@ -64,7 +64,7 @@ export function AppLayout() {
           </div>
         ) : null}
 
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6">
+        <main className="workspace flex-1 overflow-y-auto p-4 sm:p-6">
           <Outlet />
         </main>
       </div>
