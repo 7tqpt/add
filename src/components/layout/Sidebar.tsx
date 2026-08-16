@@ -72,14 +72,17 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
                       to={item.to}
                       end={item.to === '/'}
                       onClick={onClose}
+                      // الصبغة على البند نفسه لا على قرصه: الحبّة والقرص
+                      // كلاهما يقرأها، فلا تُكتب مرّتين ولا تفترقان لوناً.
+                      style={{ '--tone': TONE_VAR[item.tone] } as CSSProperties}
                       className={({ isActive }) =>
                         cn(
-                          'nav-item relative flex h-10 items-center gap-2.5 rounded-lg px-3 text-sm font-medium transition-colors',
+                          'nav-item nav-pill relative flex h-10 items-center gap-2.5 overflow-hidden rounded-xl px-2.5 text-sm font-medium transition-colors',
                           // شريطٌ على الحافّة الداخلية للبند النشط: علامةٌ
                           // ثانية غير اللون، فمن لا يفرّق الألوان يرى موضعه.
                           isActive
-                            ? 'bg-surface-2 text-ink before:absolute before:inset-y-2 before:start-0 before:w-[3px] before:rounded-full before:bg-accent'
-                            : 'text-ink-2 hover:bg-surface-2 hover:text-ink',
+                            ? 'nav-pill-active text-ink before:absolute before:inset-y-1.5 before:start-0 before:w-[3px] before:rounded-full before:bg-[var(--tone)]'
+                            : 'text-ink-2 hover:text-ink',
                         )
                       }
                     >
@@ -93,10 +96,6 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
                               'icon-glass',
                               isActive && 'icon-glass-active',
                             )}
-                            // الصبغة تُمرَّر متغيّراً فيقرأها الصنف: بذلك
-                            // يبقى شكل الزجاج في ورقة الأنماط واللونُ في
-                            // البيانات، ولا يُكتب التدرّج مرّتين.
-                            style={{ '--tone': TONE_VAR[item.tone] } as CSSProperties}
                           >
                             <item.icon
                               size={16}
