@@ -24,14 +24,28 @@ const BRAND_POINTS = [
     icon: BarChart3,
     title: "أرقامٌ فورية",
     note: "الحجوزات والإيرادات لحظةً بلحظة",
+    tint: "#60a5fa",
   },
-  { icon: Wallet, title: "مالٌ محكوم", note: "المدفوعات والتسويات والاسترجاع" },
+  {
+    icon: Wallet,
+    title: "مالٌ محكوم",
+    note: "المدفوعات والتسويات والاسترجاع",
+    // المال وحده خارج عائلة الأزرق — كما في بطاقات اللوحة تماماً، وللسبب
+    // نفسه: يستحقّ أن يُميَّز عمّا سواه بنظرةٍ واحدة.
+    tint: "#34d399",
+  },
   {
     icon: ShieldCheck,
     title: "صلاحياتٌ دقيقة",
     note: "سبعة أدوار على تسعة محاور",
+    tint: "#a78bfa",
   },
-  { icon: ScrollText, title: "سجلٌّ لا يُمحى", note: "كل إجراء بمن فعله ومتى" },
+  {
+    icon: ScrollText,
+    title: "سجلٌّ لا يُمحى",
+    note: "كل إجراء بمن فعله ومتى",
+    tint: "#38bdf8",
+  },
 ] as const;
 
 /**
@@ -241,13 +255,23 @@ export function LoginPage() {
             </p>
 
             <div className="layer-3 mt-11 grid max-w-lg grid-cols-2 gap-3.5">
-              {BRAND_POINTS.map(({ icon: Icon, title, note }) => (
-                <div
-                  key={title}
-                  className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur-sm"
-                >
-                  <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/10">
-                    <Icon size={17} aria-hidden />
+              {BRAND_POINTS.map(({ icon: Icon, title, note, tint }) => (
+                <div key={title} className="glass lift rounded-2xl p-4">
+                  {/*
+                    قرصٌ زجاجيٌّ مصبوغٌ بلون البطاقة، والأيقونة فيه بلونه
+                    ساطعةً لا بيضاء: أربع أيقوناتٍ بيضاء متجاورة تُقرأ زخرفةً
+                    واحدة، وأربعةُ أصباغٍ تجعل كلَّ بطاقةٍ تُعرف قبل قراءة
+                    عنوانها. والهالة تحته تجعله يبدو مضيئاً لا مطليّاً.
+                  */}
+                  <span
+                    className="flex h-10 w-10 items-center justify-center rounded-full"
+                    style={{
+                      background: `color-mix(in oklab, ${tint} 22%, transparent)`,
+                      border: `1px solid color-mix(in oklab, ${tint} 45%, transparent)`,
+                      boxShadow: `0 8px 22px -10px ${tint}, inset 0 1px 0 rgba(255,255,255,0.28)`,
+                    }}
+                  >
+                    <Icon size={18} aria-hidden style={{ color: tint }} />
                   </span>
                   <p className="mt-3 text-sm font-semibold">{title}</p>
                   <p className="mt-0.5 text-xs leading-6 text-white/60">
@@ -367,6 +391,12 @@ export function LoginPage() {
                 </form>
               ) : (
                 <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+                  {/*
+                    بلا نصٍّ تمهيديّ داخل الحقول: التسمية فوق كلٍّ منها تحمل
+                    معناها، والنصّ الرماديّ بداخلها يُقرأ قيمةً مكتوبةً بالفعل
+                    فيتردّد الناظر: أهذا بريدي أم مثال؟ وحقلٌ فارغٌ تحت تسميةٍ
+                    واضحة أصدق من حقلٍ يبدو ممتلئاً وليس كذلك.
+                  */}
                   <Field label="البريد الإلكتروني">
                     {(id) => (
                       <Input
@@ -375,7 +405,6 @@ export function LoginPage() {
                         required
                         autoComplete="username"
                         dir="ltr"
-                        placeholder="admin@example.com"
                         className="pill"
                         value={email}
                         onChange={(event) => setEmail(event.target.value)}
@@ -410,7 +439,6 @@ export function LoginPage() {
                               : "current-password"
                           }
                           dir="ltr"
-                          placeholder="••••••••"
                           className="pill pe-11"
                           value={password}
                           onChange={(event) => setPassword(event.target.value)}
