@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { LogOut, Moon, Sun, UserRound } from 'lucide-react'
+import { BrandMark } from '@/components/brand/Brand'
 import { useAuth } from '@/context/AuthContext'
 import { useTheme } from '@/context/ThemeContext'
 import { ROLE_LABEL } from '@/lib/permissions'
@@ -47,8 +48,6 @@ export function UserMenu() {
 
   if (!user) return null
 
-  const initial = user.name.trim().charAt(0).toUpperCase() || '؟'
-
   async function handleSignOut() {
     setSigningOut(true)
     try {
@@ -61,6 +60,13 @@ export function UserMenu() {
 
   return (
     <div ref={box} className="relative">
+      {/*
+        الشعار في قرص الحساب لا حرفُ الاسم.
+
+        والحرف كان يفرّق بين مستخدمٍ وآخر، والشعار لا يفرّق — لكنّ اللوحة لا
+        تعرض إلا حساباً واحداً في وقت، وهو حسابُ من يجلس أمامها. فما يميّزه
+        عن غيره ليس بحاجةٍ إلى رمز، والبريد يظهر كاملاً بمجرّد فتح القائمة.
+      */}
       <button
         ref={trigger}
         type="button"
@@ -76,12 +82,7 @@ export function UserMenu() {
         aria-label={`Profile — ${user.email}`}
         className="icon-press flex cursor-pointer items-center gap-2 rounded-full border border-hairline bg-surface-2 py-1 ps-1 pe-2.5 transition-colors hover:border-[color-mix(in_oklab,var(--accent)_40%,var(--border))]"
       >
-        <span
-          aria-hidden
-          className="flex h-7 w-7 items-center justify-center rounded-full bg-accent text-xs font-semibold text-accent-ink"
-        >
-          {initial}
-        </span>
+        <BrandMark size={28} />
         {/* `dir="ltr"` لكلمةٍ لاتينية داخل صفحةٍ عربية: الكلمة وحدها تُرتَّب
             صحيحةً بلا توجيه، لكنّ التوجيه الصريح يحميها لو أُضيف إليها يوماً
             رقمٌ أو نقطة — وعندها يقلبهما محرّك الاتجاه بلا تحذير. */}
@@ -100,12 +101,7 @@ export function UserMenu() {
           className="glass-panel absolute top-11 end-0 z-40 w-60 overflow-hidden rounded-xl border border-hairline shadow-xl"
         >
           <div className="flex items-center gap-2.5 border-b border-hairline px-3 py-3">
-            <span
-              aria-hidden
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent text-sm font-semibold text-accent-ink"
-            >
-              {initial}
-            </span>
+            <BrandMark size={38} />
             <span className="min-w-0">
               <span dir="ltr" className="block truncate text-start text-xs font-medium text-ink">
                 {user.email}
