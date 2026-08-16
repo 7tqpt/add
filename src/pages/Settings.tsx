@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Crown, Save, Trash2, UserMinus, UserPlus } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
+import { BrandMark } from '@/components/brand/Brand'
 import { Card, CardBody, CardHeader } from '@/components/ui/Card'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { ErrorState, LoadingBlock, Spinner, Toast } from '@/components/ui/Feedback'
@@ -520,9 +521,20 @@ function AdminsCard({ onToast }: { onToast: (message: string) => void }) {
                   const isMe = admin.user_id === user?.id
                   return (
                     <tr key={admin.user_id} className="border-b border-hairline last:border-0">
-                      <td dir="ltr" className="px-3 py-2 text-start whitespace-nowrap text-ink">
-                        {admin.email}
-                        {isMe ? <span className="text-muted"> (أنت)</span> : null}
+                      <td className="px-3 py-2 whitespace-nowrap text-ink">
+                        {/*
+                          قرصُ العلامة لكل مسؤول — هم موظفو الشركة، فالشعار
+                          يقول ذلك. وهو نفسه في كل صفّ، فلا يفرّق بين شخصٍ
+                          وآخر: البريد إلى جانبه هو ما يفرّق، وهو أصدق من
+                          حرفٍ يشترك فيه محمدٌ ومنى.
+                        */}
+                        <span className="flex items-center gap-2">
+                          <BrandMark size={26} />
+                          <span dir="ltr" className="text-start">
+                            {admin.email}
+                          </span>
+                          {isMe ? <span className="text-muted">(أنت)</span> : null}
+                        </span>
                       </td>
                       <td className="px-3 py-2">
                         <div className="w-36">
