@@ -3,6 +3,8 @@ import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import {
   AlertCircle,
   BarChart3,
+  Eye,
+  EyeOff,
   ScrollText,
   ShieldCheck,
   Wallet,
@@ -74,6 +76,7 @@ export function LoginPage() {
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false)
   const [submitting, setSubmitting] = useState(false);
 
   /**
@@ -275,15 +278,11 @@ export function LoginPage() {
             </div>
 
             {/*
-          جزيرةٌ فاتحة: `data-theme="light"` يُعيد تعريف متغيّرات اللوحة على
-          هذا الفرع وحده، فيصير كل ما بداخله — الحقول والحبر والحدود — فاتحاً
-          مهما كان ثيم الصفحة. والبديل أن يُلوَّن كل عنصرٍ بيده، وهو ما يُنسى
-          عند أوّل عنصرٍ جديد فيظهر حبرٌ فاتحٌ على ورقٍ أبيض.
-        */}
-            <div
-              data-theme="light"
-              className="rounded-[2rem] bg-surface p-6 shadow-[0_36px_90px_-32px_rgba(0,0,0,0.75)] sm:p-7"
-            >
+              بطاقةٌ زجاجية. و`glass-island` تُعيد تعريف متغيّرات اللوحة على هذا
+              الفرع وحده: الزجاج فوق أرضيةٍ داكنة يبقى داكناً، فالحبر عليه فاتح.
+              وأسطحه شفّافة، فيصير كل حقلٍ بداخله زجاجاً صغيراً بلا صنفٍ عليه.
+            */}
+            <div className="glass glass-island rounded-[2rem] p-6 sm:p-7">
               {pending ? (
                 <form onSubmit={handleVerify} className="flex flex-col gap-4">
                   <p className="text-xs leading-6 text-ink-2">
@@ -336,7 +335,7 @@ export function LoginPage() {
                   <Button
                     type="submit"
                     variant="primary"
-                    className="pill"
+                    className="btn-glass pill"
                     disabled={submitting}
                   >
                     {submitting ? <Spinner /> : null}
@@ -393,22 +392,52 @@ export function LoginPage() {
                     }
                   >
                     {(id) => (
-                      <Input
-                        id={id}
-                        type="password"
-                        required
-                        minLength={mode === "invite" ? 8 : undefined}
-                        autoComplete={
-                          mode === "invite"
-                            ? "new-password"
-                            : "current-password"
-                        }
-                        dir="ltr"
-                        placeholder="••••••••"
-                        className="pill"
-                        value={password}
-                        onChange={(event) => setPassword(event.target.value)}
-                      />
+                      /*
+                        زرّ المعاينة داخل الحقل لا بجانبه: بجانبه يزيح الحقل
+                        فيضيق، وداخله يحتاج حشوةً في الطرف حتى لا يمرّ النصّ
+                        تحته. و`ps-11` هي تلك الحشوة — على طرف البداية لأن
+                        الحقل مكتوبٌ `dir="ltr"` والزرّ يجلس يساره.
+                      */
+                      <div className="relative">
+                        <Input
+                          id={id}
+                          type={showPassword ? "text" : "password"}
+                          required
+                          minLength={mode === "invite" ? 8 : undefined}
+                          autoComplete={
+                            mode === "invite"
+                              ? "new-password"
+                              : "current-password"
+                          }
+                          dir="ltr"
+                          placeholder="••••••••"
+                          className="pill pe-11"
+                          value={password}
+                          onChange={(event) => setPassword(event.target.value)}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword((on) => !on)}
+                          // `aria-pressed` لا نصٌّ متبدّل وحده: قارئ الشاشة
+                          // يُعلن الحالة، ولا يترك المستخدم يخمّن أثر الضغطة.
+                          aria-pressed={showPassword}
+                          aria-label={
+                            showPassword ? "إخفاء كلمة المرور" : "إظهار كلمة المرور"
+                          }
+                          // `tabIndex={-1}` مقصود: من يتنقّل بالتاب يريد
+                          // الانتقال من كلمة المرور إلى زرّ الدخول، لا أن
+                          // تعترضه أداةُ عرضٍ في الطريق. والفأرة تصله، وقارئ
+                          // الشاشة يصله في تصفّح العناصر.
+                          tabIndex={-1}
+                          className="icon-press absolute top-1/2 start-1.5 flex h-8 w-8 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full text-muted transition-colors hover:bg-white/10 hover:text-ink"
+                        >
+                          {showPassword ? (
+                            <EyeOff size={16} aria-hidden />
+                          ) : (
+                            <Eye size={16} aria-hidden />
+                          )}
+                        </button>
+                      </div>
                     )}
                   </Field>
 
@@ -456,7 +485,7 @@ export function LoginPage() {
                   <Button
                     type="submit"
                     variant="primary"
-                    className="pill"
+                    className="btn-glass pill"
                     disabled={submitting}
                   >
                     {submitting ? <Spinner /> : null}
