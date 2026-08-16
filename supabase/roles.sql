@@ -352,8 +352,18 @@ begin
     raise exception 'تفريغ سجل العمليات للمالك وحده';
   end if;
 
-  delete from public.audit_log;
-  get diagnostics removed = row_count;
+  select count(*) into removed from public.audit_log;
+
+  -- `truncate` لا `delete`: مشاريع Supabase تحمّل إضافة `pg-safeupdate` على
+  -- أدوار الـAPI، وهي ترفض كل `DELETE` بلا شرط `WHERE` برمز 21000 — حمايةً من
+  -- محو جدولٍ كامل بالخطأ عبر الواجهة.
+  --
+  -- ولم ألتفّ عليها بشرطٍ صوريٍّ مثل `where true`: الشرط الثابت يُطوى في
+  -- التخطيط فلا يبقى له أثرٌ في الخطة، والإضافة تفحص الخطة لا النصّ — فيرجع
+  -- الرفض نفسه. والأهمّ أن الالتفاف على حمايةٍ بخداعها عادةٌ سيّئة تُنسى فتُطبّق
+  -- حيث لا يجوز. و`truncate` ليس التفافاً: هو الأمر الذي يعني «أفرغ الجدول»
+  -- صراحةً، والحماية هنا قائمةٌ في `is_owner()` قبله لا في شكل الجملة.
+  truncate table public.audit_log;
 
   insert into public.audit_log (actor_email, action, entity, entity_label, details)
   values (mail, 'audit.purge', 'audit_log', 'سجل العمليات',
