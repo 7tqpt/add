@@ -68,9 +68,12 @@ export function UserMenu() {
         aria-haspopup="menu"
         aria-expanded={open}
         // النصّ المرئي كلمةٌ واحدة، والبريد لا يظهر إلا داخل القائمة. ولذلك
-        // يحمله `aria-label`: قارئ الشاشة يسمع «بروفيل» وحدها فلا يعرف أيّ
+        // يحمله `aria-label`: قارئ الشاشة يسمع «Profile» وحدها فلا يعرف أيّ
         // حسابٍ هو، ومن يدير حسابين يحتاج أن يعرف قبل أن يضغط الخروج.
-        aria-label={`بروفيل — ${user.email}`}
+        //
+        // والوصف يبدأ بالكلمة المرئية نفسها لا بترجمتها: من يأمر بصوته يقول
+        // ما يقرأ، فلو خالف الوصفُ المكتوبَ لم يجد الأمرُ هدفه.
+        aria-label={`Profile — ${user.email}`}
         className="icon-press flex cursor-pointer items-center gap-2 rounded-full border border-hairline bg-surface-2 py-1 ps-1 pe-2.5 transition-colors hover:border-[color-mix(in_oklab,var(--accent)_40%,var(--border))]"
       >
         <span
@@ -79,7 +82,15 @@ export function UserMenu() {
         >
           {initial}
         </span>
-        <span className="hidden text-xs font-medium text-ink-2 sm:inline">بروفيل</span>
+        {/* `dir="ltr"` لكلمةٍ لاتينية داخل صفحةٍ عربية: الكلمة وحدها تُرتَّب
+            صحيحةً بلا توجيه، لكنّ التوجيه الصريح يحميها لو أُضيف إليها يوماً
+            رقمٌ أو نقطة — وعندها يقلبهما محرّك الاتجاه بلا تحذير. */}
+        <span
+          dir="ltr"
+          className="hidden text-xs font-medium text-ink-2 sm:inline"
+        >
+          Profile
+        </span>
       </button>
 
       {open ? (
