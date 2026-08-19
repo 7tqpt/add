@@ -341,12 +341,37 @@ create policy audit_log_append on public.audit_log
 --  صفّاً أزال. فلا يخرج السجل من التفريغ فارغاً بل شاهداً على أنه فُرِّغ —
 --  وإلا صار أداةً لإخفاء ما جرى بدل إثباته، وهو نقيض غرضه.
 -- ----------------------------------------------------------------------------
+-- ----------------------------------------------------------------------------
+-- بريد المستخدم الحالي
+--
+-- كان يُقرأ من `current_setting('request.jwt.claim.email')` — وهو إعدادٌ
+-- قديم لم تعد Supabase الحالية تضبطه، فيخرج نصّاً فارغاً. وحين يُقارن به
+-- بريدُ الدعوة تُرفض كلُّ دعوةٍ مهما صحّ رمزها وبريدها: عطلٌ صامت لا يظهر
+-- في الاختبار الذي يضبط الإعداد بنفسه، ولا يظهر إلا على قاعدةٍ حقيقية.
+--
+-- فيُقرأ من `auth.users` بالمعرّف: هذا مصدرُ الحقيقة، لا يعتمد على شكل
+-- المطالبات ولا يتغيّر بتغيّر إصدار المنصّة. والمطالبات تبقى احتياطاً
+-- لبيئاتٍ لا يُقرأ فيها الجدول.
+-- ----------------------------------------------------------------------------
+create or replace function public.auth_email()
+returns text
+language sql stable security definer set search_path = public as $$
+  select lower(coalesce(
+    (select u.email from auth.users u where u.id = auth.uid()),
+    nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'email',
+    nullif(current_setting('request.jwt.claim.email', true), ''),
+    ''
+  ))
+$$;
+revoke all on function public.auth_email() from public;
+grant execute on function public.auth_email() to authenticated;
+
 create or replace function public.api_clear_audit_log()
 returns integer
 language plpgsql security definer set search_path = public as $$
 declare
   removed integer;
-  mail text := lower(coalesce(nullif(current_setting('request.jwt.claim.email', true), ''), ''));
+  mail text := public.auth_email();
 begin
   if not public.is_owner() then
     raise exception 'تفريغ سجل العمليات للمالك وحده';

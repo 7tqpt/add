@@ -43,9 +43,16 @@ for (const key of Object.keys(uid)) {
 await db.query(`insert into public.admins (user_id, email, role) values ($1, $2, 'owner')`, [uid.owner, mail.owner])
 await db.query(`insert into public.admins (user_id, email, role) values ($1, $2, 'manager')`, [uid.manager, mail.manager])
 
+// المعرّف وحده يُضبط — لا بريد.
+//
+// كان هذا السطر يضبط `request.jwt.claim.email` أيضاً، فكانت الدالة تجده
+// وتنجح هنا وتفشل على قاعدةٍ حقيقية: Supabase الحالية لا تضبط ذلك الإعداد،
+// فيخرج فارغاً فتُرفض كلُّ دعوة. أي أن الاختبار كان يختبر افتراضي لا الواقع،
+// وهو أسوأ من ألّا يكون اختبارٌ أصلاً — لأنه يطمئن.
+//
+// فيُترك الآن كما تتركه المنصّة، وتقرأ الدالةُ البريدَ من `auth.users`.
 const as = async (who, sql, params) => {
   await db.query(`select set_config('test.uid', $1, false)`, [uid[who] ?? ''])
-  await db.query(`select set_config('request.jwt.claim.email', $1, false)`, [mail[who] ?? ''])
   await db.exec(`set role authenticated`)
   try {
     return await db.query(sql, params)
