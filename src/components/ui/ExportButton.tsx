@@ -27,7 +27,7 @@ export function ExportButton({
     setBusy(true)
     try {
       const table = await build()
-      downloadCsv(stampedFilename(filenamePrefix), table)
+      await downloadCsv(stampedFilename(filenamePrefix), table)
     } catch (cause) {
       onError?.(cause instanceof Error ? cause.message : 'تعذّر إنشاء ملف التصدير.')
     } finally {

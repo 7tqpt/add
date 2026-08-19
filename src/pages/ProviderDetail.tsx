@@ -24,6 +24,7 @@ import { Rating } from '@/components/ui/Rating'
 import { useAuth } from '@/context/AuthContext'
 import { useAsync } from '@/hooks/useAsync'
 import { cn } from '@/lib/cn'
+import { isDesktop, openExternal } from '@/lib/desktop'
 import {
   formatDate,
   formatDuration,
@@ -374,6 +375,16 @@ export function ProviderDetailPage() {
                           href={url}
                           target="_blank"
                           rel="noopener noreferrer"
+                          // في برنامج سطح المكتب لا يفتح `_blank` شيئاً:
+                          // Tauri يمنع الانتقال إلى عنوانٍ خارجي داخل
+                          // النافذة. فيُسلَّم الرابط إلى متصفّح النظام —
+                          // وهو الموضع الصحيح له أصلاً، إذ نافذةٌ بلا شريط
+                          // عنوانٍ ولا زرِّ رجوعٍ مصيدةٌ لا متصفّح.
+                          onClick={(event) => {
+                            if (!isDesktop) return
+                            event.preventDefault()
+                            void openExternal(url)
+                          }}
                         >
                           <ExternalLink size={14} aria-hidden />
                           عرض

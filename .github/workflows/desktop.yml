@@ -1,0 +1,195 @@
+name: بناء برنامج سطح المكتب
+
+# يُشغَّل يدوياً من تبويب Actions، وتلقائياً عند وسم إصدار (v1.0.0 مثلاً).
+#
+# ليس على كل دفعة: بناء Rust من الصفر يستغرق دقائق على كل نظام، ولا فائدة
+# من مُثبِّتٍ جديد مع كل تعديل نصّي.
+on:
+  workflow_dispatch:
+    inputs:
+      mac_linux:
+        description: 'ابنِ لماك ولينكس أيضاً (يضاعف الزمن)'
+        type: boolean
+        default: false
+  push:
+    tags: ['v*']
+
+# لكتابة الإصدار الذي يحمل المُثبِّتات. وما عداه يبقى على القراءة وحدها.
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: ${{ matrix.label }}
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      # نظامٌ يفشل لا يُسقط الباقي: مُثبِّت ويندوز وحده أنفع من لا شيء.
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            label: ويندوز
+            always: true
+          - os: macos-latest
+            label: ماك
+            always: false
+          - os: ubuntu-22.04
+            label: لينكس
+            always: false
+
+    steps:
+      # الشرط هنا لا على مستوى الوظيفة: `matrix` لا يُقرأ في `jobs.<id>.if`.
+      - name: تخطٍّ إن لم تُطلب
+        id: gate
+        shell: bash
+        run: |
+          if [ "${{ matrix.always }}" = "true" ] \
+             || [ "${{ inputs.mac_linux }}" = "true" ] \
+             || [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            echo "run=yes" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=no" >> "$GITHUB_OUTPUT"
+            echo "لم يُطلب هذا النظام في هذا التشغيل."
+          fi
+
+      - uses: actions/checkout@v5
+        if: steps.gate.outputs.run == 'yes'
+
+      - uses: actions/setup-node@v4
+        if: steps.gate.outputs.run == 'yes'
+        with:
+          node-version: '22'
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+        if: steps.gate.outputs.run == 'yes'
+
+      # أثقل ما في البناء البارد شجرةُ اعتماديات Tauri — مئات الوحدات تُصرَّف
+      # مرّة. حفظها يختصر البناء التالي إلى دقيقة أو دقيقتين.
+      - uses: swatinem/rust-cache@v2
+        if: steps.gate.outputs.run == 'yes'
+        with:
+          workspaces: src-tauri
+
+      # لينكس وحده يحتاج مكتبات نظام: WebView على ماك وويندوز مدمجٌ في النظام.
+      - name: مكتبات لينكس
+        if: steps.gate.outputs.run == 'yes' && matrix.os == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          # `xdg-utils` ليس زينة: حزمُ AppImage يستدعي `xdg-open` عند
+          # التجميع، ويسقط البناءُ كلّه بدونه — وقد سقط عندي فعلاً.
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev \
+            libayatana-appindicator3-dev librsvg2-dev patchelf xdg-utils
+
+      - name: تثبيت الاعتماديات
+        if: steps.gate.outputs.run == 'yes'
+        run: npm ci
+
+      # المفتاح العام وحده — هو مصمَّمٌ ليعمل في متصفّحٍ أو برنامجٍ مُوزَّع،
+      # والحماية في سياسات RLS لا في إخفائه. ولا `service_role` هنا ولا كلمة
+      # مرور القاعدة: البرنامج يُفكّ ويُستخرج ما فيه.
+      - name: تهيئة المفاتيح
+        if: steps.gate.outputs.run == 'yes'
+        shell: bash
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          if [ -n "$SUPABASE_URL" ] && [ -n "$SUPABASE_ANON_KEY" ]; then
+            {
+              echo "VITE_SUPABASE_URL=$SUPABASE_URL"
+              echo "VITE_SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY"
+            } > .env
+            echo "### المفاتيح: مضبوطة ✅" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "### المفاتيح: غير مضبوطة ⚠️" >> "$GITHUB_STEP_SUMMARY"
+            echo "البرنامج في هذه الحزمة يعمل على **البيانات التجريبية** لا قاعدتك. لربطه: Settings ← Secrets and variables ← Actions، وأضِف \`SUPABASE_URL\` و\`SUPABASE_ANON_KEY\`، ثم أعِد التشغيل." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: فحص الأنواع
+        if: steps.gate.outputs.run == 'yes'
+        run: npm run typecheck
+
+      # `tauri build` يشغّل `npm run build` بنفسه ثم يحزم الناتج.
+      - name: البناء والحزم
+        if: steps.gate.outputs.run == 'yes'
+        run: npm run desktop:build
+
+      - name: جمع المُثبِّتات
+        if: steps.gate.outputs.run == 'yes'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          B=src-tauri/target/release/bundle
+          # أسماءٌ لاتينية عمداً: GitHub يعبث بأسماء الأصول غير اللاتينية،
+          # ولا نراهن باسمٍ على طريق التنزيل كلّه.
+          find "$B" -type f \( -name '*.exe' -o -name '*.msi' -o -name '*.dmg' \
+            -o -name '*.deb' -o -name '*.AppImage' \) -print0 |
+          while IFS= read -r -d '' f; do
+            ext="${f##*.}"
+            cp "$f" "out/sdd-dashboard-${{ matrix.os }}.$ext"
+          done
+          ls -la out
+          {
+            echo "### ${{ matrix.label }}"
+            echo "| الملف | الحجم |"
+            echo "|---|---|"
+            for f in out/*; do echo "| \`$(basename "$f")\` | $(du -h "$f" | cut -f1) |"; done
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        if: steps.gate.outputs.run == 'yes'
+        with:
+          name: sdd-dashboard-${{ matrix.os }}
+          path: out/*
+          if-no-files-found: error
+          retention-days: 30
+
+  publish:
+    name: نشر الإصدار
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: downloaded
+          merge-multiple: true
+
+      - name: نشر المُثبِّتات
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          cat > notes.md <<'NOTES'
+          ## التثبيت على ويندوز
+
+          نزّل ملف `.exe` واضغط عليه مرّتين.
+
+          سيقول ويندوز «Windows protected your PC» — اضغط **More info** ثم
+          **Run anyway**. هذه الرسالة تظهر لأن البرنامج غير موقّع بشهادةٍ
+          مدفوعة، لا لأن فيه خللاً. والتوقيع يحتاج شهادة Code Signing سنوية
+          تُشترى باسم الشركة.
+
+          البرنامج يُثبَّت لحسابك وحدك، فلا يطلب صلاحية مدير.
+
+          ## ما يحتاجه الجهاز
+
+          ويندوز ١٠ أو ١١. ولا شيء غيره: WebView2 مُثبَّتٌ فيهما أصلاً.
+
+          ## البيانات
+
+          البرنامج واجهةٌ لقاعدة Supabase نفسها التي تخدم الموقع والتطبيق —
+          لا نسخة محلية. فيلزمه اتصالُ إنترنت، وما تعدّله فيه يظهر في الموقع
+          وفي تطبيق الجوال في اللحظة نفسها.
+          NOTES
+
+          gh release create "$TAG" \
+            --title "لوحة تحكم سد — $TAG" \
+            --notes-file notes.md \
+            downloaded/* || \
+          gh release upload "$TAG" downloaded/* --clobber
