@@ -151,14 +151,16 @@ delete from public.app_versions      where id is not null;
 
 -- ────────────────────────────────────────────────────────────────────────────
 -- ٤. بعد
+--
+--    جملةٌ واحدة تجمع المحذوف والباقي: محرّر Supabase لا يعرض إلا نتيجة آخر
+--    جملة، فجدولان يعني أن أوّلهما يُكتب ثم يُحجب عن عين من شغّل السكربت.
 -- ────────────────────────────────────────────────────────────────────────────
 select 'بعد الحذف' as المرحلة,
-       (select count(*) from public.app_users)         as العملاء,
-       (select count(*) from public.service_providers) as المزودون,
-       (select count(*) from public.bookings)          as الحجوزات,
-       (select count(*) from public.payments)          as المدفوعات;
-
-select 'الباقي عمداً' as البند,
+       (select count(*) from public.app_users)          as العملاء,
+       (select count(*) from public.service_providers)  as المزودون,
+       (select count(*) from public.bookings)           as الحجوزات,
+       (select count(*) from public.payments)           as المدفوعات,
+       '—'                                              as ــ,
        (select count(*) from public.governorates)       as المحافظات,
        (select count(*) from public.service_categories) as الأقسام,
        (select count(*) from public.subscription_plans) as الباقات,
