@@ -1,0 +1,59 @@
+{
+  "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
+  "productName": "لوحة تحكم سد",
+  "version": "0.1.0",
+  "identifier": "company.sdd.dashboard",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://localhost:5173",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "لوحة تحكم سد — منصة حجوزات وتجهيز الأعراس",
+        "width": 1440,
+        "height": 900,
+        "minWidth": 1024,
+        "minHeight": 640,
+        "resizable": true,
+        "center": true,
+        "decorations": true,
+        "theme": null,
+        "visible": false
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; img-src 'self' asset: http://asset.localhost data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; connect-src 'self' https://*.supabase.co wss://*.supabase.co ipc: http://ipc.localhost"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["nsis", "deb", "appimage", "dmg"],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "copyright": "© سد للبرمجيات",
+    "category": "Business",
+    "shortDescription": "لوحة تحكم منصة الأعراس",
+    "longDescription": "إدارة الحجوزات ومقدّمي الخدمة والمدفوعات والتسويات لمنصة حجوزات وتجهيز الأعراس اليمنية.",
+    "windows": {
+      "nsis": {
+        "languages": ["Arabic", "English"],
+        "displayLanguageSelector": false,
+        "installMode": "currentUser"
+      }
+    },
+    "linux": {
+      "deb": {
+        "depends": ["libwebkit2gtk-4.1-0", "libgtk-3-0"]
+      }
+    }
+  }
+}

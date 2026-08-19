@@ -1,0 +1,33 @@
+[package]
+name = "sdd-dashboard"
+version = "0.1.0"
+description = "لوحة تحكم منصة حجوزات وتجهيز الأعراس — سد للبرمجيات"
+authors = ["سد للبرمجيات"]
+edition = "2021"
+rust-version = "1.77.2"
+
+# اسمُ المكتبة يُشتقّ منه اسمُ الوحدة في `main.rs`، فتغييرُه يكسر الاستدعاء.
+[lib]
+name = "sdd_dashboard_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-opener = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tauri-plugin-window-state = "2"
+tauri-plugin-dialog = "2"
+
+[profile.release]
+# الحجم يهمّ هنا: الحزمة تُنزَّل على أجهزة الموظفين، وقد تُنقل على وصلةٍ
+# بطيئة. `opt-level = "s"` و LTO ورمزٌ منزوع تقصّ الثنائيّ إلى أقلّ من نصفه
+# بلا أثرٍ محسوس في السرعة — فالعملُ الثقيل كلّه في الواجهة لا في Rust.
+opt-level = "s"
+lto = true
+codegen-units = 1
+strip = true
+panic = "abort"

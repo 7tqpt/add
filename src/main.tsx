@@ -4,6 +4,7 @@ import { HashRouter } from 'react-router-dom'
 import { App } from './App'
 import { AuthProvider } from './context/AuthContext'
 import { ThemeProvider } from './context/ThemeContext'
+import { revealWindow } from './lib/desktop'
 
 /**
  * الخطّ مُستضافٌ معنا لا مُحمَّلٌ من شبكة غوغل.
@@ -50,3 +51,17 @@ createRoot(container).render(
     </ThemeProvider>
   </StrictMode>,
 )
+
+/**
+ * على سطح المكتب تبدأ النافذة مخفيّة وتُظهر نفسها هنا.
+ *
+ * وإلا رأى المستخدم إطاراً أبيض فارغاً قبل أن يُرسم شيء — وهو أوّل ما يراه
+ * من البرنامج في كل تشغيل. و`requestAnimationFrame` بعد `render` لأن هذا
+ * الأخير يجدول العمل ولا ينتظره: النداء المباشر يُظهر النافذة قبل الرسم
+ * فيعود البياض الذي أردنا إخفاءه.
+ *
+ * ولا أثر لهذا في المتصفّح: `revealWindow` تعود فوراً خارج Tauri.
+ */
+requestAnimationFrame(() => {
+  void revealWindow()
+})
