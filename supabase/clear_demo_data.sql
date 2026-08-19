@@ -31,8 +31,6 @@
 --    · أي مستخدمٍ أو مقدّم خدمةٍ سجّل نفسه فعلاً من التطبيق
 -- ============================================================================
 
-begin;
-
 -- ────────────────────────────────────────────────────────────────────────────
 -- ١. قبل: ماذا في القاعدة الآن؟
 -- ────────────────────────────────────────────────────────────────────────────
@@ -43,17 +41,17 @@ select 'قبل الحذف' as المرحلة,
        (select count(*) from public.payments)          as المدفوعات;
 
 -- ────────────────────────────────────────────────────────────────────────────
--- ٢. من هم التجريبيون؟ يُحدَّدون مرّةً واحدة ويُستعملون في كل ما بعد.
+-- ٢. من هم التجريبيون؟
 --
---    وجدولان مؤقّتان لا استعلامان متكرّران: لو كُتب الشرط في كل جملةٍ حذفٍ
---    لأمكن أن تُحذف صفوفُ الأب قبل الأبناء فيتغيّر معنى الشرط في منتصف العمل.
+--    الشرط مكرَّرٌ في كل جملة، ولا جداولَ مؤقّتة. وقد بدأتُ بها فأخفقت: محرّر
+--    Supabase يُثبت كل جملةٍ على حدة، و`on commit drop` يحذف الجدول المؤقّت في
+--    اللحظة التي يُنشأ فيها — فلا تجده الجملةُ التالية.
+--
+--    والتكرار آمنٌ هنا لأن الترتيب يحفظه: الأب لا يُحذف إلا بعد أبنائه كلّهم،
+--    فيبقى الشرط الذي يقرأ منه صحيحاً إلى آخر جملةٍ تحتاجه. ولو عُكس الترتيب
+--    لتغيّر معنى الشرط في منتصف العمل — وهو ما احترستُ منه بالجداول المؤقّتة
+--    أوّلاً، ثم بالترتيب وحده.
 -- ────────────────────────────────────────────────────────────────────────────
-create temporary table demo_users on commit drop as
-  select id from public.app_users where auth_user_id is null;
-
-create temporary table demo_providers on commit drop as
-  select id from public.service_providers
-   where user_id is null or user_id in (select id from demo_users);
 
 -- ────────────────────────────────────────────────────────────────────────────
 -- ٣. الحذف — من الورقة إلى الجذر.
@@ -64,56 +62,86 @@ create temporary table demo_providers on commit drop as
 
 -- المال: البنود قبل التسويات، والمدفوعات قبل الحجوزات
 delete from public.settlement_items where settlement_id in (
-  select id from public.settlements where provider_id in (select id from demo_providers));
-delete from public.settlements where provider_id in (select id from demo_providers);
+  select id from public.settlements where provider_id in (select id from public.service_providers
+             where user_id is null
+                or user_id in (select id from public.app_users where auth_user_id is null)));
+delete from public.settlements where provider_id in (select id from public.service_providers
+             where user_id is null
+                or user_id in (select id from public.app_users where auth_user_id is null));
 
 delete from public.payments where booking_id in (
   select id from public.bookings
-   where user_id in (select id from demo_users)
-      or provider_id in (select id from demo_providers));
+   where user_id in (select id from public.app_users where auth_user_id is null)
+      or provider_id in (select id from public.service_providers
+             where user_id is null
+                or user_id in (select id from public.app_users where auth_user_id is null)));
 
 -- الثقة والتواصل
 delete from public.dispute_messages where dispute_id in (
   select id from public.disputes where booking_id in (
     select id from public.bookings
-     where user_id in (select id from demo_users)
-        or provider_id in (select id from demo_providers)));
+     where user_id in (select id from public.app_users where auth_user_id is null)
+        or provider_id in (select id from public.service_providers
+             where user_id is null
+                or user_id in (select id from public.app_users where auth_user_id is null))));
 delete from public.disputes where booking_id in (
   select id from public.bookings
-   where user_id in (select id from demo_users)
-      or provider_id in (select id from demo_providers));
+   where user_id in (select id from public.app_users where auth_user_id is null)
+      or provider_id in (select id from public.service_providers
+             where user_id is null
+                or user_id in (select id from public.app_users where auth_user_id is null)));
 
 delete from public.conversation_messages where conversation_id in (
   select id from public.conversations
-   where user_id in (select id from demo_users)
-      or provider_id in (select id from demo_providers));
+   where user_id in (select id from public.app_users where auth_user_id is null)
+      or provider_id in (select id from public.service_providers
+             where user_id is null
+                or user_id in (select id from public.app_users where auth_user_id is null)));
 delete from public.conversations
- where user_id in (select id from demo_users)
-    or provider_id in (select id from demo_providers);
+ where user_id in (select id from public.app_users where auth_user_id is null)
+    or provider_id in (select id from public.service_providers
+             where user_id is null
+                or user_id in (select id from public.app_users where auth_user_id is null));
 
 delete from public.reviews
- where user_id in (select id from demo_users)
-    or provider_id in (select id from demo_providers);
+ where user_id in (select id from public.app_users where auth_user_id is null)
+    or provider_id in (select id from public.service_providers
+             where user_id is null
+                or user_id in (select id from public.app_users where auth_user_id is null));
 
 -- الحجوزات بعد أن خلت ممّا يعلّق بها
 delete from public.bookings
- where user_id in (select id from demo_users)
-    or provider_id in (select id from demo_providers);
+ where user_id in (select id from public.app_users where auth_user_id is null)
+    or provider_id in (select id from public.service_providers
+             where user_id is null
+                or user_id in (select id from public.app_users where auth_user_id is null));
 
 -- ما يتبع مقدّم الخدمة
-delete from public.provider_subscriptions where provider_id in (select id from demo_providers);
-delete from public.provider_availability   where provider_id in (select id from demo_providers);
-delete from public.provider_services       where provider_id in (select id from demo_providers);
-delete from public.provider_documents      where provider_id in (select id from demo_providers);
-delete from public.provider_categories     where provider_id in (select id from demo_providers);
-delete from public.service_providers       where id in (select id from demo_providers);
+delete from public.provider_subscriptions where provider_id in (select id from public.service_providers
+             where user_id is null
+                or user_id in (select id from public.app_users where auth_user_id is null));
+delete from public.provider_availability   where provider_id in (select id from public.service_providers
+             where user_id is null
+                or user_id in (select id from public.app_users where auth_user_id is null));
+delete from public.provider_services       where provider_id in (select id from public.service_providers
+             where user_id is null
+                or user_id in (select id from public.app_users where auth_user_id is null));
+delete from public.provider_documents      where provider_id in (select id from public.service_providers
+             where user_id is null
+                or user_id in (select id from public.app_users where auth_user_id is null));
+delete from public.provider_categories     where provider_id in (select id from public.service_providers
+             where user_id is null
+                or user_id in (select id from public.app_users where auth_user_id is null));
+delete from public.service_providers
+ where user_id is null
+    or user_id in (select id from public.app_users where auth_user_id is null);
 
 -- ما يتبع العميل
-delete from public.favourites     where user_id in (select id from demo_users);
-delete from public.wedding_plans  where user_id in (select id from demo_users);
-delete from public.user_devices   where user_id in (select id from demo_users);
-delete from public.user_sessions  where user_id in (select id from demo_users);
-delete from public.app_users      where id in (select id from demo_users);
+delete from public.favourites     where user_id in (select id from public.app_users where auth_user_id is null);
+delete from public.wedding_plans  where user_id in (select id from public.app_users where auth_user_id is null);
+delete from public.user_devices   where user_id in (select id from public.app_users where auth_user_id is null);
+delete from public.user_sessions  where user_id in (select id from public.app_users where auth_user_id is null);
+delete from public.app_users where auth_user_id is null;
 
 -- محتوىً تجريبيٌّ قائمٌ بذاته لا يتبع أحداً
 delete from public.promotions        where id is not null;
@@ -135,5 +163,3 @@ select 'الباقي عمداً' as البند,
        (select count(*) from public.service_categories) as الأقسام,
        (select count(*) from public.subscription_plans) as الباقات,
        (select count(*) from public.admins)             as المسؤولون;
-
-commit;

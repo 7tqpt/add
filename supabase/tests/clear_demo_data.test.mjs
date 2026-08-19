@@ -92,6 +92,15 @@ check('وحجزه باقٍ', (await count('bookings')) === 1, `${await count('bo
 check('ودفعته باقية',
   (await count('payments', `where reference = 'TRX-REAL-0001'`)) === 1)
 
+// ── وإعادةُ التشغيل؟ ────────────────────────────────────────────────────────
+// لا `begin;` في السكربت — ومحرّر Supabase يُثبت كل جملةٍ وحدها. فإن انقطع
+// التشغيل في منتصفه بقي نصفُ الحذف مُثبتاً، وأوّلُ ما يفعله المستخدم أن يعيد
+// التشغيل. فتكرارُه يجب أن يمرّ بلا خطأ وألّا يمسّ ما نجا.
+await db.exec(read('clear_demo_data.sql'))
+check('التشغيل الثاني لا يخطئ ولا يمسّ الحقيقيّ',
+  (await count('app_users')) === 1 && (await count('bookings')) === 1 &&
+  (await count('payments')) === 1)
+
 console.log('\n=== والمرجعُ لم يُمسّ ===')
 const govs = await count('governorates')
 const cats = await count('service_categories')
