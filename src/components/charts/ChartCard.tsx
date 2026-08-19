@@ -130,7 +130,7 @@ function DataTable({ table }: { table: TableView }) {
         </thead>
         <tbody>
           {table.rows.map((row, rowIndex) => (
-            <tr key={rowIndex} className="border-b border-hairline last:border-0">
+            <tr key={rowIndex} className="glass-row border-b border-hairline last:border-0">
               {row.map((cell, cellIndex) => (
                 <td
                   key={cellIndex}

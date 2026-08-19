@@ -168,7 +168,7 @@ export function DisputesPage() {
           <div className="overflow-x-auto">
             <table className="w-full border-collapse text-sm">
               <thead>
-                <tr className="bg-surface-2">
+                <tr className="glass-item">
                   {['النزاع', 'الطرفان', 'التصنيف', 'فتحه', 'المبلغ المعاد', 'منذ', 'الحالة'].map(
                     (heading) => (
                       <th
@@ -186,7 +186,7 @@ export function DisputesPage() {
                 {data.rows.map((dispute) => (
                   <tr
                     key={dispute.id}
-                    className="border-b border-hairline last:border-0 hover:bg-surface-2"
+                    className="glass-row border-b border-hairline last:border-0"
                   >
                     <td className="px-4 py-3">
                       <Link

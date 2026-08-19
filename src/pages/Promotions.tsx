@@ -258,7 +258,7 @@ function Campaigns({ onToast }: { onToast: (message: string) => void }) {
           <div className="overflow-x-auto">
             <table className="w-full border-collapse text-sm">
               <thead>
-                <tr className="bg-surface-2">
+                <tr className="glass-item">
                   {['الشريك', 'النوع', 'الفترة', 'المبلغ', 'الظهور', 'النقر', 'الحالة', ''].map(
                     (heading, index) => (
                       <th
@@ -278,7 +278,7 @@ function Campaigns({ onToast }: { onToast: (message: string) => void }) {
                   return (
                     <tr
                       key={promotion.id}
-                      className="border-b border-hairline last:border-0 hover:bg-surface-2"
+                      className="glass-row border-b border-hairline last:border-0"
                     >
                       <td className="px-4 py-3">
                         <Link

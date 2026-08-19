@@ -304,7 +304,7 @@ export function PaymentsPage() {
           <div className="overflow-x-auto">
             <table className="w-full border-collapse text-sm">
               <thead>
-                <tr className="bg-surface-2">
+                <tr className="glass-item">
                   {[
                     'المرجع',
                     'العميل',
@@ -331,7 +331,7 @@ export function PaymentsPage() {
                 {rows.data.rows.map((payment) => (
                   <tr
                     key={payment.id}
-                    className="border-b border-hairline last:border-0 hover:bg-surface-2"
+                    className="glass-row border-b border-hairline last:border-0"
                   >
                     <td className="px-4 py-3">
                       <p

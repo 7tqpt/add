@@ -623,6 +623,53 @@ textarea {
     inset 0 1px 0 color-mix(in oklab, white 45%, transparent);
 }
 
+/* ---------------------------------------------------------------------------
+   الزجاج الداخلي — لما يقع **داخل** لوحةٍ زجاجية.
+
+   وهو بلا `backdrop-filter` عمداً، وليس نسياناً: اللوحة الأمّ ضبّبت ما خلفها
+   وسطّحته، فما بداخلها ليس وراءه إلا سطحُها هي. فتضبيبٌ ثانٍ يكلّف طبقة رسمٍ
+   إضافية في كل إطار ولا يُنتج بكسلاً واحداً مختلفاً — وهو أسوأ أنواع الزينة:
+   ثمنٌ بلا أثر.
+
+   فبقي منه ما يُرى: تدرّجٌ خفيف، وحدٌّ، وخطُّ ضوءٍ على الحافّة العليا. وهي
+   أخفّ من زجاج اللوحة — ٨٪ لا ٧٦٪ — لأن سطحاً داخل سطحٍ يجب أن يُقرأ تابعاً
+   لا منافساً.
+   --------------------------------------------------------------------------- */
+.glass-item {
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--tone, var(--accent)) 8%, transparent),
+    color-mix(in oklab, var(--tone, var(--accent)) 2%, transparent)
+  );
+  border: 1px solid color-mix(in oklab, var(--tone, var(--accent)) 14%, var(--border));
+  box-shadow: inset 0 1px 0 color-mix(in oklab, white 38%, transparent);
+}
+
+/* صفٌّ في قائمة: بلا سطحٍ في راحته، ويكتسبه عند التحويم أو الضغط. وصفوفٌ
+   ظاهرةٌ كلّها تجعل القائمة سلّماً من الحواف يصعب مسحه بالعين. */
+.glass-row {
+  border: 1px solid transparent;
+  border-radius: 0.75rem;
+  transition:
+    background var(--dur-base) var(--ease-out),
+    border-color var(--dur-base) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
+}
+@media (hover: hover) {
+  .glass-row:hover {
+    background: linear-gradient(
+      180deg,
+      color-mix(in oklab, var(--accent) 9%, transparent),
+      color-mix(in oklab, var(--accent) 3%, transparent)
+    );
+    border-color: color-mix(in oklab, var(--accent) 20%, transparent);
+  }
+}
+.glass-row:active {
+  transform: scale(0.994);
+  border-color: color-mix(in oklab, var(--accent) 42%, transparent);
+}
+
 /* استدارةٌ تامّة للحقول والأزرار في صفحة الدخول.
    وصنفٌ صريحٌ لا `rounded-full` من Tailwind: `cn` عندنا يَصِل الأصناف وصلاً
    ولا يحلّ تعارضها، فلو اجتمع `rounded-lg` من المكوّن و`rounded-full` من موضع
@@ -730,6 +777,7 @@ textarea {
   /* الميلان والطفو والدوران تُلغى كلّها: تصفيرُ مدّتها وحدها يُبقي العنصر
      مائلاً أو مرفوعاً في وضعٍ ثابتٍ غريب. فتُعاد إلى وضعها المستوي. */
   .press-card:active,
+  .glass-row:active,
   .tilt-hover:hover,
   .tilt-group:hover .tilt-hover,
   .chip-3d,

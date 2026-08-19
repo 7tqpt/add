@@ -227,7 +227,7 @@ export function UserDetailPage() {
                       </thead>
                       <tbody>
                         {sessions.map((session) => (
-                          <tr key={session.id} className="border-b border-hairline last:border-0">
+                          <tr key={session.id} className="glass-row border-b border-hairline last:border-0">
                             <td className="tnum px-4 py-2 whitespace-nowrap text-ink">
                               {formatDateTime(session.started_at)}
                             </td>
@@ -306,7 +306,7 @@ export function UserDetailPage() {
               <div className="overflow-x-auto">
                 <table className="w-full border-collapse text-xs">
                   <thead>
-                    <tr className="bg-surface-2">
+                    <tr className="glass-item">
                       {['المرجع', 'الوصف', 'المبلغ', 'الطريقة', 'الحالة', 'التاريخ'].map((heading) => (
                         <th
                           key={heading}
@@ -320,7 +320,7 @@ export function UserDetailPage() {
                   </thead>
                   <tbody>
                     {payments.map((payment) => (
-                      <tr key={payment.id} className="border-b border-hairline last:border-0">
+                      <tr key={payment.id} className="glass-row border-b border-hairline last:border-0">
                         <td dir="ltr" className="tnum px-4 py-2.5 text-start whitespace-nowrap text-ink">
                           {payment.reference}
                         </td>

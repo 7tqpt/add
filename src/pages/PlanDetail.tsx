@@ -131,7 +131,7 @@ export function PlanDetailPage() {
           ) : null}
 
           {record.notes ? (
-            <p className="rounded-lg border border-hairline bg-surface-2 px-3 py-2.5 text-xs leading-6 text-ink-2">
+            <p className="glass-item rounded-lg px-3 py-2.5 text-xs leading-6 text-ink-2">
               {record.notes}
             </p>
           ) : null}
@@ -156,7 +156,7 @@ export function PlanDetailPage() {
           <div className="overflow-x-auto">
             <table className="w-full border-collapse text-xs">
               <thead>
-                <tr className="bg-surface-2">
+                <tr className="glass-item">
                   {['الخدمة', 'مقدّم الخدمة', 'الموعد', 'الإجمالي', 'المدفوع', 'الحالة'].map(
                     (heading) => (
                       <th
@@ -172,7 +172,7 @@ export function PlanDetailPage() {
               </thead>
               <tbody>
                 {rows.map((booking) => (
-                  <tr key={booking.id} className="border-b border-hairline last:border-0">
+                  <tr key={booking.id} className="glass-row border-b border-hairline last:border-0">
                     <td className="px-4 py-2.5">
                       <Link
                         to={`/bookings/${booking.id}`}

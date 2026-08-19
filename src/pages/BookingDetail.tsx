@@ -235,7 +235,7 @@ export function BookingDetailPage() {
             />
           </dl>
 
-          <div className="flex items-start gap-2 rounded-lg border border-hairline bg-surface-2 px-3 py-2.5">
+          <div className="flex items-start gap-2 glass-item rounded-lg px-3 py-2.5">
             <MapPin size={14} aria-hidden className="mt-0.5 shrink-0 text-muted" />
             <div className="min-w-0 text-xs">
               <p className="text-ink">

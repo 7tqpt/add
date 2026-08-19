@@ -200,7 +200,7 @@ export function DisputeDetailPage() {
             />
           </dl>
 
-          <p className="rounded-lg border border-hairline bg-surface-2 px-3 py-2.5 text-xs leading-6 text-ink-2">
+          <p className="glass-item rounded-lg px-3 py-2.5 text-xs leading-6 text-ink-2">
             {record.description}
           </p>
 

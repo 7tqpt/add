@@ -110,7 +110,7 @@ export function ProviderQueue() {
         <div className="overflow-x-auto">
           <table className="w-full border-collapse text-xs">
             <thead>
-              <tr className="bg-surface-2">
+              <tr className="glass-item">
                 {['المزوّد', 'الأقسام', 'الموقع', 'الحالة', ''].map(
                   (heading, index) => (
                     <th
@@ -126,7 +126,10 @@ export function ProviderQueue() {
             </thead>
             <tbody>
               {data.rows.map((provider) => (
-                <tr key={provider.id} className="border-b border-hairline last:border-0">
+                <tr
+                  key={provider.id}
+                  className="glass-row border-b border-hairline last:border-0"
+                >
                   <td className="px-4 py-2.5">
                     <Link
                       to={`/providers/${provider.id}`}
