@@ -7,6 +7,17 @@ import { Spinner } from '@/components/ui/Feedback'
 import { useAuth } from '@/context/AuthContext'
 import { acceptInvitation } from '@/services/admins'
 
+/** يستخرج رسالةً مفهومة من أي شكلٍ يُرمى: صنف `Error`، أو كائنٌ يحمل `message`. */
+function messageOf(cause: unknown, fallback: string): string {
+  if (cause instanceof Error && cause.message) return cause.message
+  if (typeof cause === 'string' && cause) return cause
+  if (cause && typeof cause === 'object' && 'message' in cause) {
+    const { message } = cause as { message?: unknown }
+    if (typeof message === 'string' && message) return message
+  }
+  return fallback
+}
+
 /**
  * حساب صحيح بلا صلاحية إدارة.
  *
@@ -43,7 +54,10 @@ export function NoAccess() {
       // هذا المكوّن باللوحة في المكان.
       refreshRole()
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'تعذّر قبول الدعوة.')
+      // لا يُكتفى بـ`instanceof Error`: كائنٌ بلا صنفٍ يحمل رسالةً نافعة كان
+      // يسقط إلى نصٍّ عامّ فيضيع السبب، وهو أسوأ ما يقع لمن يقف أمام طريقٍ
+      // مسدود — يقرأ «تعذّر» ولا يعرف ماذا يصلح.
+      setError(messageOf(cause, 'تعذّر قبول الدعوة.'))
     } finally {
       setRedeeming(false)
     }
