@@ -180,6 +180,106 @@ class ErrorBlock extends StatelessWidget {
   );
 }
 
+/// أيقونة القسم من `slug`.
+///
+/// من الـ`slug` لا من عمود `icon` في القاعدة: العمود موجودٌ لكنه فارغٌ في
+/// البذرة، و`slug` معرّفٌ برمجيٌّ لا يُترجم ولا يُغيَّر بعد أن تُبنى عليه
+/// بيانات — فهو الأثبت.
+///
+/// والافتراضيّ ليس زينة: من يضيف قسماً جديداً من اللوحة غداً يجد له أيقونةً
+/// معقولة بدل فراغٍ في بطاقةٍ نصفُها فارغ.
+IconData categoryIcon(String slug) => switch (slug) {
+  'halls' => Icons.meeting_room_outlined,
+  'catering' => Icons.restaurant_outlined,
+  'artists' => Icons.music_note_outlined,
+  'sound' => Icons.speaker_outlined,
+  'photography' => Icons.photo_camera_outlined,
+  'support' => Icons.water_drop_outlined,
+  'cars' => Icons.directions_car_outlined,
+  'attire' => Icons.checkroom_outlined,
+  'planners' => Icons.event_note_outlined,
+  'beauty' => Icons.brush_outlined,
+  'decor' => Icons.local_florist_outlined,
+  'printing' => Icons.print_outlined,
+  _ => Icons.category_outlined,
+};
+
+/// بطاقة قسم — قرصٌ بأيقونته واسمُه تحته.
+///
+/// بطاقةٌ لا شريحة: الشريحة نصٌّ في إطار، وصفٌّ منها يُقرأ كتلةً واحدة يُبحث
+/// فيها بالقراءة. والأيقونة تُعرف قبل أن يُقرأ الاسم، فيُمسح الصفُّ بالعين
+/// مسحاً واحداً.
+///
+/// وارتفاعها ثابتٌ لا يتبع طول الاسم: «الموية والطليع والخدمات المساندة»
+/// و«السيارات» في صفٍّ واحد، ولو تفاوت الارتفاع لتعرّج الصفّ كلّه.
+class CategoryCard extends StatelessWidget {
+  const CategoryCard({
+    super.key,
+    required this.label,
+    required this.icon,
+    required this.active,
+    required this.onTap,
+  });
+
+  final String label;
+  final IconData icon;
+  final bool active;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final tone = active ? AppColors.accent : AppColors.ink2;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        width: 96,
+        padding: const EdgeInsets.symmetric(horizontal: Space.sm, vertical: Space.md),
+        decoration: BoxDecoration(
+          color: active ? AppColors.accent.withValues(alpha: 0.08) : AppColors.surface,
+          border: Border.all(
+            color: active ? AppColors.accent : AppColors.hairline,
+            width: active ? 1.5 : 1,
+          ),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 34,
+              height: 34,
+              decoration: BoxDecoration(
+                color: tone.withValues(alpha: active ? 0.14 : 0.07),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, size: 19, color: tone),
+            ),
+            const SizedBox(height: Space.sm),
+            // ثلاثة أسطرٍ بحدٍّ أقصى ثم قصٌّ. وثلاثةٌ لا سطران: أطولُ اسمٍ
+            // في البذرة — «الموية والطليع والخدمات المساندة» — يُقصّ عند
+            // سطرين فيضيع آخره، ويكتمل عند ثلاثة. والكلفة اثنا عشر بكسلاً
+            // في ارتفاع الصفّ كلّه، وقد قِيست بالرسم لا بالتقدير.
+            Text(
+              label,
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 11.5,
+                height: 1.35,
+                fontWeight: active ? FontWeight.w600 : FontWeight.w500,
+                color: active ? AppColors.accent : AppColors.ink,
+                fontFamilyFallback: arabicFallback,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 /// شريحة اختيار — للأقسام والمحافظات.
 class PickChip extends StatelessWidget {
   const PickChip({super.key, required this.label, required this.active, required this.onTap});
