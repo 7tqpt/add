@@ -430,7 +430,7 @@ export function ProviderDetailPage() {
                 <div className="overflow-x-auto">
                   <table className="w-full border-collapse text-xs">
                     <thead>
-                      <tr className="bg-surface-2">
+                      <tr className="glass-item">
                         {['الخدمة', 'السعر', 'المدة', 'الحالة'].map((heading) => (
                           <th
                             key={heading}
@@ -444,7 +444,7 @@ export function ProviderDetailPage() {
                     </thead>
                     <tbody>
                       {services.map((service) => (
-                        <tr key={service.id} className="border-b border-hairline last:border-0">
+                        <tr key={service.id} className="glass-row border-b border-hairline last:border-0">
                           <td className="px-4 py-2.5 text-ink">{service.title}</td>
                           <td className="tnum px-4 py-2.5 whitespace-nowrap text-ink-2">
                             {formatMoney(service.price)}

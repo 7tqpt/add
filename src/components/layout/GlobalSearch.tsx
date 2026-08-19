@@ -162,7 +162,7 @@ export function GlobalSearch() {
             go(hits[active])
           }
         }}
-        className="h-9 w-full rounded-lg border border-hairline bg-surface-2 ps-9 pe-3 text-sm text-ink placeholder:text-muted focus:border-accent"
+        className="h-9 w-full glass-item rounded-lg ps-9 pe-3 text-sm text-ink placeholder:text-muted focus:border-accent"
       />
 
       {open && term.trim().length >= 2 ? (

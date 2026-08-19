@@ -192,7 +192,7 @@ export function AuditPage() {
       </div>
 
       {!isSupabaseConfigured ? (
-        <p className="rounded-lg border border-hairline bg-surface-2 px-3 py-2.5 text-xs leading-6 text-ink-2">
+        <p className="glass-item rounded-lg px-3 py-2.5 text-xs leading-6 text-ink-2">
           في وضع العرض التجريبي يبدأ السجل فارغاً ويمتلئ بما تفعله الآن — جرّب إيقاف مستخدم أو
           تغيير إعداد ثم عُد إلى هنا. يُحفظ محلياً في متصفحك، ويُمسح عند تسجيل الخروج.
         </p>
@@ -212,7 +212,7 @@ export function AuditPage() {
           <div className="overflow-x-auto">
             <table className="w-full border-collapse text-sm">
               <thead>
-                <tr className="bg-surface-2">
+                <tr className="glass-item">
                   {['التاريخ', 'المسؤول', 'العملية', 'العنصر', 'التفاصيل'].map((heading) => (
                     <th
                       key={heading}
@@ -226,7 +226,7 @@ export function AuditPage() {
               </thead>
               <tbody>
                 {data.rows.map((entry) => (
-                  <tr key={entry.id} className="border-b border-hairline last:border-0">
+                  <tr key={entry.id} className="glass-row border-b border-hairline last:border-0">
                     <td className="tnum px-4 py-3 text-xs whitespace-nowrap text-ink">
                       {formatDateTime(entry.created_at)}
                     </td>

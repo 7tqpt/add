@@ -184,7 +184,7 @@ export function UsersPage() {
           <div className="overflow-x-auto">
             <table className="w-full border-collapse text-sm">
               <thead>
-                <tr className="bg-surface-2">
+                <tr className="glass-item">
                   {['العميل', 'المنصة', 'الإصدار', 'المحافظة', 'الجلسات', 'آخر ظهور', 'الحالة', ''].map(
                     (heading, index) => (
                       <th
@@ -200,7 +200,7 @@ export function UsersPage() {
               </thead>
               <tbody>
                 {data.rows.map((user) => (
-                  <tr key={user.id} className="border-b border-hairline last:border-0 hover:bg-surface-2">
+                  <tr key={user.id} className="glass-row border-b border-hairline last:border-0">
                     <td className="px-4 py-3">
                       <Link
                         to={`/users/${user.id}`}

@@ -47,9 +47,16 @@ export function PaymentsFeed() {
       ) : !data || data.rows.length === 0 ? (
         <EmptyState title="لا توجد عمليات بعد" />
       ) : (
-        <ul className="divide-y divide-[var(--border)]">
+        /*
+          الفواصل ذهبت والحبّات حلّت محلّها: صفٌّ يكتسب سطحه عند التحويم أقرب
+          إلى ما حوله من خطٍّ رفيعٍ ثابت، ولا يجعل القائمة سلّماً من الحواف.
+        */
+        <ul className="flex flex-col gap-1 p-2 sm:p-2.5">
           {data.rows.map((payment) => (
-            <li key={payment.id} className="flex flex-col gap-1 px-4 py-3 sm:px-5">
+            <li
+              key={payment.id}
+              className="glass-row flex flex-col gap-1 px-3 py-2.5 sm:px-3.5"
+            >
               <div className="flex items-baseline justify-between gap-3">
                 <span className="truncate text-sm font-medium text-ink">{payment.user_name}</span>
                 <span className="tnum shrink-0 text-sm font-semibold whitespace-nowrap text-ink">
@@ -77,7 +84,7 @@ export function PaymentsFeed() {
                   <Link
                     to={`/bookings/${payment.booking_id}`}
                     dir="ltr"
-                    className="tnum flex shrink-0 items-center gap-1 rounded-md border border-hairline px-1.5 py-0.5 text-[11px] text-muted hover:text-accent"
+                    className="glass-item tnum flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] text-muted hover:text-accent"
                   >
                     <Receipt size={11} aria-hidden />
                     {payment.reference}

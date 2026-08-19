@@ -268,7 +268,7 @@ export function SettingsPage() {
             value={isSupabaseConfigured ? 'Supabase (متصل)' : 'بيانات تجريبية محلية'}
           />
           {!isSupabaseConfigured ? (
-            <p className="rounded-lg border border-hairline bg-surface-2 px-3 py-2 leading-6 text-ink-2">
+            <p className="glass-item rounded-lg px-3 py-2 leading-6 text-ink-2">
               التغييرات هنا تُحفظ في الذاكرة فقط وتُفقد عند تحديث الصفحة. اربط Supabase لحفظها
               فعلياً.
             </p>
@@ -444,7 +444,7 @@ function AdminsCard({ onToast }: { onToast: (message: string) => void }) {
         <div className="overflow-x-auto rounded-lg border border-hairline">
           <table className="w-full border-collapse text-[11px]">
             <thead>
-              <tr className="bg-surface-2">
+              <tr className="glass-item">
                 <th scope="col" className="border-b border-hairline px-3 py-2 text-start font-medium whitespace-nowrap text-ink-2">
                   المجال
                 </th>
@@ -461,7 +461,7 @@ function AdminsCard({ onToast }: { onToast: (message: string) => void }) {
             </thead>
             <tbody>
               {AREAS_IN_ORDER.map((area) => (
-                <tr key={area} className="border-b border-hairline last:border-0">
+                <tr key={area} className="glass-row border-b border-hairline last:border-0">
                   <th scope="row" className="px-3 py-1.5 text-start font-normal whitespace-nowrap text-ink-2">
                     {AREA_LABEL[area]}
                   </th>
@@ -504,7 +504,7 @@ function AdminsCard({ onToast }: { onToast: (message: string) => void }) {
           <div className="overflow-x-auto rounded-lg border border-hairline">
             <table className="w-full border-collapse text-xs">
               <thead>
-                <tr className="bg-surface-2">
+                <tr className="glass-item">
                   {['البريد', 'الدور', 'أُضيف في', ''].map((heading, i) => (
                     <th
                       key={heading || i}
@@ -520,7 +520,7 @@ function AdminsCard({ onToast }: { onToast: (message: string) => void }) {
                 {(data ?? []).map((admin) => {
                   const isMe = admin.user_id === user?.id
                   return (
-                    <tr key={admin.user_id} className="border-b border-hairline last:border-0">
+                    <tr key={admin.user_id} className="glass-row border-b border-hairline last:border-0">
                       <td className="px-3 py-2 whitespace-nowrap text-ink">
                         {/*
                           قرصُ العلامة لكل مسؤول — هم موظفو الشركة، فالشعار
@@ -617,7 +617,7 @@ function AdminsCard({ onToast }: { onToast: (message: string) => void }) {
         {canManageAdmins ? (
           <form
             onSubmit={submitNew}
-            className="flex flex-col gap-3 rounded-lg border border-hairline bg-surface-2 px-3 py-3"
+            className="flex flex-col gap-3 glass-item rounded-lg px-3 py-3"
           >
             <div>
               <p className="text-xs font-medium text-ink">دعوة موظف</p>
@@ -679,7 +679,7 @@ function AdminsCard({ onToast }: { onToast: (message: string) => void }) {
           <div className="overflow-x-auto rounded-lg border border-hairline">
             <table className="w-full border-collapse text-xs">
               <thead>
-                <tr className="bg-surface-2">
+                <tr className="glass-item">
                   {['الدعوة', 'الدور', 'الرمز', 'تنتهي', ''].map((heading, i) => (
                     <th
                       key={heading || i}
@@ -693,7 +693,7 @@ function AdminsCard({ onToast }: { onToast: (message: string) => void }) {
               </thead>
               <tbody>
                 {(invitations.data ?? []).map((invitation) => (
-                  <tr key={invitation.id} className="border-b border-hairline last:border-0">
+                  <tr key={invitation.id} className="glass-row border-b border-hairline last:border-0">
                     <td dir="ltr" className="px-3 py-2 text-start whitespace-nowrap text-ink">
                       {invitation.email}
                     </td>

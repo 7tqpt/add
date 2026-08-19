@@ -252,7 +252,7 @@ function ServicesTab({ onToast }: { onToast: (message: string) => void }) {
           <div className="overflow-x-auto">
             <table className="w-full border-collapse text-sm">
               <thead>
-                <tr className="bg-surface-2">
+                <tr className="glass-item">
                   {['الخدمة', 'القسم', 'السعر', 'العربون', 'المدة', 'سياسة الإلغاء', 'العرض'].map(
                     (heading) => (
                       <th
@@ -270,7 +270,7 @@ function ServicesTab({ onToast }: { onToast: (message: string) => void }) {
                 {data.rows.map((service) => (
                   <tr
                     key={service.id}
-                    className="border-b border-hairline last:border-0 hover:bg-surface-2"
+                    className="glass-row border-b border-hairline last:border-0"
                   >
                     <td className="px-4 py-3">
                       <p className="text-xs font-medium text-ink">{service.title}</p>
@@ -332,7 +332,7 @@ function PoliciesTab() {
 
   return (
     <div className="flex flex-col gap-4">
-      <p className="rounded-lg border border-hairline bg-surface-2 px-3 py-2.5 text-xs leading-6 text-ink-2">
+      <p className="glass-item rounded-lg px-3 py-2.5 text-xs leading-6 text-ink-2">
         كل حجز ينسخ سلّم الإلغاء لحظة إنشائه، فتعديل السياسة هنا يسري على الحجوزات
         الجديدة فقط ولا يغيّر ما اتُّفق عليه في حجز قائم.
       </p>

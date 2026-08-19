@@ -211,7 +211,7 @@ export function ConflictCalendar() {
                           : date === today
                             ? 'border-accent text-ink'
                             : count > 0
-                              ? 'border-hairline bg-surface-2 text-ink hover:border-accent'
+                              ? 'glass-item text-ink hover:border-accent'
                               : 'border-transparent text-muted hover:bg-surface-2',
                       )}
                     >
@@ -246,7 +246,7 @@ export function ConflictCalendar() {
             </div>
 
             {/* تفاصيل اليوم المختار */}
-            <div className="rounded-lg border border-hairline bg-surface-2 p-3">
+            <div className="glass-item rounded-lg p-3">
               <div className="flex items-baseline justify-between gap-2">
                 <p className="text-xs font-medium text-ink">
                   {selected ? dayLabel.format(new Date(`${selected}T00:00:00`)) : '—'}
@@ -327,7 +327,7 @@ export function ConflictCalendar() {
           </div>
 
           {monthConflicts === 0 ? (
-            <p className="rounded-lg border border-hairline bg-surface-2 px-3 py-2.5 text-xs text-ink-2">
+            <p className="glass-item rounded-lg px-3 py-2.5 text-xs text-ink-2">
               لا يوجد تضارب في مواعيد هذا الشهر.
               {totalConflicts > 0 && firstConflictDate ? (
                 <>
