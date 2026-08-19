@@ -94,6 +94,31 @@ create policy invitations_owner_writes on public.admin_invitations
 grant select, insert, update, delete on public.admin_invitations to authenticated;
 
 -- ----------------------------------------------------------------------------
+-- بريد المستخدم الحالي
+--
+-- كان يُقرأ من `current_setting('request.jwt.claim.email')` — وهو إعدادٌ
+-- قديم لم تعد Supabase الحالية تضبطه، فيخرج نصّاً فارغاً. وحين يُقارن به
+-- بريدُ الدعوة تُرفض كلُّ دعوةٍ مهما صحّ رمزها وبريدها: عطلٌ صامت لا يظهر
+-- في الاختبار الذي يضبط الإعداد بنفسه، ولا يظهر إلا على قاعدةٍ حقيقية.
+--
+-- فيُقرأ من `auth.users` بالمعرّف: هذا مصدرُ الحقيقة، لا يعتمد على شكل
+-- المطالبات ولا يتغيّر بتغيّر إصدار المنصّة. والمطالبات تبقى احتياطاً
+-- لبيئاتٍ لا يُقرأ فيها الجدول.
+-- ----------------------------------------------------------------------------
+create or replace function public.auth_email()
+returns text
+language sql stable security definer set search_path = public as $$
+  select lower(coalesce(
+    (select u.email from auth.users u where u.id = auth.uid()),
+    nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'email',
+    nullif(current_setting('request.jwt.claim.email', true), ''),
+    ''
+  ))
+$$;
+revoke all on function public.auth_email() from public;
+grant execute on function public.auth_email() to authenticated;
+
+-- ----------------------------------------------------------------------------
 -- إنشاء الدعوة — للمالك
 -- ----------------------------------------------------------------------------
 create or replace function public.api_invite_admin(
@@ -132,7 +157,7 @@ begin
     clean_email,
     p_role,
     upper(substr(replace(gen_random_uuid()::text, '-', ''), 1, 10)),
-    coalesce(nullif(current_setting('request.jwt.claim.email', true), ''), ''),
+    public.auth_email(),
     coalesce(p_note, '')
   )
   returning * into invitation;
@@ -150,7 +175,7 @@ language plpgsql security definer set search_path = public as $$
 declare
   invitation public.admin_invitations;
   me    uuid := auth.uid();
-  mail  text := lower(coalesce(nullif(current_setting('request.jwt.claim.email', true), ''), ''));
+  mail  text := public.auth_email();
 begin
   if me is null then
     raise exception 'سجّل الدخول أولاً';
