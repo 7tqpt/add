@@ -391,6 +391,39 @@ export async function acceptInvitation(token: string): Promise<AdminRole> {
   const { data, error } = await requireSupabase().rpc('api_accept_invitation', {
     p_token: token.trim(),
   })
-  if (error) throw error
+  if (error) {
+    // `throw error` وحدها لا تكفي: حين يفشل الطلب على مستوى الشبكة تبني
+    // مكتبة PostgREST كائناً بسيطاً بلا صنف `Error`، فيسقط فحص
+    // `instanceof Error` عند المستدعي وتُبتلع الرسالة خلف نصٍّ عامّ لا
+    // يقول شيئاً. فيُلَفّ الخطأ هنا دائماً، ويُذكر رمزه معه.
+    if (error.code === 'PGRST202') {
+      throw new Error(
+        'الدالة api_accept_invitation غير موجودة في قاعدة بياناتك — شغّل ملف ' +
+          'supabase/invitations.sql كاملاً في محرّر SQL، ثم أعد المحاولة.',
+      )
+    }
+    if (/سجّل الدخول أولاً/.test(error.message)) {
+      throw new Error('انتهت جلستك. سجّل الخروج ثم ادخل من جديد وأعد إدخال الرمز.')
+    }
+    if (/حسابك مسؤول بالفعل/.test(error.message)) {
+      throw new Error('حسابك مسؤولٌ بالفعل — أعد تحميل الصفحة.')
+    }
+    if (/الدعوة غير صالحة/.test(error.message)) {
+      throw new Error(
+        'الرمز لا يطابق دعوةً سارية لهذا البريد. تأكّد أنك سجّلت بالبريد نفسه ' +
+          'الذي دُعي، وأن الدعوة لم تنتهِ ولم تُستعمل. واطلب من المالك رمزاً ' +
+          'جديداً إن لزم.',
+      )
+    }
+    if (error.code === '42501' || /permission denied/i.test(error.message)) {
+      throw new Error(
+        'حسابك ممنوع من تنفيذ الدالة — أعد تشغيل سطر GRANT في نهاية ' +
+          'supabase/invitations.sql.',
+      )
+    }
+    throw new Error(
+      `تعذّر قبول الدعوة${error.code ? ` (${error.code})` : ''}: ${error.message}`,
+    )
+  }
   return data as AdminRole
 }
