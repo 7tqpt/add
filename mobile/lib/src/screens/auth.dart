@@ -181,7 +181,7 @@ class _AuthScreenState extends State<AuthScreen> {
                   ),
                   const SizedBox(height: Space.sm),
                   const Text(
-                    'أعراس اليمن',
+                    'فرحتي',
                     style: TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.bold,

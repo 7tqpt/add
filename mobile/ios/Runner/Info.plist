@@ -9,7 +9,7 @@
 	<!-- الاسم المعروض تحت الأيقونة. أمّا CFBundleName أدناه فيبقى لاتينياً
 	     قصيراً: هو اسم الحزمة الداخلي لا ما يقرأه المستخدم. -->
 	<key>CFBundleDisplayName</key>
-	<string>أعراس اليمن</string>
+	<string>فرحتي</string>
 	<key>CFBundleLocalizations</key>
 	<array>
 		<string>ar</string>

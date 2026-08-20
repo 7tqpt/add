@@ -89,8 +89,13 @@ class _ExploreScreenState extends State<ExploreScreen> {
             ),
           ),
         ),
+        // الأقسام بطاقاتٌ في صفٍّ يُمرَّر، لا شرائح.
+        //
+        // وصفٌّ أفقيٌّ لا شبكةٌ بملء الشاشة: هذه شاشةُ **تصفّح خدمات** والأقسام
+        // مرشِّحٌ فوقها. شبكةٌ من اثنتي عشرة بطاقة تدفع الخدمات تحت الطيّة،
+        // فيصير المرشِّح هو الصفحة وما يُرشَّح مخفيّاً.
         SizedBox(
-          height: 44,
+          height: 116,
           child: FutureBuilder<List<ServiceCategory>>(
             future: _categories,
             builder: (context, snap) {
@@ -99,8 +104,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(horizontal: Space.lg),
                 children: [
-                  PickChip(
+                  CategoryCard(
                     label: 'الكل',
+                    icon: Icons.apps,
                     active: _categoryId == null,
                     onTap: () {
                       _categoryId = null;
@@ -109,8 +115,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   ),
                   for (final c in cats) ...[
                     const SizedBox(width: Space.sm),
-                    PickChip(
+                    CategoryCard(
                       label: c.name,
+                      icon: categoryIcon(c.slug),
                       active: _categoryId == c.id,
                       onTap: () {
                         _categoryId = c.id;

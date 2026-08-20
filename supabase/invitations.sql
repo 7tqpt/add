@@ -239,9 +239,37 @@ language sql stable security definer set search_path = public as $$
   );
 $$;
 
+-- ----------------------------------------------------------------------------
+-- هل لبريدي دعوةٌ تنتظر؟
+--
+-- تُستدعى من شاشة «لا تملك صلاحية الدخول» لتقول للواقف أمامها **لماذا**
+-- رُدّ. والفرق بين السببين حاسمٌ والقاعدة تعرفه:
+--
+--   · دعوةٌ باسمه تنتظر رمزاً → يُدخل الرمز فيدخل
+--   · لا دعوةَ لبريده أصلاً   → دخل بحسابٍ غير المدعوّ، فليخرج ويدخل بغيره
+--
+-- وقد كلّف خلطُ السببين مالكَ المنصّة جولتين: بريدان يفترقان بحرفٍ واحد
+-- (‏`ayman9k9`‏ و`ayman9w9`‏)، فعّل أحدهما وظنّ التفعيل لم يثبت.
+--
+-- ولا تكشف شيئاً لمن ليس مدعوّاً: تعيد الدور لصاحب البريد نفسه لا لغيره،
+-- ولا تعيد الرمز بحال — الرمز يبقى عند المالك يسلّمه بيده.
+-- ----------------------------------------------------------------------------
+create or replace function public.api_my_invitation()
+returns text
+language sql stable security definer set search_path = public as $$
+  select i.role
+    from public.admin_invitations i
+   where lower(i.email) = public.auth_email()
+     and i.accepted_at is null
+     and i.expires_at >= now()
+   limit 1;
+$$;
+
 revoke all on function public.api_invite_admin(text, text, text) from public;
 revoke all on function public.api_accept_invitation(text) from public;
 revoke all on function public.api_check_invitation(text, text) from public;
+revoke all on function public.api_my_invitation() from public;
+grant execute on function public.api_my_invitation() to authenticated;
 grant execute on function public.api_invite_admin(text, text, text) to authenticated;
 grant execute on function public.api_accept_invitation(text) to authenticated;
 -- لـ`anon` وحدها من بين دوال هذا الملف: تُستدعى قبل وجود جلسة أصلاً.

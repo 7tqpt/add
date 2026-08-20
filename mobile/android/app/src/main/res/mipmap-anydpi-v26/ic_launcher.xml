@@ -3,10 +3,13 @@
      جهاز، ومربّعاً مستدير الزوايا على آخر. وملفات mipmap-*/ic_launcher.png
      تبقى للأجهزة الأقدم.
 
-     و«monochrome» لأيقونات أندرويد 13 المصبوغة بلون خلفية المستخدم: قناعُها
-     شفافية الصورة، وشفافية واجهتنا هي القمرية نفسها فتصلح كما هي. -->
+     ولا «monochrome» هنا. طبقةُ أندرويد 13 المصبوغة بلون خلفية المستخدم
+     قناعُها شفافيةُ الواجهة، وواجهتنا الآن لوحةٌ معتمةٌ كاملة لا صورةٌ
+     شفّافة — فتخرج مربّعاً مصمتاً بلا معالم. وغيابُها يجعل النظام يعرض
+     الأيقونة كما هي في الوضع المصبوغ، وهو أهون من لطخة.
+
+     وتعود إن صُنع للعلامة رمزٌ أحاديّ اللون على شفافية. -->
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
     <background android:drawable="@drawable/ic_launcher_background" />
     <foreground android:drawable="@mipmap/ic_launcher_foreground" />
-    <monochrome android:drawable="@mipmap/ic_launcher_foreground" />
 </adaptive-icon>

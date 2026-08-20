@@ -94,6 +94,20 @@ await expectFail('دعوة بدور غير معروف', () =>
 await expectFail('دعوة لمن هو مسؤول أصلاً', () =>
   as('owner', `select public.api_invite_admin($1, 'viewer')`, [mail.manager]))
 
+// ── لماذا رُدّ الواقف أمام الشاشة؟ ─────────────────────────────────────────
+// الفرق بين «دعوةٌ تنتظر رمزك» و«لا دعوة لبريدك» هو ما يفصل من نسي الرمز
+// عمّن دخل بالحساب الخطأ. وقد كلّف خلطُهما جولتين حقيقيتين.
+console.log('\n=== أعندي دعوة؟ ===')
+{
+  const invited = await as('newbie', `select public.api_my_invitation() as role`)
+  ok('المدعوّ يرى دوره المنتظِر', invited.rows[0].role === 'support',
+     `${invited.rows[0].role}`)
+
+  const stranger = await as('stranger', `select public.api_my_invitation() as role`)
+  ok('ومن لا دعوة له يرى فراغاً لا دوراً', stranger.rows[0].role === null,
+     `${stranger.rows[0].role}`)
+}
+
 console.log('\n=== الشرطان معاً ===')
 // الرمز وحده لا يكفي: من سُرّب إليه لا يستطيع استعماله ببريده هو.
 await expectFail('غريب يستعمل الرمز ببريده', () =>
@@ -115,6 +129,12 @@ ok('صار له صفّ في admins', row.length === 1 && row[0].role === 'suppor
 const { rows: perms } = await as('newbie', `select public.can_write_area('support') as s, public.can_read_area('finance') as f`)
 ok('يكتب في التذاكر', perms[0].s === true)
 ok('ولا يرى المال', perms[0].f === false)
+
+{
+  const after = await as('newbie', `select public.api_my_invitation() as role`)
+  ok('ومن قَبِل لا تبقى له دعوةٌ منتظِرة', after.rows[0].role === null,
+     `${after.rows[0].role}`)
+}
 
 console.log('\n=== لا تُستعمل مرتين ===')
 await expectFail('إعادة استعمال الرمز نفسه', () =>

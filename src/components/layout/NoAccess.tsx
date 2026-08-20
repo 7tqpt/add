@@ -1,11 +1,13 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { KeyRound, ShieldOff } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Input } from '@/components/ui/Field'
 import { Spinner } from '@/components/ui/Feedback'
 import { useAuth } from '@/context/AuthContext'
-import { acceptInvitation } from '@/services/admins'
+import { ROLE_LABEL } from '@/lib/permissions'
+import type { AdminRole } from '@/lib/types'
+import { acceptInvitation, myInvitationRole } from '@/services/admins'
 
 /** يستخرج رسالةً مفهومة من أي شكلٍ يُرمى: صنف `Error`، أو كائنٌ يحمل `message`. */
 function messageOf(cause: unknown, fallback: string): string {
@@ -31,6 +33,29 @@ export function NoAccess() {
   const [redeeming, setRedeeming] = useState(false)
   const [token, setToken] = useState('')
   const [error, setError] = useState<string | null>(null)
+
+  /**
+   * `undefined` ما دام السؤال معلّقاً، ثم الدور أو `null`.
+   *
+   * التمييز بين الثلاثة مقصود: عرضُ «لا دعوة لبريدك» قبل أن يصل الجواب
+   * يتّهم المستخدم بما لم يُتحقّق منه بعد.
+   */
+  const [invited, setInvited] = useState<AdminRole | null | undefined>(undefined)
+
+  useEffect(() => {
+    let alive = true
+    myInvitationRole()
+      .then((role) => {
+        if (alive) setInvited(role)
+      })
+      // عطبٌ هنا لا يحجب الشاشة: الحقل يبقى، والرسالة تعود عامّة كما كانت.
+      .catch(() => {
+        if (alive) setInvited(null)
+      })
+    return () => {
+      alive = false
+    }
+  }, [])
 
   /**
    * قبول الدعوة من هنا لا من صفحة الدخول.
@@ -81,9 +106,20 @@ export function NoAccess() {
           حساب إدارة. لوحة التحكم مخصّصة لفريق المنصة وحده.
         </p>
 
-        {redeeming || token || error ? null : (
-          <p className="mt-3 text-xs leading-6 text-muted">
-            إن دعاك المالك وأعطاك رمزاً، فأدخله أدناه ليُفعَّل حسابك في الحال.
+        {/*
+          السبب لا الحكم. الشاشة تعرف أيّ الحالتين هي، وكتمانُه كلّف جولتين:
+          بريدان يفترقان بحرفٍ واحد، فُعِّل أحدهما وظُنّ أن التفعيل لم يثبت.
+        */}
+        {invited === undefined ? null : invited ? (
+          <p className="mt-3 text-xs leading-6 text-ink-2">
+            باسم هذا البريد <span className="font-medium">دعوةٌ تنتظر</span> بدور «
+            {ROLE_LABEL[invited]}». أدخل الرمز الذي أعطاك المالك ليُفعَّل حسابك في الحال.
+          </p>
+        ) : (
+          <p className="mt-3 text-xs leading-6 text-ink-2">
+            <span className="font-medium">لا توجد دعوةٌ لهذا البريد.</span> إن كنت قد فعّلت
+            حسابك من قبل فالأرجح أنك دخلت بحسابٍ آخر — تحقّق من البريد أعلاه حرفاً بحرف،
+            وسجّل الخروج ثم ادخل بالحساب المدعوّ.
           </p>
         )}
 

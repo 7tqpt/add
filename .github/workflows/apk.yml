@@ -136,8 +136,8 @@ jobs:
           #
           # واسمُ كلٍّ في متغيّرٍ واحد يُنسخ إليه ثم يُرفع منه: كتبتُها أوّل مرّة
           # مرتين، فغيّرتُ إحداهما ونسيت الأخرى، فسقط البناء عند الرفع.
-          ARM64=dist/aras-arm64.apk
-          ARM32=dist/aras-arm32.apk
+          ARM64=dist/farhati-arm64.apk
+          ARM32=dist/farhati-arm32.apk
           cp mobile/build/app/outputs/flutter-apk/app-arm64-v8a-release.apk   "$ARM64"
           cp mobile/build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk "$ARM32"
 
@@ -146,10 +146,10 @@ jobs:
 
           افتح هذه الصفحة **من متصفّح جوالك** ونزّل:
 
-          **`aras-arm64.apk`** — هذا هو المطلوب لكل جوال حديث.
+          **`farhati-arm64.apk`** — هذا هو المطلوب لكل جوال حديث.
 
           فإن قال جوالك إن الحزمة غير متوافقة — وهذا نادر ولا يكون إلا في
-          أجهزة قديمة جداً — فنزّل `aras-arm32.apk` بدلاً منه.
+          أجهزة قديمة جداً — فنزّل `farhati-arm32.apk` بدلاً منه.
 
           بعد التنزيل يسألك أندرويد عن السماح بالتثبيت من هذا المتصفّح: اسمح،
           ثم اضغط «تثبيت». السؤال طبيعي لأن الحزمة لا تأتي من متجر Play.
@@ -172,7 +172,7 @@ jobs:
           # أسوأ من ألّا يكون هناك وسمٌ أصلاً.
           gh release create "$TAG" \
             --target "$GITHUB_SHA" \
-            --title "أعراس اليمن — حزمة $TAG" \
+            --title "فرحتي — حزمة $TAG" \
             --notes-file notes.md \
             "$ARM64" "$ARM32"
 
@@ -194,7 +194,7 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: aras-android
+          name: farhati-android
           path: |
             mobile/build/app/outputs/flutter-apk/*.apk
             mobile/build/app/outputs/bundle/release/*.aab

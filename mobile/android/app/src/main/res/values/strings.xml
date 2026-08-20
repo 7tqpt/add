@@ -2,5 +2,5 @@
 <resources>
     <!-- اسم التطبيق تحت أيقونته في شاشة الجوال. عربيٌّ لأن من يستخدمه عربي،
          و«aras» التي وضعها القالب اسمُ حزمةٍ لا اسمُ منتَج. -->
-    <string name="app_name">أعراس اليمن</string>
+    <string name="app_name">فرحتي</string>
 </resources>
