@@ -24,11 +24,6 @@ except ImportError:
 RES = Path(__file__).resolve().parent.parent / 'android/app/src/main/res'
 DENSITIES = {'mdpi': 48, 'hdpi': 72, 'xhdpi': 96, 'xxhdpi': 144, 'xxxhdpi': 192}
 
-# الواجهة المتكيّفة ١٠٨ وحدة، والنظام يقصّ ما خرج عن ٧٢ في الوسط. فما وُضع
-# خارجها قد لا يُرى على بعض الأجهزة — والنسبة هذه هي ما يُبنى عليه القياس.
-SAFE = 72 / 108
-
-
 def trim_margin(im: Image.Image, fill: float = 0.5) -> Image.Image:
     """يقصّ الهامش المعتم أو الشفّاف حول العمل.
 
@@ -75,35 +70,34 @@ def dominant_edge_colour(im: Image.Image) -> tuple[int, int, int]:
     """
     small = im.convert('RGB').resize((64, 64), Image.LANCZOS)
     px = small.load()
+
+    # الحلقة عند ⅛ من الطرف لا عند الطرف نفسه: العمل مربّعٌ مستدير الزوايا،
+    # وحافّتُه تمرّ بالزوايا المعتمة الواقعة خارجه. قِستُ الصورة الحقيقية
+    # فوجدت الزاوية تمتدّ نحو سُبع العرض، فالحلقة تقع داخلها.
+    ring = 8
     buckets: dict[tuple[int, int, int], list[tuple[int, int, int]]] = {}
-    for i in range(64):
-        for x, y in ((i, 2), (i, 61), (2, i), (61, i)):
+    for i in range(ring, 64 - ring):
+        for x, y in ((i, ring), (i, 63 - ring), (ring, i), (63 - ring, i)):
             value = px[x, y]
-            key = tuple(v // 16 * 16 for v in value)
+            # المعتم لا يصوّت: هو أرضية الصورة لا أرضية العمل. وبدون هذا يفوز
+            # الأسود بالتشتّت لا بالكثرة — تدرّجُ الأزرق يتفرّق على سلالٍ عدّة
+            # بينما الأسود يجتمع في سلّةٍ واحدة، فيغلبها وهو أقلّ منها عدداً.
+            if sum(value) < 90:
+                continue
+            key = tuple(v // 32 * 32 for v in value)
             buckets.setdefault(key, []).append(value)
+
+    if not buckets:  # عملٌ معتمٌ كلّه — يُصوَّت بلا استثناء
+        for i in range(ring, 64 - ring):
+            for x, y in ((i, ring), (i, 63 - ring), (ring, i), (63 - ring, i)):
+                buckets.setdefault(tuple(v // 32 * 32 for v in px[x, y]), []).append(px[x, y])
+
     winner = max(buckets.values(), key=len)
     return tuple(round(sum(c[i] for c in winner) / len(winner)) for i in range(3))
 
 
-def dissolve_corners(im: Image.Image, colour: tuple[int, int, int]) -> Image.Image:
-    """يُذيب زوايا العمل السوداء في لون أرضيّته.
-
-    العمل مربّعٌ مستدير الزوايا، والقصُّ يُبقي المستطيلَ المحيط به — فتبقى
-    الزوايا الأربع سوداء. ورأيتُها كذلك في المعاينة: أربع لطخاتٍ سوداء تحت
-    القناع الدائري.
-
-    والملء من الزوايا لا استبدال كل أسودَ في الصورة: العمل نفسه قد يحمل ظلاً
-    داكناً أو خطّاً أسود، ومسحُ كل داكنٍ يأكل الرسم. والملءُ لا يتعدّى المنطقة
-    المتّصلة بالزاوية.
-    """
-    rgb = im.convert('RGB')
-    w, h = rgb.size
-    for corner in ((0, 0), (w - 1, 0), (0, h - 1), (w - 1, h - 1)):
-        r, g, b = rgb.getpixel(corner)
-        if r + g + b > 110:
-            continue  # هذه الزاوية ليست معتمة — لا شيء يُذاب
-        ImageDraw.floodfill(rgb, corner, colour, thresh=60)
-    return rgb.convert('RGBA')
+def colour_rgba(c: tuple[int, int, int]) -> tuple[int, int, int, int]:
+    return (c[0], c[1], c[2], 255)
 
 
 def square(im: Image.Image) -> Image.Image:
@@ -133,7 +127,6 @@ def main() -> None:
 
     art = square(trim_margin(Image.open(src)))
     bg = dominant_edge_colour(art)
-    art = dissolve_corners(art, bg)
     print(f'العمل بعد القصّ: {art.size} — لون الأرضية: #{bg[0]:02X}{bg[1]:02X}{bg[2]:02X}')
 
     # ── القديمة: العمل كما هو بزواياه المستديرة ─────────────────────────────
@@ -150,14 +143,20 @@ def main() -> None:
         shaped.save(path)
         print(f'  ✓ {path.relative_to(RES)}')
 
-    # ── المتكيّفة: العمل داخل منطقة الأمان، والباقي أرضية ────────────────────
-    # ولا تُقصّ زوايا العمل هنا: النظام يقصّ بقناعه هو، وقصٌّ فوق قصٍّ يأكل
-    # حافّة الرسم ويُظهر خطّاً مزدوجاً على الأجهزة الدائرية.
+    # ── المتكيّفة: العمل يملأ الطبقة، وقناعُ الجهاز هو الذي يشكّله ───────────
+    #
+    # ملءٌ كامل لا حشرٌ في منطقة الأمان. ومنطقةُ الأمان قاعدةٌ لشعارٍ يجب ألّا
+    # يُقصّ منه شيء؛ وهذه الصورة **أيقونةٌ كاملةٌ بذاتها** — لها إطارها
+    # واستدارتها وحاشيتها. فحشرُها في ⅔ الطبقة يُظهر أيقونةً داخل أيقونة،
+    # وحول الداخلة زواياها المعتمة. جرّبتُه فرأيتُه: أربع لطخاتٍ سوداء.
+    #
+    # وبالملء يقصّ الجهاز حاشيتها بقناعه — وهي حاشيةٌ زخرفية — ويبقى ما في
+    # وسطها: العروس والاسم والقلب. وقِستُ ذلك: الوسط يشغل نحو ثمانين في
+    # المئة، فالدائرة المحيطة بالمربّع لا تبلغه.
     for name, px in DENSITIES.items():
         side = round(px * 108 / 48)
-        inner = round(side * SAFE)
-        layer = Image.new('RGBA', (side, side), (0, 0, 0, 0))
-        layer.paste(art.resize((inner, inner), Image.LANCZOS), ((side - inner) // 2,) * 2)
+        layer = Image.new('RGBA', (side, side), colour_rgba(bg))
+        layer.alpha_composite(art.resize((side, side), Image.LANCZOS).convert('RGBA'))
         path = RES / f'mipmap-{name}/ic_launcher_foreground.png'
         layer.save(path)
         print(f'  ✓ {path.relative_to(RES)}')

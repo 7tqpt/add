@@ -1,11 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- أرضية الأيقونة المتكيّفة. تدرّجٌ لا لونٌ مسطّح: القناع الذي يقصّها يختلف
-     من جهازٍ لآخر، والتدرّج يبقى متّزناً تحت أي قصّة. -->
+<!-- أرضية الأيقونة المتكيّفة — لونٌ مأخوذٌ من حافّة العمل نفسه،
+     فما يظهر خلف القناع امتدادٌ للأيقونة لا لونٌ غريبٌ عنها.
+     يولّده tool/make_icons.py — لا يُحرَّر باليد. -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="rectangle">
-    <gradient
-        android:angle="270"
-        android:startColor="#B07E14"
-        android:endColor="#7A5200"
-        android:type="linear" />
+    <solid android:color="#0128B3" />
 </shape>
