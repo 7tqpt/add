@@ -375,6 +375,26 @@ export async function checkInvitation(token: string, email: string): Promise<boo
   return data === true
 }
 
+/**
+ * دورُ الدعوة المنتظِرة لبريد المستخدم الحالي، أو `null` إن لا دعوة له.
+ *
+ * تُستدعى من شاشة «لا تملك صلاحية الدخول» لتقول للواقف أمامها **لماذا** رُدّ:
+ * أدعوةٌ باسمه تنتظر رمزاً، أم دخل بحسابٍ غير المدعوّ. والقاعدة تعرف الفرق،
+ * وكتمانُه كلّف مالك المنصّة جولتين — بريدان يفترقان بحرفٍ واحد.
+ *
+ * وتُبتلع أخطاؤها عمداً عند المستدعي: هذه معلومةٌ تُحسّن الرسالة لا تصنعها،
+ * فعطبٌ فيها لا يجوز أن يحجب الشاشة كلّها عمّن هو محجوبٌ أصلاً.
+ */
+export async function myInvitationRole(): Promise<AdminRole | null> {
+  if (!isSupabaseConfigured) {
+    await delay(null, 150)
+    return demoInvitations.find((candidate) => candidate.status === 'pending')?.role ?? null
+  }
+  const { data, error } = await requireSupabase().rpc('api_my_invitation')
+  if (error) throw error
+  return (data as AdminRole | null) ?? null
+}
+
 /** يستدعيها الموظف بعد أن يسجّل حسابه بالبريد المدعوّ. */
 export async function acceptInvitation(token: string): Promise<AdminRole> {
   if (!isSupabaseConfigured) {
