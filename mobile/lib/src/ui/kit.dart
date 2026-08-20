@@ -1,3 +1,5 @@
+import 'dart:ui' show ImageFilter;
+
 import 'package:flutter/material.dart';
 
 import '../core/theme.dart';
@@ -33,12 +35,21 @@ class SectionTitle extends StatelessWidget {
 }
 
 class Muted extends StatelessWidget {
-  const Muted(this.text, {super.key, this.size = 12});
+  const Muted(this.text, {super.key, this.size = 12, this.maxLines});
   final String text;
   final double size;
+
+  /// حدُّ الأسطر — يُترك فارغاً فيلتفّ النصّ كما كان.
+  ///
+  /// يُمرَّر حيث يكون النصّ في صفٍّ ضيّق: مبلغان بالريال اليمني جنباً إلى جنب
+  /// تجاوزا عرض الجوال بستّةٍ وأربعين بكسلاً، والأرقام هنا تطول بطبعها.
+  final int? maxLines;
+
   @override
   Widget build(BuildContext context) => Text(
     text,
+    maxLines: maxLines,
+    overflow: maxLines == null ? null : TextOverflow.ellipsis,
     style: TextStyle(fontSize: size, color: AppColors.muted),
   );
 }
@@ -80,8 +91,13 @@ class StatusBadge extends StatelessWidget {
       border: Border.all(color: color),
       borderRadius: BorderRadius.circular(999),
     ),
+    // سطرٌ واحد وقصٌّ عند الضيق: شارةٌ تلتفّ سطرين تكسر ارتفاع الصفّ الذي
+    // هي فيه، وشارةٌ تفيض تُسقط التخطيط كلّه. و«بانتظار مقدّم الخدمة» أطولُ
+    // نصٍّ فيها — وقد أفاض بطاقةَ الرئيسية ستّةً وأربعين بكسلاً.
     child: Text(
       label,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
       style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w600),
     ),
   );
@@ -313,4 +329,124 @@ class PickChip extends StatelessWidget {
 void showMessage(BuildContext context, String message) {
   ScaffoldMessenger.of(context)
       .showSnackBar(SnackBar(content: Text(message), behavior: SnackBarBehavior.floating));
+}
+
+/// ارتفاع الشريط الزجاجي مع هامشه — تحتاجه القوائم لتُنهي محتواها فوقه.
+///
+/// ثابتٌ مشترك لا رقمٌ مكرّر: الشريط يطفو والمحتوى يمرّ تحته، فآخرُ بطاقةٍ في
+/// أي قائمةٍ تختفي خلفه ما لم تُحسب هذه المسافة. ونسيانُها في شاشةٍ واحدة عيبٌ
+/// لا يظهر إلا حين يصل المستخدم إلى آخر القائمة.
+const double glassNavSpace = 96;
+
+/// شريط تنقّلٍ سفليٌّ زجاجيّ يطفو فوق المحتوى.
+///
+/// **والأيقونات ليست بيضاء.** الزجاج أبيض والصفحة `#F4F7FC`، فأبيضُ على
+/// أبيضَ يعطي ‎١٫٠٤:١‎ — أي لا شيء. فالمختار بلون العلامة وغيرُه رماديّ، وكلاهما
+/// مقيسٌ على الزجاج نفسه لا مقدَّر. والزجاج الأبيض بأيقوناتٍ بيضاء إنما يصلح
+/// فوق خلفيةٍ داكنة.
+class GlassNavBar extends StatelessWidget {
+  const GlassNavBar({super.key, required this.index, required this.onSelect, required this.items});
+
+  final int index;
+  final ValueChanged<int> onSelect;
+  final List<GlassNavItem> items;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(Space.md, 0, Space.md, Space.md),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(24),
+          child: BackdropFilter(
+            // التمويه هو ما يجعله زجاجاً لا لوناً شفّافاً: بدونه يُرى ما تحته
+            // كما هو، فيبدو الشريط ورقةً باهتة لا سطحاً.
+            filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+            child: Container(
+              height: 66,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.72),
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.75), width: 1),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.ink.withValues(alpha: 0.10),
+                    blurRadius: 24,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  for (var i = 0; i < items.length; i++)
+                    Expanded(
+                      child: _GlassNavCell(
+                        item: items[i],
+                        active: i == index,
+                        onTap: () => onSelect(i),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class GlassNavItem {
+  const GlassNavItem({required this.label, required this.icon, required this.activeIcon});
+  final String label;
+  final IconData icon;
+  final IconData activeIcon;
+}
+
+class _GlassNavCell extends StatelessWidget {
+  const _GlassNavCell({required this.item, required this.active, required this.onTap});
+  final GlassNavItem item;
+  final bool active;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final tone = active ? AppColors.accent : AppColors.ink2;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(18),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          // حبّةٌ مصبوغة تحت الأيقونة المختارة: علامةٌ ثانية غير اللون، فمن لا
+          // يفرّق الألوان يعرف أين هو. والأيقونة مصمتةٌ للمختار ومفرَّغة لغيره
+          // — علامةٌ ثالثة.
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            curve: Curves.easeOut,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+            decoration: BoxDecoration(
+              color: active ? AppColors.accent.withValues(alpha: 0.14) : Colors.transparent,
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Icon(active ? item.activeIcon : item.icon, size: 21, color: tone),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            item.label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 10.5,
+              height: 1.2,
+              fontWeight: active ? FontWeight.w600 : FontWeight.w500,
+              color: tone,
+              fontFamilyFallback: arabicFallback,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

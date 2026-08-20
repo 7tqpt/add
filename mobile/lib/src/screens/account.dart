@@ -64,7 +64,7 @@ class AccountScreen extends StatelessWidget {
     final provider = session.hasProviderProfile;
 
     return ListView(
-      padding: const EdgeInsets.all(Space.lg),
+      padding: const EdgeInsets.fromLTRB(Space.lg, Space.lg, Space.lg, glassNavSpace),
       children: [
         // ── الهويّة ────────────────────────────────────────────────────────
         // بطاقةٌ تقول من أنت قبل ما تستطيع فعله. وكانت سطراً واحداً باهتاً

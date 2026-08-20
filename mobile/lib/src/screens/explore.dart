@@ -146,7 +146,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 );
               }
               return ListView.separated(
-                padding: const EdgeInsets.all(Space.lg),
+                padding: const EdgeInsets.fromLTRB(Space.lg, Space.lg, Space.lg, glassNavSpace),
                 itemCount: items.length,
                 separatorBuilder: (_, _) => const SizedBox(height: Space.md),
                 itemBuilder: (context, i) => _ServiceCard(
