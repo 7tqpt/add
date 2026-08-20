@@ -23,7 +23,7 @@ class ArasApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'أعراس اليمن',
+      title: 'فرحتي',
       debugShowCheckedModeBanner: false,
       theme: buildTheme(),
       // العربية لغةً وحيدة، والاتجاه يميني في كل الشجرة تبعاً لها — فلا حاجة
