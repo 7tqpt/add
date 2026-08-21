@@ -500,3 +500,25 @@ void demoCloseTicket(String ticketId) {
     );
   }).toList();
 }
+
+// ── الملف الشخصي في وضع العرض ───────────────────────────────────────────────
+MyProfile _demoProfile = const MyProfile(
+  id: 'demo-user',
+  fullName: 'مستخدم تجريبي',
+  email: 'demo@example.com',
+  phone: '770000000',
+  governorate: 'أمانة العاصمة',
+  governorateId: null,
+  avatarPath: '',
+);
+
+MyProfile? demoProfile() => _demoProfile;
+
+MyProfile demoUpdateProfile(String name, String? phone, String? govId, String? avatar) {
+  _demoProfile = _demoProfile.copyWith(
+    fullName: name,
+    phone: phone,
+    avatarPath: avatar,
+  );
+  return _demoProfile;
+}

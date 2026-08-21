@@ -344,3 +344,47 @@ class ProviderDocument {
     uploadedAt: (m['uploaded_at'] ?? '') as String,
   );
 }
+
+/// ملفّي الشخصيّ كما تعيده `api_my_profile`.
+///
+/// نموذجٌ مستقلٌّ عن `AppUser` الذي تقرؤه اللوحة: هذا ما يملك المستخدم تعديله
+/// من التطبيق، وذاك صفٌّ إداريٌّ فيه `status` و`sessions_count` ولا شأن له بها.
+class MyProfile {
+  const MyProfile({
+    required this.id,
+    required this.fullName,
+    required this.email,
+    required this.phone,
+    required this.governorate,
+    required this.governorateId,
+    required this.avatarPath,
+  });
+
+  final String id;
+  final String fullName;
+  final String email;
+  final String phone;
+  final String governorate;
+  final String? governorateId;
+  final String avatarPath;
+
+  factory MyProfile.fromMap(Map<String, dynamic> m) => MyProfile(
+    id: (m['id'] ?? '') as String,
+    fullName: (m['full_name'] ?? '') as String,
+    email: (m['email'] ?? '') as String,
+    phone: (m['phone'] ?? '') as String,
+    governorate: (m['governorate'] ?? '') as String,
+    governorateId: m['governorate_id'] as String?,
+    avatarPath: (m['avatar_path'] ?? '') as String,
+  );
+
+  MyProfile copyWith({String? fullName, String? phone, String? avatarPath}) => MyProfile(
+    id: id,
+    fullName: fullName ?? this.fullName,
+    email: email,
+    phone: phone ?? this.phone,
+    governorate: governorate,
+    governorateId: governorateId,
+    avatarPath: avatarPath ?? this.avatarPath,
+  );
+}
