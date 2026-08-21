@@ -401,6 +401,66 @@ class Api {
   ///
   /// والمسار `<provider_id>/<uuid>.<ext>` كما تشترطه سياسة الحاوية: أول جزء
   /// من المسار يجب أن يساوي معرّف المزوّد، وإلا رُفض الرفع.
+  // ── الملف الشخصي ──────────────────────────────────────────────────────────
+
+  /// ملفّي كما هو في القاعدة.
+  static Future<MyProfile?> myProfile() async {
+    if (!isSupabaseConfigured) return demoProfile();
+    final row = await db.rpc('api_my_profile');
+    if (row == null) return null;
+    return MyProfile.fromMap(Map<String, dynamic>.from(row as Map));
+  }
+
+  /// يحفظ ما عُدّل. وما لم يُمرَّر لا يُمسّ — فمن غيّر اسمه لا يُفرَّغ جواله.
+  static Future<MyProfile> updateProfile({
+    required String fullName,
+    String? phone,
+    String? governorateId,
+    String? avatarPath,
+  }) async {
+    if (!isSupabaseConfigured) {
+      return demoUpdateProfile(fullName, phone, governorateId, avatarPath);
+    }
+    final row = await db.rpc('api_update_profile', params: {
+      'p_full_name': fullName,
+      'p_phone': phone,
+      'p_governorate_id': governorateId,
+      'p_avatar_path': avatarPath,
+    });
+    return MyProfile.fromMap(Map<String, dynamic>.from(row as Map));
+  }
+
+  /// يرفع الصورة ويعيد مسارها داخل السلّة.
+  ///
+  /// اسمٌ ثابت `avatar.<ext>` مع `upsert`: صورةُ الملف واحدةٌ تُستبدل، ولو
+  /// حمل كلُّ رفعٍ اسماً جديداً لتراكمت الصور القديمة في السلّة بلا حذف.
+  static Future<String> uploadAvatar({
+    required String authUserId,
+    required String fileName,
+    required Uint8List bytes,
+  }) async {
+    final ext = fileName.contains('.') ? fileName.split('.').last.toLowerCase() : 'jpg';
+    final path = '$authUserId/avatar.$ext';
+    if (!isSupabaseConfigured) return path;
+    await db.storage.from('avatars').uploadBinary(
+      path,
+      bytes,
+      fileOptions: FileOptions(contentType: _mimeOf(ext), upsert: true),
+    );
+    return path;
+  }
+
+  /// الرابط العلنيّ للصورة — السلّة عامّة فلا حاجة إلى توقيعٍ ينتهي.
+  ///
+  /// و`?v=` بختمٍ زمنيّ: بلا فرقٍ في العنوان يعرض المتصفّح والتطبيق الصورةَ
+  /// القديمة من ذاكرتهما بعد الاستبدال، فيبدو الرفعُ وكأنه لم يقع.
+  static String? avatarUrl(String path, {int? version}) {
+    if (path.isEmpty) return null;
+    if (!isSupabaseConfigured) return null;
+    final url = db.storage.from('avatars').getPublicUrl(path);
+    return version == null ? url : '$url?v=$version';
+  }
+
   static Future<void> uploadDocument({
     required String providerId,
     required String type,

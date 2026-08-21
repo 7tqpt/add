@@ -4,6 +4,7 @@ import '../core/session.dart';
 import '../core/theme.dart';
 import '../ui/kit.dart';
 import 'become_provider.dart';
+import 'edit_profile.dart';
 import 'support.dart';
 
 /// بطاقةُ قسمٍ في صفحة الحساب.
@@ -64,7 +65,7 @@ class AccountScreen extends StatelessWidget {
     final provider = session.hasProviderProfile;
 
     return ListView(
-      padding: const EdgeInsets.all(Space.lg),
+      padding: const EdgeInsets.fromLTRB(Space.lg, Space.lg, Space.lg, glassNavSpace),
       children: [
         // ── الهويّة ────────────────────────────────────────────────────────
         // بطاقةٌ تقول من أنت قبل ما تستطيع فعله. وكانت سطراً واحداً باهتاً
@@ -120,9 +121,20 @@ class AccountScreen extends StatelessWidget {
                     ],
                   ),
                 ),
+                // سهمٌ يقول إن البطاقة تُفتح: بطاقةٌ تستجيب للضغط بلا علامةٍ
+                // ظاهرة لا يعرف أحدٌ أنها تُضغط.
+                const Icon(Icons.chevron_left, size: 20, color: AppColors.muted),
               ],
             ),
           ],
+          onTap: () async {
+            final saved = await Navigator.of(context).push<bool>(
+              MaterialPageRoute(builder: (_) => EditProfileScreen(session: session)),
+            );
+            if (saved == true && context.mounted) {
+              showMessage(context, 'حُفظت بياناتك.');
+            }
+          },
         ),
 
         const SizedBox(height: Space.md),
