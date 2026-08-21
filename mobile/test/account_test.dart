@@ -88,6 +88,22 @@ void main() {
     expect(find.widgetWithText(TextButton, 'إلغاء'), findsOneWidget);
   });
 
+  testWidgets('البطاقة تعرض ما حُفظ: الاسم والجوال', (tester) async {
+    // العيب الذي أوجب هذا الاختبار: الشاشة كانت تقرأ `session` وحدها — وهي
+    // لا تحمل إلا البريد. فيحفظ المستخدم اسمه وجواله وصورته ثم يعود فلا يجد
+    // لها أثراً، ويظنّ أن الحفظ لم يقع.
+    await tester.pumpWidget(_wrap(_session(provider: false)));
+    await tester.pumpAndSettle();
+    expect(find.text('مستخدم تجريبي'), findsOneWidget);
+    expect(find.text('770000000'), findsOneWidget);
+  });
+
+  testWidgets('والبريد لا يُكرَّر سطرين قبل وصول الملف', (tester) async {
+    // أوّل نسخةٍ عرضته عنواناً بديلاً عن الاسم **وسطراً باهتاً تحته** معاً.
+    await tester.pumpWidget(_wrap(_session(provider: false)));
+    expect(find.text('ayman@sdd.company'), findsOneWidget);
+  });
+
   testWidgets('حرف القرص أوّل حرفٍ من البريد', (tester) async {
     await tester.pumpWidget(_wrap(_session(provider: false, mail: 'nabil@sdd.company')));
     expect(find.text('N'), findsOneWidget);

@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../core/session.dart';
 import '../core/theme.dart';
 import '../ui/kit.dart';
+import '../data/api.dart';
+import '../data/models.dart';
 import 'become_provider.dart';
 import 'edit_profile.dart';
 import 'support.dart';
@@ -56,13 +58,50 @@ class _SectionCard extends StatelessWidget {
   }
 }
 
-class AccountScreen extends StatelessWidget {
+class AccountScreen extends StatefulWidget {
   const AccountScreen({super.key, required this.session});
   final Session session;
 
   @override
+  State<AccountScreen> createState() => _AccountScreenState();
+}
+
+class _AccountScreenState extends State<AccountScreen> {
+  /// الملفُّ من القاعدة لا من الجلسة.
+  ///
+  /// كانت البطاقة تقرأ `session.email` وحده — وهو كلُّ ما تحمله الجلسة. فكان
+  /// المستخدم يحفظ اسمه وجواله وصورته في «تعديل بياناتي» ثم يعود فلا يجد
+  /// لها أثراً حيث ينظر، ويظنّ أن الحفظ لم يقع.
+  MyProfile? _profile;
+
+  /// ختمٌ زمنيّ يُلحق برابط الصورة.
+  ///
+  /// السلّة عامّة والاسم ثابت (`<uid>/avatar.jpg`)، فبعد استبدال الصورة يعرض
+  /// التطبيق القديمةَ من ذاكرته. والختم يغيّر العنوان فيُجبره على الجلب.
+  int _avatarVersion = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final profile = await Api.myProfile();
+      if (mounted) setState(() => _profile = profile);
+    } catch (_) {
+      // الملفُّ زينةٌ في هذه الشاشة لا شرط: بقيّةُ البطاقات تعمل بدونه،
+      // فيبقى البريد من الجلسة ويُعرض الحرفُ الأوّل.
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final session = widget.session;
     final provider = session.hasProviderProfile;
+    final profile = _profile;
+    final name = profile?.fullName.trim() ?? '';
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(Space.lg, Space.lg, Space.lg, glassNavSpace),
@@ -74,45 +113,61 @@ class AccountScreen extends StatelessWidget {
           children: [
             Row(
               children: [
-                Container(
-                  width: 56,
-                  height: 56,
-                  alignment: Alignment.center,
-                  decoration: const BoxDecoration(
-                    color: AppColors.accent,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Text(
-                    _initial(session.email),
-                    // النمط كاملٌ مكتوبٌ باليد، فيُذكر الخطّ صراحةً: النمط
-                    // الكامل يحلّ محلّ الموروث ولا يرث احتياط الثيمة.
-                    style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.accentInk,
-                      fontFamilyFallback: arabicFallback,
-                    ),
-                  ),
+                _AccountAvatar(
+                  profile: profile,
+                  fallbackEmail: session.email,
+                  version: _avatarVersion,
                 ),
                 const SizedBox(width: Space.lg),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // الاسم عنواناً إن وُجد، والبريد تحته. وإن لم يُقرأ
+                      // الملفُّ بعد فالبريد عنوانٌ وحده — لا يُكرَّر سطرين،
+                      // وقد كان يُكرَّر فعلاً في أوّل نسخة.
+                      if (name.isNotEmpty) ...[
+                        Text(
+                          name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.ink,
+                            fontFamilyFallback: arabicFallback,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                      ],
                       // البريد لاتينيٌّ دائماً، والصفحة عربية: بلا اتجاهٍ
                       // صريح تتقدّم النقطةُ والامتدادُ إلى غير موضعهما.
                       Text(
                         session.email,
                         textDirection: TextDirection.ltr,
                         textAlign: TextAlign.left,
+                        maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.ink,
+                        style: TextStyle(
+                          fontSize: name.isEmpty ? 15 : 12,
+                          fontWeight: name.isEmpty ? FontWeight.w600 : FontWeight.normal,
+                          color: name.isEmpty ? AppColors.ink : AppColors.muted,
                           fontFamilyFallback: arabicFallback,
                         ),
                       ),
+                      if (profile != null && profile.phone.trim().isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          profile.phone,
+                          textDirection: TextDirection.ltr,
+                          textAlign: TextAlign.left,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppColors.muted,
+                            fontFamilyFallback: arabicFallback,
+                          ),
+                        ),
+                      ],
                       const SizedBox(height: Space.sm),
                       StatusBadge(
                         provider ? 'عميل ومقدّم خدمة' : 'عميل',
@@ -131,8 +186,12 @@ class AccountScreen extends StatelessWidget {
             final saved = await Navigator.of(context).push<bool>(
               MaterialPageRoute(builder: (_) => EditProfileScreen(session: session)),
             );
-            if (saved == true && context.mounted) {
-              showMessage(context, 'حُفظت بياناتك.');
+            if (saved == true) {
+              // الختم يتغيّر فيُجبر التطبيق على جلب الصورة الجديدة بدل
+              // القديمة التي في ذاكرته.
+              if (mounted) setState(() => _avatarVersion++);
+              await _load();
+              if (context.mounted) showMessage(context, 'حُفظت بياناتك.');
             }
           },
         ),
@@ -238,14 +297,62 @@ class AccountScreen extends StatelessWidget {
         ],
       ),
     );
-    if (yes == true) session.signOut();
+    if (yes == true) widget.session.signOut();
   }
 
-  /// أوّل حرفٍ من البريد للقرص. والبريد لا يكون فارغاً هنا — الصفحة لا تُعرض
-  /// إلا بعد الدخول — لكن الاحتياط أرخص من مربّعٍ فارغ في وجه المستخدم.
-  static String _initial(String email) {
-    final clean = email.trim();
-    if (clean.isEmpty) return '؟';
-    return clean.characters.first.toUpperCase();
+}
+
+/// قرص الصورة في بطاقة الهويّة.
+///
+/// الصورة إن وُجدت، وإلا فالحرف الأوّل. ولا مربّعَ مكسور إن سقطت الشبكة:
+/// `errorBuilder` يعيد الحرف — فالشاشة تبقى سليمة على وصلةٍ رديئة.
+class _AccountAvatar extends StatelessWidget {
+  const _AccountAvatar({
+    required this.profile,
+    required this.fallbackEmail,
+    required this.version,
+  });
+
+  final MyProfile? profile;
+  final String fallbackEmail;
+  final int version;
+
+  @override
+  Widget build(BuildContext context) {
+    final path = profile?.avatarPath ?? '';
+    final url = path.isEmpty ? null : Api.avatarUrl(path, version: version);
+    return Container(
+      width: 56,
+      height: 56,
+      alignment: Alignment.center,
+      clipBehavior: Clip.antiAlias,
+      decoration: const BoxDecoration(color: AppColors.accent, shape: BoxShape.circle),
+      child: url == null
+          ? _letter()
+          : Image.network(
+              url,
+              width: 56,
+              height: 56,
+              fit: BoxFit.cover,
+              errorBuilder: (_, _, _) => _letter(),
+            ),
+    );
+  }
+
+  Widget _letter() {
+    // الاسم أولى من البريد: «أ» من «أيمن» تعني صاحبها، و«a» من عنوانٍ لا.
+    final name = profile?.fullName.trim() ?? '';
+    final source = name.isNotEmpty ? name : fallbackEmail.trim();
+    return Text(
+      source.isEmpty ? '؟' : source.characters.first.toUpperCase(),
+      // النمط كاملٌ مكتوبٌ باليد، فيُذكر الخطّ صراحةً: النمط الكامل يحلّ محلّ
+      // الموروث ولا يرث احتياط الثيمة.
+      style: const TextStyle(
+        fontSize: 24,
+        fontWeight: FontWeight.w600,
+        color: AppColors.accentInk,
+        fontFamilyFallback: arabicFallback,
+      ),
+    );
   }
 }
