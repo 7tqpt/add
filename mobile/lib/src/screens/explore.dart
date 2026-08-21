@@ -118,6 +118,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                     CategoryCard(
                       label: c.name,
                       icon: categoryIcon(c.slug),
+                      tone: categoryTone(c.slug),
                       active: _categoryId == c.id,
                       onTap: () {
                         _categoryId = c.id;

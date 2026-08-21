@@ -28,6 +28,16 @@ const demoCategories = [
   ServiceCategory(id: 'c3', name: 'التصوير والإضاءة', slug: 'photography'),
   ServiceCategory(id: 'c4', name: 'الديكور والكوشة', slug: 'decor'),
   ServiceCategory(id: 'c5', name: 'الصوت والمعدات', slug: 'sound'),
+  // الاثنا عشر كما هي في `seed.sql`. وكانت خمسةً، فكان وضعُ العرض يُري
+  // المنصّة أفقر ممّا هي — وهو الوضع الذي يُعرض به التطبيق على من لم يربط
+  // قاعدةً بعد، وأوّلُ ما يحكم به على المنتج.
+  ServiceCategory(id: 'c6', name: 'الفنانين والفرق', slug: 'artists'),
+  ServiceCategory(id: 'c7', name: 'الموية والطليع والخدمات المساندة', slug: 'support'),
+  ServiceCategory(id: 'c8', name: 'السيارات', slug: 'cars'),
+  ServiceCategory(id: 'c9', name: 'الملبوسات', slug: 'attire'),
+  ServiceCategory(id: 'c10', name: 'متعهدين الحفلات', slug: 'planners'),
+  ServiceCategory(id: 'c11', name: 'التجميل والكوافير', slug: 'beauty'),
+  ServiceCategory(id: 'c12', name: 'الطباعة', slug: 'printing'),
 ];
 
 const demoServices = [

@@ -311,15 +311,24 @@ class _Categories extends StatelessWidget {
           physics: const NeverScrollableScrollPhysics(),
           mainAxisSpacing: Space.sm,
           crossAxisSpacing: Space.sm,
-          // ٧٦ عرضاً إلى ١٠٨ ارتفاعاً على شاشة ٣٦٠: قِيست بالرسم بعد أن
-          // أفاضت النسبةُ السابقة سبعةَ بكسلاتٍ ونصفاً.
-          childAspectRatio: 0.70,
+          // ٧٦ عرضاً إلى ١١٩ ارتفاعاً على شاشة ٣٦٠. وقد ضاقت مرّتين وقيست
+          // مرّتين: ٠٫٨٢ أفاضت ٧٫٣ بكسل، ثم ٠٫٧٠ أفاضت ٩٫٤ بعد أن كبُر قرصُ
+          // الأيقونة. والحسابُ من الرسم لا من التقدير.
+          childAspectRatio: 0.64,
           children: [
-            for (final c in categories.take(8))
+            // الأقسام كلّها لا ثمانيةٌ منها: كان `take(8)` يقصّ أربعةً بلا
+            // أن يقول، فيظنّ المستخدم أن المنصّة لا تقدّم غيرها — وهي تقدّم.
+            for (final (i, c) in categories.indexed)
               CategoryCard(
                 label: c.name,
                 icon: categoryIcon(c.slug),
+                tone: categoryTone(c.slug),
                 active: false,
+                // العرضُ للشبكة لا للبطاقة: عرضٌ ثابتٌ داخل خليةٍ أضيق يفيض.
+                width: null,
+                // دخولٌ متدرّجٌ صفّاً بعد صفّ — ثلاثون جزءاً من الثانية بين
+                // البطاقة وجارتها. وحدٌّ أعلاه لئلّا تنتظر الأخيرةُ طويلاً.
+                enterDelay: Duration(milliseconds: (i * 30).clamp(0, 420)),
                 onTap: onExplore,
               ),
           ],

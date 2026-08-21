@@ -1,4 +1,8 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
+
+import 'package:aras/src/core/theme.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:aras/src/ui/kit.dart';
@@ -35,6 +39,40 @@ void main() {
       // نصفُها فارغ ولا خطأ في أي سجلّ.
       expect(categoryIcon('a-brand-new-category'), Icons.category_outlined);
       expect(categoryIcon(''), Icons.category_outlined);
+    });
+  });
+
+  group('صبغة القسم', () {
+    const slugs = [
+      'halls', 'catering', 'artists', 'sound', 'photography', 'support',
+      'cars', 'attire', 'planners', 'beauty', 'decor', 'printing',
+    ];
+
+    test('لكلّ قسمٍ صبغته', () {
+      for (final slug in slugs) {
+        expect(categoryTone(slug), isNot(AppColors.ink2), reason: 'القسم «$slug» بلا صبغة');
+      }
+    });
+
+    test('ولا تتكرّر صبغةٌ بين قسمين', () {
+      // لونان متطابقان يُلغيان فائدة اللون: الصفُّ يُمسح بالعين، فقسمان
+      // بالصبغة نفسها يُقرآن واحداً.
+      expect(slugs.map(categoryTone).toSet().length, slugs.length);
+    });
+
+    test('وكلُّها تُقرأ على أرضية البطاقة', () {
+      // القياس هنا لا في ورقةٍ جانبية: لونٌ يُضاف غداً بلا قياسٍ يمرّ صامتاً.
+      // العتبة ٤٫٥:١ — والأرضية `#fbfcfe` وهي أعلى نقطةٍ في تدرّج البطاقة.
+      double lin(double c) => c <= 0.03928 ? c / 12.92 : math.pow((c + 0.055) / 1.055, 2.4) as double;
+      double lum(Color c) =>
+          0.2126 * lin(c.r) + 0.7152 * lin(c.g) + 0.0722 * lin(c.b);
+      const card = Color(0xFFFBFCFE);
+      for (final slug in slugs) {
+        final a = lum(categoryTone(slug));
+        final b = lum(card);
+        final ratio = (math.max(a, b) + 0.05) / (math.min(a, b) + 0.05);
+        expect(ratio, greaterThanOrEqualTo(4.5), reason: '«$slug» يعطي ${ratio.toStringAsFixed(2)}:1');
+      }
     });
   });
 }
