@@ -58,6 +58,7 @@ const dayForms = (one: 'يوم', two: 'يومين', few: 'أيام', many: 'يو
 const hourForms = (one: 'ساعة', two: 'ساعتين', few: 'ساعات', many: 'ساعة');
 const minuteForms = (one: 'دقيقة', two: 'دقيقتين', few: 'دقائق', many: 'دقيقة');
 const guestForms = (one: 'ضيف واحد', two: 'ضيفان', few: 'ضيوف', many: 'ضيفاً');
+const bookingForms = (one: 'حجزٌ واحد', two: 'حجزان', few: 'حجوزات', many: 'حجزاً');
 
 /// «منذ ٣ ساعات» للماضي و«بعد ٧ أيام» للمستقبل.
 String formatRelative(String iso) {
