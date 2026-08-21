@@ -44,6 +44,10 @@ class ServiceItem {
     required this.providerReviewsCount,
     required this.providerIsFeatured,
     required this.cancellationPolicyName,
+    this.coverPath,
+    this.imagesCount = 0,
+    this.hasVideo = false,
+    this.hasAudio = false,
   });
 
   final String id;
@@ -63,6 +67,15 @@ class ServiceItem {
   final bool providerIsFeatured;
   final String? cancellationPolicyName;
 
+  /// مسار الغلاف داخل سلّة `service-media` — أوّل صورةٍ بترتيب صاحبها.
+  ///
+  /// يأتي مع صفّ الخدمة لا في نداءٍ ثانٍ: قائمةُ الاستكشاف عشرون بطاقة،
+  /// ونداءٌ لكلِّ غلافٍ عشرون طلباً على شبكة جوالٍ يمنية.
+  final String? coverPath;
+  final int imagesCount;
+  final bool hasVideo;
+  final bool hasAudio;
+
   factory ServiceItem.fromMap(Map<String, dynamic> m) => ServiceItem(
     id: m['id'] as String,
     title: (m['title'] ?? '') as String,
@@ -80,6 +93,58 @@ class ServiceItem {
     providerReviewsCount: ((m['provider_reviews_count'] ?? 0) as num).toInt(),
     providerIsFeatured: (m['provider_is_featured'] ?? false) as bool,
     cancellationPolicyName: m['cancellation_policy_name'] as String?,
+    coverPath: m['cover_path'] as String?,
+    imagesCount: ((m['images_count'] ?? 0) as num).toInt(),
+    hasVideo: (m['has_video'] ?? false) as bool,
+    hasAudio: (m['has_audio'] ?? false) as bool,
+  );
+}
+
+/// نوع الوسيط. النصّ هو ما يقبله قيد الجدول حرفياً — فلا يُترجم ولا يُختصر.
+enum MediaKind { image, video, audio }
+
+MediaKind mediaKindFrom(String raw) => switch (raw) {
+  'video' => MediaKind.video,
+  'audio' => MediaKind.audio,
+  _ => MediaKind.image,
+};
+
+String mediaKindValue(MediaKind k) => switch (k) {
+  MediaKind.image => 'image',
+  MediaKind.video => 'video',
+  MediaKind.audio => 'audio',
+};
+
+/// وسيطٌ لخدمة — صورةٌ أو مقطع فيديو أو مقطع صوتي.
+class ServiceMedia {
+  const ServiceMedia({
+    required this.id,
+    required this.kind,
+    required this.path,
+    required this.title,
+    required this.durationSeconds,
+    required this.sizeBytes,
+    required this.sortOrder,
+  });
+
+  final String id;
+  final MediaKind kind;
+
+  /// المسار داخل السلّة لا الرابط — والرابط يُشتقّ منه عند العرض.
+  final String path;
+  final String title;
+  final int durationSeconds;
+  final int sizeBytes;
+  final int sortOrder;
+
+  factory ServiceMedia.fromMap(Map<String, dynamic> m) => ServiceMedia(
+    id: m['id'] as String,
+    kind: mediaKindFrom((m['kind'] ?? 'image') as String),
+    path: (m['path'] ?? '') as String,
+    title: (m['title'] ?? '') as String,
+    durationSeconds: ((m['duration_seconds'] ?? 0) as num).toInt(),
+    sizeBytes: ((m['size_bytes'] ?? 0) as num).toInt(),
+    sortOrder: ((m['sort_order'] ?? 0) as num).toInt(),
   );
 }
 

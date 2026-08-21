@@ -5,6 +5,7 @@ import type {
   Payment,
   ProviderDocument,
   ProviderService,
+  ServiceMedia,
   ServiceProvider,
   ProviderStatus,
   UserDevice,
@@ -17,6 +18,7 @@ import {
   mockPayments,
   mockProviders,
   mockServices,
+  mockServiceMedia,
   mockUserDevices,
   mockUserSessions,
   mockUsers,
@@ -224,6 +226,14 @@ export interface ProviderPortfolio {
   documents: ProviderDocument[]
   services: ProviderService[]
   /**
+   * وسائط الخدمات، مفتاحها معرّف الخدمة.
+   *
+   * وهي هنا لا في شاشة المزوّد وحدها: ما يرفعه المزوّد يراه كلُّ من تصفّح
+   * المنصّة، فوسيطٌ مسيءٌ يُرفع اليوم ويبقى إلى أن يُزيله أحد. ولو لم تملك
+   * الإدارة إلّا الطلبَ من صاحبه لبقي.
+   */
+  media: Record<string, ServiceMedia[]>
+  /**
    * روابط فتح المستندات، مفتاحها معرّف المستند. المستند بلا ملف مرفوع لا مفتاح
    * له هنا — وهو ما تعتمد عليه الشاشة لتفرّق بين «افتح» و«لا يوجد ملف».
    */
@@ -231,6 +241,30 @@ export interface ProviderPortfolio {
 }
 
 const DOCS_BUCKET = 'provider-docs'
+const MEDIA_BUCKET = 'service-media'
+
+/** الرابط العلنيّ للوسيط. الحاوية عامّة فلا توقيعَ ينتهي ولا نداءَ شبكة. */
+export function serviceMediaUrl(path: string): string | null {
+  if (!isSupabaseConfigured || !path) return null
+  return requireSupabase().storage.from(MEDIA_BUCKET).getPublicUrl(path).data.publicUrl
+}
+
+/** يحذف الوسيط من الجدول ومن التخزين. تحرسه سياسة `can_write()`. */
+export async function deleteServiceMedia(media: ServiceMedia): Promise<void> {
+  if (!isSupabaseConfigured) return delay(undefined)
+  const client = requireSupabase()
+  // الصفّ أولاً: لو حُذف الملف ثم فشل حذف الصفّ لبقي في الشاشة وسيطٌ مكسور،
+  // وهو أسوأ من ملفٍ زائدٍ لا يشير إليه شيء.
+  const { error } = await client.from('service_media').delete().eq('id', media.id)
+  if (error) throw error
+  await client.storage.from(MEDIA_BUCKET).remove([media.path])
+}
+
+function groupMedia(rows: ServiceMedia[]): Record<string, ServiceMedia[]> {
+  const grouped: Record<string, ServiceMedia[]> = {}
+  for (const row of rows) (grouped[row.service_id] ??= []).push(row)
+  return grouped
+}
 
 /** مدّة صلاحية رابط المستند. تكفي جلسة مراجعة، ولا تصلح للمشاركة. */
 const SIGNED_URL_TTL_SECONDS = 600
@@ -290,6 +324,7 @@ export async function getProviderPortfolio(providerId: string): Promise<Provider
     return delay({
       documents,
       services: mockServices.filter((s) => s.provider_id === providerId),
+      media: groupMedia(mockServiceMedia.filter((m) => m.provider_id === providerId)),
       documentUrls: Object.fromEntries(
         documents.map((doc) => [doc.id, demoDocumentUrl(DOCUMENT_TYPE_LABEL[doc.type] ?? doc.type)]),
       ),
@@ -297,17 +332,20 @@ export async function getProviderPortfolio(providerId: string): Promise<Provider
   }
 
   const client = requireSupabase()
-  const [documents, services] = await Promise.all([
+  const [documents, services, media] = await Promise.all([
     client.from('provider_documents').select('*').eq('provider_id', providerId),
     client.from('v_admin_services').select('*').eq('provider_id', providerId),
+    client.from('service_media').select('*').eq('provider_id', providerId).order('sort_order'),
   ])
   if (documents.error) throw documents.error
   if (services.error) throw services.error
-
+  // الوسائط إضافةٌ لا شرط: عطبُها لا يجوز أن يمنع مراجعة مستندات التوثيق،
+  // وهي سبب فتح هذه الشاشة أصلاً.
   const rows = (documents.data ?? []) as ProviderDocument[]
   return {
     documents: rows,
     services: (services.data ?? []) as ProviderService[],
+    media: groupMedia((media.data ?? []) as ServiceMedia[]),
     documentUrls: await signDocuments(rows),
   }
 }

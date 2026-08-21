@@ -382,6 +382,109 @@ class Api {
     await db.from('provider_services').update({'is_active': active}).eq('id', id);
   }
 
+  // ----- وسائط الخدمة -----
+
+  /// حدود الوسائط — واحدةٌ في التطبيق ومثلُها في القاعدة.
+  ///
+  /// والتكرار مقصود: القاعدة هي الحارس (مُشغِّلٌ وقيد)، والتطبيق يمنع الرحلة
+  /// أصلاً. فمن رفع ملفاً بخمسين ميجابايت ثم رُدّ من الخادم دفع الشبكة كلَّها
+  /// ليقرأ «لا» — وشبكةُ الجوال هنا ليست سخيّة.
+  static const int mediaMaxImages = 8;
+  static const int mediaMaxSeconds = 60;
+  static const int mediaMaxBytes = 52428800;
+
+  /// وسائط خدمةٍ مرتّبةً كما رتّبها صاحبها.
+  static Future<List<ServiceMedia>> serviceMedia(String serviceId) async {
+    if (!isSupabaseConfigured) return demoDelay(demoMediaOf(serviceId));
+    final rows = await db
+        .from('service_media')
+        .select('id, kind, path, title, duration_seconds, size_bytes, sort_order')
+        .eq('service_id', serviceId)
+        .order('kind')
+        .order('sort_order');
+    return rows.map(ServiceMedia.fromMap).toList();
+  }
+
+  /// يرفع الملف ثم يسجّله.
+  ///
+  /// الترتيب مقصود كما في المستندات: لو سُجّل الصفّ أولاً وفشل الرفع لبقي في
+  /// الشاشة وسيطٌ يشير إلى ملفٍ ليس هناك، فيظهر مربّعٌ مكسور لكل من فتح
+  /// الخدمة.
+  ///
+  /// والمسار `<provider_id>/<service_id>/<ختم>.<امتداد>` كما تشترطه سياسة
+  /// السلّة: أوّل جزءٍ منه يجب أن يساوي معرّف المزوّد وإلّا رُفض الرفع.
+  static Future<void> uploadServiceMedia({
+    required String providerId,
+    required String serviceId,
+    required MediaKind kind,
+    required String fileName,
+    required Uint8List bytes,
+    int durationSeconds = 0,
+    int sortOrder = 0,
+  }) async {
+    final ext = fileName.contains('.') ? fileName.split('.').last.toLowerCase() : 'jpg';
+    final path = '$providerId/$serviceId/${DateTime.now().millisecondsSinceEpoch}.$ext';
+    if (!isSupabaseConfigured) {
+      demoAddMedia(serviceId, kind, path, durationSeconds, bytes.length, sortOrder);
+      return;
+    }
+    await db.storage.from('service-media').uploadBinary(
+      path,
+      bytes,
+      fileOptions: FileOptions(contentType: mediaMimeOf(ext)),
+    );
+    try {
+      await db.from('service_media').insert({
+        'service_id': serviceId,
+        'provider_id': providerId,
+        'kind': mediaKindValue(kind),
+        'path': path,
+        'duration_seconds': durationSeconds,
+        'size_bytes': bytes.length,
+        'sort_order': sortOrder,
+      });
+    } catch (e) {
+      // فشل التسجيل بعد نجاح الرفع يترك ملفاً في السلّة لا يشير إليه صفّ —
+      // لا يراه أحد ولا يحذفه أحد، ويُحسب في الفاتورة إلى الأبد.
+      await db.storage.from('service-media').remove([path]);
+      rethrow;
+    }
+  }
+
+  /// يحذف الصفّ والملف معاً.
+  ///
+  /// والصفّ أولاً: لو حُذف الملف ثم فشل حذف الصفّ لبقي في الشاشة وسيطٌ
+  /// مكسور — وهو أسوأ من ملفٍ زائدٍ لا يراه أحد.
+  static Future<void> deleteServiceMedia(ServiceMedia media) async {
+    if (!isSupabaseConfigured) {
+      demoRemoveMedia(media.id);
+      return;
+    }
+    await db.from('service_media').delete().eq('id', media.id);
+    await db.storage.from('service-media').remove([media.path]);
+  }
+
+  /// الرابط العلنيّ للوسيط — السلّة عامّة فلا توقيع ينتهي.
+  static String? mediaUrl(String? path) {
+    if (path == null || path.isEmpty || !isSupabaseConfigured) return null;
+    return db.storage.from('service-media').getPublicUrl(path);
+  }
+
+  /// السلّة تقبل هذه الأنواع وحدها، ورفعُ ملفٍ بنوعٍ غيرها يُرفض من الخادم.
+  static String mediaMimeOf(String ext) => switch (ext) {
+    'png' => 'image/png',
+    'webp' => 'image/webp',
+    'mp4' => 'video/mp4',
+    'mov' => 'video/quicktime',
+    '3gp' => 'video/3gpp',
+    'mp3' => 'audio/mpeg',
+    'm4a' => 'audio/mp4',
+    'aac' => 'audio/aac',
+    'ogg' || 'oga' => 'audio/ogg',
+    'wav' => 'audio/wav',
+    _ => 'image/jpeg',
+  };
+
   // ----- مستندات التوثيق -----
 
   static Future<List<ProviderDocument>> myDocuments(String providerId) async {

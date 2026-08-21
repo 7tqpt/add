@@ -58,6 +58,9 @@ const demoServices = [
     providerReviewsCount: 87,
     providerIsFeatured: true,
     cancellationPolicyName: 'مرنة',
+    coverPath: 'p1/s1/hall.jpg',
+    imagesCount: 1,
+    hasVideo: true,
   ),
   ServiceItem(
     id: 's2',
@@ -94,6 +97,7 @@ const demoServices = [
     providerReviewsCount: 24,
     providerIsFeatured: false,
     cancellationPolicyName: 'صارمة',
+    hasAudio: true,
   ),
   ServiceItem(
     id: 's4',
@@ -531,4 +535,80 @@ MyProfile demoUpdateProfile(String name, String? phone, String? govId, String? a
     avatarPath: avatar,
   );
   return _demoProfile;
+}
+
+// ── وسائط الخدمة في وضع العرض ───────────────────────────────────────────────
+//
+// بلا Supabase لا سلّة ولا روابط، فتُخزَّن الصفوف في الذاكرة وحدها: الشاشة
+// تُبنى وتُختبر بلا شبكة، وما يُرفع يظهر في القائمة كما يظهر على القاعدة.
+// والملفّ نفسه لا يُحفظ — لا شيء هنا يعرضه.
+int _mediaSeq = 0;
+Map<String, List<ServiceMedia>> demoMedia = {
+  's1': const [
+    ServiceMedia(
+      id: 'm1',
+      kind: MediaKind.image,
+      path: 'p1/s1/hall.jpg',
+      title: 'القاعة ليلة عرس',
+      durationSeconds: 0,
+      sizeBytes: 320000,
+      sortOrder: 0,
+    ),
+    ServiceMedia(
+      id: 'm2',
+      kind: MediaKind.video,
+      path: 'p1/s1/tour.mp4',
+      title: 'جولة في القاعة',
+      durationSeconds: 48,
+      sizeBytes: 18000000,
+      sortOrder: 0,
+    ),
+  ],
+  's3': const [
+    ServiceMedia(
+      id: 'm3',
+      kind: MediaKind.audio,
+      path: 'p3/s3/sample.m4a',
+      title: 'مقطع من حفل',
+      durationSeconds: 55,
+      sizeBytes: 900000,
+      sortOrder: 0,
+    ),
+  ],
+};
+
+List<ServiceMedia> demoMediaOf(String serviceId) =>
+    List<ServiceMedia>.from(demoMedia[serviceId] ?? const []);
+
+void demoAddMedia(
+  String serviceId,
+  MediaKind kind,
+  String path,
+  int seconds,
+  int bytes,
+  int order,
+) {
+  _mediaSeq += 1;
+  demoMedia = {
+    ...demoMedia,
+    serviceId: [
+      ...(demoMedia[serviceId] ?? const []),
+      ServiceMedia(
+        id: 'md$_mediaSeq',
+        kind: kind,
+        path: path,
+        title: '',
+        durationSeconds: seconds,
+        sizeBytes: bytes,
+        sortOrder: order,
+      ),
+    ],
+  };
+}
+
+void demoRemoveMedia(String id) {
+  demoMedia = {
+    for (final entry in demoMedia.entries)
+      entry.key: entry.value.where((m) => m.id != id).toList(),
+  };
 }

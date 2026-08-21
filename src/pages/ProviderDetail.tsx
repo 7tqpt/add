@@ -36,14 +36,17 @@ import type {
   DocumentStatus,
   ProviderDocument,
   ProviderStatus,
+  ServiceMedia,
   ServiceProvider,
 } from '@/lib/types'
 import {
   DOCUMENT_STATUS_LABEL,
   DOCUMENT_TYPE_LABEL,
   PROVIDER_STATUS_LABEL,
+  deleteServiceMedia,
   getProvider,
   getProviderPortfolio,
+  serviceMediaUrl,
   setDocumentStatus,
   setProviderCommission,
   setProviderStatus,
@@ -77,6 +80,7 @@ export function ProviderDetailPage() {
   const canWrite = can('directory')
   const [toast, setToast] = useState<string | null>(null)
   const [pending, setPending] = useState<PendingAction | null>(null)
+  const [pendingMedia, setPendingMedia] = useState<ServiceMedia | null>(null)
   const [busy, setBusy] = useState(false)
 
   const loadProvider = useCallback(() => getProvider(id), [id])
@@ -105,6 +109,20 @@ export function ProviderDetailPage() {
     } finally {
       setBusy(false)
       setPending(null)
+    }
+  }
+
+  async function removeMedia(item: ServiceMedia) {
+    setBusy(true)
+    try {
+      await deleteServiceMedia(item)
+      setToast('حُذف الوسيط من الخدمة ومن التخزين.')
+      portfolio.reload()
+    } catch (cause) {
+      setToast(cause instanceof Error ? cause.message : 'تعذّر حذف الوسيط.')
+    } finally {
+      setBusy(false)
+      setPendingMedia(null)
     }
   }
 
@@ -157,6 +175,7 @@ export function ProviderDetailPage() {
   const documents = portfolio.data?.documents ?? []
   const services = portfolio.data?.services ?? []
   const documentUrls = portfolio.data?.documentUrls ?? {}
+  const media = portfolio.data?.media ?? {}
   const reviewRows = reviews.data ?? []
   const allApproved = documents.length > 0 && documents.every((doc) => doc.status === 'approved')
 
@@ -456,7 +475,17 @@ export function ProviderDetailPage() {
                     <tbody>
                       {services.map((service) => (
                         <tr key={service.id} className="glass-row border-b border-hairline last:border-0">
-                          <td className="px-4 py-2.5 text-ink">{service.title}</td>
+                          <td className="px-4 py-2.5 text-ink">
+                            {service.title}
+                            {/* الوسائط تحت اسم الخدمة لا في عمودٍ خاص: عمودٌ
+                                خامس يضيّق الجدول على شاشةٍ ضيّقة، والوسائط
+                                تُراجَع بالنظر لا بالمسح السريع. */}
+                            <ServiceMediaStrip
+                              media={media[service.id] ?? []}
+                              canWrite={canWrite}
+                              onDelete={setPendingMedia}
+                            />
+                          </td>
                           <td className="tnum px-4 py-2.5 whitespace-nowrap text-ink-2">
                             {formatMoney(service.price)}
                           </td>
@@ -525,6 +554,17 @@ export function ProviderDetailPage() {
           </div>
         </>
       )}
+
+      <ConfirmDialog
+        open={pendingMedia !== null}
+        title="حذف وسيط الخدمة؟"
+        message="يُحذف من الخدمة ومن التخزين ولا يُسترجع. استعمله لما يُخالف شروط النشر."
+        confirmLabel="احذف"
+        tone="danger"
+        busy={busy}
+        onConfirm={() => pendingMedia && removeMedia(pendingMedia)}
+        onCancel={() => setPendingMedia(null)}
+      />
 
       <ConfirmDialog
         open={pending !== null}
@@ -637,5 +677,100 @@ function Detail({
         {node ?? value}
       </dd>
     </div>
+  )
+}
+
+
+/**
+ * شريط وسائط الخدمة في اللوحة.
+ *
+ * المراجعة هنا بالنظر: صورةٌ تُرى، ومقطعٌ يُفتح في تبويبٍ جديد. ولا مشغّل
+ * داخل اللوحة — المسؤول يفتح المقطع مرّةً ليحكم عليه، لا ليشاهده في مكانه،
+ * ومشغّلٌ مضمَّن في صفٍّ من جدولٍ يزاحم ما حوله.
+ */
+function ServiceMediaStrip({
+  media,
+  canWrite,
+  onDelete,
+}: {
+  media: ServiceMedia[]
+  canWrite: boolean
+  onDelete: (item: ServiceMedia) => void
+}) {
+  // خدمةٌ بلا وسائط لا تعرض شيئاً: صفٌّ فارغٌ تحت كل عنوانٍ يضاعف طول الجدول
+  // بلا خبر.
+  if (media.length === 0) return null
+
+  return (
+    <ul className="mt-2 flex flex-wrap items-center gap-1.5">
+      {media.map((item) => {
+        const url = serviceMediaUrl(item.path)
+        return (
+          // `group` على العنصر لا على البطاقة: زرُّ الحذف أخٌ للبطاقة لا
+          // ابنٌ لها، فلو كانت هي المجموعة لما أظهره المرورُ عليها أبداً.
+          <li key={item.id} className="group relative">
+            {item.kind === 'image' ? (
+              <MediaTile url={url} label="صورة">
+                {url ? (
+                  <img src={url} alt="" className="h-10 w-10 rounded-md object-cover" />
+                ) : (
+                  <Package className="size-4 text-muted" aria-hidden />
+                )}
+              </MediaTile>
+            ) : (
+              <MediaTile url={url} label={item.kind === 'video' ? 'فيديو' : 'مقطع صوتي'}>
+                <span className="tnum text-[10px] text-ink-2">
+                  {item.kind === 'video' ? '▶' : '♪'} {item.duration_seconds}ث
+                </span>
+              </MediaTile>
+            )}
+            {canWrite ? (
+              <button
+                type="button"
+                onClick={() => onDelete(item)}
+                title="احذف الوسيط"
+                aria-label="احذف الوسيط"
+                className="absolute -top-1 -left-1 rounded-full bg-critical p-0.5 text-white opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100 hover:opacity-100"
+              >
+                <X className="size-2.5" aria-hidden />
+              </button>
+            ) : null}
+          </li>
+        )
+      })}
+    </ul>
+  )
+}
+
+function MediaTile({
+  url,
+  label,
+  children,
+}: {
+  url: string | null
+  label: string
+  children: ReactNode
+}) {
+  const box =
+    'flex h-10 min-w-10 items-center justify-center overflow-hidden rounded-md border border-hairline bg-surface-2 px-1'
+  // بلا رابطٍ لا رابط: عنصرٌ `<a>` بلا `href` ليس زرّاً ولا وصلة، ولوحةُ
+  // المفاتيح تقف عنده.
+  if (!url) {
+    return (
+      <span className={box} title={label}>
+        {children}
+      </span>
+    )
+  }
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noreferrer"
+      className={cn(box, 'hover:border-accent')}
+      title={`${label} — يُفتح في تبويب جديد`}
+    >
+      {children}
+    </a>
   )
 }
