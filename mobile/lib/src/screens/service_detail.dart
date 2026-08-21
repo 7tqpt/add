@@ -6,6 +6,7 @@ import '../data/api.dart';
 import '../data/models.dart';
 import '../data/supabase.dart';
 import '../ui/kit.dart';
+import '../ui/media.dart';
 
 class ServiceDetailScreen extends StatefulWidget {
   const ServiceDetailScreen({super.key, required this.serviceId});
@@ -129,6 +130,10 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
           return ListView(
             padding: const EdgeInsets.all(Space.lg),
             children: [
+              // الوسائط فوق كل شيء: من فتح الخدمة يريد أن يرى ما يشتريه قبل
+              // أن يقرأ عنه. والسعرُ تحتها لأن السعر يُحكَم عليه بعد الرؤية
+              // لا قبلها.
+              _Media(serviceId: widget.serviceId),
               AppCard(
                 children: [
                   Row(
@@ -280,6 +285,125 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
           );
         },
       ),
+    );
+  }
+}
+
+/// وسائط الخدمة في شاشة العميل — صورٌ تُمرَّر، ثم المقطعان.
+///
+/// **وغيابُها غيابٌ صامت:** خدمةٌ بلا وسائط لا تعرض إطاراً فارغاً ولا رسالة
+/// «لا صور» — تلك تقول للعميل إن شيئاً ينقص، وهو لا يملك إصلاحه. تختفي
+/// الكتلة كلّها وتبقى الشاشة كما كانت.
+///
+/// ونداءٌ مستقلٌّ عن الخدمة: عطبُ الوسائط لا يجوز أن يمنع الحجز — من فتح
+/// الشاشة ليحجز يحجز، ولو تعذّرت الصور.
+class _Media extends StatefulWidget {
+  const _Media({required this.serviceId});
+  final String serviceId;
+
+  @override
+  State<_Media> createState() => _MediaState();
+}
+
+class _MediaState extends State<_Media> {
+  late final Future<List<ServiceMedia>> _future = Api.serviceMedia(widget.serviceId);
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<List<ServiceMedia>>(
+      future: _future,
+      builder: (context, snap) {
+        final all = snap.data ?? const <ServiceMedia>[];
+        if (all.isEmpty) return const SizedBox.shrink();
+
+        final images = all.where((m) => m.kind == MediaKind.image).toList();
+        final video = all.where((m) => m.kind == MediaKind.video).firstOrNull;
+        final audio = all.where((m) => m.kind == MediaKind.audio).firstOrNull;
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (images.isNotEmpty) ...[
+              _Gallery(images: images),
+              const SizedBox(height: Space.md),
+            ],
+            if (video != null) ...[
+              VideoBox(url: Api.mediaUrl(video.path), seconds: video.durationSeconds),
+              const SizedBox(height: Space.md),
+            ],
+            if (audio != null) ...[
+              AudioBar(
+                url: Api.mediaUrl(audio.path),
+                seconds: audio.durationSeconds,
+                label: audio.title.isEmpty ? 'استمع قبل أن تحجز' : audio.title,
+              ),
+              const SizedBox(height: Space.md),
+            ],
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _Gallery extends StatefulWidget {
+  const _Gallery({required this.images});
+  final List<ServiceMedia> images;
+
+  @override
+  State<_Gallery> createState() => _GalleryState();
+}
+
+class _GalleryState extends State<_Gallery> {
+  final _controller = PageController();
+  int _page = 0;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(14),
+          child: AspectRatio(
+            aspectRatio: 4 / 3,
+            child: PageView(
+              controller: _controller,
+              onPageChanged: (i) => setState(() => _page = i),
+              children: [
+                for (final m in widget.images) MediaThumb(url: Api.mediaUrl(m.path)),
+              ],
+            ),
+          ),
+        ),
+        // النقاط تغيب مع الصورة الواحدة: نقطةٌ واحدة تحت صورةٍ واحدة تقول
+        // شيئاً لا معنى له.
+        if (widget.images.length > 1) ...[
+          const SizedBox(height: Space.sm),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              for (var i = 0; i < widget.images.length; i++) ...[
+                if (i > 0) const SizedBox(width: 5),
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  width: i == _page ? 16 : 5,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: i == _page ? AppColors.accent : AppColors.hairline,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ],
+      ],
     );
   }
 }

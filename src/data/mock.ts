@@ -27,6 +27,7 @@ import type {
   Promotion,
   ProviderDocument,
   ProviderService,
+  ServiceMedia,
   ProviderStatus,
   PushNotification,
   RefundRule,
@@ -421,6 +422,43 @@ export const mockServices: ProviderService[] = mockProviders
       is_active: provider.status === 'verified',
     }))
   })
+
+/**
+ * وسائط الخدمات في الوضع التجريبي.
+ *
+ * أوّلُ خدمتين لكل مزوّدٍ موثّق: بلا هذا تظهر اللوحة وكأن القسم غير موجود
+ * أصلاً، فيبدو النقصُ ميزةً ناقصة لا بياناتٍ ناقصة. والمسارات لا تشير إلى
+ * ملفاتٍ حقيقية — الحاوية غير موجودة بلا Supabase — فتُرسم مربّعاتٌ ساكنة،
+ * وهي الحال نفسها التي يقع فيها المسؤول حين تسقط شبكته.
+ */
+export const mockServiceMedia: ServiceMedia[] = mockServices
+  .filter((_, i) => i % 3 === 0)
+  .flatMap((service, i) => [
+    {
+      id: `med_${i}_a`,
+      service_id: service.id,
+      provider_id: service.provider_id,
+      kind: 'image' as const,
+      path: `${service.provider_id}/${service.id}/cover.jpg`,
+      title: '',
+      duration_seconds: 0,
+      size_bytes: 412_000,
+      sort_order: 0,
+      created_at: new Date().toISOString(),
+    },
+    {
+      id: `med_${i}_b`,
+      service_id: service.id,
+      provider_id: service.provider_id,
+      kind: (i % 2 === 0 ? 'video' : 'audio') as 'video' | 'audio',
+      path: `${service.provider_id}/${service.id}/clip.${i % 2 === 0 ? 'mp4' : 'm4a'}`,
+      title: '',
+      duration_seconds: 40 + (i % 20),
+      size_bytes: i % 2 === 0 ? 17_400_000 : 880_000,
+      sort_order: 0,
+      created_at: new Date().toISOString(),
+    },
+  ])
 
 // ---------------------------------------------------------------------------
 // خطط الأعراس والحجوزات

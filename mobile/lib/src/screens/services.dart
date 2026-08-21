@@ -7,6 +7,7 @@ import '../data/api.dart';
 import '../data/models.dart';
 import '../data/supabase.dart';
 import '../ui/kit.dart';
+import 'service_media.dart';
 
 /// خدمات مقدّم الخدمة.
 ///
@@ -49,6 +50,20 @@ class _ServicesScreenState extends State<ServicesScreen> {
       builder: (_) => _ServiceEditor(session: widget.session, service: service),
     );
     if (saved == true) _reload();
+  }
+
+  Future<void> _media(MyService service) async {
+    final providerId = widget.session.providerId;
+    if (providerId == null) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ServiceMediaScreen(
+          providerId: providerId,
+          serviceId: service.id,
+          serviceTitle: service.title,
+        ),
+      ),
+    );
   }
 
   Future<void> _toggle(MyService service) async {
@@ -142,6 +157,15 @@ class _ServicesScreenState extends State<ServicesScreen> {
                         ),
                       ),
                     ],
+                  ),
+                  const SizedBox(height: Space.sm),
+                  // الوسائط بزرٍّ بعرض البطاقة لا بأيقونةٍ في الزاوية: خدمةٌ
+                  // بلا صورةٍ لا تُحجز، وهذا أوّل ما ينبغي أن يفعله من أضاف
+                  // خدمةً للتوّ — فيُعطى مساحته لا يُدسّ.
+                  FilledButton.tonalIcon(
+                    onPressed: _busyId == null ? () => _media(s) : null,
+                    icon: const Icon(Icons.perm_media_outlined, size: 19),
+                    label: const Text('الصور والمقاطع'),
                   ),
                 ],
               );

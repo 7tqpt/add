@@ -171,6 +171,28 @@ export interface ProviderService {
   is_active: boolean
 }
 
+export type MediaKind = 'image' | 'video' | 'audio'
+
+/**
+ * وسيطٌ لخدمة — صورة أو مقطع فيديو أو مقطع صوتي يرفعه مقدّم الخدمة.
+ *
+ * `path` مسارٌ داخل حاوية `service-media` لا رابطاً. والحاوية **عامة** بخلاف
+ * `provider-docs`: تلك تحمل هويّاتٍ وسجلّاتٍ تجارية فتُحرَس، وهذه ما يقصد
+ * صاحبها أن يراه كلُّ من تصفّح.
+ */
+export interface ServiceMedia {
+  id: string
+  service_id: string
+  provider_id: string
+  kind: MediaKind
+  path: string
+  title: string
+  duration_seconds: number
+  size_bytes: number
+  sort_order: number
+  created_at: string
+}
+
 // ---------------------------------------------------------------------------
 // خطط الأعراس والحجوزات
 // ---------------------------------------------------------------------------

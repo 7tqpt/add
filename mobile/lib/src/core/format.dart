@@ -59,6 +59,31 @@ const hourForms = (one: 'ساعة', two: 'ساعتين', few: 'ساعات', many
 const minuteForms = (one: 'دقيقة', two: 'دقيقتين', few: 'دقائق', many: 'دقيقة');
 const guestForms = (one: 'ضيف واحد', two: 'ضيفان', few: 'ضيوف', many: 'ضيفاً');
 const bookingForms = (one: 'حجزٌ واحد', two: 'حجزان', few: 'حجوزات', many: 'حجزاً');
+const secondForms = (one: 'ثانية', two: 'ثانيتان', few: 'ثوانٍ', many: 'ثانية');
+
+/// مدّة مقطع. والدقيقة تُسمّى دقيقةً لا «٦٠ ثانية».
+String formatSeconds(int seconds) {
+  if (seconds >= 60 && seconds % 60 == 0) return formatCount(seconds ~/ 60, minuteForms);
+  if (seconds < 60) return formatCount(seconds, secondForms);
+  return '${formatCount(seconds ~/ 60, minuteForms)} و${formatCount(seconds % 60, secondForms)}';
+}
+
+/// «٠:٤٨» — للمشغّل وحده حيث يتغيّر الرقم كل ثانية.
+String formatClock(Duration d) {
+  final m = d.inMinutes;
+  final s = d.inSeconds % 60;
+  return '$m:${s.toString().padLeft(2, '0')}';
+}
+
+/// حجم ملف. الوحدة عربية لأنها تُقرأ لا تُنسخ.
+String formatBytes(int bytes) {
+  if (bytes < 1024) return '$bytes بايت';
+  if (bytes < 1024 * 1024) return '${(bytes / 1024).round()} ك.ب';
+  final mb = bytes / (1024 * 1024);
+  // منزلةٌ واحدة تحت العشرة وصحيحٌ فوقها: «١٫٤ م.ب» تفيد، و«٤٨٫٣ م.ب» لا
+  // تزيد على «٤٨» شيئاً.
+  return mb < 10 ? '${mb.toStringAsFixed(1)} م.ب' : '${mb.round()} م.ب';
+}
 
 /// «منذ ٣ ساعات» للماضي و«بعد ٧ أيام» للمستقبل.
 String formatRelative(String iso) {

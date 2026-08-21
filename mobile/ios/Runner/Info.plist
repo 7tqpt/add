@@ -38,9 +38,9 @@
 	     شرطُ عملها. والنصّان يظهران للمستخدم كما هما في نافذة الإذن، فكُتبا
 	     يقولان لماذا نطلب لا ماذا نطلب. -->
 	<key>NSCameraUsageDescription</key>
-	<string>لتصوير هويتك أو سجلك التجاري ورفعه لفريق التوثيق.</string>
+	<string>لتصوير مستنداتك للتوثيق، أو تصوير خدمتك — صوراً ومقاطع — ليراها العملاء قبل الحجز.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>لاختيار صورة هويتك أو سجلك التجاري من معرض جوالك ورفعها لفريق التوثيق.</string>
+	<string>لاختيار مستنداتك للتوثيق، أو صور خدمتك ومقاطعها، من معرض جوالك.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
