@@ -1,3 +1,4 @@
+import 'dart:async' show Timer;
 import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
@@ -220,6 +221,31 @@ IconData categoryIcon(String slug) => switch (slug) {
   _ => Icons.category_outlined,
 };
 
+
+/// صبغة القسم.
+///
+/// لونٌ لكل قسمٍ لا لونٌ واحد: صفٌّ من اثنتي عشرة بطاقةٍ بلونٍ واحد يُقرأ
+/// كتلةً تُبحث بالقراءة، والصبغةُ تجعل كلَّ بطاقةٍ تُعرف قبل أن يُقرأ اسمها.
+///
+/// والاثنتا عشرة مقيسةٌ على أرضية البطاقة (‏`#fbfcfe`‏): أدناها ‎٤٫٨٦:١‎
+/// وأعلاها ‎٨٫٧٨:١‎ — فلا واحدةَ منها زينةٌ لا تُقرأ. وقياسٌ لا ذوق، لأن
+/// «يبدو واضحاً» على شاشةِ من يكتب غيرُه في شمسِ من يستعمل.
+Color categoryTone(String slug) => switch (slug) {
+  'halls' => const Color(0xFF1D4ED8),
+  'catering' => const Color(0xFFB45309),
+  'artists' => const Color(0xFF7C3AED),
+  'sound' => const Color(0xFF0E7490),
+  'photography' => const Color(0xFFBE185D),
+  'support' => const Color(0xFF0369A1),
+  'cars' => const Color(0xFF3F3F91),
+  'attire' => const Color(0xFF9D174D),
+  'planners' => const Color(0xFF15803D),
+  'beauty' => const Color(0xFFA21CAF),
+  'decor' => const Color(0xFFC2410C),
+  'printing' => const Color(0xFF4D7C0F),
+  _ => AppColors.ink2,
+};
+
 /// بطاقة قسم — قرصٌ بأيقونته واسمُه تحته.
 ///
 /// بطاقةٌ لا شريحة: الشريحة نصٌّ في إطار، وصفٌّ منها يُقرأ كتلةً واحدة يُبحث
@@ -228,13 +254,16 @@ IconData categoryIcon(String slug) => switch (slug) {
 ///
 /// وارتفاعها ثابتٌ لا يتبع طول الاسم: «الموية والطليع والخدمات المساندة»
 /// و«السيارات» في صفٍّ واحد، ولو تفاوت الارتفاع لتعرّج الصفّ كلّه.
-class CategoryCard extends StatelessWidget {
+class CategoryCard extends StatefulWidget {
   const CategoryCard({
     super.key,
     required this.label,
     required this.icon,
     required this.active,
     required this.onTap,
+    this.tone,
+    this.width = 96,
+    this.enterDelay = Duration.zero,
   });
 
   final String label;
@@ -242,54 +271,148 @@ class CategoryCard extends StatelessWidget {
   final bool active;
   final VoidCallback onTap;
 
+  /// صبغة البطاقة. تُترك فارغةً فتأخذ لون العلامة — وهو حال «الكل».
+  final Color? tone;
+
+  /// عرضٌ ثابت في الصفّ الأفقي، ويُترك للشبكة أن تملأه فيها.
+  final double? width;
+
+  /// تأخير ظهورها — يُمرَّر متدرّجاً فتدخل البطاقات تباعاً لا دفعةً واحدة.
+  final Duration enterDelay;
+
+  @override
+  State<CategoryCard> createState() => _CategoryCardState();
+}
+
+class _CategoryCardState extends State<CategoryCard> {
+  bool _down = false;
+  bool _shown = false;
+
+  /// مؤقّت الدخول — يُحفظ ليُلغى.
+  ///
+  /// `Future.delayed` لا يُلغى: يبقى معلّقاً بعد زوال البطاقة ممسكاً بها،
+  /// وإطارُ الاختبار يُسقط أي اختبارٍ يتركه («Pending timers») — وهو محقٌّ،
+  /// فالتسريب واحدٌ في الحالتين. والمستخدم يمرّر الشبكة سريعاً فتُبنى
+  /// بطاقاتٌ وتزول قبل أن يحين دخولها.
+  Timer? _enter;
+
+  @override
+  void initState() {
+    super.initState();
+    // الدخول المتدرّج يُجدول لا يُحسب في البناء: `setState` أثناء البناء
+    // ممنوع، والمؤقّت يضع التغيير في الإطار التالي.
+    if (widget.enterDelay == Duration.zero) {
+      _shown = true;
+    } else {
+      _enter = Timer(widget.enterDelay, () {
+        if (mounted) setState(() => _shown = true);
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _enter?.cancel();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
-    final tone = active ? AppColors.accent : AppColors.ink2;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        width: 96,
-        padding: const EdgeInsets.symmetric(horizontal: Space.sm, vertical: Space.md),
-        decoration: BoxDecoration(
-          color: active ? AppColors.accent.withValues(alpha: 0.08) : AppColors.surface,
-          border: Border.all(
-            color: active ? AppColors.accent : AppColors.hairline,
-            width: active ? 1.5 : 1,
+    final tone = widget.tone ?? AppColors.accent;
+    final active = widget.active;
+
+    return AnimatedOpacity(
+      opacity: _shown ? 1 : 0,
+      duration: const Duration(milliseconds: 260),
+      curve: Curves.easeOut,
+      child: AnimatedSlide(
+        // تنزلق صاعدةً قليلاً عند الدخول: حركةٌ تدلّ على الترتيب، لا قفزة.
+        offset: _shown ? Offset.zero : const Offset(0, 0.12),
+        duration: const Duration(milliseconds: 260),
+        curve: Curves.easeOut,
+        child: Listener(
+          onPointerDown: (_) => setState(() => _down = true),
+          onPointerUp: (_) => setState(() => _down = false),
+          onPointerCancel: (_) => setState(() => _down = false),
+          child: GestureDetector(
+            onTap: widget.onTap,
+            child: AnimatedScale(
+              scale: _down ? 0.94 : 1,
+              duration: const Duration(milliseconds: 120),
+              curve: Curves.easeOut,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 160),
+                width: widget.width,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: Space.sm,
+                  vertical: Space.md,
+                ),
+                decoration: BoxDecoration(
+                  // زجاجٌ مصبوغ: تدرّجٌ من أبيضَ شبه صافٍ إلى صبغةٍ خفيفة،
+                  // فيبدو السطح ذا عمقٍ لا لوحةً مسطّحة.
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.white.withValues(alpha: 0.96),
+                      tone.withValues(alpha: active ? 0.16 : 0.07),
+                    ],
+                  ),
+                  border: Border.all(
+                    color: tone.withValues(alpha: active ? 0.55 : 0.18),
+                    width: active ? 1.5 : 1,
+                  ),
+                  borderRadius: BorderRadius.circular(14),
+                  boxShadow: [
+                    // ظلٌّ يُغلق عند الضغط فتبدو البطاقة وقد غاصت في مكانها.
+                    BoxShadow(
+                      color: tone.withValues(alpha: _down ? 0.10 : 0.18),
+                      blurRadius: _down ? 4 : 12,
+                      offset: Offset(0, _down ? 1 : 5),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            tone.withValues(alpha: active ? 0.26 : 0.15),
+                            tone.withValues(alpha: active ? 0.14 : 0.07),
+                          ],
+                        ),
+                      ),
+                      child: Icon(widget.icon, size: 19, color: tone),
+                    ),
+                    const SizedBox(height: Space.sm),
+                    // ثلاثة أسطرٍ بحدٍّ أقصى ثم قصٌّ. وثلاثةٌ لا سطران: أطولُ
+                    // اسمٍ في البذرة — «الموية والطليع والخدمات المساندة» —
+                    // يُقصّ عند سطرين فيضيع آخره، ويكتمل عند ثلاثة.
+                    Text(
+                      widget.label,
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        height: 1.35,
+                        fontWeight: active ? FontWeight.w600 : FontWeight.w500,
+                        color: active ? tone : AppColors.ink,
+                        fontFamilyFallback: arabicFallback,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 34,
-              height: 34,
-              decoration: BoxDecoration(
-                color: tone.withValues(alpha: active ? 0.14 : 0.07),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(icon, size: 19, color: tone),
-            ),
-            const SizedBox(height: Space.sm),
-            // ثلاثة أسطرٍ بحدٍّ أقصى ثم قصٌّ. وثلاثةٌ لا سطران: أطولُ اسمٍ
-            // في البذرة — «الموية والطليع والخدمات المساندة» — يُقصّ عند
-            // سطرين فيضيع آخره، ويكتمل عند ثلاثة. والكلفة اثنا عشر بكسلاً
-            // في ارتفاع الصفّ كلّه، وقد قِيست بالرسم لا بالتقدير.
-            Text(
-              label,
-              maxLines: 3,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 11.5,
-                height: 1.35,
-                fontWeight: active ? FontWeight.w600 : FontWeight.w500,
-                color: active ? AppColors.accent : AppColors.ink,
-                fontFamilyFallback: arabicFallback,
-              ),
-            ),
-          ],
         ),
       ),
     );

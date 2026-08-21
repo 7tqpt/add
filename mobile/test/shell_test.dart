@@ -61,6 +61,34 @@ void main() {
     expect(find.widgetWithText(AppBar, 'حسابي'), findsOneWidget);
   });
 
+  testWidgets('الرئيسية تعرض الأقسام كلّها لا بعضها', (tester) async {
+    // كان `take(8)` يقصّ أربعةً بلا أن يقول، فيظنّ المستخدم أن المنصّة لا
+    // تقدّم غيرها — وهي تقدّم. وهذا ما رآه على جهازه.
+    tester.view.physicalSize = const Size(1080, 3000);
+    tester.view.devicePixelRatio = 3.0;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(_wrap(_session()));
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pumpAndSettle(const Duration(seconds: 2));
+    expect(find.byType(CategoryCard, skipOffstage: false), findsNWidgets(12));
+  });
+
+  testWidgets('ولا تبقى بطاقةٌ شفّافة بعد الدخول المتدرّج', (tester) async {
+    // الحركة تدخل البطاقات تباعاً؛ فإن عَلِقت واحدةٌ عند الشفافية بقيت
+    // خليّةٌ فارغة في الشبكة بلا خطأٍ في أي سجلّ.
+    tester.view.physicalSize = const Size(1080, 3000);
+    tester.view.devicePixelRatio = 3.0;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(_wrap(_session()));
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pumpAndSettle(const Duration(seconds: 2));
+    final faded = find
+        .byType(AnimatedOpacity, skipOffstage: false)
+        .evaluate()
+        .where((e) => (e.widget as AnimatedOpacity).opacity < 1);
+    expect(faded, isEmpty);
+  });
+
   testWidgets('المحتوى يمرّ تحت الزجاج', (tester) async {
     // `extendBody` هو ما يعطي التمويهَ ما يموّهه. ولولا `glassNavSpace` في
     // حشوة القوائم لاختفت آخرُ بطاقةٍ خلف الشريط.
