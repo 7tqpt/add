@@ -30,6 +30,31 @@ Widget _wrap(Session s) => MaterialApp(
   home: Directionality(textDirection: TextDirection.rtl, child: CustomerShell(session: s)),
 );
 
+/// مقاس جوالٍ حقيقي — لا ‎٨٠٠×٦٠٠‎ الافتراضية.
+void _phone(WidgetTester tester, {double height = 2340}) {
+  tester.view.physicalSize = Size(1080, height);
+  tester.view.devicePixelRatio = 3.0;
+  addTearDown(tester.view.reset);
+}
+
+/// النصّ داخل البطاقات وحدها — لا في الشريط السفلي.
+///
+/// «خطة العرس» و«حجوزاتي» اسمان في مكانين: عنوانُ بطاقةٍ وبندُ تنقّل. وباحثٌ
+/// بالنصّ وحده يجد اثنين فيرمي، أو يجد الخطأ منهما فيقيس مكان الشريط.
+Finder _inCards(String text) =>
+    find.descendant(of: find.byType(PageView), matching: find.text(text));
+
+bool _onScreen(WidgetTester tester, Finder finder) {
+  final screen = Offset.zero & tester.view.physicalSize / tester.view.devicePixelRatio;
+  return screen.contains(tester.getCenter(finder));
+}
+
+/// تمريرةٌ كاملةٌ إلى الصفحة التالية — أوسعُ من نصف عرض البطاقة.
+Future<void> _swipe(WidgetTester tester) async {
+  await tester.drag(find.byType(PageView), const Offset(260, 0));
+  await tester.pumpAndSettle();
+}
+
 void main() {
   testWidgets('خمسة بنودٍ بالترتيب المطلوب', (tester) async {
     await tester.pumpWidget(_wrap(_session()));
@@ -59,6 +84,43 @@ void main() {
 
     expect(tester.widget<GlassNavBar>(find.byType(GlassNavBar)).index, 4);
     expect(find.widgetWithText(AppBar, 'حسابي'), findsOneWidget);
+  });
+
+  testWidgets('بطاقتان كبيرتان تُمرَّران بالإبهام', (tester) async {
+    _phone(tester);
+    await tester.pumpWidget(_wrap(_session()));
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pumpAndSettle(const Duration(seconds: 2));
+
+    expect(find.byType(PageView), findsOneWidget);
+    // الأولى في الشاشة، والثانية مبنيّةٌ خارجها تُطلّ من الحافّة.
+    expect(_onScreen(tester, _inCards('خطة العرس')), isTrue);
+    expect(_onScreen(tester, _inCards('حجزان')), isFalse);
+
+    // ثمّ يمرّ الإبهام فتحلّ الثانية محلّها. والجرّ إلى اليمين تقدّمٌ في
+    // العربية لا رجوع.
+    //
+    // ووجودُ النصّ وحده لا يثبت شيئاً: `PageView` يبني الصفحة المجاورة وإن
+    // كانت خارج الشاشة، فـ`findsOneWidget` تمرّ ولو لم يتحرّك شيء — وقد
+    // مرّت، وكانت البطاقة عند ‎−٣٢٠‎ من الحافة.
+    await _swipe(tester);
+    expect(_onScreen(tester, _inCards('حجزان')), isTrue);
+  });
+
+  testWidgets('وبطاقة الحجوزات تفتح تبويب الحجوزات', (tester) async {
+    // البطاقة تنقل التبويب ولا تفتح شاشةً فوقه: لو دفعت شاشةً جديدة لخرج
+    // المستخدم من الشريط السفلي كلّه وصار عليه زرُّ رجوع — وهو مغادرة لا
+    // انتقال.
+    _phone(tester);
+    await tester.pumpWidget(_wrap(_session()));
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pumpAndSettle(const Duration(seconds: 2));
+
+    await _swipe(tester);
+    await tester.tapAt(tester.getCenter(_inCards('حجزان')));
+    await tester.pumpAndSettle();
+
+    expect(tester.widget<GlassNavBar>(find.byType(GlassNavBar)).index, 1);
   });
 
   testWidgets('الرئيسية تعرض الأقسام كلّها لا بعضها', (tester) async {
