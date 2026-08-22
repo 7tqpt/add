@@ -453,3 +453,72 @@ class MyProfile {
     avatarPath: avatarPath ?? this.avatarPath,
   );
 }
+
+// ── المحادثة ─────────────────────────────────────────────────────────────────
+
+/// جانبُ من يتكلّم. النصّ هو ما يقبله قيد الجدول حرفياً.
+enum ChatSide { customer, provider }
+
+ChatSide chatSideFrom(String raw) =>
+    raw == 'provider' ? ChatSide.provider : ChatSide.customer;
+
+String chatSideValue(ChatSide s) => s == ChatSide.provider ? 'provider' : 'customer';
+
+/// محادثةٌ كما تظهر في القائمة — الطرف الآخر وآخر ما قيل وكم لم يُقرأ.
+class Conversation {
+  const Conversation({
+    required this.id,
+    required this.providerId,
+    required this.otherName,
+    required this.mySide,
+    required this.lastMessageAt,
+    required this.lastMessageBody,
+    required this.lastMessageSender,
+    required this.unreadCount,
+  });
+
+  final String id;
+  final String? providerId;
+
+  /// اسم الطرف **الآخر** — تحسبه القاعدة لأن لكل طرفٍ «آخرَ» غير آخر صاحبه.
+  final String otherName;
+  final ChatSide mySide;
+  final String lastMessageAt;
+  final String lastMessageBody;
+  final ChatSide? lastMessageSender;
+  final int unreadCount;
+
+  factory Conversation.fromMap(Map<String, dynamic> m) => Conversation(
+    id: m['id'] as String,
+    providerId: m['provider_id'] as String?,
+    otherName: (m['other_name'] ?? '') as String,
+    mySide: chatSideFrom((m['my_side'] ?? 'customer') as String),
+    lastMessageAt: (m['last_message_at'] ?? '') as String,
+    lastMessageBody: (m['last_message_body'] ?? '') as String,
+    lastMessageSender: m['last_message_sender'] == null
+        ? null
+        : chatSideFrom(m['last_message_sender'] as String),
+    unreadCount: ((m['unread_count'] ?? 0) as num).toInt(),
+  );
+}
+
+class ChatMessage {
+  const ChatMessage({
+    required this.id,
+    required this.sender,
+    required this.body,
+    required this.createdAt,
+  });
+
+  final String id;
+  final ChatSide sender;
+  final String body;
+  final String createdAt;
+
+  factory ChatMessage.fromMap(Map<String, dynamic> m) => ChatMessage(
+    id: m['id'] as String,
+    sender: chatSideFrom((m['sender'] ?? 'customer') as String),
+    body: (m['body'] ?? '') as String,
+    createdAt: (m['created_at'] ?? '') as String,
+  );
+}

@@ -7,6 +7,7 @@ import '../data/models.dart';
 import '../data/supabase.dart';
 import '../ui/kit.dart';
 import '../ui/media.dart';
+import 'chat.dart';
 
 class ServiceDetailScreen extends StatefulWidget {
   const ServiceDetailScreen({super.key, required this.serviceId});
@@ -57,6 +58,31 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
     _address.dispose();
     _notes.dispose();
     super.dispose();
+  }
+
+  /// يفتح المحادثة مع صاحب الخدمة ثم يدخلها.
+  ///
+  /// والفتح من القاعدة: الضغطُ مرّتين بسرعة كان سينتج خيطين لو بحث التطبيق
+  /// ثم أنشأ بنفسه، فتنقسم الرسائل بينهما ولا يرى أحدٌ نصفها.
+  Future<void> _message(ServiceItem item) async {
+    setState(() => _busy = true);
+    try {
+      final id = await Api.openConversation(item.providerId);
+      if (!mounted) return;
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => ChatScreen(
+            conversationId: id,
+            otherName: item.providerName,
+            mySide: ChatSide.customer,
+          ),
+        ),
+      );
+    } catch (e) {
+      if (mounted) showMessage(context, messageOf(e));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
   Future<void> _pickDate() async {
@@ -160,6 +186,15 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
                     const SizedBox(height: Space.md),
                     Text(item.description, style: const TextStyle(height: 1.8)),
                   ],
+                  const SizedBox(height: Space.md),
+                  // في بطاقة المزوّد لا عند زرّ الحجز: السؤال يسبق الحجز ولا
+                  // يليه. ومن لا يجد أين يسأل يذهب إلى واتساب، فيخرج الحجز
+                  // من المنصّة كلّه ومعه سجلُّه.
+                  OutlinedButton.icon(
+                    onPressed: _busy ? null : () => _message(item),
+                    icon: const Icon(Icons.forum_outlined, size: 19),
+                    label: Text('راسل ${item.providerName}'),
+                  ),
                 ],
               ),
               const SizedBox(height: Space.md),

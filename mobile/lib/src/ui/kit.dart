@@ -573,3 +573,66 @@ class _GlassNavCell extends StatelessWidget {
     );
   }
 }
+
+/// حبّةٌ بعدد ما لم يُقرأ.
+///
+/// والعدد فيها لا نقطةٌ صمّاء: «٣» تقول إن ثمّة حديثاً يجري، والنقطة تقول
+/// «شيءٌ ما». والحدُّ عند تسعة فـ«٩+» — رقمٌ من ثلاث خانات يمطّ الحبّة حتى
+/// تكسر الصفّ الذي هي فيه.
+class UnreadDot extends StatelessWidget {
+  const UnreadDot({super.key, required this.count});
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    if (count <= 0) return const SizedBox.shrink();
+    return Container(
+      constraints: const BoxConstraints(minWidth: 18),
+      height: 18,
+      padding: const EdgeInsets.symmetric(horizontal: 5),
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: AppColors.accent,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        count > 9 ? '9+' : '$count',
+        style: const TextStyle(
+          fontSize: 11,
+          height: 1,
+          fontWeight: FontWeight.w700,
+          color: AppColors.accentInk,
+        ),
+      ),
+    );
+  }
+}
+
+/// أيقونة المحادثات في الشريط العلوي، وعليها حبّةُ ما لم يُقرأ.
+///
+/// في الشريط العلوي لا في الشريط السفلي: بنوده الخمسة محدَّدة، وإضافةُ سادسٍ
+/// تضيّق الخمسة كلَّها. والأيقونة هنا في متناول الإبهام على أكثر الأجهزة،
+/// وهي في المكان الذي تعوّده الناس من كل تطبيقٍ فيه محادثات.
+class ChatIconButton extends StatelessWidget {
+  const ChatIconButton({super.key, required this.unread, required this.onTap});
+  final int unread;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Stack(
+    clipBehavior: Clip.none,
+    children: [
+      IconButton(
+        onPressed: onTap,
+        tooltip: 'المحادثات',
+        icon: const Icon(Icons.forum_outlined, size: 22),
+      ),
+      if (unread > 0)
+        Positioned(
+          top: 4,
+          left: 2,
+          child: IgnorePointer(child: UnreadDot(count: unread)),
+        ),
+    ],
+  );
+}

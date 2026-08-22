@@ -612,3 +612,214 @@ void demoRemoveMedia(String id) {
       entry.key: entry.value.where((m) => m.id != id).toList(),
   };
 }
+
+// ── المحادثة في وضع العرض ────────────────────────────────────────────────────
+//
+// بلا Supabase لا بثَّ حيّاً ولا `now()` من الخادم، فتُحفظ الخيوط في الذاكرة.
+// وهذا يكفي لبناء الشاشتين واختبارهما بلا شبكة: ما يُرسَل يظهر في مكانه،
+// والعدّاد يصفر عند القراءة كما يصفر على القاعدة.
+int _chatSeq = 0;
+
+class _DemoThread {
+  _DemoThread({
+    required this.id,
+    required this.providerId,
+    required this.otherName,
+    required this.mySide,
+    required this.messages,
+    this.readAt,
+  });
+  final String id;
+  final String providerId;
+  final String otherName;
+  final ChatSide mySide;
+  List<ChatMessage> messages;
+  String? readAt;
+}
+
+List<_DemoThread> _threads = [
+  _DemoThread(
+    id: 'cv1',
+    providerId: 'p1',
+    otherName: 'قاعة التاج',
+    mySide: ChatSide.customer,
+    messages: [
+      ChatMessage(
+        id: 'cm1',
+        sender: ChatSide.customer,
+        body: 'السلام عليكم، القاعة متاحة يوم ١٥ سبتمبر؟',
+        createdAt: _at(30),
+      ),
+      ChatMessage(
+        id: 'cm2',
+        sender: ChatSide.provider,
+        body: 'وعليكم السلام. نعم متاحة، والعربون ٣٠٪ لتثبيت الموعد.',
+        createdAt: _at(26),
+      ),
+      ChatMessage(
+        id: 'cm3',
+        sender: ChatSide.provider,
+        body: 'وتشمل التنسيق والإضاءة وطاقم الاستقبال.',
+        createdAt: _at(25),
+      ),
+    ],
+  ),
+  _DemoThread(
+    id: 'cv2',
+    providerId: 'p2',
+    otherName: 'مطبخ الأصالة',
+    mySide: ChatSide.customer,
+    messages: [
+      ChatMessage(
+        id: 'cm4',
+        sender: ChatSide.customer,
+        body: 'كم سعر مندي لـ٣٠٠ شخص؟',
+        createdAt: _at(90),
+      ),
+    ],
+    readAt: _at(89),
+  ),
+];
+
+/// إعادة الحال إلى أوّلها — للاختبارات، فكلٌّ يبدأ من حيث بدأ سابقُه.
+void demoResetChat() {
+  _chatSeq = 0;
+  _threads = [
+    _DemoThread(
+      id: 'cv1',
+      providerId: 'p1',
+      otherName: 'قاعة التاج',
+      mySide: ChatSide.customer,
+      messages: [
+        ChatMessage(
+          id: 'cm1',
+          sender: ChatSide.customer,
+          body: 'السلام عليكم، القاعة متاحة يوم ١٥ سبتمبر؟',
+          createdAt: _at(30),
+        ),
+        ChatMessage(
+          id: 'cm2',
+          sender: ChatSide.provider,
+          body: 'وعليكم السلام. نعم متاحة، والعربون ٣٠٪ لتثبيت الموعد.',
+          createdAt: _at(26),
+        ),
+        ChatMessage(
+          id: 'cm3',
+          sender: ChatSide.provider,
+          body: 'وتشمل التنسيق والإضاءة وطاقم الاستقبال.',
+          createdAt: _at(25),
+        ),
+      ],
+    ),
+    _DemoThread(
+      id: 'cv2',
+      providerId: 'p2',
+      otherName: 'مطبخ الأصالة',
+      mySide: ChatSide.customer,
+      messages: [
+        ChatMessage(
+          id: 'cm4',
+          sender: ChatSide.customer,
+          body: 'كم سعر مندي لـ٣٠٠ شخص؟',
+          createdAt: _at(90),
+        ),
+      ],
+      readAt: _at(89),
+    ),
+  ];
+}
+
+List<Conversation> demoConversationList() {
+  final rows = _threads.map((t) {
+    final last = t.messages.isEmpty ? null : t.messages.last;
+    final mine = chatSideValue(t.mySide);
+    final unread = t.messages
+        .where((m) =>
+            chatSideValue(m.sender) != mine &&
+            (t.readAt == null || m.createdAt.compareTo(t.readAt!) > 0))
+        .length;
+    return Conversation(
+      id: t.id,
+      providerId: t.providerId,
+      otherName: t.otherName,
+      mySide: t.mySide,
+      lastMessageAt: last?.createdAt ?? '',
+      lastMessageBody: last == null
+          ? ''
+          : (last.body.length > 160 ? last.body.substring(0, 160) : last.body),
+      lastMessageSender: last?.sender,
+      unreadCount: unread,
+    );
+  }).toList();
+  rows.sort((a, b) => b.lastMessageAt.compareTo(a.lastMessageAt));
+  return rows;
+}
+
+List<ChatMessage> demoMessagesOf(String conversationId) =>
+    List<ChatMessage>.from(
+      _threads.where((t) => t.id == conversationId).firstOrNull?.messages ?? const [],
+    );
+
+String demoOpenConversation(String providerId) {
+  final existing = _threads.where((t) => t.providerId == providerId).firstOrNull;
+  if (existing != null) return existing.id;
+  _chatSeq += 1;
+  final name = demoServices
+          .where((s) => s.providerId == providerId)
+          .firstOrNull
+          ?.providerName ??
+      'مقدّم الخدمة';
+  final thread = _DemoThread(
+    id: 'cv-new$_chatSeq',
+    providerId: providerId,
+    otherName: name,
+    mySide: ChatSide.customer,
+    messages: [],
+  );
+  _threads = [..._threads, thread];
+  return thread.id;
+}
+
+void demoSendMessage(String conversationId, ChatSide sender, String body) {
+  final thread = _threads.where((t) => t.id == conversationId).firstOrNull;
+  if (thread == null) return;
+  _chatSeq += 1;
+  final now = DateTime.now().toIso8601String();
+  thread.messages = [
+    ...thread.messages,
+    ChatMessage(id: 'cm-new$_chatSeq', sender: sender, body: body, createdAt: now),
+  ];
+  // المرسِل قارئٌ لكلامه: لولا ذلك لظهرت له محادثتُه «غير مقروءة» بسببه هو.
+  if (chatSideValue(sender) == chatSideValue(thread.mySide)) thread.readAt = now;
+}
+
+void demoMarkRead(String conversationId) {
+  final thread = _threads.where((t) => t.id == conversationId).firstOrNull;
+  if (thread != null) thread.readAt = DateTime.now().toIso8601String();
+}
+
+/// فتحُ المحادثة من طرف مقدّم الخدمة، على حجزٍ له.
+///
+/// وجانبُها هنا `provider`: قائمةُ المحادثات تعرض «الطرف الآخر»، والآخرُ عند
+/// صاحب القاعة هو العميل — عكسُ ما يراه العميل في الخيط نفسه.
+String demoOpenConversationWithCustomer(String bookingId) {
+  final booking = [...demoProviderRequests, ...demoBookings]
+      .where((b) => b.id == bookingId)
+      .firstOrNull;
+  final name = booking?.userName ?? 'العميل';
+  final existing = _threads.where((t) => t.otherName == name).firstOrNull;
+  if (existing != null) return existing.id;
+  _chatSeq += 1;
+  final thread = _DemoThread(
+    id: 'cv-p$_chatSeq',
+    providerId: demoProviderId ?? 'p1',
+    otherName: name,
+    mySide: ChatSide.provider,
+    messages: [],
+  );
+  _threads = [..._threads, thread];
+  return thread.id;
+}
+
+/// يحذف خيطاً — للاختبارات وحدها، لبلوغ حال «لا محادثات بعد».
+void demoDropThread(String id) => _threads = _threads.where((t) => t.id != id).toList();

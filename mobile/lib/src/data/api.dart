@@ -382,6 +382,95 @@ class Api {
     await db.from('provider_services').update({'is_active': active}).eq('id', id);
   }
 
+  // ----- المحادثة -----
+
+  /// محادثاتي مرتّبةً بالأحدث.
+  ///
+  /// من `v_my_conversations` لا من الجدول: الطريقة تحسب اسم الطرف الآخر وعدد
+  /// ما لم يُقرأ في صفٍّ واحد. وحسابُهما في التطبيق يعني نداءً لكل محادثة.
+  static Future<List<Conversation>> myConversations() async {
+    if (!isSupabaseConfigured) return demoDelay(demoConversationList());
+    final rows = await db
+        .from('v_my_conversations')
+        .select()
+        .order('last_message_at', ascending: false);
+    return rows.map(Conversation.fromMap).toList();
+  }
+
+  /// يفتح المحادثة مع مقدّم الخدمة أو يعيد القائمة.
+  ///
+  /// دالّةٌ في القاعدة لا بحثٌ ثم إنشاء من هنا: الثاني ينتج خيطين حين تُضغط
+  /// الزرّ مرّتين بسرعة، فتنقسم الرسائل بينهما ولا يرى أحدٌ نصفها.
+  static Future<String> openConversation(String providerId, {String? bookingId}) async {
+    if (!isSupabaseConfigured) return demoOpenConversation(providerId);
+    final id = await db.rpc(
+      'api_open_conversation',
+      params: {'p_provider_id': providerId, 'p_booking_id': bookingId},
+    );
+    return id as String;
+  }
+
+  /// يفتحها مقدّمُ الخدمة على حجزٍ له.
+  static Future<String> openConversationWithCustomer(String bookingId) async {
+    if (!isSupabaseConfigured) return demoOpenConversationWithCustomer(bookingId);
+    final id = await db.rpc(
+      'api_open_conversation_with_customer',
+      params: {'p_booking_id': bookingId},
+    );
+    return id as String;
+  }
+
+  static Future<List<ChatMessage>> conversationMessages(String conversationId) async {
+    if (!isSupabaseConfigured) return demoDelay(demoMessagesOf(conversationId));
+    final rows = await db
+        .from('conversation_messages')
+        .select('id, sender, body, created_at')
+        .eq('conversation_id', conversationId)
+        .order('created_at');
+    return rows.map(ChatMessage.fromMap).toList();
+  }
+
+  /// بثٌّ حيٌّ لرسائل محادثة.
+  ///
+  /// بدونه لا تصل الرسالة حتى يُغلق الطرف الآخر الشاشة ويفتحها — وهذه ليست
+  /// محادثة. ويعمل البثّ متى أُضيف الجدول إلى نشرة Supabase (وهو ما يفعله
+  /// `chat.sql`)؛ وإن لم يُضَف وصلت الدفعة الأولى ولم تصل التالية، فتبقى
+  /// الشاشة صحيحةً ناقصةَ الحياة لا مكسورة.
+  static Stream<List<ChatMessage>>? conversationStream(String conversationId) {
+    if (!isSupabaseConfigured) return null;
+    return db
+        .from('conversation_messages')
+        .stream(primaryKey: ['id'])
+        .eq('conversation_id', conversationId)
+        .order('created_at')
+        .map((rows) => rows.map(ChatMessage.fromMap).toList());
+  }
+
+  static Future<void> sendChatMessage({
+    required String conversationId,
+    required ChatSide sender,
+    required String body,
+  }) async {
+    if (!isSupabaseConfigured) {
+      demoSendMessage(conversationId, sender, body);
+      return;
+    }
+    await db.from('conversation_messages').insert({
+      'conversation_id': conversationId,
+      'sender': chatSideValue(sender),
+      'body': body,
+    });
+  }
+
+  /// يعلّم المحادثة مقروءةً عند المتصل وحده.
+  static Future<void> markConversationRead(String conversationId) async {
+    if (!isSupabaseConfigured) {
+      demoMarkRead(conversationId);
+      return;
+    }
+    await db.rpc('api_mark_conversation_read', params: {'p_conversation_id': conversationId});
+  }
+
   // ----- وسائط الخدمة -----
 
   /// حدود الوسائط — واحدةٌ في التطبيق ومثلُها في القاعدة.
