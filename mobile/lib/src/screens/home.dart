@@ -22,6 +22,7 @@ class HomeScreen extends StatefulWidget {
     super.key,
     required this.session,
     required this.onGoTo,
+    required this.onCategory,
   });
 
   final Session session;
@@ -32,6 +33,13 @@ class HomeScreen extends StatefulWidget {
   /// فوق الحالية لخرج المستخدم من الشريط السفلي كلّه وصار عليه زرُّ رجوع —
   /// وهو ليس انتقالاً بل مغادرة.
   final void Function(int index) onGoTo;
+
+  /// فتحُ الاستكشاف **على قسمٍ بعينه**.
+  ///
+  /// وهي غير `onGoTo(2)`: تلك تفتح التبويب بلا مرشِّح. وقد كانت بطاقاتُ
+  /// الأقسام كلُّها تناديها، فيضغط المستخدم «القاعات» فيجد كلَّ شيءٍ أمامه
+  /// وكأن ضغطته لم تقع.
+  final void Function(ServiceCategory category) onCategory;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -99,6 +107,7 @@ class _HomeScreenState extends State<HomeScreen> {
               _pad(_Categories(
                 categories: data.categories,
                 onExplore: () => widget.onGoTo(2),
+                onCategory: widget.onCategory,
               )),
               const SizedBox(height: Space.md),
               _pad(_Suggested(onExplore: () => widget.onGoTo(2))),
@@ -522,9 +531,18 @@ class _Dots extends StatelessWidget {
 
 // ── الأقسام ──────────────────────────────────────────────────────────────────
 class _Categories extends StatelessWidget {
-  const _Categories({required this.categories, required this.onExplore});
+  const _Categories({
+    required this.categories,
+    required this.onExplore,
+    required this.onCategory,
+  });
   final List<ServiceCategory> categories;
+
+  /// زرّ «الكل» فوق الشبكة — يفتح الاستكشاف بلا مرشِّح.
   final VoidCallback onExplore;
+
+  /// بطاقةُ القسم — تفتح الاستكشاف مُرشَّحاً على قسمها.
+  final void Function(ServiceCategory category) onCategory;
 
   @override
   Widget build(BuildContext context) {
@@ -566,7 +584,9 @@ class _Categories extends StatelessWidget {
                 // دخولٌ متدرّجٌ صفّاً بعد صفّ — ثلاثون جزءاً من الثانية بين
                 // البطاقة وجارتها. وحدٌّ أعلاه لئلّا تنتظر الأخيرةُ طويلاً.
                 enterDelay: Duration(milliseconds: (i * 30).clamp(0, 420)),
-                onTap: onExplore,
+                // القسمُ المضغوط يُحمل معه — لا `onExplore` المجرّدة: تلك
+                // تُهمل أيَّ قسمٍ ضُغط وتفتح القائمة كلَّها.
+                onTap: () => onCategory(c),
               ),
           ],
         ),

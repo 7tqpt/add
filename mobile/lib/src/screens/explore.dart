@@ -10,7 +10,15 @@ import '../ui/media.dart';
 import 'service_detail.dart';
 
 class ExploreScreen extends StatefulWidget {
-  const ExploreScreen({super.key});
+  const ExploreScreen({super.key, this.categoryId});
+
+  /// القسم الذي تُفتح عليه الشاشة.
+  ///
+  /// يُمرَّر حين يأتي المستخدم من بطاقة قسمٍ في الرئيسية: من ضغط «القاعات»
+  /// يريد القاعات، لا قائمةً بكل شيءٍ يبحث فيها عنها من جديد. ويُترك فارغاً
+  /// حين يُفتح التبويب من الشريط السفلي — فيُعرض كلُّ شيء.
+  final String? categoryId;
+
   @override
   State<ExploreScreen> createState() => _ExploreScreenState();
 }
@@ -18,10 +26,13 @@ class ExploreScreen extends StatefulWidget {
 class _ExploreScreenState extends State<ExploreScreen> {
   final _search = TextEditingController();
   String _applied = '';
-  String? _categoryId;
+  late String? _categoryId = widget.categoryId;
   late Future<List<ServiceCategory>> _categories;
   late Future<List<ServiceItem>> _services;
   Set<String> _favourites = {};
+
+  /// صفُّ الأقسام — يُمسك ليُمرَّر إلى القسم المفتوح عليه.
+  final _catsScroll = ScrollController();
 
   @override
   void initState() {
@@ -29,6 +40,61 @@ class _ExploreScreenState extends State<ExploreScreen> {
     _categories = Api.categories();
     _reload();
     _loadFavourites();
+    _revealCategory();
+  }
+
+  @override
+  void didUpdateWidget(ExploreScreen old) {
+    super.didUpdateWidget(old);
+    // القشرة تبني صفحةَ التبويب المفتوح وحدها، فالشاشة تُنشأ من جديد في
+    // العادة ويكفي `initState`. وهذا للحال الأخرى — إن بقيت الشاشة حيّةً
+    // وتغيّر القسمُ المطلوب من فوقها.
+    //
+    // والفراغُ طلبٌ كذلك: ضغطُ «استكشف» في الشريط السفلي يمسح المرشِّح، فلو
+    // أُهمل الفراغُ هنا لبقيت القائمة مقصوصةً على قسمٍ ضُغط قبل قليل.
+    if (widget.categoryId != old.categoryId) {
+      _categoryId = widget.categoryId;
+      _reload();
+      _revealCategory();
+    }
+  }
+
+  /// إظهارُ القسم المفتوح عليه داخل الصفّ الأفقي.
+  ///
+  /// الصفُّ فيه اثنتا عشرة بطاقة ولا يظهر منه إلا ثلاثٌ أو أربع. فمن جاء من
+  /// الرئيسية على «السيارات» يرى قائمةً مُرشَّحة وفوقها صفٌّ لا علامةَ نشطةَ
+  /// فيه — فيظنّ أن ضغطته ضاعت، وهو يرى نتيجتها.
+  Future<void> _revealCategory() async {
+    final id = _categoryId;
+    // ولا مرشِّحَ يعني العودة إلى أوّل الصفّ حيث «الكل»: لو تُرك الصفُّ حيث
+    // كان لظلّت البطاقة النشطة خارج الشاشة.
+    if (id == null) {
+      _scrollCatsTo(0);
+      return;
+    }
+    final List<ServiceCategory> cats;
+    try {
+      cats = await _categories;
+    } catch (_) {
+      return;
+    }
+    if (!mounted) return;
+    final i = cats.indexWhere((c) => c.id == id);
+    if (i < 0) return;
+    // بطاقةٌ عرضها ٩٦ وبينها وبين جارتها ٨، و«الكل» تسبقهنّ جميعاً.
+    _scrollCatsTo((i + 1) * (96 + Space.sm));
+  }
+
+  void _scrollCatsTo(double offset) {
+    // بعد الإطار لا فيه: الصفُّ يُبنى في هذه الدورة، ولا موضعَ له قبل ذلك.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_catsScroll.hasClients) return;
+      _catsScroll.animateTo(
+        offset.clamp(0.0, _catsScroll.position.maxScrollExtent),
+        duration: const Duration(milliseconds: 320),
+        curve: Curves.easeOut,
+      );
+    });
   }
 
   void _reload() {
@@ -66,6 +132,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
   @override
   void dispose() {
     _search.dispose();
+    _catsScroll.dispose();
     super.dispose();
   }
 
@@ -103,6 +170,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
             builder: (context, snap) {
               final cats = snap.data ?? const <ServiceCategory>[];
               return ListView(
+                controller: _catsScroll,
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(horizontal: Space.lg),
                 children: [

@@ -37,7 +37,25 @@ class _CustomerShellState extends State<CustomerShell> {
     Push.start(onOpened: (data) => _openFrom(data));
   }
 
-  void _goTo(int i) => setState(() => _index = i);
+  /// القسم الذي يُفتح عليه تبويب الاستكشاف — يُملأ من بطاقة قسمٍ في الرئيسية.
+  ///
+  /// وهو هنا لا في `ExploreScreen`: القشرة هي مالكة المؤشّر، وهي وحدها التي
+  /// تعرف أن التبويب سيُفتح الآن وعلى أيّ شيء.
+  String? _category;
+
+  void _goTo(int i) => setState(() {
+    _index = i;
+    // التنقّل من الشريط السفلي — أو من زرّ «الكل» في الرئيسية — يفتح
+    // الاستكشاف بلا مرشِّح. ولولا المسحُ هنا لبقي قسمُ ضغطةٍ سابقة عالقاً،
+    // فيضغط «استكشف» ويجد قائمةً مقصوصةً بلا سبب.
+    _category = null;
+  });
+
+  /// فتحُ الاستكشاف مُرشَّحاً على قسمٍ بعينه.
+  void _openCategory(ServiceCategory c) => setState(() {
+    _category = c.id;
+    _index = 2;
+  });
 
   /// عدُّ ما لم يُقرأ في كل المحادثات.
   ///
@@ -122,9 +140,9 @@ class _CustomerShellState extends State<CustomerShell> {
     // عليه الإبهام. وحسابي آخراً: أقلُّها فتحاً وأبعدُها عن الوسط.
     final titles = ['الرئيسية', 'حجوزاتي', 'استكشف', 'خطة العرس', 'حسابي'];
     final pages = [
-      HomeScreen(session: widget.session, onGoTo: _goTo),
+      HomeScreen(session: widget.session, onGoTo: _goTo, onCategory: _openCategory),
       MyBookingsScreen(session: widget.session),
-      const ExploreScreen(),
+      ExploreScreen(categoryId: _category),
       PlanScreen(session: widget.session),
       AccountScreen(session: widget.session),
     ];
