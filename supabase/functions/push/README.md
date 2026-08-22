@@ -1,66 +1,91 @@
 # تشغيل إشعارات الجوال
 
-الإشعارات **داخل التطبيق** تعمل بلا أي من هذا: الجرس في أعلى الشاشة، وصندوقٌ
-يمتلئ من سبعة أحداث، وحبّةٌ تتحدّث مباشرةً بالبثّ. وهذه الخطوات لِما يصل
+الإشعارات **داخل التطبيق** تعمل بلا شيءٍ ممّا هنا: الجرس في أعلى الشاشة،
+وصندوقٌ يمتلئ من ثمانية أحداث، وحبّةٌ تتحدّث بالبثّ. وهذه الصفحة لِما يصل
 الجوال **وهو مغلق**.
 
-## ما تحتاجه منك
+---
 
-خمس خطوات، مرّةً واحدة.
+## ما لا يستطيعه غيرك
 
-### ١. مشروع Firebase
+شيءٌ واحد: **مشروع Firebase**. إنشاؤه يحتاج حسابك في Google، ومفتاحُ حساب
+الخدمة سرٌّ لا يُرسَل في محادثةٍ ولا يُوضع في مستودع. وما عداه مُؤتمَتٌ في
+هذا المستودع.
 
-من [console.firebase.google.com](https://console.firebase.google.com) أنشئ
-مشروعاً، ثم أضف تطبيق أندرويد باسم الحزمة **`ye.aras.aras`** (هو ما في
-`android/app/build.gradle.kts`، وأي اسمٍ غيره لا يصل إليه إشعار).
+---
 
-نزّل `google-services.json` وضعه في:
+## خطوتان
 
-```
-mobile/android/app/google-services.json
-```
+### ١. Firebase — عندك، خمس دقائق
 
-الملف **متروكٌ خارج المستودع** (‏`.gitignore`‏) — وهو تهيئةُ عميلٍ لا سرّاً،
-لكنه ملكُ مشروعك. وحتى يوضع، تُبنى الحزمة كما هي ويبقى الدفع مطفأً بلا خطأ:
-إضافة Google Services لا تُطبَّق إلّا إن وُجد الملف.
+من [console.firebase.google.com](https://console.firebase.google.com):
 
-### ٢. حساب خدمة
+1. أنشئ مشروعاً.
+2. أضف تطبيق **أندرويد** باسم الحزمة **`ye.aras.aras`** بالضبط.
+   *(هو ما في `android/app/build.gradle.kts`، وأيُّ اسمٍ غيره لا يصل إليه
+   إشعار.)*
+3. نزّل `google-services.json` وضعه في `mobile/android/app/`.
+4. **Project settings → Service accounts → Generate new private key** → ينزّل
+   ملف JSON.
 
-في Firebase: **Project settings → Service accounts → Generate new private key**.
-ينزّل ملف JSON.
+> ⚠️ ملف الخطوة ٤ **مفتاحٌ خاصٌّ حقيقي**، بخلاف مفتاح Supabase العلني: من
+> ملكه أرسل باسمك إلى كل من نصّب التطبيق. موضعه الوحيد هو أسرار Supabase في
+> الخطوة التالية.
+>
+> و`google-services.json` تهيئةُ عميلٍ لا سرّ، لكنه متروكٌ خارج المستودع
+> (‏`.gitignore`‏) لأنه ملكُ مشروعك. **وحتى تضعه تُبنى الحزمة كما هي ويبقى
+> الدفع مطفأً بلا خطأ** — إضافة Google Services لا تُطبَّق إلّا إن وُجد.
 
-> ⚠️ **هذا مفتاحٌ خاصٌّ حقيقي**، بخلاف مفتاح Supabase العلني. من ملكه أرسل
-> باسمك إلى كل من نصّب التطبيق. لا يُوضع في المستودع، ولا في `env.json`، ولا
-> يُرسَل في محادثة. موضعه الوحيد هو الخطوة التالية.
+### ٢. ثلاثة أسرار ثم زرّان
 
-### ٣. السرّ في Supabase
-
-لوحة Supabase → **Edge Functions → Secrets**:
+**في Supabase** — Edge Functions → Secrets:
 
 | الاسم | القيمة |
 | --- | --- |
-| `FCM_SERVICE_ACCOUNT` | محتوى ملف الخطوة ٢ كاملاً (الصق الـJSON كما هو) |
+| `FCM_SERVICE_ACCOUNT` | محتوى ملف الخطوة ١٫٤ كاملاً |
 
-`SUPABASE_URL` و`SUPABASE_SERVICE_ROLE_KEY` تضعهما Supabase وحدها، لا تضفهما.
+*(`SUPABASE_URL` و`SUPABASE_SERVICE_ROLE_KEY` تضعهما Supabase وحدها.)*
 
-### ٤. نشر الدالّة
+**في GitHub** — Settings → Secrets and variables → Actions:
 
-```bash
-supabase functions deploy push --no-verify-jwt
+| الاسم | من أين |
+| --- | --- |
+| `SUPABASE_ACCESS_TOKEN` | [supabase.com/dashboard/account/tokens](https://supabase.com/dashboard/account/tokens) |
+| `SUPABASE_PROJECT_REF` | الجزء الأوسط من رابط مشروعك: `https://‹هذا›.supabase.co` |
+
+ثم:
+
+1. **Actions → «نشر دالّة الدفع» → Run workflow.**
+   ينشر الدالّة بلا CLI ولا طرفية. وبعدها تُنشَر وحدها كلّما تغيّرت على `main`.
+2. **محرّر SQL:** شغّل `supabase/push_hook.sql` ثم السطر الأخير فيه بعد وضع
+   رابط مشروعك:
+   ```sql
+   select public.enable_push_webhook('https://xxxxxxxxxxxx.supabase.co');
+   ```
+
+انتهى.
+
+---
+
+## الفحص
+
+شغّل `supabase/verify_push.sql` كاملاً. يخرج جدولٌ يقول عن كل بندٍ **ما الذي
+تفعله** إن كان ناقصاً:
+
+```
+✅  جدول الإشعارات            —
+✅  مُشغِّل إشعار الرسالة       —
+✅  عمود رمز الجهاز           —
+❌  ربط الدفع بالدالّة        شغّل push_hook.sql ثم enable_push_webhook(…)
+❌  أجهزةٌ سجّلت رمزها         ثبّت الحزمة الجديدة على جوالٍ حقيقي وسجّل الدخول
 ```
 
-`--no-verify-jwt` لأن المستدعي خطّافُ قاعدة البيانات لا مستخدم.
+ثم: أغلق التطبيق تماماً، واطلب من حسابٍ آخر أن يرسل إليك رسالة.
+وإن لم يصل شيء فـ**Edge Functions → push → Logs** يقول أين وقف.
 
-### ٥. الخطّاف
+> **المحاكي لا يصلح لهذا:** رمز FCM لا يُصدَر على محاكٍ بلا خدمات Google Play.
 
-لوحة Supabase → **Database → Webhooks → Create a new hook**:
-
-| الحقل | القيمة |
-| --- | --- |
-| Table | `public.notifications` |
-| Events | `Insert` |
-| Type | Supabase Edge Functions |
-| Edge Function | `push` |
+---
 
 ## كيف يعمل
 
@@ -70,10 +95,10 @@ supabase functions deploy push --no-verify-jwt
                           │
                           ▼
                  صفٌّ في public.notifications
-                          │  (خطّاف قاعدة البيانات)
+                          │  push_on_notification (مُشغِّل)
                           ▼
                    دالّة الحافة push
-                          │  (FCM v1)
+                          │  FCM v1
                           ▼
                     جوال صاحب الشأن
 ```
@@ -81,24 +106,26 @@ supabase functions deploy push --no-verify-jwt
 ولا شيء في التطبيق ولا في `api.sql` يعرف عن FCM شيئاً. فأيُّ حدثٍ يُضاف غداً
 ويكتب إشعاراً يصل الجوال وحده.
 
-### ولماذا خطّافٌ لا نداءٌ من داخل المُشغِّل
+**ولماذا مُشغِّلٌ يستدعي دالّةَ حافة، لا نداءُ HTTP من داخل مُشغِّل الحجز
+نفسه:** الثاني يجعل معاملة الحجز تنتظر شبكة Google — إن تأخّرت تأخّر الحجز،
+وإن سقطت سقط. أي أن عطباً في إشعارٍ يمنع بيعاً. والمُشغِّل هنا يضع الطلب في
+طابور `pg_net` ويعود من فوره.
 
-نداءُ HTTP من داخل مُشغِّلٍ يجعل معاملة الحجز تنتظر شبكة Google: إن تأخّرت
-تأخّر الحجز، وإن سقطت سقط. أي أن عطباً في إشعارٍ يمنع بيعاً. والخطّاف يقع بعد
-الالتزام، خارجه.
+**ولماذا الربط في SQL لا بضغطاتٍ في اللوحة:** ما يُصنع بالضغط يُنسى ولا
+يُراجَع ولا يُعاد بناؤه، ومن أنشأ مشروعاً ثانياً للتجربة بدأ من الصفر ولم
+يعرف ما الذي نسيه.
 
-## الفحص
+---
 
-بعد الخطوات الخمس:
+## الإيقاف
 
-1. ثبّت الحزمة الجديدة على جوالٍ حقيقي وسجّل الدخول.
-2. تحقّق أن الرمز سُجّل:
-   ```sql
-   select user_id, platform, left(push_token, 12) || '…' as token, push_updated_at
-   from public.user_devices where push_token is not null;
-   ```
-3. أغلق التطبيق تماماً، ثم اطلب من حسابٍ آخر أن يرسل إليك رسالة.
-4. إن لم يصل شيء: **Edge Functions → push → Logs** يقول أين وقف.
+```sql
+select public.disable_push_webhook();
+```
+
+يقف الدفع إلى الجوال، ويبقى الصندوق والجرس داخل التطبيق كما هما.
+
+---
 
 ## ما لا يفعله هذا
 

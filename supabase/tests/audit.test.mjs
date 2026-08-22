@@ -24,7 +24,7 @@ await db.exec(`
 for (const f of [
   'install.sql', 'seed.sql', 'apply.sql', 'support.sql', 'roles.sql',
   'invitations.sql', 'profile.sql', 'service_media.sql', 'chat.sql',
-  'notifications.sql',
+  'notifications.sql', 'push_hook.sql',
 ]) {
   await db.exec(readFileSync(`../${f}`, 'utf8'))
 }
