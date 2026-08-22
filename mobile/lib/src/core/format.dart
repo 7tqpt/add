@@ -41,6 +41,18 @@ String formatTime(String? value) {
   return '$hour:$m $period';
 }
 
+/// ساعةُ طابعٍ زمني كامل — «٨:٠٠ م» من `2026-09-15T20:00:00Z`.
+///
+/// والتحويل إلى التوقيت المحلي أوّلاً: الطابع من Postgres بتوقيت UTC، وعرضُه
+/// كما هو يُظهر رسالةً كُتبت الثامنة مساءً على أنها الخامسة.
+String formatTimeOf(String iso) {
+  final d = DateTime.tryParse(iso);
+  if (d == null) return '';
+  final local = d.toLocal();
+  return formatTime('${local.hour.toString().padLeft(2, '0')}:'
+      '${local.minute.toString().padLeft(2, '0')}');
+}
+
 /// صيغ الاسم المعدود الأربع: مفرد، مثنّى، جمع قلّة، تمييز مفرد.
 ///
 /// المطابقة في العربية ليست إضافة حرف: الاثنان لهما صيغتهما ويسقط معهما العدد،

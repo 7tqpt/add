@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import '../ui/kit.dart';
 
 import '../core/session.dart';
+import '../data/api.dart';
 import 'account.dart';
+import 'conversations.dart';
 import 'explore.dart';
 import 'home.dart';
 import 'my_bookings.dart';
@@ -18,8 +20,35 @@ class CustomerShell extends StatefulWidget {
 
 class _CustomerShellState extends State<CustomerShell> {
   int _index = 0;
+  int _unread = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _countUnread();
+  }
 
   void _goTo(int i) => setState(() => _index = i);
+
+  /// عدُّ ما لم يُقرأ في كل المحادثات.
+  ///
+  /// وفشلُه يمرّ صامتاً: الحبّة زينةٌ تدلّ، وسقوطُ عدّها لا يجوز أن يُظهر خطأً
+  /// في شاشةٍ بقيّتُها تعمل.
+  Future<void> _countUnread() async {
+    try {
+      final rows = await Api.myConversations();
+      if (!mounted) return;
+      setState(() => _unread = rows.fold<int>(0, (n, c) => n + c.unreadCount));
+    } catch (_) {}
+  }
+
+  Future<void> _openChats() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const ConversationsScreen()),
+    );
+    // عند العودة: ما قُرئ هناك يجب أن يختفي من الحبّة هنا.
+    if (mounted) _countUnread();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -35,7 +64,10 @@ class _CustomerShellState extends State<CustomerShell> {
     ];
 
     return Scaffold(
-      appBar: AppBar(title: Text(titles[_index])),
+      appBar: AppBar(
+        title: Text(titles[_index]),
+        actions: [ChatIconButton(unread: _unread, onTap: _openChats)],
+      ),
       // المحتوى يمرّ **تحت** الشريط لا فوقه: هذا ما يعطي التمويهَ ما يموّهه.
       // ولذلك تُنهي كل قائمةٍ محتواها بمسافة `glassNavSpace`، وإلا اختفت آخرُ
       // بطاقةٍ فيها خلف الزجاج.

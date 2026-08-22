@@ -23,7 +23,7 @@ await db.exec(`
 // جدولاً لم يُنشأ ولا ينبّه أحد.
 for (const f of [
   'install.sql', 'seed.sql', 'apply.sql', 'support.sql', 'roles.sql',
-  'invitations.sql', 'profile.sql', 'service_media.sql',
+  'invitations.sql', 'profile.sql', 'service_media.sql', 'chat.sql',
 ]) {
   await db.exec(readFileSync(`../${f}`, 'utf8'))
 }

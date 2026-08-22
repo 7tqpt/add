@@ -7,6 +7,7 @@ import '../data/api.dart';
 import '../data/models.dart';
 import '../data/supabase.dart';
 import '../ui/kit.dart';
+import 'chat.dart';
 import 'labels.dart';
 
 class RequestsScreen extends StatefulWidget {
@@ -34,6 +35,31 @@ class _RequestsScreenState extends State<RequestsScreen> {
   void _reload() => setState(() {
     _future = _load();
   });
+
+  /// يفتح المحادثة مع صاحب الحجز ثم يدخلها.
+  ///
+  /// والمدخل حجزٌ لا عميل: لا يفتح صاحب القاعة محادثةً مع من لم يتعامل معه —
+  /// والقاعدة هي التي تتحقّق، لا هذه الشاشة.
+  Future<void> _message(Booking booking) async {
+    setState(() => _busyId = booking.id);
+    try {
+      final id = await Api.openConversationWithCustomer(booking.id);
+      if (!mounted) return;
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => ChatScreen(
+            conversationId: id,
+            otherName: booking.userName,
+            mySide: ChatSide.provider,
+          ),
+        ),
+      );
+    } catch (e) {
+      if (mounted) showMessage(context, messageOf(e));
+    } finally {
+      if (mounted) setState(() => _busyId = null);
+    }
+  }
 
   Future<void> _respond(String id, bool accept) async {
     setState(() => _busyId = id);
@@ -162,6 +188,15 @@ class _RequestsScreenState extends State<RequestsScreen> {
                       child: const Text('تأكيد التنفيذ'),
                     ),
                   ],
+                  const SizedBox(height: Space.sm),
+                  // على كل حجزٍ مهما كانت حاله: قبل القبول يُسأل العميل عن
+                  // تفصيلٍ ناقص، وبعده يُذكَّر بالعربون أو بموعد المعاينة.
+                  // والاعتذارُ نفسه أهونُ إذا سبقته كلمة.
+                  OutlinedButton.icon(
+                    onPressed: busy ? null : () => _message(b),
+                    icon: const Icon(Icons.forum_outlined, size: 19),
+                    label: Text('راسل ${b.userName}'),
+                  ),
                 ],
               );
             },
