@@ -8,6 +8,7 @@ import '../data/supabase.dart';
 import '../ui/kit.dart';
 import '../ui/media.dart';
 import 'chat.dart';
+import 'provider_public.dart';
 
 class ServiceDetailScreen extends StatefulWidget {
   const ServiceDetailScreen({super.key, required this.serviceId});
@@ -172,16 +173,14 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
                       ],
                     ],
                   ),
-                  const SizedBox(height: Space.xs),
-                  Row(
-                    children: [
-                      Flexible(child: Muted('${item.providerName} · ${item.providerGovernorate}')),
-                      if (item.providerRating > 0) ...[
-                        const SizedBox(width: Space.sm),
-                        Rating(item.providerRating, count: item.providerReviewsCount),
-                      ],
-                    ],
-                  ),
+                  const SizedBox(height: Space.md),
+                  // صاحبُ الخدمة بابٌ لا سطرَ نصّ.
+                  //
+                  // كان اسمُه هنا حرفاً رمادياً لا يُضغط، فمن أعجبته الخدمة لم
+                  // يجد سبيلاً إلى بقيّة ما يعرضه صاحبُها ولا إلى ما قاله من
+                  // تعامل معه. وهو لا يشتري خدمةً بل يشتري من يُسلّمه ليلةً لا
+                  // تُعاد.
+                  _ProviderRow(item: item),
                   if (item.description.isNotEmpty) ...[
                     const SizedBox(height: Space.md),
                     Text(item.description, style: const TextStyle(height: 1.8)),
@@ -319,6 +318,92 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
             ],
           );
         },
+      ),
+    );
+  }
+}
+
+/// صفُّ المزوّد: حرفُه في قرص، واسمُه، وتقييمُه، وسهمٌ إلى ملفّه.
+///
+/// وله أرضيّةٌ وحدٌّ لأنه داخل بطاقةٍ بيضاء: عنصرٌ يُضغط داخل بطاقةٍ لا تُضغط
+/// يجب أن يقول عن نفسه إنه يُضغط، وإلا بقي حرفاً بين حروف.
+class _ProviderRow extends StatelessWidget {
+  const _ProviderRow({required this.item});
+  final ServiceItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    final radius = BorderRadius.circular(14);
+    return Material(
+      color: AppColors.accent.withValues(alpha: Tint.row),
+      borderRadius: radius,
+      child: InkWell(
+        borderRadius: radius,
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => PublicProviderScreen(
+              providerId: item.providerId,
+              name: item.providerName,
+            ),
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(Space.sm),
+          child: Row(
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: AppColors.accent.withValues(alpha: Tint.disc),
+                ),
+                child: Text(
+                  item.providerName.isEmpty ? '؟' : item.providerName.characters.first,
+                  style: const TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.accent,
+                  ),
+                ),
+              ),
+              const SizedBox(width: Space.sm),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item.providerName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 14.5,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.ink,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Row(
+                      children: [
+                        Flexible(child: Muted(item.providerGovernorate, size: 11)),
+                        if (item.providerRating > 0) ...[
+                          const SizedBox(width: Space.sm),
+                          Rating(item.providerRating, count: item.providerReviewsCount, size: 11),
+                        ],
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: Space.xs),
+              const Muted('عرض ملفّه', size: 11),
+              // «forward» لا «back»: أيقونات الأسهم تنعكس مع اتجاه النصّ، فـ
+              // «back» في العربية يشير يميناً — أي رجوعاً.
+              const Icon(Icons.arrow_forward_ios_rounded, size: 12, color: AppColors.muted),
+            ],
+          ),
+        ),
       ),
     );
   }

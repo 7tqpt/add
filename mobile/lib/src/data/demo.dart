@@ -135,7 +135,176 @@ const demoServices = [
     providerIsFeatured: false,
     cancellationPolicyName: 'مرنة',
   ),
+  // خدمتان أُخريان لـ«قاعة التاج»: مزوّدٌ بخدمةٍ واحدة لا يُري ملفَّه شيئاً،
+  // وصاحبُ القاعة في الواقع يعرض باقاتٍ لا باقة.
+  ServiceItem(
+    id: 's6',
+    title: 'قاعة التاج — باقة الخطوبة',
+    description: 'القاعة الصغرى لمئة وخمسين ضيفاً، مع الضيافة والتنسيق.',
+    price: 450000,
+    priceTo: null,
+    unit: 'للحجز',
+    depositPercent: 30,
+    categoryId: 'c1',
+    categoryName: 'القاعات والخيام',
+    providerId: 'p1',
+    providerName: 'قاعة التاج',
+    providerGovernorate: 'أمانة العاصمة',
+    providerRating: 4.9,
+    providerReviewsCount: 87,
+    providerIsFeatured: true,
+    cancellationPolicyName: 'مرنة',
+  ),
+  ServiceItem(
+    id: 's7',
+    title: 'خيمة أفراح متنقّلة',
+    description: 'خيمة مكيّفة تُنصب في موقعك، بفرشها وإضاءتها وطاقم النصب.',
+    price: 320000,
+    priceTo: 520000,
+    unit: 'للحجز',
+    depositPercent: 30,
+    categoryId: 'c1',
+    categoryName: 'القاعات والخيام',
+    providerId: 'p1',
+    providerName: 'قاعة التاج',
+    providerGovernorate: 'أمانة العاصمة',
+    providerRating: 4.9,
+    providerReviewsCount: 87,
+    providerIsFeatured: true,
+    cancellationPolicyName: 'متوسّطة',
+  ),
 ];
+
+/// مقدّمو الخدمة كما يراهم العميل.
+///
+/// ولا واحدَ منهم غيرُ موثَّق: القاعدة لا تُظهر غيرَ الموثَّقين أصلاً، فوضعُ
+/// العرض يُري ما تُريه القاعدة لا ما يزيد عليه.
+const demoProviders = [
+  PublicProvider(
+    id: 'p1',
+    businessName: 'قاعة التاج',
+    bio: 'قاعتان في حي السنينة تتّسعان لأربعمئة ضيف، مع تنسيقٍ كامل وإضاءةٍ '
+        'وطاقم استقبال. نعمل منذ ٢٠١٤ ونستقبل الخطوبات والأعراس.',
+    governorate: 'أمانة العاصمة',
+    coverageAreas: ['أمانة العاصمة', 'صنعاء'],
+    rating: 4.9,
+    reviewsCount: 87,
+    completedBookings: 142,
+    isFeatured: true,
+    isVerified: true,
+    categories: ['القاعات والخيام'],
+  ),
+  PublicProvider(
+    id: 'p2',
+    businessName: 'مطبخ الأصالة',
+    bio: 'مندي وحنيذ وزربيان بطبخٍ تقليديّ على الحطب، مع طاقم تقديمٍ كامل.',
+    governorate: 'أمانة العاصمة',
+    coverageAreas: ['أمانة العاصمة', 'ذمار'],
+    rating: 4.7,
+    reviewsCount: 52,
+    completedBookings: 96,
+    isFeatured: false,
+    isVerified: true,
+    categories: ['الطبخ والضيافة'],
+  ),
+  PublicProvider(
+    id: 'p3',
+    businessName: 'استوديو السعادة',
+    bio: 'تصويرٌ فوتوغرافيّ وفيديو بفريقٍ من ثلاثة مصوّرين ودرون، والتسليم '
+        'خلال أسبوعين.',
+    governorate: 'عدن',
+    coverageAreas: ['عدن', 'لحج', 'أبين'],
+    rating: 4.4,
+    reviewsCount: 24,
+    completedBookings: 38,
+    isFeatured: false,
+    isVerified: true,
+    categories: ['التصوير والإضاءة'],
+  ),
+  PublicProvider(
+    id: 'p4',
+    businessName: 'ديكور الياسمين',
+    bio: 'كوشات الورد الطبيعيّ وتنسيق المداخل والطاولات.',
+    governorate: 'أمانة العاصمة',
+    coverageAreas: ['أمانة العاصمة'],
+    rating: 4.8,
+    reviewsCount: 31,
+    completedBookings: 44,
+    isFeatured: false,
+    isVerified: true,
+    categories: ['الديكور والكوشة'],
+  ),
+  PublicProvider(
+    id: 'p5',
+    businessName: 'مركز النجم',
+    bio: 'صوتيات وإضاءة وأجهزة دي جي مع فنّيٍّ طوال الحفل.',
+    governorate: 'تعز',
+    coverageAreas: ['تعز', 'إب'],
+    rating: 4.2,
+    reviewsCount: 18,
+    completedBookings: 27,
+    isFeatured: false,
+    isVerified: true,
+    categories: ['الصوت والمعدات'],
+  ),
+];
+
+/// آراءُ العملاء في وضع العرض.
+///
+/// وفيها رأيٌ بثلاث نجوم: صفحةُ كلُّها خمسٌ لا تُصدَّق، ومن رأى نقداً معقولاً
+/// وثِق بالبقيّة.
+final Map<String, List<Review>> _demoReviews = {
+  'p1': [
+    Review(
+      id: 'r1',
+      userName: 'أحمد الشرعبي',
+      rating: 5,
+      comment: 'قاعة نظيفة والاستقبال ممتاز، والتزموا بالوقت تماماً.',
+      createdAt: _at(24 * 9),
+    ),
+    Review(
+      id: 'r2',
+      userName: 'سُمية القدسي',
+      rating: 5,
+      comment: 'التنسيق فاق ما اتّفقنا عليه، والإضاءة كانت جميلة في الصور.',
+      createdAt: _at(24 * 26),
+    ),
+    Review(
+      id: 'r3',
+      userName: 'خالد الحداد',
+      rating: 3,
+      comment: 'القاعة جيدة لكن المواقف ضيّقة ليلة العرس.',
+      createdAt: _at(24 * 51),
+    ),
+  ],
+  'p2': [
+    Review(
+      id: 'r4',
+      userName: 'نبيل العزّاني',
+      rating: 5,
+      comment: 'المندي كان ممتازاً والكمّية كافية لأكثر من العدد المتّفق عليه.',
+      createdAt: _at(24 * 14),
+    ),
+    Review(
+      id: 'r5',
+      userName: 'أروى المِقطري',
+      rating: 4,
+      comment: 'الطعم ممتاز، وتأخّر التقديم نحو نصف ساعة.',
+      createdAt: _at(24 * 33),
+    ),
+  ],
+  'p3': [
+    Review(
+      id: 'r6',
+      userName: 'وليد باشا',
+      rating: 4,
+      comment: 'الصور جميلة وسلّموا في الموعد.',
+      createdAt: _at(24 * 20),
+    ),
+  ],
+};
+
+List<Review> demoReviewsOf(String providerId) => _demoReviews[providerId] ?? const [];
 
 /// الحالة التجريبية متغيّرة: الحجز والقبول والاعتذار تُغيّرها فعلاً، فيرى
 /// المستخدم أثر ما فعل بدل قائمة جامدة.

@@ -337,6 +337,97 @@ class ProviderProfile {
   );
 }
 
+/// مقدّم الخدمة **كما يراه العميل**.
+///
+/// غير `ProviderProfile` أعلاه: تلك صفُّ `service_providers` كما يراه صاحبه —
+/// فيه أرباحُه وحالتُه وسببُ رفضه إن رُفض. وهذه صفٌّ من `v_providers`، وليس
+/// فيها شيءٌ من ذلك ولا بريدٌ ولا رقمُ جوال: **ما لا يُعرض لا يُقرأ أصلاً**،
+/// فلا يُنقل إلى الجهاز سرٌّ لينتظر من يعرضه سهواً.
+///
+/// وسياسةُ القراءة تقصر الظاهرَ على الموثّقين، فلا يُفتح ملفُّ من لم تُوثّقه
+/// الإدارة بعد ولو عُرف معرّفه.
+class PublicProvider {
+  const PublicProvider({
+    required this.id,
+    required this.businessName,
+    required this.bio,
+    required this.governorate,
+    required this.coverageAreas,
+    required this.rating,
+    required this.reviewsCount,
+    required this.completedBookings,
+    required this.isFeatured,
+    required this.isVerified,
+    required this.categories,
+  });
+
+  final String id;
+  final String businessName;
+  final String bio;
+  final String governorate;
+
+  /// المناطق التي يخدمها خارج محافظته.
+  final List<String> coverageAreas;
+
+  final num rating;
+  final int reviewsCount;
+  final int completedBookings;
+  final bool isFeatured;
+
+  /// وُثِّق من الإدارة. تُحسب من `verified_at` لا من `status`: الطريقة العامة
+  /// لا تُظهر العمود الثاني أصلاً.
+  final bool isVerified;
+
+  /// أسماء أقسامه — لا معرّفاتها: هذه للعرض لا للترشيح.
+  final List<String> categories;
+
+  factory PublicProvider.fromMap(Map<String, dynamic> m) => PublicProvider(
+    id: m['id'] as String,
+    businessName: (m['business_name'] ?? '') as String,
+    bio: (m['bio'] ?? '') as String,
+    governorate: (m['governorate'] ?? '') as String,
+    coverageAreas: _texts(m['coverage_areas']),
+    rating: (m['rating'] ?? 0) as num,
+    reviewsCount: ((m['reviews_count'] ?? 0) as num).toInt(),
+    completedBookings: ((m['completed_bookings'] ?? 0) as num).toInt(),
+    isFeatured: (m['is_featured'] ?? false) as bool,
+    isVerified: m['verified_at'] != null,
+    categories: _texts(m['categories']),
+  );
+}
+
+/// مصفوفة `text[]` من Postgres تصل قائمةَ `dynamic` — أو `null` لو غاب العمود.
+List<String> _texts(Object? raw) =>
+    raw is List ? raw.map((e) => '$e').where((s) => s.isNotEmpty).toList() : const [];
+
+/// رأيُ عميلٍ في مقدّم خدمة — المنشورُ منها وحده.
+///
+/// ولا يُكتب من التطبيق: `api_submit_review` هي التي تكتبه، وهي التي تتحقّق
+/// أن الحجز نُفِّذ فعلاً. فلا يُقيَّم من لم يُتعامل معه.
+class Review {
+  const Review({
+    required this.id,
+    required this.userName,
+    required this.rating,
+    required this.comment,
+    required this.createdAt,
+  });
+
+  final String id;
+  final String userName;
+  final int rating;
+  final String comment;
+  final String createdAt;
+
+  factory Review.fromMap(Map<String, dynamic> m) => Review(
+    id: m['id'] as String,
+    userName: (m['user_name'] ?? '') as String,
+    rating: ((m['rating'] ?? 0) as num).toInt(),
+    comment: (m['comment'] ?? '') as String,
+    createdAt: (m['created_at'] ?? '') as String,
+  );
+}
+
 /// خدمةٌ يملكها مقدّم الخدمة، كما يراها هو لا كما يراها المشتري.
 ///
 /// غير `ServiceItem`: تلك صفٌّ من `v_services` مضمومٌ إلى اسم المزوّد وتقييمه

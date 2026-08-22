@@ -60,6 +60,38 @@ void main() {
       expect(slugs.map(categoryTone).toSet().length, slugs.length);
     });
 
+    test('والأسطحُ المصبوغة تُقرأ كذلك', () {
+      // ثلاثةُ أسطحٍ بلون العلامة يحملها ملفُّ المزوّد وبطاقةُ الخدمة: شارةُ
+      // القسم، وقرصُ الحرف، وصفُّ المزوّد. والنصُّ عليها من اللون نفسه —
+      // فكلّما ثقُل السطحُ قلّ الفرق بينه وبين حرفه.
+      //
+      // والقياس من الثابت لا من نسخةٍ منه: `Tint.disc` نفسُها التي يرسم بها
+      // الودجت، فرفعُها غداً يُسقط هذا الاختبار لا يمرّ من تحته.
+      double lin(double c) =>
+          c <= 0.03928 ? c / 12.92 : math.pow((c + 0.055) / 1.055, 2.4) as double;
+      double lum(Color c) => 0.2126 * lin(c.r) + 0.7152 * lin(c.g) + 0.0722 * lin(c.b);
+      const card = Color(0xFFFBFCFE);
+      Color over(Color fg, double alpha) => Color.from(
+        alpha: 1,
+        red: fg.r * alpha + card.r * (1 - alpha),
+        green: fg.g * alpha + card.g * (1 - alpha),
+        blue: fg.b * alpha + card.b * (1 - alpha),
+      );
+      double ratio(Color a, Color b) {
+        final x = lum(a), y = lum(b);
+        return (math.max(x, y) + 0.05) / (math.min(x, y) + 0.05);
+      }
+
+      for (final (name, surface, text) in [
+        ('شارة', over(AppColors.accent, Tint.chip), AppColors.accent),
+        ('قرص', over(AppColors.accent, Tint.disc), AppColors.accent),
+        ('صفّ', over(AppColors.accent, Tint.row), AppColors.ink2),
+      ]) {
+        final r = ratio(text, surface);
+        expect(r, greaterThanOrEqualTo(4.5), reason: '«$name» يعطي ${r.toStringAsFixed(2)}:1');
+      }
+    });
+
     test('وكلُّها تُقرأ على أرضية البطاقة', () {
       // القياس هنا لا في ورقةٍ جانبية: لونٌ يُضاف غداً بلا قياسٍ يمرّ صامتاً.
       // العتبة ٤٫٥:١ — والأرضية `#fbfcfe` وهي أعلى نقطةٍ في تدرّج البطاقة.

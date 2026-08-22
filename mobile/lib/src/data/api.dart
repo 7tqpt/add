@@ -91,6 +91,50 @@ class Api {
     return row == null ? null : ServiceItem.fromMap(row);
   }
 
+  // ----- ملفّ مقدّم الخدمة كما يراه العميل -----
+  //
+  // لا دالّةَ `api_*` هنا ولا ملفَّ SQL جديد: الطريقة `v_providers` وجدولُ
+  // `reviews` موجودان منذ أوّل مخطّط، وسياساتُهما تكفي — الموثَّقون وحدهم
+  // ظاهرون، والمنشورُ من التقييمات وحده يُقرأ. فما يُقرأ هنا هو ما سمحت به
+  // القاعدة، لا ما اختار التطبيق أن يُظهره.
+
+  static Future<PublicProvider?> provider(String id) async {
+    if (!isSupabaseConfigured) {
+      return demoDelay(demoProviders.where((p) => p.id == id).firstOrNull);
+    }
+    final row = await db.from('v_providers').select().eq('id', id).maybeSingle();
+    return row == null ? null : PublicProvider.fromMap(row);
+  }
+
+  /// خدماتُ مزوّدٍ بعينه.
+  ///
+  /// من `v_services` لا من `provider_services`: سياسةُ الأولى تُخفي المعطَّل
+  /// وغيرَ الموثَّق، وتأتي معها أسماءُ الأقسام والأغلفة في صفٍّ واحد.
+  static Future<List<ServiceItem>> providerServices(String providerId) async {
+    if (!isSupabaseConfigured) {
+      return demoDelay(demoServices.where((s) => s.providerId == providerId).toList());
+    }
+    final rows = await db
+        .from('v_services')
+        .select()
+        .eq('provider_id', providerId)
+        .order('price', ascending: true);
+    return rows.map(ServiceItem.fromMap).toList();
+  }
+
+  /// آراءُ العملاء — الأحدثُ أوّلاً.
+  static Future<List<Review>> providerReviews(String providerId) async {
+    if (!isSupabaseConfigured) return demoDelay(demoReviewsOf(providerId));
+    final rows = await db
+        .from('reviews')
+        .select('id, user_name, rating, comment, created_at')
+        .eq('provider_id', providerId)
+        .eq('status', 'published')
+        .order('created_at', ascending: false)
+        .limit(20);
+    return rows.map(Review.fromMap).toList();
+  }
+
   // ----- الحساب -----
 
   /// معرّف الصفّ في `app_users`، أو null إن لم يُكمل ملفه بعد.
