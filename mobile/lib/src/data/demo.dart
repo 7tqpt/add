@@ -185,6 +185,7 @@ const demoProviders = [
     businessName: 'قاعة التاج',
     bio: 'قاعتان في حي السنينة تتّسعان لأربعمئة ضيف، مع تنسيقٍ كامل وإضاءةٍ '
         'وطاقم استقبال. نعمل منذ ٢٠١٤ ونستقبل الخطوبات والأعراس.',
+    logoPath: '',
     governorate: 'أمانة العاصمة',
     coverageAreas: ['أمانة العاصمة', 'صنعاء'],
     rating: 4.9,
@@ -198,6 +199,7 @@ const demoProviders = [
     id: 'p2',
     businessName: 'مطبخ الأصالة',
     bio: 'مندي وحنيذ وزربيان بطبخٍ تقليديّ على الحطب، مع طاقم تقديمٍ كامل.',
+    logoPath: '',
     governorate: 'أمانة العاصمة',
     coverageAreas: ['أمانة العاصمة', 'ذمار'],
     rating: 4.7,
@@ -212,6 +214,7 @@ const demoProviders = [
     businessName: 'استوديو السعادة',
     bio: 'تصويرٌ فوتوغرافيّ وفيديو بفريقٍ من ثلاثة مصوّرين ودرون، والتسليم '
         'خلال أسبوعين.',
+    logoPath: '',
     governorate: 'عدن',
     coverageAreas: ['عدن', 'لحج', 'أبين'],
     rating: 4.4,
@@ -225,6 +228,7 @@ const demoProviders = [
     id: 'p4',
     businessName: 'ديكور الياسمين',
     bio: 'كوشات الورد الطبيعيّ وتنسيق المداخل والطاولات.',
+    logoPath: '',
     governorate: 'أمانة العاصمة',
     coverageAreas: ['أمانة العاصمة'],
     rating: 4.8,
@@ -238,6 +242,7 @@ const demoProviders = [
     id: 'p5',
     businessName: 'مركز النجم',
     bio: 'صوتيات وإضاءة وأجهزة دي جي مع فنّيٍّ طوال الحفل.',
+    logoPath: '',
     governorate: 'تعز',
     coverageAreas: ['تعز', 'إب'],
     rating: 4.2,
@@ -444,6 +449,7 @@ void demoBecomeProvider({
     fullName: 'أحمد الشرعبي',
     governorate: governorate,
     bio: bio,
+    logoPath: '',
     status: 'pending',
     rating: 0,
     reviewsCount: 0,
@@ -459,6 +465,29 @@ void demoBecomeProvider({
 /// لا مسؤول في الوضع التجريبي يضغط «توثيق» في اللوحة، فبلا هذا يقف المجرِّب عند
 /// «قيد المراجعة» ولا يرى شاشة الطلبات أبداً. الزرّ موسومٌ «تجريبي» في الواجهة
 /// كي لا يُفهم أنّ التوثيق يقع تلقائياً في الإنتاج.
+/// تعديلُ المزوّد لما يعرضه عن نفسه — في وضع العرض.
+///
+/// وبلا هذا يضغط المجرِّب «حفظ» فلا يتغيّر شيء على الشاشة، فيظنّ الحفظ معطوباً
+/// وهو إنما يجرّب بلا قاعدة.
+void demoUpdateProviderProfile({String? businessName, String? bio, String? logoPath}) {
+  final p = demoProviderProfile;
+  if (p == null) return;
+  demoProviderProfile = ProviderProfile(
+    id: p.id,
+    businessName: businessName ?? p.businessName,
+    fullName: p.fullName,
+    governorate: p.governorate,
+    bio: bio ?? p.bio,
+    logoPath: logoPath ?? p.logoPath,
+    status: p.status,
+    rating: p.rating,
+    reviewsCount: p.reviewsCount,
+    completedBookings: p.completedBookings,
+    totalEarnings: p.totalEarnings,
+    rejectionReason: p.rejectionReason,
+  );
+}
+
 void demoApproveProvider() {
   final p = demoProviderProfile;
   if (p == null) return;
@@ -468,6 +497,7 @@ void demoApproveProvider() {
     fullName: p.fullName,
     governorate: p.governorate,
     bio: p.bio,
+    logoPath: p.logoPath,
     status: 'verified',
     rating: 0,
     reviewsCount: 0,

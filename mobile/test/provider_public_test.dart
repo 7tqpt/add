@@ -10,6 +10,7 @@ import 'package:aras/src/core/theme.dart';
 import 'package:aras/src/screens/explore.dart';
 import 'package:aras/src/screens/provider_public.dart';
 import 'package:aras/src/screens/service_detail.dart';
+import 'package:aras/src/ui/kit.dart';
 import 'package:aras/src/ui/service_card.dart';
 
 Widget _wrap(Widget child) => MaterialApp(
@@ -49,7 +50,8 @@ void main() {
     // من هو.
     expect(find.text('قاعة التاج'), findsWidgets);
     expect(find.textContaining('حي السنينة'), findsOneWidget);
-    expect(find.text('موثَّق'), findsOneWidget);
+    // التوثيق علامةٌ إلى جانب الاسم لا شارةُ نصٍّ تحته.
+    expect(find.byType(VerifiedMark), findsOneWidget);
     expect(find.text('مميّز'), findsOneWidget);
     expect(find.text('القاعات والخيام'), findsOneWidget);
 
@@ -60,6 +62,24 @@ void main() {
 
     // وماذا قال من تعامل معه.
     expect(find.textContaining('قاعة نظيفة والاستقبال', skipOffstage: false), findsOneWidget);
+  });
+
+  testWidgets('وعلامةُ التوثيق ملاصقةٌ للاسم لا في سطرٍ آخر', (tester) async {
+    // **وهذا هو المقصود بها:** علامةٌ في سطرٍ تحت الاسم تُقرأ خبراً مستقلّاً،
+    // وإلى جانبه تُقرأ صفةً له. والفرق يقع في الرسم لا في الشيفرة، فيُقاس.
+    _phone(tester);
+    await tester.pumpWidget(_wrap(const PublicProviderScreen(providerId: 'p1')));
+    await _settle(tester);
+
+    final name = tester.getRect(find.text('قاعة التاج').first);
+    final mark = tester.getRect(find.byType(VerifiedMark).first);
+    expect(
+      (mark.center.dy - name.center.dy).abs(),
+      lessThan(12),
+      reason: 'العلامة ليست على سطر الاسم',
+    );
+    // وفي العربية تقع بعد الاسم — أي إلى **يساره**.
+    expect(mark.center.dx, lessThan(name.left + 4), reason: 'العلامة قبل الاسم لا بعده');
   });
 
   testWidgets('ولا تظهر فيه خدمةٌ لغيره', (tester) async {

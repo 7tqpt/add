@@ -60,6 +60,7 @@ select
   p.business_name,
   p.full_name,
   p.bio,
+  p.logo_path,
   p.governorate,
   p.coverage_areas,
   p.rating,
