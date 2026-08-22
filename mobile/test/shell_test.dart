@@ -49,6 +49,26 @@ bool _onScreen(WidgetTester tester, Finder finder) {
   return screen.contains(tester.getCenter(finder));
 }
 
+/// أسماء البطاقات النشطة في صفّ الأقسام.
+///
+/// و`skipOffstage: false` ضرورةٌ لا احتياط: الصفُّ أفقيٌّ فيه ثلاث عشرة
+/// بطاقة، وأكثرُها خارج الشاشة.
+List<String> _activeCategories(WidgetTester tester) => tester
+    .widgetList<CategoryCard>(find.byType(CategoryCard, skipOffstage: false))
+    .where((c) => c.active)
+    .map((c) => c.label)
+    .toList();
+
+/// انتظارٌ يسع تأخير وضع العرض.
+///
+/// `pumpAndSettle` وحدها لا تحرّك الساعة ما لم يُجدول إطار، وشاشةُ التحميل لا
+/// تجدول شيئاً — فالتأخيرُ لا ينقضي أبداً.
+Future<void> _settle(WidgetTester tester) async {
+  await tester.pumpAndSettle();
+  await tester.pump(const Duration(seconds: 1));
+  await tester.pumpAndSettle();
+}
+
 /// تمريرةٌ كاملةٌ إلى الصفحة التالية — أوسعُ من نصف عرض البطاقة.
 Future<void> _swipe(WidgetTester tester) async {
   await tester.drag(find.byType(PageView), const Offset(260, 0));
@@ -133,6 +153,49 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
     await tester.pumpAndSettle(const Duration(seconds: 2));
     expect(find.byType(CategoryCard, skipOffstage: false), findsNWidgets(12));
+  });
+
+  testWidgets('وبطاقة القسم تفتح الاستكشاف **على قسمها**', (tester) async {
+    // **وهذا ما أبلغ عنه المستخدم:** كانت البطاقات كلُّها تنادي `onGoTo(2)`،
+    // فالقسمُ المضغوط يُرمى ويُفتح الاستكشاف بكل شيء. فيضغط «الطبخ» فيجد
+    // القاعات والتصوير والسيارات أمامه — وضغطتُه وقعت ولم يقع أثرها.
+    tester.view.physicalSize = const Size(1080, 3000);
+    tester.view.devicePixelRatio = 3.0;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(_wrap(_session()));
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pumpAndSettle(const Duration(seconds: 2));
+
+    await tester.tap(find.text('الطبخ والضيافة'));
+    await _settle(tester);
+
+    expect(tester.widget<GlassNavBar>(find.byType(GlassNavBar)).index, 2);
+    // القائمة مقصورةٌ على القسم: خدمتُه وحدها دون سواها.
+    expect(find.text('مندي وحنيذ لـ300 شخص'), findsOneWidget);
+    expect(find.text('قاعة التاج — باقة شاملة'), findsNothing);
+    // والمرشِّح فوقها يقول أيُّ قسمٍ هذا — وإلا بدت قائمةً ناقصةً بلا سبب.
+    expect(_activeCategories(tester), ['الطبخ والضيافة']);
+  });
+
+  testWidgets('و«استكشف» من الشريط تفتحه بلا مرشِّح', (tester) async {
+    // القسم يبقى في القشرة بعد الضغط، فلو لم يُمسح عند التنقّل العاديّ لظلّت
+    // القائمة مقصوصةً على قسمٍ ضُغط قبل دقيقة — بلا ما يدلّ على ذلك.
+    tester.view.physicalSize = const Size(1080, 3000);
+    tester.view.devicePixelRatio = 3.0;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(_wrap(_session()));
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pumpAndSettle(const Duration(seconds: 2));
+
+    await tester.tap(find.text('الطبخ والضيافة'));
+    await _settle(tester);
+    await tester.tap(find.text('استكشف').last);
+    await _settle(tester);
+
+    expect(find.text('قاعة التاج — باقة شاملة'), findsOneWidget);
+    expect(_activeCategories(tester), ['الكل']);
   });
 
   testWidgets('ولا تبقى بطاقةٌ شفّافة بعد الدخول المتدرّج', (tester) async {
