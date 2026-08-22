@@ -302,6 +302,7 @@ class ProviderProfile {
     required this.fullName,
     required this.governorate,
     required this.bio,
+    required this.logoPath,
     required this.status,
     required this.rating,
     required this.reviewsCount,
@@ -315,6 +316,7 @@ class ProviderProfile {
   final String fullName;
   final String governorate;
   final String bio;
+  final String logoPath;
   final String status;
   final num rating;
   final int reviewsCount;
@@ -328,6 +330,7 @@ class ProviderProfile {
     fullName: (m['full_name'] ?? '') as String,
     governorate: (m['governorate'] ?? '') as String,
     bio: (m['bio'] ?? '') as String,
+    logoPath: (m['logo_path'] ?? '') as String,
     status: (m['status'] ?? 'pending') as String,
     rating: (m['rating'] ?? 0) as num,
     reviewsCount: ((m['reviews_count'] ?? 0) as num).toInt(),
@@ -351,6 +354,7 @@ class PublicProvider {
     required this.id,
     required this.businessName,
     required this.bio,
+    required this.logoPath,
     required this.governorate,
     required this.coverageAreas,
     required this.rating,
@@ -364,6 +368,10 @@ class PublicProvider {
   final String id;
   final String businessName;
   final String bio;
+
+  /// مسارُ الشعار داخل سلّة `avatars` — لا رابطٌ كامل.
+  final String logoPath;
+
   final String governorate;
 
   /// المناطق التي يخدمها خارج محافظته.
@@ -385,6 +393,7 @@ class PublicProvider {
     id: m['id'] as String,
     businessName: (m['business_name'] ?? '') as String,
     bio: (m['bio'] ?? '') as String,
+    logoPath: (m['logo_path'] ?? '') as String,
     governorate: (m['governorate'] ?? '') as String,
     coverageAreas: _texts(m['coverage_areas']),
     rating: (m['rating'] ?? 0) as num,

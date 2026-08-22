@@ -17,10 +17,15 @@ import 'service_detail.dart';
 /// ماذا قال من تعامل معه. فيقارن ثمناً بثمن، وهو لا يشتري ثمناً بل يشتري من
 /// يُسلّمه ليلةً لا تُعاد.
 ///
-/// وغير `ProviderProfileScreen`: تلك شاشةُ المزوّد عن نفسه — يعدّل ملفَّه
-/// ويرى حالة توثيقه. وهذه صفحتُه عند غيره: لا تعديلَ فيها ولا حالة، وليس
-/// فيها بريدٌ ولا رقمُ جوال. الاتصال بها يقع في المحادثة داخل المنصّة، فيبقى
-/// للكلام سجلٌّ إن وقع نزاع.
+/// **وشكلُها ليس زينة:** غلافٌ ملوّن وشعارٌ يطلّ عليه واسمٌ إلى جانبه علامةُ
+/// التوثيق — هذه هي الواجهة التي يقيس بها العميل جِدّية من أمامه قبل أن يقرأ
+/// سطراً واحداً. وصفحةٌ من بطاقاتٍ بيضاء متشابهة تقول إن هذا سجلٌّ إداريّ لا
+/// محلٌّ يُشترى منه.
+///
+/// وغير `ProviderProfileScreen`: تلك شاشةُ المزوّد عن نفسه — يعدّل ملفَّه ويرى
+/// حالة توثيقه. وهذه صفحتُه عند غيره: لا تعديلَ فيها ولا حالة، وليس فيها بريدٌ
+/// ولا رقمُ جوال. والاتصالُ بها في المحادثة داخل المنصّة، فيبقى للكلام سجلٌّ
+/// إن وقع نزاع.
 class PublicProviderScreen extends StatefulWidget {
   const PublicProviderScreen({super.key, required this.providerId, this.name});
 
@@ -82,7 +87,15 @@ class _PublicProviderScreenState extends State<PublicProviderScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(widget.name ?? 'مقدّم الخدمة')),
+      // الشريط شفّافٌ فوق الغلاف: عنوانٌ بأرضيّةٍ بيضاء يقطع الغلاف بخطٍّ
+      // ويجعله شريطاً ملوّناً لا واجهة.
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        foregroundColor: AppColors.accentInk,
+        title: const Text(''),
+      ),
       body: FutureBuilder<PublicProvider?>(
         future: _future,
         builder: (context, snap) {
@@ -101,33 +114,202 @@ class _PublicProviderScreenState extends State<PublicProviderScreen> {
           }
 
           return ListView(
-            padding: const EdgeInsets.all(Space.lg),
+            // الحشوة على الأبناء لا على القائمة: الغلاف يمتدّ من حافةٍ إلى
+            // حافة، وحشوةُ القائمة كانت تحبسه في الوسط فيصير بطاقةً ملوّنة.
+            padding: EdgeInsets.zero,
             children: [
               _Head(provider: p),
-              const SizedBox(height: Space.md),
-              FilledButton.icon(
-                onPressed: _busy ? null : () => _message(p),
-                icon: const Icon(Icons.forum_outlined, size: 19),
-                label: Text('راسل ${p.businessName}'),
+              _pad(
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const SizedBox(height: Space.lg),
+                    FilledButton.icon(
+                      onPressed: _busy ? null : () => _message(p),
+                      icon: const Icon(Icons.forum_outlined, size: 19),
+                      label: Text('راسل ${p.businessName}'),
+                    ),
+                    if (p.bio.isNotEmpty) ...[
+                      const SizedBox(height: Space.lg),
+                      AppCard(
+                        children: [
+                          const SectionTitle('عن المزوّد'),
+                          const SizedBox(height: Space.sm),
+                          Text(p.bio, style: const TextStyle(height: 1.9, fontSize: 14)),
+                          if (p.categories.isNotEmpty) ...[
+                            const SizedBox(height: Space.md),
+                            Wrap(
+                              spacing: Space.xs,
+                              runSpacing: Space.xs,
+                              children: [for (final c in p.categories) _Tag(c)],
+                            ),
+                          ],
+                          // مناطقُ التغطية تُذكر إن زادت على محافظته: «يخدم
+                          // تعز» لمن هو في تعز خبرٌ لا يفيد، وذكرُها لمن هو في
+                          // إبّ هو الفرق بين أن يحجز ولا يحجز.
+                          if (_alsoServes(p).isNotEmpty) ...[
+                            const SizedBox(height: Space.sm),
+                            Muted('يخدم أيضاً: ${_alsoServes(p).join(' · ')}', size: 11),
+                          ],
+                        ],
+                      ),
+                    ],
+                    const SizedBox(height: Space.lg),
+                    const SectionTitle('الخدمات المعروضة'),
+                    const SizedBox(height: Space.sm),
+                    _Services(future: _services, onRetry: _reload),
+                    const SizedBox(height: Space.lg),
+                    _Reviews(future: _reviews, total: p.reviewsCount),
+                    const SizedBox(height: Space.xl),
+                  ],
+                ),
               ),
-              const SizedBox(height: Space.lg),
-              const SectionTitle('الخدمات المعروضة'),
-              const SizedBox(height: Space.sm),
-              _Services(future: _services, onRetry: _reload),
-              const SizedBox(height: Space.lg),
-              _Reviews(future: _reviews, total: p.reviewsCount),
-              const SizedBox(height: Space.xl),
             ],
           );
         },
       ),
     );
   }
+
+  static List<String> _alsoServes(PublicProvider p) =>
+      p.coverageAreas.where((a) => a != p.governorate).toList();
+
+  static Widget _pad(Widget child) =>
+      Padding(padding: const EdgeInsets.symmetric(horizontal: Space.lg), child: child);
 }
 
-/// ترويسةُ الملفّ: الاسم وعلاماتُه، ثم ثلاثةُ أرقام، ثم التعريف والأقسام.
+/// الغلافُ والشعارُ والاسمُ وعلامتُه، ثم ثلاثةُ أرقام.
 class _Head extends StatelessWidget {
   const _Head({required this.provider});
+  final PublicProvider provider;
+
+  /// ارتفاع الغلاف، ومقدارُ ما يطلّ به الشعار عليه.
+  static const double _cover = 148;
+  static const double _avatar = 92;
+  static const double _overlap = 46;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = provider;
+    return Stack(
+      children: [
+        // الغلاف: تدرّجٌ من لون العلامة لا صورة — الجدول لا يحمل غلافاً،
+        // وصورةٌ عامّة من الشبكة تُشبه صورةَ كل ملفٍّ آخر وتحتاج تحميلاً قد
+        // لا يصل.
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          child: Container(
+            height: _cover,
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topRight,
+                end: Alignment.bottomLeft,
+                colors: [Color(0xFF3B6FE8), Color(0xFF14349B)],
+              ),
+            ),
+            child: const _CoverBlobs(),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.only(top: _cover - _overlap),
+          child: Column(
+            children: [
+              ProviderAvatar(
+                name: p.businessName,
+                imageUrl: Api.avatarUrl(p.logoPath),
+                size: _avatar,
+                ring: 4,
+              ),
+              const SizedBox(height: Space.sm),
+              // الاسمُ والعلامةُ في صفٍّ واحد. و`Flexible` على النصّ وحده:
+              // اسمٌ طويل يقصّ نفسَه ولا يدفع العلامةَ خارج الشاشة.
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: Space.lg),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        p.businessName,
+                        textAlign: TextAlign.center,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 21,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.ink,
+                          height: 1.3,
+                        ),
+                      ),
+                    ),
+                    if (p.isVerified) ...[
+                      const SizedBox(width: 6),
+                      const VerifiedMark(size: 19),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(height: 6),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (p.governorate.isNotEmpty) ...[
+                    const Icon(Icons.place_outlined, size: 14, color: AppColors.muted),
+                    const SizedBox(width: 3),
+                    Muted(p.governorate),
+                  ],
+                  if (p.isFeatured) ...[
+                    const SizedBox(width: Space.sm),
+                    const StatusBadge('مميّز', color: AppColors.warning),
+                  ],
+                ],
+              ),
+              const SizedBox(height: Space.lg),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: Space.lg),
+                child: _Stats(provider: p),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// قرصان زجاجيّان في الغلاف — عمقٌ بلا صورة.
+class _CoverBlobs extends StatelessWidget {
+  const _CoverBlobs();
+
+  @override
+  Widget build(BuildContext context) => ClipRect(
+    child: Stack(
+      children: [
+        Positioned(top: -50, left: -30, child: _blob(160, 0.10)),
+        Positioned(bottom: -70, right: -20, child: _blob(140, 0.07)),
+      ],
+    ),
+  );
+
+  Widget _blob(double size, double alpha) => Container(
+    width: size,
+    height: size,
+    decoration: BoxDecoration(
+      shape: BoxShape.circle,
+      color: Colors.white.withValues(alpha: alpha),
+    ),
+  );
+}
+
+/// ثلاثةُ أرقامٍ في بطاقةٍ واحدة: التقييم، والحجوزات المنفَّذة، وعددُ التقييمات.
+///
+/// ولا عددَ للخدمات فيها: هي تحته بعناوينها وأسعارها، ورقمٌ يقول «٣ خدمات»
+/// فوق قائمةٍ من ثلاثٍ حشوٌ لا خبر.
+class _Stats extends StatelessWidget {
+  const _Stats({required this.provider});
   final PublicProvider provider;
 
   @override
@@ -136,105 +318,43 @@ class _Head extends StatelessWidget {
     return AppCard(
       children: [
         Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // حرفٌ في قرصٍ بدل صورةٍ لا وجود لها: الجدول لا يحمل شعاراً، وإطارٌ
-            // رماديّ فارغ يقول إن شيئاً لم يُحمَّل — وليس هناك ما يُحمَّل.
-            Container(
-              width: 54,
-              height: 54,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: AppColors.accent.withValues(alpha: Tint.disc),
-              ),
-              child: Text(
-                p.businessName.isEmpty ? '؟' : p.businessName.characters.first,
-                style: const TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.accent,
-                ),
-              ),
-            ),
-            const SizedBox(width: Space.md),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  SectionTitle(p.businessName),
-                  const SizedBox(height: Space.xs),
-                  if (p.governorate.isNotEmpty)
-                    Row(
-                      children: [
-                        const Icon(Icons.place_outlined, size: 14, color: AppColors.muted),
-                        const SizedBox(width: 3),
-                        Flexible(child: Muted(p.governorate)),
-                      ],
-                    ),
-                  const SizedBox(height: Space.sm),
-                  Wrap(
-                    spacing: Space.xs,
-                    runSpacing: Space.xs,
-                    children: [
-                      // «موثَّق» أوّلاً: هي العلامة التي تعني أن الإدارة رأت
-                      // مستنداته، و«مميّز» ترتيبٌ اشتراه — فلا تُقدَّم عليها.
-                      if (p.isVerified) const StatusBadge('موثَّق', color: AppColors.good),
-                      if (p.isFeatured) const StatusBadge('مميّز', color: AppColors.warning),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: Space.md),
-        Row(
-          children: [
-            _Stat(
+            _Cell(
               value: p.rating > 0 ? '${p.rating}' : '—',
-              label: p.reviewsCount > 0
-                  ? 'من ${formatCount(p.reviewsCount, reviewForms)}'
-                  : 'لا تقييم بعد',
+              label: 'التقييم',
               icon: Icons.star_rounded,
               tone: AppColors.warning,
             ),
-            _Stat(
-              value: '${p.completedBookings}',
+            const _Divider(),
+            _Cell(
+              value: formatNumber(p.completedBookings),
               label: 'حجزاً منفَّذاً',
               icon: Icons.verified_outlined,
               tone: AppColors.good,
             ),
+            const _Divider(),
+            _Cell(
+              value: formatNumber(p.reviewsCount),
+              label: 'تقييماً',
+              icon: Icons.forum_outlined,
+              tone: AppColors.accent,
+            ),
           ],
         ),
-        if (p.bio.isNotEmpty) ...[
-          const SizedBox(height: Space.md),
-          Text(p.bio, style: const TextStyle(height: 1.8)),
-        ],
-        if (p.categories.isNotEmpty) ...[
-          const SizedBox(height: Space.md),
-          Wrap(
-            spacing: Space.xs,
-            runSpacing: Space.xs,
-            children: [for (final c in p.categories) _Tag(c)],
-          ),
-        ],
-        // مناطقُ التغطية تُذكر إن زادت على محافظته: «يخدم تعز» لمن هو في تعز
-        // خبرٌ لا يفيد، وذكرُها لمن هو في إبّ هو الفرق بين أن يحجز ولا يحجز.
-        if (p.coverageAreas.where((a) => a != p.governorate).isNotEmpty) ...[
-          const SizedBox(height: Space.sm),
-          Muted(
-            'يخدم أيضاً: ${p.coverageAreas.where((a) => a != p.governorate).join(' · ')}',
-            size: 11,
-          ),
-        ],
       ],
     );
   }
 }
 
-class _Stat extends StatelessWidget {
-  const _Stat({required this.value, required this.label, required this.icon, required this.tone});
+class _Divider extends StatelessWidget {
+  const _Divider();
+  @override
+  Widget build(BuildContext context) =>
+      Container(width: 1, height: 34, color: AppColors.hairline);
+}
+
+class _Cell extends StatelessWidget {
+  const _Cell({required this.value, required this.label, required this.icon, required this.tone});
   final String value;
   final String label;
   final IconData icon;
@@ -242,27 +362,17 @@ class _Stat extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Expanded(
-    child: Row(
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 20, color: tone),
-        const SizedBox(width: Space.xs),
-        Flexible(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                value,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.ink,
-                ),
-              ),
-              Muted(label, size: 11),
-            ],
-          ),
+        Icon(icon, size: 18, color: tone),
+        const SizedBox(height: 3),
+        Text(
+          value,
+          maxLines: 1,
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.ink),
         ),
+        Muted(label, size: 10.5),
       ],
     ),
   );
@@ -350,7 +460,7 @@ class _Reviews extends StatelessWidget {
             Row(
               children: [
                 const Expanded(child: SectionTitle('آراء العملاء')),
-                if (total > rows.length) Muted('من $total'),
+                if (total > rows.length) Muted('من ${formatNumber(total)}'),
               ],
             ),
             const SizedBox(height: Space.sm),
@@ -359,9 +469,13 @@ class _Reviews extends StatelessWidget {
                 children: [
                   Row(
                     children: [
+                      ProviderAvatar(name: r.userName, size: 30),
+                      const SizedBox(width: Space.sm),
                       Expanded(
                         child: Text(
                           r.userName.isEmpty ? 'عميل' : r.userName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
@@ -373,7 +487,7 @@ class _Reviews extends StatelessWidget {
                     ],
                   ),
                   if (r.comment.isNotEmpty) ...[
-                    const SizedBox(height: Space.xs),
+                    const SizedBox(height: Space.sm),
                     Text(r.comment, style: const TextStyle(height: 1.7, fontSize: 13.5)),
                   ],
                   const SizedBox(height: Space.xs),

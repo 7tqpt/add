@@ -104,6 +104,100 @@ class StatusBadge extends StatelessWidget {
   );
 }
 
+/// علامةُ التوثيق — قرصٌ بلون العلامة فيه صحّ.
+///
+/// تقع **إلى جانب الاسم** لا في سطرٍ تحته: هي صفةٌ للاسم لا خبرٌ مستقلّ، ومن
+/// رآها لصيقةً به عرف من فوره أن هذا هو المزوّد الذي وثّقته الإدارة لا اسماً
+/// كتبه من شاء.
+///
+/// وحجمُها من حجم النصّ الذي تجاوره: علامةٌ بحجمٍ ثابت إلى جانب اسمٍ كبير
+/// تبدو منسيّة، وإلى جانب اسمٍ صغير تبدو دخيلة.
+class VerifiedMark extends StatelessWidget {
+  const VerifiedMark({super.key, this.size = 18, this.tooltip = 'مزوّد موثَّق'});
+  final double size;
+  final String tooltip;
+
+  @override
+  Widget build(BuildContext context) => Tooltip(
+    message: tooltip,
+    child: Container(
+      width: size,
+      height: size,
+      alignment: Alignment.center,
+      decoration: const BoxDecoration(shape: BoxShape.circle, color: AppColors.accent),
+      // الأبيض على أزرق العلامة ‎٧٫٥٥:١‎ — مقيسٌ لا مفترَض.
+      child: Icon(Icons.check_rounded, size: size * 0.68, color: AppColors.accentInk),
+    ),
+  );
+}
+
+/// صورةُ مقدّم الخدمة: شعارُه إن رفعه، وإلّا حرفُه في قرص.
+///
+/// **والحرفُ ليس عيباً يُخفى:** جدولُ المزوّدين لا يفرض شعاراً، فمن لم يرفع
+/// شيئاً يُعرض بحرفه بلونٍ من لون العلامة — لا بإطارٍ رماديٍّ فارغ يقول إن
+/// صورةً لم تُحمَّل، ولا بأيقونةِ صورةٍ مكسورة.
+class ProviderAvatar extends StatelessWidget {
+  const ProviderAvatar({
+    super.key,
+    required this.name,
+    this.imageUrl,
+    this.size = 54,
+    this.ring = 0,
+  });
+
+  final String name;
+  final String? imageUrl;
+  final double size;
+
+  /// إطارٌ أبيضُ حولها — يُستعمل حين تقع على غلافٍ ملوّن.
+  final double ring;
+
+  @override
+  Widget build(BuildContext context) {
+    final url = imageUrl;
+    final letter = name.trim().isEmpty ? '؟' : name.trim().characters.first;
+    return Container(
+      width: size + ring * 2,
+      height: size + ring * 2,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: ring > 0 ? AppColors.surface : Colors.transparent,
+      ),
+      alignment: Alignment.center,
+      child: ClipOval(
+        child: SizedBox(
+          width: size,
+          height: size,
+          child: url == null || url.isEmpty
+              ? _letter(letter)
+              : Image.network(
+                  url,
+                  fit: BoxFit.cover,
+                  // وعطبُ الشبكة يعود إلى الحرف لا إلى أيقونةٍ مكسورة: الصورة
+                  // زينةٌ والاسمُ هو الخبر.
+                  errorBuilder: (_, _, _) => _letter(letter),
+                  loadingBuilder: (context, child, progress) =>
+                      progress == null ? child : _letter(letter),
+                ),
+        ),
+      ),
+    );
+  }
+
+  Widget _letter(String letter) => Container(
+    color: AppColors.accent.withValues(alpha: Tint.disc),
+    alignment: Alignment.center,
+    child: Text(
+      letter,
+      style: TextStyle(
+        fontSize: size * 0.42,
+        fontWeight: FontWeight.w700,
+        color: AppColors.accent,
+      ),
+    ),
+  );
+}
+
 /// سطر «اسم: قيمة» بمحاذاة طرفَي البطاقة.
 class KeyValue extends StatelessWidget {
   const KeyValue(this.label, this.value, {super.key});

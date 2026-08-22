@@ -192,6 +192,10 @@ create table if not exists public.service_providers (
   email              text not null unique,
   phone              text not null default '',
   bio                text not null default '',
+  -- شعارُ المزوّد أو صورةُ محلّه — مسارٌ داخل سلّة `avatars`.
+  -- مسارٌ لا رابطٌ كامل: السلّة عامّة فيُشتقّ الرابط عند العرض، ولو خُزّن
+  -- الرابط لتعطّل يوم تتغيّر السلّة أو نطاقُها.
+  logo_path          text not null default '',
   governorate_id     uuid references public.governorates (id) on delete set null,
   governorate        text not null default '',
   coverage_areas     text[] not null default '{}',

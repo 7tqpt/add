@@ -211,11 +211,57 @@ class Api {
     final row = await db
         .from('service_providers')
         .select(
-          'id, full_name, business_name, governorate, bio, status, rating, reviews_count, completed_bookings, total_earnings, rejection_reason',
+          'id, full_name, business_name, governorate, bio, logo_path, status, rating, reviews_count, completed_bookings, total_earnings, rejection_reason',
         )
         .eq('id', providerId)
         .maybeSingle();
     return row == null ? null : ProviderProfile.fromMap(row);
+  }
+
+  /// يرفع شعار المزوّد ويعيد مساره.
+  ///
+  /// في سلّة `avatars` نفسها وفي مجلّد صاحب الحساب: سياستُها تحصر الكتابة في
+  /// `<auth_user_id>/…`، فلا يكتب أحدٌ فوق شعار غيره. واسمٌ ثابت مع `upsert`
+  /// كي لا تتراكم الصور القديمة بلا حذف.
+  static Future<String> uploadProviderLogo({
+    required String authUserId,
+    required String fileName,
+    required Uint8List bytes,
+  }) async {
+    final ext = fileName.contains('.') ? fileName.split('.').last.toLowerCase() : 'jpg';
+    final path = '$authUserId/provider.$ext';
+    if (!isSupabaseConfigured) return path;
+    await db.storage.from('avatars').uploadBinary(
+      path,
+      bytes,
+      fileOptions: FileOptions(contentType: _mimeOf(ext), upsert: true),
+    );
+    return path;
+  }
+
+  /// يحفظ ما يعرضه المزوّد عن نفسه.
+  ///
+  /// `update` مباشر لا دالّة `api_*`: سياسةُ `providers_self_update` تحصره في
+  /// صفّه، والمُشغِّل `guard_provider_self_update` يمنعه من مسّ الحالة
+  /// والتوثيق والعمولة والتقييم. فدالّةٌ تكتفي بتمرير ما أُعطيت تضيف طبقةً بلا
+  /// حماية.
+  static Future<void> updateProviderProfile({
+    required String providerId,
+    String? businessName,
+    String? bio,
+    String? logoPath,
+  }) async {
+    final values = <String, dynamic>{
+      'business_name': ?businessName,
+      'bio': ?bio,
+      'logo_path': ?logoPath,
+    };
+    if (values.isEmpty) return;
+    if (!isSupabaseConfigured) {
+      demoUpdateProviderProfile(businessName: businessName, bio: bio, logoPath: logoPath);
+      return;
+    }
+    await db.from('service_providers').update(values).eq('id', providerId);
   }
 
   // ----- الحجوزات -----
