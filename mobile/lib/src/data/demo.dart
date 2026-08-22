@@ -230,6 +230,26 @@ List<SupportMessage> demoTicketMessages = [
   ),
 ];
 
+/// إعادة رسائل التذكرة إلى حالها — للاختبارات، فما يُرسَل يُضاف إلى القائمة.
+void demoResetTicketMessages() {
+  demoTicketMessages = [
+    SupportMessage(
+      id: 'tm1',
+      author: 'customer',
+      authorName: 'أحمد الشرعبي',
+      body: 'حوّلت العربون من محفظتي وخُصم المبلغ، لكن الحجز ما زال يظهر «بانتظار الدفع».',
+      createdAt: _at(30),
+    ),
+    SupportMessage(
+      id: 'tm2',
+      author: 'admin',
+      authorName: 'فريق خدمة العملاء',
+      body: 'راجعنا سجل البوابة ووجدنا العملية معلّقة لديهم. سيُعاد المبلغ خلال 48 ساعة أو يُثبَّت الحجز.',
+      createdAt: _at(4),
+    ),
+  ];
+}
+
 /// في الوضع التجريبي يبدأ الجميع عملاء بلا ملف مزوّد — تماماً كالواقع.
 String? demoProviderId;
 
