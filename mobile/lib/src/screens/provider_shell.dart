@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 
+import '../core/push.dart';
 import '../core/session.dart';
 import '../data/api.dart';
 import '../ui/kit.dart';
+import '../data/models.dart';
+import 'chat.dart';
 import 'conversations.dart';
+import 'notifications.dart';
 import 'requests.dart';
 import 'services.dart';
 import 'provider_profile.dart';
@@ -18,11 +22,14 @@ class ProviderShell extends StatefulWidget {
 class _ProviderShellState extends State<ProviderShell> {
   int _index = 0;
   int _unread = 0;
+  int _alerts = 0;
 
   @override
   void initState() {
     super.initState();
     _countUnread();
+    _countAlerts();
+    Push.start(onOpened: (data) => _openFrom(data));
   }
 
   /// صاحبُ القاعة أحوجُ إلى هذه الحبّة من العميل: العميل يفتح التطبيق ليسأل،
@@ -34,6 +41,55 @@ class _ProviderShellState extends State<ProviderShell> {
       setState(() => _unread = rows.fold<int>(0, (n, c) => n + c.unreadCount));
     } catch (_) {}
   }
+
+  Future<void> _countAlerts() async {
+    try {
+      final rows = await Api.myNotifications();
+      if (!mounted) return;
+      setState(() => _alerts = rows.where((n) => n.isUnread).length);
+    } catch (_) {}
+  }
+
+  Future<void> _openAlerts() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => NotificationsScreen(onOpen: _followUp)),
+    );
+    if (!mounted) return;
+    _countAlerts();
+    _countUnread();
+  }
+
+  /// «وصلك طلب حجز جديد» يُفتح على تبويب الطلبات — وهو أوّل تبويباته.
+  ///
+  /// وطريقٌ واحد للصندوق ولشريط النظام: الحمولة واحدة، ولو كُتب لكلٍّ مسارٌ
+  /// لافترقا عند أوّل نوعٍ يُضاف.
+  Future<void> _openFrom(Map<String, dynamic> data, {BuildContext? popFrom}) async {
+    final conversationId = data['conversation_id'] as String?;
+    if (conversationId != null) {
+      try {
+        final rows = await Api.myConversations();
+        final convo = rows.where((c) => c.id == conversationId).firstOrNull;
+        if (convo == null || !mounted) return;
+        await Navigator.of(popFrom ?? context).push(
+          MaterialPageRoute(
+            builder: (_) => ChatScreen(
+              conversationId: convo.id,
+              otherName: convo.otherName,
+              mySide: convo.mySide,
+            ),
+          ),
+        );
+      } catch (_) {}
+      return;
+    }
+    if (data['booking_id'] != null) {
+      if (popFrom != null && popFrom.mounted) Navigator.of(popFrom).pop();
+      setState(() => _index = 0);
+    }
+  }
+
+  void _followUp(BuildContext context, AppNotification n) =>
+      _openFrom(n.data, popFrom: context);
 
   Future<void> _openChats() async {
     await Navigator.of(context).push(
@@ -54,7 +110,10 @@ class _ProviderShellState extends State<ProviderShell> {
     return Scaffold(
       appBar: AppBar(
         title: Text(titles[_index]),
-        actions: [ChatIconButton(unread: _unread, onTap: _openChats)],
+        actions: [
+          ChatIconButton(unread: _unread, onTap: _openChats),
+          BellIconButton(unread: _alerts, onTap: _openAlerts),
+        ],
       ),
       body: pages[_index],
       bottomNavigationBar: NavigationBar(

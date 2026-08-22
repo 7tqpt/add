@@ -522,3 +522,57 @@ class ChatMessage {
     createdAt: (m['created_at'] ?? '') as String,
   );
 }
+
+// ── صندوق الإشعارات ──────────────────────────────────────────────────────────
+
+/// نوع الإشعار كما يقيّده الجدول. أي قيمةٍ خارجها يرفضها القيد.
+enum NotificationKind { booking, payment, message, review, dispute, account, reminder, general }
+
+NotificationKind notificationKindFrom(String raw) => switch (raw) {
+  'booking' => NotificationKind.booking,
+  'payment' => NotificationKind.payment,
+  'message' => NotificationKind.message,
+  'review' => NotificationKind.review,
+  'dispute' => NotificationKind.dispute,
+  'account' => NotificationKind.account,
+  'reminder' => NotificationKind.reminder,
+  _ => NotificationKind.general,
+};
+
+/// إشعارٌ في صندوق حسابٍ بعينه.
+///
+/// و`data` ليست زينة: فيها المعرّفات التي يفتح بها التطبيق الشاشة الصحيحة —
+/// `booking_id` أو `conversation_id`. وإشعارٌ لا يُفتح على شيءٍ خبرٌ لا فعل.
+class AppNotification {
+  const AppNotification({
+    required this.id,
+    required this.kind,
+    required this.title,
+    required this.body,
+    required this.data,
+    required this.readAt,
+    required this.createdAt,
+  });
+
+  final String id;
+  final NotificationKind kind;
+  final String title;
+  final String body;
+  final Map<String, dynamic> data;
+  final String? readAt;
+  final String createdAt;
+
+  bool get isUnread => readAt == null;
+
+  factory AppNotification.fromMap(Map<String, dynamic> m) => AppNotification(
+    id: m['id'] as String,
+    kind: notificationKindFrom((m['kind'] ?? 'general') as String),
+    title: (m['title'] ?? '') as String,
+    body: (m['body'] ?? '') as String,
+    data: m['data'] == null
+        ? const {}
+        : Map<String, dynamic>.from(m['data'] as Map),
+    readAt: m['read_at'] as String?,
+    createdAt: (m['created_at'] ?? '') as String,
+  );
+}

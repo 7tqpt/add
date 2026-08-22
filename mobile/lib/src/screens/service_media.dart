@@ -49,7 +49,9 @@ class _ServiceMediaScreenState extends State<ServiceMediaScreen> {
   }
 
   void _reload() {
-    setState(() => _future = Api.serviceMedia(widget.serviceId));
+    setState(() {
+      _future = Api.serviceMedia(widget.serviceId);
+    });
   }
 
   // ── الالتقاط ───────────────────────────────────────────────────────────────

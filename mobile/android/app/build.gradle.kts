@@ -4,6 +4,20 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+// إضافة Google Services تُطبَّق **إن وُجد الملف فقط**.
+//
+// وهذا هو ما يجعل الدفع اختيارياً: `google-services.json` يخرج من مشروع
+// Firebase الخاص بالمالك، ولا وجود له في المستودع (ولا ينبغي). ولو طُبِّقت
+// الإضافة بلا الملف لأسقطت البناء كلَّه برسالة
+// «File google-services.json is missing» — فيتعطّل بناء الحزمة عند كل من
+// استنسخ المشروع، بسبب ميزةٍ لم يطلبها بعد.
+//
+// فمن أراد الدفع وضع الملف في `android/app/` وأعاد البناء، ولا شيء غير ذلك.
+val googleServices = file("google-services.json").exists()
+if (googleServices) {
+    apply(plugin = "com.google.gms.google-services")
+}
+
 android {
     namespace = "ye.aras.aras"
     compileSdk = flutter.compileSdkVersion
