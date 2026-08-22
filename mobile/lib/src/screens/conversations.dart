@@ -23,7 +23,14 @@ class ConversationsScreen extends StatefulWidget {
 class _ConversationsScreenState extends State<ConversationsScreen> {
   late Future<List<Conversation>> _future = Api.myConversations();
 
-  void _reload() => setState(() => _future = Api.myConversations());
+  // كتلةٌ لا سهم: `setState(() => _future = …)` تُعيد قيمة الإسناد — وهي
+  // `Future` — فيرمي الإطار «setState() callback argument returned a Future».
+  // وهو تأكيدٌ في وضع التنقيح وحده، فيمرّ في الإصدار ويسقط عند المطوّر.
+  void _reload() {
+    setState(() {
+      _future = Api.myConversations();
+    });
+  }
 
   Future<void> _open(Conversation c) async {
     await Navigator.of(context).push(

@@ -1,0 +1,72 @@
+name: نشر دالّة الدفع
+
+# يُشغَّل يدوياً من تبويب Actions، وتلقائياً حين تتغيّر الدالّة على main.
+#
+# **ولماذا من هنا لا من الحاسوب:** نشرُ الدالّة يحتاج `supabase` CLI مثبّتاً،
+# ورمزَ وصولٍ في الطرفية، وأن يتذكّر صاحبُها أن ينشرها بعد كل تعديل. وهذه
+# ثلاثةُ أبوابٍ للنسيان. وهنا: تتغيّر الدالّة على main فتُنشَر وحدها.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['supabase/functions/**']
+
+jobs:
+  deploy:
+    name: نشر push
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+
+      # السرّان يُضافان مرّةً في: Settings → Secrets and variables → Actions
+      #
+      #   SUPABASE_ACCESS_TOKEN  — من supabase.com/dashboard/account/tokens
+      #   SUPABASE_PROJECT_REF   — الجزء الأوسط من رابط مشروعك
+      #                            (https://‹هذا›.supabase.co)
+      #
+      # وبلا واحدٍ منهما يقف السير برسالةٍ تقول أيُّهما ناقص، ولا يفشل بصمت.
+      - name: التحقّق من الأسرار
+        env:
+          TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+        run: |
+          missing=""
+          [ -z "$TOKEN" ] && missing="$missing SUPABASE_ACCESS_TOKEN"
+          [ -z "$REF" ] && missing="$missing SUPABASE_PROJECT_REF"
+          if [ -n "$missing" ]; then
+            echo "::error::ينقص:$missing — أضفه في Settings → Secrets → Actions"
+            exit 1
+          fi
+          echo "✅ السرّان موجودان"
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      # `--no-verify-jwt` لأن المنادي مُشغِّلُ قاعدة البيانات لا مستخدمٌ يحمل
+      # جلسة. ولو طُلب التحقّق لرُدَّ كلُّ إشعارٍ بـ401 بلا أن يظهر في سجلّ
+      # التطبيق شيء.
+      - name: نشر
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          supabase functions deploy push \
+            --project-ref "${{ secrets.SUPABASE_PROJECT_REF }}" \
+            --no-verify-jwt
+
+      - name: الخلاصة
+        run: |
+          {
+            echo "### نُشرت دالّة الدفع"
+            echo ""
+            echo "بقي شيئان في محرّر SQL:"
+            echo ""
+            echo '1. `supabase/notifications.sql` — إن لم يكن شُغّل بعد.'
+            echo '2. `supabase/push_hook.sql` ثم:'
+            echo '   ```sql'
+            echo "   select public.enable_push_webhook('https://${{ secrets.SUPABASE_PROJECT_REF }}.supabase.co');"
+            echo '   ```'
+            echo ""
+            echo 'وسرُّ `FCM_SERVICE_ACCOUNT` في Edge Functions → Secrets.'
+          } >> "$GITHUB_STEP_SUMMARY"

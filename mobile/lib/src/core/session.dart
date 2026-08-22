@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show OtpType;
 
 import '../data/api.dart';
+import 'push.dart';
 import '../data/supabase.dart';
 
 /// حالة الحساب والدور.
@@ -129,6 +130,9 @@ class Session extends ChangeNotifier {
   }
 
   Future<void> signOut() async {
+    // نسيانُ رمز الجهاز **قبل** إغلاق الجلسة: الدالّة في القاعدة تشترط أن
+    // يكون الرمز لصاحبه الحالي، وبعد الخروج لا صاحب له.
+    await Push.stop();
     if (isSupabaseConfigured) await db.auth.signOut();
     userId = null;
     email = '';

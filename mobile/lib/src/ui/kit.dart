@@ -608,31 +608,69 @@ class UnreadDot extends StatelessWidget {
   }
 }
 
-/// أيقونة المحادثات في الشريط العلوي، وعليها حبّةُ ما لم يُقرأ.
+/// أيقونةٌ في الشريط العلوي وعليها حبّةُ ما لم يُقرأ.
 ///
 /// في الشريط العلوي لا في الشريط السفلي: بنوده الخمسة محدَّدة، وإضافةُ سادسٍ
-/// تضيّق الخمسة كلَّها. والأيقونة هنا في متناول الإبهام على أكثر الأجهزة،
-/// وهي في المكان الذي تعوّده الناس من كل تطبيقٍ فيه محادثات.
-class ChatIconButton extends StatelessWidget {
-  const ChatIconButton({super.key, required this.unread, required this.onTap});
-  final int unread;
+/// تضيّق الخمسة كلَّها. والأيقونة هنا في المكان الذي تعوّده الناس من كل تطبيق.
+class BadgeIconButton extends StatelessWidget {
+  const BadgeIconButton({
+    super.key,
+    required this.icon,
+    required this.tooltip,
+    required this.count,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String tooltip;
+  final int count;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) => Stack(
     clipBehavior: Clip.none,
     children: [
-      IconButton(
-        onPressed: onTap,
-        tooltip: 'المحادثات',
-        icon: const Icon(Icons.forum_outlined, size: 22),
-      ),
-      if (unread > 0)
+      IconButton(onPressed: onTap, tooltip: tooltip, icon: Icon(icon, size: 22)),
+      if (count > 0)
+        // على ركن الرمز لا على حافّة الزرّ: صندوق `IconButton` ‎٤٨‎ بكسلاً
+        // والرمز ‎٢٢‎ في وسطه، فحبّةٌ عند الحافّة تطفو على بُعد أحد عشر بكسلاً
+        // منه — تُقرأ عائمةً لا تابعةً له، وتزدحم بجارتها حين يكون في الشريط
+        // زرّان. وقد رُئي ذلك في الرسم لا في الشيفرة.
         Positioned(
-          top: 4,
-          left: 2,
-          child: IgnorePointer(child: UnreadDot(count: unread)),
+          top: 5,
+          left: 5,
+          child: IgnorePointer(child: UnreadDot(count: count)),
         ),
     ],
+  );
+}
+
+/// أيقونة المحادثات.
+class ChatIconButton extends StatelessWidget {
+  const ChatIconButton({super.key, required this.unread, required this.onTap});
+  final int unread;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => BadgeIconButton(
+    icon: Icons.forum_outlined,
+    tooltip: 'المحادثات',
+    count: unread,
+    onTap: onTap,
+  );
+}
+
+/// جرس الإشعارات.
+class BellIconButton extends StatelessWidget {
+  const BellIconButton({super.key, required this.unread, required this.onTap});
+  final int unread;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => BadgeIconButton(
+    icon: Icons.notifications_none_rounded,
+    tooltip: 'الإشعارات',
+    count: unread,
+    onTap: onTap,
   );
 }

@@ -2,10 +2,14 @@ import 'package:flutter/material.dart';
 
 import '../ui/kit.dart';
 
+import '../core/push.dart';
 import '../core/session.dart';
 import '../data/api.dart';
+import '../data/models.dart';
 import 'account.dart';
+import 'chat.dart';
 import 'conversations.dart';
+import 'notifications.dart';
 import 'explore.dart';
 import 'home.dart';
 import 'my_bookings.dart';
@@ -21,11 +25,16 @@ class CustomerShell extends StatefulWidget {
 class _CustomerShellState extends State<CustomerShell> {
   int _index = 0;
   int _unread = 0;
+  int _alerts = 0;
 
   @override
   void initState() {
     super.initState();
     _countUnread();
+    _countAlerts();
+    // الدفع يبدأ من القشرة لا من الإقلاع: القشرة لا تُبنى إلّا بعد تسجيل
+    // الدخول وإكمال الملف، والرمز يُنسب إلى حسابٍ فلا معنى لتسجيله قبله.
+    Push.start(onOpened: (data) => _openFrom(data));
   }
 
   void _goTo(int i) => setState(() => _index = i);
@@ -41,6 +50,63 @@ class _CustomerShellState extends State<CustomerShell> {
       setState(() => _unread = rows.fold<int>(0, (n, c) => n + c.unreadCount));
     } catch (_) {}
   }
+
+  Future<void> _countAlerts() async {
+    try {
+      final rows = await Api.myNotifications();
+      if (!mounted) return;
+      setState(() => _alerts = rows.where((n) => n.isUnread).length);
+    } catch (_) {}
+  }
+
+  Future<void> _openAlerts() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => NotificationsScreen(onOpen: _followUp)),
+    );
+    if (!mounted) return;
+    _countAlerts();
+    _countUnread();
+  }
+
+  /// ما يفتحه الضغط على إشعار — من الصندوق أو من شريط النظام.
+  ///
+  /// والرسالة تُفتح على خيطها لا على قائمة المحادثات: من ضغط إشعاراً باسم
+  /// «قاعة التاج» يريد ما قالته القاعة، لا قائمةً يبحث فيها عنها.
+  ///
+  /// والطريقان واحد لأن الحمولة واحدة: `data` نفسها في صفّ الإشعار وفي رسالة
+  /// FCM. ولو كُتب لكلٍّ مسارٌ لافترقا عند أوّل نوعٍ يُضاف.
+  Future<void> _openFrom(Map<String, dynamic> data, {BuildContext? popFrom}) async {
+    final conversationId = data['conversation_id'] as String?;
+    if (conversationId != null) {
+      try {
+        final rows = await Api.myConversations();
+        final convo = rows.where((c) => c.id == conversationId).firstOrNull;
+        if (convo == null || !mounted) return;
+        await Navigator.of(popFrom ?? context).push(
+          MaterialPageRoute(
+            builder: (_) => ChatScreen(
+              conversationId: convo.id,
+              otherName: convo.otherName,
+              mySide: convo.mySide,
+            ),
+          ),
+        );
+      } catch (_) {
+        // المحادثة قد تكون حُذفت: لا يُفتح شيء، ولا يسقط شيء.
+      }
+      return;
+    }
+
+    // الحجوزات والمدفوعات والتقييمات كلُّها تقع في تبويب «حجوزاتي»: تُغلق
+    // شاشة الإشعارات ويُفتح التبويب — لا شاشةٌ ثالثة فوق الثانية.
+    if (data['booking_id'] != null || data['payment_id'] != null) {
+      if (popFrom != null && popFrom.mounted) Navigator.of(popFrom).pop();
+      _goTo(1);
+    }
+  }
+
+  void _followUp(BuildContext context, AppNotification n) =>
+      _openFrom(n.data, popFrom: context);
 
   Future<void> _openChats() async {
     await Navigator.of(context).push(
@@ -66,7 +132,10 @@ class _CustomerShellState extends State<CustomerShell> {
     return Scaffold(
       appBar: AppBar(
         title: Text(titles[_index]),
-        actions: [ChatIconButton(unread: _unread, onTap: _openChats)],
+        actions: [
+          ChatIconButton(unread: _unread, onTap: _openChats),
+          BellIconButton(unread: _alerts, onTap: _openAlerts),
+        ],
       ),
       // المحتوى يمرّ **تحت** الشريط لا فوقه: هذا ما يعطي التمويهَ ما يموّهه.
       // ولذلك تُنهي كل قائمةٍ محتواها بمسافة `glassNavSpace`، وإلا اختفت آخرُ

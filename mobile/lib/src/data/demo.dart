@@ -823,3 +823,108 @@ String demoOpenConversationWithCustomer(String bookingId) {
 
 /// يحذف خيطاً — للاختبارات وحدها، لبلوغ حال «لا محادثات بعد».
 void demoDropThread(String id) => _threads = _threads.where((t) => t.id != id).toList();
+
+// ── صندوق الإشعارات في وضع العرض ────────────────────────────────────────────
+int _noteSeq = 0;
+
+List<AppNotification> demoNotifications = [
+  AppNotification(
+    id: 'n1',
+    kind: NotificationKind.message,
+    title: 'قاعة التاج',
+    body: 'وتشمل التنسيق والإضاءة وطاقم الاستقبال.',
+    data: const {'conversation_id': 'cv1'},
+    readAt: null,
+    createdAt: _at(25),
+  ),
+  AppNotification(
+    id: 'n2',
+    kind: NotificationKind.booking,
+    title: 'تم تأكيد حجزك',
+    body: 'قبل مقدّم الخدمة حجزك BK-2026-000318.',
+    data: const {'booking_id': 'b1'},
+    readAt: null,
+    createdAt: _at(40),
+  ),
+  AppNotification(
+    id: 'n3',
+    kind: NotificationKind.payment,
+    title: 'تم استلام الدفعة',
+    body: 'تم تأكيد دفعتك بنجاح.',
+    data: const {'booking_id': 'b1'},
+    readAt: _at(60),
+    createdAt: _at(64),
+  ),
+];
+
+void demoResetNotifications() {
+  _noteSeq = 0;
+  demoNotifications = [
+    AppNotification(
+      id: 'n1',
+      kind: NotificationKind.message,
+      title: 'قاعة التاج',
+      body: 'وتشمل التنسيق والإضاءة وطاقم الاستقبال.',
+      data: const {'conversation_id': 'cv1'},
+      readAt: null,
+      createdAt: _at(25),
+    ),
+    AppNotification(
+      id: 'n2',
+      kind: NotificationKind.booking,
+      title: 'تم تأكيد حجزك',
+      body: 'قبل مقدّم الخدمة حجزك BK-2026-000318.',
+      data: const {'booking_id': 'b1'},
+      readAt: null,
+      createdAt: _at(40),
+    ),
+    AppNotification(
+      id: 'n3',
+      kind: NotificationKind.payment,
+      title: 'تم استلام الدفعة',
+      body: 'تم تأكيد دفعتك بنجاح.',
+      data: const {'booking_id': 'b1'},
+      readAt: _at(60),
+      createdAt: _at(64),
+    ),
+  ];
+}
+
+List<AppNotification> demoNotificationList() =>
+    List<AppNotification>.from(demoNotifications);
+
+AppNotification _readCopy(AppNotification n) => AppNotification(
+  id: n.id,
+  kind: n.kind,
+  title: n.title,
+  body: n.body,
+  data: n.data,
+  readAt: DateTime.now().toIso8601String(),
+  createdAt: n.createdAt,
+);
+
+void demoMarkNotificationRead(String id) {
+  demoNotifications =
+      demoNotifications.map((n) => n.id == id && n.isUnread ? _readCopy(n) : n).toList();
+}
+
+void demoMarkAllNotificationsRead() {
+  demoNotifications = demoNotifications.map((n) => n.isUnread ? _readCopy(n) : n).toList();
+}
+
+/// إشعارٌ يصل والتطبيق مفتوح — لمحاكاة البثّ في الاختبارات.
+void demoPushNotification(NotificationKind kind, String title, String body) {
+  _noteSeq += 1;
+  demoNotifications = [
+    AppNotification(
+      id: 'n-new$_noteSeq',
+      kind: kind,
+      title: title,
+      body: body,
+      data: const {},
+      readAt: null,
+      createdAt: DateTime.now().toIso8601String(),
+    ),
+    ...demoNotifications,
+  ];
+}

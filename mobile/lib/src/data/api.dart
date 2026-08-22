@@ -382,6 +382,62 @@ class Api {
     await db.from('provider_services').update({'is_active': active}).eq('id', id);
   }
 
+  // ----- الإشعارات -----
+
+  /// صندوقي. وسياسة `notifications_owner_read` هي التي تحصره فيّ — لا شرطٌ
+  /// أكتبه هنا: العميل لا يعرف معرّفه في `app_users` أصلاً.
+  static Future<List<AppNotification>> myNotifications({int limit = 60}) async {
+    if (!isSupabaseConfigured) return demoDelay(demoNotificationList());
+    final rows = await db
+        .from('notifications')
+        .select('id, kind, title, body, data, read_at, created_at')
+        .order('created_at', ascending: false)
+        .limit(limit);
+    return rows.map(AppNotification.fromMap).toList();
+  }
+
+  static Future<void> markNotificationRead(String id) async {
+    if (!isSupabaseConfigured) {
+      demoMarkNotificationRead(id);
+      return;
+    }
+    await db
+        .from('notifications')
+        .update({'read_at': DateTime.now().toUtc().toIso8601String()})
+        .eq('id', id);
+  }
+
+  /// «علّم الكلّ مقروءاً» — جملةٌ لا يستطيع التطبيق كتابتها بنفسه بأمان.
+  static Future<void> markAllNotificationsRead() async {
+    if (!isSupabaseConfigured) {
+      demoMarkAllNotificationsRead();
+      return;
+    }
+    await db.rpc('api_mark_all_notifications_read');
+  }
+
+  /// يسجّل رمز جهاز الدفع. يُستدعى عند كل إقلاع — الرمز يتغيّر بلا إشعار.
+  static Future<void> registerPushToken({
+    required String token,
+    required String platform,
+    String model = '',
+    String osVersion = '',
+  }) async {
+    if (!isSupabaseConfigured) return;
+    await db.rpc('api_register_push_token', params: {
+      'p_token': token,
+      'p_platform': platform,
+      'p_model': model,
+      'p_os_version': osVersion,
+    });
+  }
+
+  /// ينسى الرمز عند الخروج — وإلّا وصلت إشعاراتُ الحساب إلى جهازٍ غادره.
+  static Future<void> forgetPushToken(String token) async {
+    if (!isSupabaseConfigured) return;
+    await db.rpc('api_forget_push_token', params: {'p_token': token});
+  }
+
   // ----- المحادثة -----
 
   /// محادثاتي مرتّبةً بالأحدث.

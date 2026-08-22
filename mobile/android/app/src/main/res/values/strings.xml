@@ -3,4 +3,10 @@
     <!-- اسم التطبيق تحت أيقونته في شاشة الجوال. عربيٌّ لأن من يستخدمه عربي،
          و«aras» التي وضعها القالب اسمُ حزمةٍ لا اسمُ منتَج. -->
     <string name="app_name">فرحتي</string>
+
+    <!-- قناة الإشعارات. المعرّف ثابتٌ يشير إليه بيانُ التطبيق، والاسم هو ما
+         يراه المستخدم في إعدادات النظام — وبلا قناةٍ مُنشأة يضعها أندرويد في
+         قناةٍ اسمها «Miscellaneous». -->
+    <string name="default_notification_channel_id">farhati_default</string>
+    <string name="default_notification_channel_name">إشعارات فرحتي</string>
 </resources>
