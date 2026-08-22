@@ -17,7 +17,14 @@ class TicketScreen extends StatefulWidget {
 class _TicketScreenState extends State<TicketScreen> {
   late Future<List<SupportMessage>> _future;
   final _reply = TextEditingController();
+  final _scroll = ScrollController();
   bool _busy = false;
+
+  /// هل هبطت الشاشة على آخر رسالة بعد آخر تحميل.
+  ///
+  /// حارسٌ لا زينة: بلا هذا يقع الهبوط في كل إعادة بناء، فيُقفز بالمستخدم
+  /// إلى الأسفل كلّما لمس شيئاً وهو يقرأ رسالةً قديمة.
+  bool _landed = false;
 
   /// الحالة تُتابَع محلّياً بعد الإغلاق: الشاشة لا تعيد جلب التذكرة نفسها،
   /// فبلا ذلك يبقى زرّ الإغلاق ظاهراً بعد الضغط.
@@ -71,11 +78,28 @@ class _TicketScreenState extends State<TicketScreen> {
 
   void _reload() => setState(() {
     _future = Api.ticketMessages(widget.ticket.id);
+    _landed = false;
   });
+
+  /// الهبوط على آخر رسالة.
+  ///
+  /// **ولماذا لزم:** التذكرة تُقرأ الآن من أعلى إلى أسفل — الأقدم أوّلاً —
+  /// فمن فتحها بلا هذا وجد **شكواه هو** أمامه، وردُّ الإدارة تحت الطيّة. وهو
+  /// جوابُ ما فتح التذكرة لأجله.
+  ///
+  /// وبعد الإطار لا فيه: الشريط لم يُقَس بعدُ أثناء البناء، فالقفز إليه الآن
+  /// يقع إلى حدٍّ قديم ويقف قبل آخر رسالة.
+  void _toBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_scroll.hasClients) return;
+      _scroll.jumpTo(_scroll.position.maxScrollExtent);
+    });
+  }
 
   @override
   void dispose() {
     _reply.dispose();
+    _scroll.dispose();
     super.dispose();
   }
 
@@ -113,7 +137,12 @@ class _TicketScreenState extends State<TicketScreen> {
                   return ErrorBlock(message: messageOf(snap.error!), onRetry: _reload);
                 }
                 final rows = snap.data ?? const <SupportMessage>[];
+                if (!_landed && rows.isNotEmpty) {
+                  _landed = true;
+                  _toBottom();
+                }
                 return ListView.separated(
+                  controller: _scroll,
                   padding: const EdgeInsets.all(Space.lg),
                   itemCount: rows.length,
                   separatorBuilder: (_, _) => const SizedBox(height: Space.md),

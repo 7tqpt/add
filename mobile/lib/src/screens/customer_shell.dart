@@ -130,18 +130,31 @@ class _CustomerShellState extends State<CustomerShell> {
     ];
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(titles[_index]),
-        actions: [
-          ChatIconButton(unread: _unread, onTap: _openChats),
-          BellIconButton(unread: _alerts, onTap: _openAlerts),
-        ],
-      ),
+
       // المحتوى يمرّ **تحت** الشريط لا فوقه: هذا ما يعطي التمويهَ ما يموّهه.
       // ولذلك تُنهي كل قائمةٍ محتواها بمسافة `glassNavSpace`، وإلا اختفت آخرُ
       // بطاقةٍ فيها خلف الزجاج.
       extendBody: true,
-      body: pages[_index],
+      // الشريط العلوي في `Stack` لا في خانة `appBar`: خانة Scaffold تحجز
+      // ارتفاعها وتدفع المحتوى تحتها، فلا يمرّ شيءٌ خلف الزجاج ولا يجد
+      // التمويهُ ما يموّهه. وهنا يطفو فوقه كما يطفو الشريط السفلي.
+      body: Stack(
+        children: [
+          pages[_index],
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: GlassHeader(
+              title: titles[_index],
+              actions: [
+                ChatIconButton(unread: _unread, onTap: _openChats),
+                BellIconButton(unread: _alerts, onTap: _openAlerts),
+              ],
+            ),
+          ),
+        ],
+      ),
       bottomNavigationBar: GlassNavBar(
         index: _index,
         onSelect: _goTo,

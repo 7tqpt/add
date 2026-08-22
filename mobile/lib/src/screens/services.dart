@@ -103,7 +103,8 @@ class _ServicesScreenState extends State<ServicesScreen> {
             );
           }
           return ListView.separated(
-            padding: const EdgeInsets.fromLTRB(Space.lg, Space.lg, Space.lg, 96),
+            padding: EdgeInsets.fromLTRB(
+              Space.lg, glassHeaderTop(context), Space.lg, 96),
             itemCount: rows.length,
             separatorBuilder: (_, _) => const SizedBox(height: Space.md),
             itemBuilder: (context, i) {

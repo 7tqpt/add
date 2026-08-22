@@ -44,7 +44,8 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen> {
         final p = snap.data;
 
         return ListView(
-          padding: const EdgeInsets.all(Space.lg),
+          padding: EdgeInsets.fromLTRB(
+            Space.lg, glassHeaderTop(context), Space.lg, Space.lg),
           children: [
             if (p != null) ...[
               AppCard(

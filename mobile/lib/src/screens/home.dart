@@ -88,7 +88,7 @@ class _HomeScreenState extends State<HomeScreen> {
           // من حافةٍ إلى حافة وتُطلّ التاليةُ من الجانب، وحشوةُ القائمة كانت
           // تحبسها في الوسط فتضيع الإطلالة التي تدلّ على أن هناك المزيد.
           child: ListView(
-            padding: const EdgeInsets.only(top: Space.lg, bottom: glassNavSpace),
+            padding: EdgeInsets.only(top: glassHeaderTop(context), bottom: glassNavSpace),
             children: [
               _HeroCards(
                 data: data,

@@ -72,7 +72,8 @@ class _PlanScreenState extends State<PlanScreen> {
           );
         }
         return ListView.separated(
-          padding: const EdgeInsets.fromLTRB(Space.lg, Space.lg, Space.lg, glassNavSpace),
+          padding: EdgeInsets.fromLTRB(
+            Space.lg, glassHeaderTop(context), Space.lg, glassNavSpace),
           itemCount: rows.length,
           separatorBuilder: (_, _) => const SizedBox(height: Space.md),
           itemBuilder: (context, i) {

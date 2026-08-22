@@ -74,7 +74,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(Space.lg, Space.lg, Space.lg, Space.sm),
+          padding: EdgeInsets.fromLTRB(
+            Space.lg, glassHeaderTop(context), Space.lg, Space.sm),
           child: TextField(
             controller: _search,
             textInputAction: TextInputAction.search,

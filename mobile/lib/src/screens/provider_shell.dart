@@ -108,14 +108,27 @@ class _ProviderShellState extends State<ProviderShell> {
     ];
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(titles[_index]),
-        actions: [
-          ChatIconButton(unread: _unread, onTap: _openChats),
-          BellIconButton(unread: _alerts, onTap: _openAlerts),
+
+      // الشريط العلوي في `Stack` لا في خانة `appBar`: خانة Scaffold تحجز
+      // ارتفاعها وتدفع المحتوى تحتها، فلا يمرّ شيءٌ خلف الزجاج ولا يجد
+      // التمويهُ ما يموّهه. وهنا يطفو فوقه كما يطفو الشريط السفلي.
+      body: Stack(
+        children: [
+          pages[_index],
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: GlassHeader(
+              title: titles[_index],
+              actions: [
+                ChatIconButton(unread: _unread, onTap: _openChats),
+                BellIconButton(unread: _alerts, onTap: _openAlerts),
+              ],
+            ),
+          ),
         ],
       ),
-      body: pages[_index],
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
         onDestinationSelected: (i) => setState(() => _index = i),

@@ -71,8 +71,8 @@ void main() {
     await tester.pumpWidget(_wrap(_session()));
     await tester.pump(const Duration(seconds: 1));
     expect(tester.widget<GlassNavBar>(find.byType(GlassNavBar)).index, 0);
-    // العنوان في الشريط العلوي يتبع التبويب المفتوح.
-    expect(find.widgetWithText(AppBar, 'الرئيسية'), findsOneWidget);
+    // العنوان في الشريط الزجاجي يتبع التبويب المفتوح.
+    expect(tester.widget<GlassHeader>(find.byType(GlassHeader)).title, 'الرئيسية');
   });
 
   testWidgets('الضغط ينقل التبويب ويغيّر العنوان', (tester) async {
@@ -83,7 +83,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(tester.widget<GlassNavBar>(find.byType(GlassNavBar)).index, 4);
-    expect(find.widgetWithText(AppBar, 'حسابي'), findsOneWidget);
+    expect(tester.widget<GlassHeader>(find.byType(GlassHeader)).title, 'حسابي');
   });
 
   testWidgets('بطاقتان كبيرتان تُمرَّران بالإبهام', (tester) async {
@@ -158,5 +158,9 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
     expect(tester.widget<Scaffold>(find.byType(Scaffold).first).extendBody, isTrue);
     expect(glassNavSpace, greaterThan(66));
+    // والأعلى كذلك: الشريط في `Stack` لا في خانة `appBar`، فيمرّ المحتوى
+    // خلفه ويجد التمويهُ ما يموّهه.
+    expect(find.byType(AppBar), findsNothing);
+    expect(glassHeaderSpace, greaterThan(glassHeaderBar));
   });
 }

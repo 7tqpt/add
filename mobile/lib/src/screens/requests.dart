@@ -113,7 +113,8 @@ class _RequestsScreenState extends State<RequestsScreen> {
         return RefreshIndicator(
           onRefresh: () async => _reload(),
           child: ListView.separated(
-            padding: const EdgeInsets.all(Space.lg),
+            padding: EdgeInsets.fromLTRB(
+              Space.lg, glassHeaderTop(context), Space.lg, Space.lg),
             itemCount: rows.length,
             separatorBuilder: (_, _) => const SizedBox(height: Space.md),
             itemBuilder: (context, i) {
