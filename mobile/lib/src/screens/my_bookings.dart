@@ -138,7 +138,8 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
         return RefreshIndicator(
           onRefresh: () async => _reload(),
           child: ListView.separated(
-            padding: const EdgeInsets.fromLTRB(Space.lg, Space.lg, Space.lg, glassNavSpace),
+            padding: EdgeInsets.fromLTRB(
+              Space.lg, glassHeaderTop(context), Space.lg, glassNavSpace),
             itemCount: rows.length,
             separatorBuilder: (_, _) => const SizedBox(height: Space.md),
             itemBuilder: (context, i) {

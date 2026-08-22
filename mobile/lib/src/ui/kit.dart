@@ -630,7 +630,19 @@ class BadgeIconButton extends StatelessWidget {
   Widget build(BuildContext context) => Stack(
     clipBehavior: Clip.none,
     children: [
-      IconButton(onPressed: onTap, tooltip: tooltip, icon: Icon(icon, size: 22)),
+      IconButton(
+        onPressed: onTap,
+        tooltip: tooltip,
+        // قرصٌ شفّافٌ تحت الأيقونة: هذا موضع الزجاجيّة — لا في لون الرمز.
+        // فاللون مقيسٌ (‏`ink2`‏ يعطي ‎٧٫٥٨:١‎ على الزجاج و‎٤٫٥٥‎ حين تمرّ
+        // البطاقة الزرقاء تحته)، والشكلُ حرّ.
+        style: IconButton.styleFrom(
+          backgroundColor: Colors.white.withValues(alpha: 0.55),
+          shape: CircleBorder(side: BorderSide(color: Colors.white.withValues(alpha: 0.8))),
+          foregroundColor: AppColors.ink2,
+        ),
+        icon: Icon(icon, size: 20),
+      ),
       if (count > 0)
         // على ركن الرمز لا على حافّة الزرّ: صندوق `IconButton` ‎٤٨‎ بكسلاً
         // والرمز ‎٢٢‎ في وسطه، فحبّةٌ عند الحافّة تطفو على بُعد أحد عشر بكسلاً
@@ -673,4 +685,93 @@ class BellIconButton extends StatelessWidget {
     count: unread,
     onTap: onTap,
   );
+}
+
+/// ارتفاع الشريط العلوي الزجاجي مع هامشه — تحتاجه القوائم لتبدأ تحته.
+///
+/// نظيرُ `glassNavSpace` في الأعلى: الشريط يطفو والمحتوى يمرّ **تحته**، وهذا
+/// هو ما يعطي التمويهَ ما يموّهه. فبلا هذه المسافة تبدأ أولُ بطاقةٍ خلف
+/// الزجاج ولا تُقرأ.
+const double glassHeaderBar = 56;
+const double glassHeaderSpace = glassHeaderBar + Space.sm + Space.md;
+
+/// المسافة الكاملة من أعلى الشاشة: شريط الحالة ثم الزجاج.
+double glassHeaderTop(BuildContext context) =>
+    MediaQuery.paddingOf(context).top + glassHeaderSpace;
+
+/// شريطٌ علويٌّ زجاجيٌّ يطفو فوق المحتوى.
+///
+/// **والأيقونات ليست بيضاء** — كما في الشريط السفلي، وللسبب نفسه مقيساً:
+/// الزجاج أبيض بشفافية ‎٠٫٧٢‎ والصفحة `#F4F7FC`، فما يظهر خلفه ‎#FCFDFE‎.
+/// والأبيض عليه يعطي **‎١٫٠٢:١‎** — أي لا شيء. وحتى حين تمرّ بطاقةُ الخطة
+/// الزرقاء تحته فيصير ‎#BDC6E3‎، يبقى الأبيض عند ‎١٫٧٠:١‎.
+///
+/// وأزرقُ العلامة نفسه لا يصلح للأيقونات هنا: ‎٦٫٥٧:١‎ فوق الصفحة، لكنه يهبط
+/// إلى **‎٣٫٩٥:١‎** حين تمرّ البطاقة الزرقاء تحته — وهو ما يقع في الشاشة
+/// الأولى كلَّما مُرِّرت. فالحبر ‎#0B1220‎ للعنوان و`ink2` للأيقونات: ‎١٨٫٣٦‎
+/// و‎٧٫٥٨‎ فوق الصفحة، و‎١١٫٠٣‎ و‎٤٫٥٥‎ فوق البطاقة.
+///
+/// والزجاجيّةُ تبقى حيث تُرى: التمويه، والحدُّ الأبيض الرقيق، والزوايا، وقرصٌ
+/// شفّافٌ تحت كل أيقونة.
+class GlassHeader extends StatelessWidget {
+  const GlassHeader({super.key, required this.title, this.actions = const []});
+
+  final String title;
+  final List<Widget> actions;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      bottom: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(Space.md, Space.sm, Space.md, 0),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(24),
+          child: BackdropFilter(
+            // التمويه هو ما يجعله زجاجاً لا لوناً شفّافاً: بدونه يُرى ما تحته
+            // كما هو، فيبدو الشريط ورقةً باهتة لا سطحاً.
+            filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+            child: Container(
+              height: glassHeaderBar,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.72),
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.75), width: 1),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.ink.withValues(alpha: 0.10),
+                    blurRadius: 24,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  const SizedBox(width: Space.lg),
+                  Expanded(
+                    child: Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.ink,
+                        fontFamilyFallback: arabicFallback,
+                      ),
+                    ),
+                  ),
+                  ...actions,
+                  // ‎١٢‎ لا ‎٤‎: الشريط مقصوصٌ بزاويةٍ نصفُ قطرها ‎٢٤‎، وأقصى
+                  // أيقونةٍ تقع في منحنى الزاوية — فحبّةُ عددها تُقصّ. رُئي
+                  // في الرسم مكبَّراً لا في الشيفرة.
+                  const SizedBox(width: Space.md),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }

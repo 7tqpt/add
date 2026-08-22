@@ -104,7 +104,8 @@ class _AccountScreenState extends State<AccountScreen> {
     final name = profile?.fullName.trim() ?? '';
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(Space.lg, Space.lg, Space.lg, glassNavSpace),
+      padding: EdgeInsets.fromLTRB(
+        Space.lg, glassHeaderTop(context), Space.lg, glassNavSpace),
       children: [
         // ── الهويّة ────────────────────────────────────────────────────────
         // بطاقةٌ تقول من أنت قبل ما تستطيع فعله. وكانت سطراً واحداً باهتاً
