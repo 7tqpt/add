@@ -1458,7 +1458,17 @@ alter default privileges in schema public
 -- security_invoker: تُطبَّق سياسات RLS على المتصل لا على منشئ الطريقة، فلا
 -- تتسرّب خدمة غير مفعّلة أو مقدّم غير موثّق.
 -- ----------------------------------------------------------------------------
-create or replace view public.v_services
+-- **`drop` ثم `create` لا `create or replace`:** الثانية ترفض أي تغييرٍ في
+-- الأعمدة غير الزيادة في الآخر، فكانت إعادةُ تشغيل هذا الملف على قاعدةٍ
+-- شُغِّل عليها `service_media.sql` تسقط بـ«cannot drop columns from view».
+--
+-- **وأثرُ ذلك يجب أن يُعرف:** هذا الملف يبني الطريقة الأساسية بلا أعمدة
+-- الوسائط، فمن أعاده بعد `service_media.sql` فقَدَ الغلافَ والعلامات —
+-- ويستردّها بإعادة `service_media.sql` بعده. ولذلك ترتيبُ الملفات في
+-- `README` ليس زينة.
+drop view if exists public.v_services;
+
+create view public.v_services
 with (security_invoker = true) as
 select
   s.id,
@@ -1481,7 +1491,11 @@ select
   p.reviews_count as provider_reviews_count,
   p.is_featured   as provider_is_featured,
   pol.name  as cancellation_policy_name,
-  pol.rules as cancellation_rules
+  pol.rules as cancellation_rules,
+  -- التوثيق يأتي مع صفّ الخدمة: القائمة عشرون بطاقة، ونداءٌ لكل مزوّدٍ فيها
+  -- عشرون طلباً على شبكة جوالٍ يمنية. و`verified_at` لا `status`: الطريقة
+  -- العامة لا تُظهر العمود الثاني أصلاً.
+  (p.verified_at is not null) as provider_verified
 from public.provider_services s
 join public.service_providers p on p.id = s.provider_id
 join public.service_categories c on c.id = s.category_id
@@ -1490,7 +1504,9 @@ left join public.cancellation_policies pol on pol.id = s.cancellation_policy_id;
 -- ----------------------------------------------------------------------------
 -- مقدّمو الخدمة الظاهرون، مع أقسامهم مجمّعة.
 -- ----------------------------------------------------------------------------
-create or replace view public.v_providers
+drop view if exists public.v_providers;
+
+create view public.v_providers
 with (security_invoker = true) as
 select
   p.id,
@@ -1518,7 +1534,11 @@ from public.service_providers p;
 -- ملخّص خطة العرس: الإجمالي والمدفوع والمتبقي، محسوبة من الحجوزات لا مخزّنة.
 -- الوثيقة تطلب هذه اللوحة بالضبط في خاصية «خطة العرس».
 -- ----------------------------------------------------------------------------
-create or replace view public.v_plan_summary
+-- و`drop` ثم `create` للسبب نفسه: `apply.sql` يستبدل هذه الطريقة بنسخةٍ أوسع،
+-- فكانت إعادةُ هذا الملف بعده تسقط. ومن أعاده استردّ الأوسعَ بإعادة `apply.sql`.
+drop view if exists public.v_plan_summary;
+
+create view public.v_plan_summary
 with (security_invoker = true) as
 select
   pl.id as plan_id,

@@ -207,8 +207,14 @@ void main() {
     await tester.pumpWidget(_wrap(_session()));
     await tester.pump(const Duration(seconds: 1));
     await tester.pumpAndSettle(const Duration(seconds: 2));
+    // داخل بطاقات الأقسام وحدها: شريط الإشعارات في القشرة يحمل
+    // `AnimatedOpacity` بشفافية صفر وهو مختبئ — وهو شفافٌ بحقّ، فباحثٌ
+    // بالنوع وحده يجده ويسقط الاختبار على عيبٍ لا وجود له.
     final faded = find
-        .byType(AnimatedOpacity, skipOffstage: false)
+        .descendant(
+          of: find.byType(CategoryCard, skipOffstage: false),
+          matching: find.byType(AnimatedOpacity, skipOffstage: false),
+        )
         .evaluate()
         .where((e) => (e.widget as AnimatedOpacity).opacity < 1);
     expect(faded, isEmpty);

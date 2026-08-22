@@ -29,7 +29,18 @@ class _ExploreScreenState extends State<ExploreScreen> {
   late String? _categoryId = widget.categoryId;
   late Future<List<ServiceCategory>> _categories;
   late Future<List<ServiceItem>> _services;
+  Future<List<PublicProvider>>? _providers;
   Set<String> _favourites = {};
+
+  /// أنتصفّح خدماتٍ أم مزوّدين.
+  ///
+  /// **وليسا شاشتين:** المرشِّحان واحد — القسمُ والبحث — وشاشتان تفترقان
+  /// بمرور الوقت فيُصلَح عيبٌ في إحداهما ويبقى في الأخرى. والتبديل هنا يبدّل
+  /// ما يُعرض تحت المرشِّح لا الشاشة كلَّها.
+  bool _asProviders = false;
+
+  /// اسمُ القسم المختار — دليلُ المزوّدين يُرشَّح به لا بالمعرّف.
+  String? _categoryName;
 
   /// صفُّ الأقسام — يُمسك ليُمرَّر إلى القسم المفتوح عليه.
   final _catsScroll = ScrollController();
@@ -100,7 +111,31 @@ class _ExploreScreenState extends State<ExploreScreen> {
   void _reload() {
     setState(() {
       _services = Api.services(search: _applied, categoryId: _categoryId);
+      if (_asProviders) {
+        _providers = Api.providers(search: _applied, categoryName: _categoryName);
+      }
     });
+  }
+
+  /// اسمُ القسم من معرّفه — يُقرأ من القائمة المحمَّلة أصلاً، بلا نداءٍ ثانٍ.
+  Future<void> _rememberCategoryName() async {
+    if (_categoryId == null) {
+      _categoryName = null;
+      return;
+    }
+    try {
+      final cats = await _categories;
+      _categoryName = cats.where((c) => c.id == _categoryId).firstOrNull?.name;
+    } catch (_) {
+      _categoryName = null;
+    }
+  }
+
+  Future<void> _switchTo(bool providers) async {
+    await _rememberCategoryName();
+    if (!mounted) return;
+    setState(() => _asProviders = providers);
+    _reload();
   }
 
   Future<void> _loadFavourites() async {
@@ -158,6 +193,31 @@ class _ExploreScreenState extends State<ExploreScreen> {
             ),
           ),
         ),
+        // التبديل بين ما يُعرض: خدماتٌ أم مزوّدون.
+        Padding(
+          padding: const EdgeInsets.fromLTRB(Space.lg, 0, Space.lg, Space.sm),
+          child: Row(
+            children: [
+              Expanded(
+                child: _Toggle(
+                  label: 'خدمات',
+                  icon: Icons.sell_outlined,
+                  active: !_asProviders,
+                  onTap: () => _switchTo(false),
+                ),
+              ),
+              const SizedBox(width: Space.sm),
+              Expanded(
+                child: _Toggle(
+                  label: 'مقدّمو الخدمة',
+                  icon: Icons.storefront_outlined,
+                  active: _asProviders,
+                  onTap: () => _switchTo(true),
+                ),
+              ),
+            ],
+          ),
+        ),
         // الأقسام بطاقاتٌ في صفٍّ يُمرَّر، لا شرائح.
         //
         // وصفٌّ أفقيٌّ لا شبكةٌ بملء الشاشة: هذه شاشةُ **تصفّح خدمات** والأقسام
@@ -180,6 +240,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                     active: _categoryId == null,
                     onTap: () {
                       _categoryId = null;
+                      _categoryName = null;
                       _reload();
                     },
                   ),
@@ -192,6 +253,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                       active: _categoryId == c.id,
                       onTap: () {
                         _categoryId = c.id;
+                        _categoryName = c.name;
                         _reload();
                       },
                     ),
@@ -202,7 +264,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
           ),
         ),
         Expanded(
-          child: FutureBuilder<List<ServiceItem>>(
+          child: _asProviders
+              ? _Providers(future: _providers, onRetry: _reload)
+              : FutureBuilder<List<ServiceItem>>(
             future: _services,
             builder: (context, snap) {
               if (snap.connectionState != ConnectionState.done) return const LoadingBlock();
@@ -244,6 +308,176 @@ class _ExploreScreenState extends State<ExploreScreen> {
             },
           ),
         ),
+      ],
+    );
+  }
+}
+
+
+/// زرُّ تبديلٍ بين ما يُعرض.
+class _Toggle extends StatelessWidget {
+  const _Toggle({
+    required this.label,
+    required this.icon,
+    required this.active,
+    required this.onTap,
+  });
+  final String label;
+  final IconData icon;
+  final bool active;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final radius = BorderRadius.circular(12);
+    return Material(
+      color: active ? AppColors.accent : AppColors.surface,
+      borderRadius: radius,
+      child: InkWell(
+        borderRadius: radius,
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 9),
+          decoration: BoxDecoration(
+            borderRadius: radius,
+            border: Border.all(color: active ? AppColors.accent : AppColors.hairline),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 17, color: active ? AppColors.accentInk : AppColors.ink2),
+              const SizedBox(width: 5),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: active ? AppColors.accentInk : AppColors.ink2,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// دليلُ المزوّدين.
+class _Providers extends StatelessWidget {
+  const _Providers({required this.future, required this.onRetry});
+  final Future<List<PublicProvider>>? future;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<List<PublicProvider>>(
+      future: future,
+      builder: (context, snap) {
+        if (snap.connectionState != ConnectionState.done) return const LoadingBlock();
+        if (snap.hasError) {
+          return ErrorBlock(message: messageOf(snap.error!), onRetry: onRetry);
+        }
+        final rows = snap.data ?? const <PublicProvider>[];
+        if (rows.isEmpty) {
+          return const EmptyBlock(
+            title: 'لا مزوّدين في هذا القسم',
+            description: 'جرّب قسماً آخر أو امسح البحث.',
+          );
+        }
+        return ListView.separated(
+          padding: const EdgeInsets.fromLTRB(Space.lg, Space.lg, Space.lg, glassNavSpace),
+          itemCount: rows.length,
+          separatorBuilder: (_, _) => const SizedBox(height: Space.md),
+          itemBuilder: (context, i) => _ProviderRow(provider: rows[i]),
+        );
+      },
+    );
+  }
+}
+
+class _ProviderRow extends StatelessWidget {
+  const _ProviderRow({required this.provider});
+  final PublicProvider provider;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = provider;
+    return AppCard(
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => PublicProviderScreen(providerId: p.id, name: p.businessName),
+        ),
+      ),
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ProviderAvatar(name: p.businessName, imageUrl: Api.avatarUrl(p.logoPath), size: 52),
+            const SizedBox(width: Space.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          p.businessName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 15.5,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.ink,
+                          ),
+                        ),
+                      ),
+                      if (p.isVerified) ...[
+                        const SizedBox(width: 4),
+                        const VerifiedMark(size: 14),
+                      ],
+                      if (p.isFeatured) ...[
+                        const SizedBox(width: Space.xs),
+                        const StatusBadge('مميّز', color: AppColors.warning),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 3),
+                  Muted(
+                    [
+                      p.governorate,
+                      if (p.categories.isNotEmpty) p.categories.first,
+                    ].where((t) => t.isNotEmpty).join(' · '),
+                  ),
+                  const SizedBox(height: Space.sm),
+                  Row(
+                    children: [
+                      if (p.rating > 0)
+                        Rating(p.rating, count: p.reviewsCount)
+                      else
+                        const Muted('جديد'),
+                      const SizedBox(width: Space.md),
+                      // عددُ ما نُفِّذ هو ما يفرّق مزوّداً عن مزوّد أكثر من
+                      // التقييم: خمسُ نجومٍ من تقييمين ليست كأربعٍ من مئة.
+                      if (p.completedBookings > 0)
+                        Muted('${p.completedBookings} حجزاً منفَّذاً', size: 11),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        if (p.bio.isNotEmpty) ...[
+          const SizedBox(height: Space.sm),
+          Text(
+            p.bio,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 13, height: 1.7, color: AppColors.ink2),
+          ),
+        ],
       ],
     );
   }

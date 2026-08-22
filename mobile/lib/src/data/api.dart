@@ -131,6 +131,39 @@ class Api {
     return row == null ? null : PublicProvider.fromMap(row);
   }
 
+  /// دليلُ المزوّدين — يُتصفَّحون أنفسُهم لا خدماتُهم.
+  ///
+  /// **ولماذا:** من يبحث عن قاعةٍ يقارن خدمات، ومن يبحث عن **منسّق حفلات**
+  /// أو مصوّرٍ يقارن أشخاصاً: كم عرساً نفّذ، وما تقييمه، وماذا يعرض كلَّه.
+  /// وقائمةٌ من خدماتٍ متفرّقة تُخفي ذلك خلف عناوين الباقات.
+  ///
+  /// والترشيح بالاسم لا بالمعرّف: `v_providers` تُعيد أسماء الأقسام لا
+  /// معرّفاتها — وهي معرّفةٌ للعرض. و`contains` تقابل `@>` في Postgres.
+  static Future<List<PublicProvider>> providers({String? search, String? categoryName}) async {
+    if (!isSupabaseConfigured) {
+      final term = (search ?? '').trim().toLowerCase();
+      return demoDelay(
+        demoProviders.where((p) {
+          if (categoryName != null && !p.categories.contains(categoryName)) return false;
+          if (term.isEmpty) return true;
+          return p.businessName.toLowerCase().contains(term) ||
+              p.bio.toLowerCase().contains(term);
+        }).toList(),
+      );
+    }
+    var query = db.from('v_providers').select();
+    if (categoryName != null) query = query.contains('categories', [categoryName]);
+    final term = (search ?? '').trim();
+    if (term.isNotEmpty) {
+      query = query.ilike('business_name', '%${term.replaceAll(RegExp(r'[,()]'), ' ')}%');
+    }
+    final rows = await query
+        .order('is_featured', ascending: false)
+        .order('rating', ascending: false)
+        .limit(40);
+    return rows.map(PublicProvider.fromMap).toList();
+  }
+
   /// خدماتُ مزوّدٍ بعينه.
   ///
   /// من `v_services` لا من `provider_services`: سياسةُ الأولى تُخفي المعطَّل
@@ -548,6 +581,24 @@ class Api {
         .order('created_at', ascending: false)
         .limit(limit);
     return rows.map(AppNotification.fromMap).toList();
+  }
+
+  /// بثٌّ حيٌّ للإشعارات الواصلة — لعرضها والتطبيق مفتوح.
+  ///
+  /// **ولماذا لا يكفي الدفع:** إشعار شريط النظام لا يظهر أصلاً والتطبيق أمام
+  /// المستخدم، فمن كان يتصفّح لحظةَ قَبولِ حجزه لا يعلم — والجرسُ في الأعلى
+  /// يزيد رقماً لا ينظر إليه أحد. وهذا يعمل بلا Firebase ولا إعداد: الجدول
+  /// في نشرة البثّ منذ `notifications.sql`.
+  ///
+  /// والسياسة تحصر الصفوف في صفوف المتصل، فلا شرط هنا.
+  static Stream<List<AppNotification>>? notificationStream() {
+    if (!isSupabaseConfigured) return null;
+    return db
+        .from('notifications')
+        .stream(primaryKey: ['id'])
+        .order('created_at', ascending: false)
+        .limit(5)
+        .map((rows) => rows.map(AppNotification.fromMap).toList());
   }
 
   static Future<void> markNotificationRead(String id) async {

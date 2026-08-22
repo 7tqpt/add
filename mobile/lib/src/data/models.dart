@@ -44,6 +44,7 @@ class ServiceItem {
     required this.providerReviewsCount,
     required this.providerIsFeatured,
     required this.cancellationPolicyName,
+    this.providerVerified = false,
     this.coverPath,
     this.imagesCount = 0,
     this.hasVideo = false,
@@ -66,6 +67,10 @@ class ServiceItem {
   final int providerReviewsCount;
   final bool providerIsFeatured;
   final String? cancellationPolicyName;
+
+  /// وثّقته الإدارة. يأتي مع صفّ الخدمة فتحمل كلُّ بطاقةٍ علامتها بلا نداءٍ
+  /// ثانٍ — وقائمةُ الاستكشاف عشرون بطاقة.
+  final bool providerVerified;
 
   /// مسار الغلاف داخل سلّة `service-media` — أوّل صورةٍ بترتيب صاحبها.
   ///
@@ -93,6 +98,7 @@ class ServiceItem {
     providerReviewsCount: ((m['provider_reviews_count'] ?? 0) as num).toInt(),
     providerIsFeatured: (m['provider_is_featured'] ?? false) as bool,
     cancellationPolicyName: m['cancellation_policy_name'] as String?,
+    providerVerified: (m['provider_verified'] ?? false) as bool,
     coverPath: m['cover_path'] as String?,
     imagesCount: ((m['images_count'] ?? 0) as num).toInt(),
     hasVideo: (m['has_video'] ?? false) as bool,

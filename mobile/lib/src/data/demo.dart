@@ -57,6 +57,7 @@ const demoServices = [
     providerRating: 4.9,
     providerReviewsCount: 87,
     providerIsFeatured: true,
+    providerVerified: true,
     cancellationPolicyName: 'مرنة',
     coverPath: 'p1/s1/hall.jpg',
     imagesCount: 1,
@@ -78,6 +79,7 @@ const demoServices = [
     providerRating: 4.7,
     providerReviewsCount: 52,
     providerIsFeatured: false,
+    providerVerified: true,
     cancellationPolicyName: 'مرنة',
   ),
   ServiceItem(
@@ -96,6 +98,7 @@ const demoServices = [
     providerRating: 4.4,
     providerReviewsCount: 24,
     providerIsFeatured: false,
+    providerVerified: true,
     cancellationPolicyName: 'صارمة',
     hasAudio: true,
   ),
@@ -115,6 +118,7 @@ const demoServices = [
     providerRating: 4.8,
     providerReviewsCount: 31,
     providerIsFeatured: false,
+    providerVerified: true,
     cancellationPolicyName: 'مرنة',
   ),
   ServiceItem(
@@ -133,6 +137,7 @@ const demoServices = [
     providerRating: 4.2,
     providerReviewsCount: 18,
     providerIsFeatured: false,
+    providerVerified: true,
     cancellationPolicyName: 'مرنة',
   ),
   // خدمتان أُخريان لـ«قاعة التاج»: مزوّدٌ بخدمةٍ واحدة لا يُري ملفَّه شيئاً،
@@ -153,6 +158,7 @@ const demoServices = [
     providerRating: 4.9,
     providerReviewsCount: 87,
     providerIsFeatured: true,
+    providerVerified: true,
     cancellationPolicyName: 'مرنة',
   ),
   ServiceItem(
@@ -171,6 +177,7 @@ const demoServices = [
     providerRating: 4.9,
     providerReviewsCount: 87,
     providerIsFeatured: true,
+    providerVerified: true,
     cancellationPolicyName: 'متوسّطة',
   ),
 ];
