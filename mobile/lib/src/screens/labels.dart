@@ -89,3 +89,30 @@ Color documentStatusColor(String s) => switch (s) {
   'rejected' => AppColors.critical,
   _ => AppColors.warning,
 };
+
+/// أسبابُ النزاع كما يقيّدها الجدول — أي قيمةٍ خارجها يرفضها القيد.
+const disputeCategories = <({String value, String label})>[
+  (value: 'no_show', label: 'لم يحضر / لم يُنفَّذ'),
+  (value: 'quality', label: 'الخدمة دون المتّفق عليه'),
+  (value: 'payment', label: 'مشكلة في مبلغ أو استرجاع'),
+  (value: 'cancellation', label: 'خلاف على الإلغاء'),
+  (value: 'behaviour', label: 'سلوك غير لائق'),
+  (value: 'other', label: 'سبب آخر'),
+];
+
+String disputeCategoryLabel(String value) =>
+    disputeCategories.where((c) => c.value == value).firstOrNull?.label ?? value;
+
+String disputeStatusLabel(String s) => switch (s) {
+  'investigating' => 'قيد النظر',
+  'resolved' => 'حُسم',
+  'closed' => 'مغلق',
+  _ => 'مفتوح',
+};
+
+Color disputeStatusColor(String s) => switch (s) {
+  'investigating' => AppColors.warning,
+  'resolved' => AppColors.good,
+  'closed' => AppColors.muted,
+  _ => AppColors.critical,
+};

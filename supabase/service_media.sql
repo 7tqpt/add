@@ -214,10 +214,17 @@ create policy "provider or admin deletes media" on storage.objects
 --    تُرى إلّا لمن فتح التفاصيل — أي لمن اقتنع أصلاً. فالغلاف يُضاف إلى
 --    `v_services` نفسها، فتأتي مع الصفّ في نداءٍ واحد لا في نداءٍ لكل بطاقة.
 --
---    والأعمدة تُلحق في الآخر: `create or replace view` يقبل الزيادة ويرفض
---    الحذف أو تغيير الترتيب.
+--    **و`drop` ثم `create` لا `create or replace`:** الثانية تقبل زيادة عمودٍ
+--    في الآخر وترفض ما عداه — فكان ترتيبُ تشغيل الملفات يقرّر نجاحَه من
+--    فشله: `api.sql` بعد هذا الملف يحاول حذف أعمدة الوسائط فيسقط، ومن أعاد
+--    `install.sql` يوماً وجد خطأً لا يفهم سببه. والحذفُ ثم الإنشاء يجعل
+--    الملف يبني الطريقة كاملةً كيفما شُغِّل.
+--
+--    ولا شيء يعتمد عليها غير المنحة أدناه — وهي تُعاد معها.
 -- ----------------------------------------------------------------------------
-create or replace view public.v_services
+drop view if exists public.v_services;
+
+create view public.v_services
 with (security_invoker = true) as
 select
   s.id,
@@ -251,11 +258,18 @@ select
   exists (select 1 from public.service_media m where m.service_id = s.id and m.kind = 'video')
                                                     as has_video,
   exists (select 1 from public.service_media m where m.service_id = s.id and m.kind = 'audio')
-                                                    as has_audio
+                                                    as has_audio,
+  -- التوثيق يأتي مع صفّ الخدمة، فتحمل كلُّ بطاقةٍ في القائمة علامتها بلا
+  -- نداءٍ ثانٍ. وهو نفسه الذي في `api.sql` — والملفّان يبنيان الشكل نفسه.
+  (p.verified_at is not null)                       as provider_verified
 from public.provider_services s
 join public.service_providers p on p.id = s.provider_id
 join public.service_categories c on c.id = s.category_id
 left join public.cancellation_policies pol on pol.id = s.cancellation_policy_id;
+
+-- المنحة تُعاد بعد الحذف: `drop` يأخذ معه ما مُنح على الطريقة، فبلا هذا
+-- تعود «الصلاحية مرفوضة» لكل من يتصفّح.
+grant select on public.v_services to anon, authenticated;
 
 -- ----------------------------------------------------------------------------
 -- ٦. التحقّق

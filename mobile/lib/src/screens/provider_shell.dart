@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../core/push.dart';
 import '../core/session.dart';
 import '../data/api.dart';
+import '../ui/alert_banner.dart';
 import '../ui/kit.dart';
 import '../data/models.dart';
 import 'chat.dart';
@@ -51,9 +52,8 @@ class _ProviderShellState extends State<ProviderShell> {
   }
 
   Future<void> _openAlerts() async {
-    await Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => NotificationsScreen(onOpen: _followUp)),
-    );
+    await Navigator.of(context)
+        .push(MaterialPageRoute(builder: (_) => NotificationsScreen(onOpen: _followUp)));
     if (!mounted) return;
     _countAlerts();
     _countUnread();
@@ -88,13 +88,11 @@ class _ProviderShellState extends State<ProviderShell> {
     }
   }
 
-  void _followUp(BuildContext context, AppNotification n) =>
-      _openFrom(n.data, popFrom: context);
+  void _followUp(BuildContext context, AppNotification n) => _openFrom(n.data, popFrom: context);
 
   Future<void> _openChats() async {
-    await Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const ConversationsScreen()),
-    );
+    await Navigator.of(context)
+        .push(MaterialPageRoute(builder: (_) => const ConversationsScreen()));
     if (mounted) _countUnread();
   }
 
@@ -108,26 +106,34 @@ class _ProviderShellState extends State<ProviderShell> {
     ];
 
     return Scaffold(
-
       // الشريط العلوي في `Stack` لا في خانة `appBar`: خانة Scaffold تحجز
       // ارتفاعها وتدفع المحتوى تحتها، فلا يمرّ شيءٌ خلف الزجاج ولا يجد
       // التمويهُ ما يموّهه. وهنا يطفو فوقه كما يطفو الشريط السفلي.
-      body: Stack(
-        children: [
-          pages[_index],
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            child: GlassHeader(
-              title: titles[_index],
-              actions: [
-                ChatIconButton(unread: _unread, onTap: _openChats),
-                BellIconButton(unread: _alerts, onTap: _openAlerts),
-              ],
+      body: AlertBanner(
+        // الحمولةُ نفسها التي يفتح بها إشعارُ شريط النظام: طريقٌ واحد لِما
+        // يقع أمام المستخدم ولِما يصله وهو خارج التطبيق، فلا يفترقان عند
+        // أوّل نوعٍ يُضاف.
+        onOpen: (data) {
+          _openFrom(data);
+          _countAlerts();
+        },
+        child: Stack(
+          children: [
+            pages[_index],
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: GlassHeader(
+                title: titles[_index],
+                actions: [
+                  ChatIconButton(unread: _unread, onTap: _openChats),
+                  BellIconButton(unread: _alerts, onTap: _openAlerts),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,

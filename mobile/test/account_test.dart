@@ -66,10 +66,15 @@ void main() {
     expect(find.text('عميل ومقدّم خدمة'), findsOneWidget);
   });
 
-  testWidgets('الأقسام الأربعة بطاقات', (tester) async {
+  testWidgets('الأقسام الخمسة بطاقات', (tester) async {
     await tester.pumpWidget(_wrap(_session(provider: false)));
-    // الهويّة، ومقدّم الخدمة، والدعم، والخروج.
-    expect(find.byType(AppCard), findsNWidgets(4));
+    await tester.pumpAndSettle();
+    // الهويّة، ومقدّم الخدمة، والدعم، والنزاعات، والخروج.
+    //
+    // وكانت أربعاً قبل أن تُفصَل النزاعات عن الدعم: النزاع خصومةٌ على حجزٍ
+    // بعينه لها مالٌ قد يُعاد، والتذكرة سؤالٌ عن المنصّة — وخلطُهما يدفن
+    // الأوّل في الثاني.
+    expect(find.byType(AppCard, skipOffstage: false), findsNWidgets(5));
   });
 
   testWidgets('الخروج يُسأل عنه ولا يقع بضغطةٍ واحدة', (tester) async {
@@ -79,8 +84,9 @@ void main() {
     // بطاقة الخروج آخر القائمة وخارج نافذة الاختبار الافتراضية، فتُمرَّر إلى
     // الرؤية قبل النقر — وإلا وقع النقر في الفراغ وسقط الاختبار بلا عيبٍ في
     // الشاشة.
+    await tester.pumpAndSettle();
     final button = find.widgetWithText(OutlinedButton, 'تسجيل الخروج');
-    await tester.ensureVisible(button);
+    await tester.scrollUntilVisible(button, 240, scrollable: find.byType(Scrollable).first);
     await tester.pumpAndSettle();
     await tester.tap(button);
     await tester.pumpAndSettle();

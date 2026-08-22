@@ -16,6 +16,7 @@ class _AuthScreenState extends State<AuthScreen> {
   final _email = TextEditingController();
   final _password = TextEditingController();
   final _code = TextEditingController();
+  final _newPassword = TextEditingController();
   bool _signUp = false;
   bool _busy = false;
   String? _error;
@@ -24,11 +25,15 @@ class _AuthScreenState extends State<AuthScreen> {
   /// البريد الذي أُنشئ له حساب وينتظر رمزه. وجودُه يقلب الشاشة إلى خطوة الرمز.
   String? _pendingEmail;
 
+  /// أين نحن من استعادة كلمة المرور. `none` تعني أننا في شاشة الدخول.
+  _Recover _recover = _Recover.none;
+
   @override
   void dispose() {
     _email.dispose();
     _password.dispose();
     _code.dispose();
+    _newPassword.dispose();
     super.dispose();
   }
 
@@ -99,6 +104,77 @@ class _AuthScreenState extends State<AuthScreen> {
     }
   }
 
+  // ----- استعادة كلمة المرور: بريد ← رمز ← كلمة جديدة -----
+
+  Future<void> _guard(Future<void> Function() body) async {
+    setState(() {
+      _error = null;
+      _note = null;
+      _busy = true;
+    });
+    try {
+      await body();
+    } catch (e) {
+      if (mounted) setState(() => _error = messageOf(e));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _askCode() async {
+    final mail = _email.text.trim();
+    if (mail.isEmpty) {
+      setState(() => _error = 'اكتب بريدك أوّلاً.');
+      return;
+    }
+    await _guard(() async {
+      await widget.session.sendPasswordReset(mail);
+      if (!mounted) return;
+      setState(() {
+        _recover = _Recover.code;
+        // ولا يُقال «البريد غير مسجّل» ولا «مسجّل»: ذلك يجعل الشاشة باباً
+        // يعرف به الغريب من له حسابٌ في المنصّة ومن لا.
+        _note = 'إن كان $mail مسجّلاً لدينا فقد وصله رمز.';
+      });
+    });
+  }
+
+  Future<void> _checkCode() async {
+    final code = _code.text.trim();
+    if (code.isEmpty) {
+      setState(() => _error = 'اكتب الرمز الواصل إلى بريدك.');
+      return;
+    }
+    await _guard(() async {
+      await widget.session.verifyPasswordReset(_email.text.trim(), code);
+      if (!mounted) return;
+      // نجاحُ الرمز يفتح جلسةً — ولذلك تُطلب الكلمة الجديدة **الآن**: لو خرج
+      // من الشاشة هنا لدخل بحسابه بلا كلمةٍ يعرفها، ولعاد إلى الحال نفسها
+      // عند أوّل خروج.
+      setState(() {
+        _recover = _Recover.password;
+        _note = 'تحقّقنا من الرمز. اكتب كلمتك الجديدة الآن.';
+      });
+    });
+  }
+
+  Future<void> _savePassword() async {
+    await _guard(() async {
+      await widget.session.setPassword(_newPassword.text);
+      if (!mounted) return;
+      // الجلسة مفتوحةٌ أصلاً من الرمز، فتنتقل الشاشة وحدها.
+      setState(() => _recover = _Recover.none);
+    });
+  }
+
+  void _leaveRecovery() => setState(() {
+    _recover = _Recover.none;
+    _code.clear();
+    _newPassword.clear();
+    _error = null;
+    _note = null;
+  });
+
   /// خطوة الرمز: تحلّ محلّ حقلي البريد وكلمة المرور بعد إنشاء الحساب.
   Widget _codeCard() {
     return AppCard(
@@ -152,6 +228,67 @@ class _AuthScreenState extends State<AuthScreen> {
     );
   }
 
+  /// خطوةُ الرمز ثم خطوةُ الكلمة الجديدة.
+  Widget _recoverCard() {
+    final onCode = _recover == _Recover.code;
+    return AppCard(
+      children: [
+        Text(
+          onCode
+              ? 'اكتب الرمز الواصل إلى ${_email.text.trim()}.'
+              : 'اكتب كلمة المرور الجديدة لحسابك.',
+          style: const TextStyle(height: 1.7),
+        ),
+        const SizedBox(height: Space.md),
+        if (onCode)
+          TextField(
+            controller: _code,
+            keyboardType: TextInputType.number,
+            textDirection: TextDirection.ltr,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 22, letterSpacing: 8),
+            decoration: const InputDecoration(labelText: 'رمز الاستعادة', hintText: '------'),
+          )
+        else
+          TextField(
+            controller: _newPassword,
+            obscureText: true,
+            textDirection: TextDirection.ltr,
+            decoration: const InputDecoration(
+              labelText: 'كلمة المرور الجديدة',
+              hintText: '••••••••',
+              helperText: 'ثمانية أحرف فأكثر.',
+            ),
+          ),
+        if (_note != null) ...[
+          const SizedBox(height: Space.sm),
+          Text(_note!, style: const TextStyle(color: AppColors.good, fontSize: 13, height: 1.6)),
+        ],
+        if (_error != null) ...[
+          const SizedBox(height: Space.md),
+          Text(_error!, style: const TextStyle(color: AppColors.critical, fontSize: 13)),
+        ],
+        const SizedBox(height: Space.lg),
+        FilledButton(
+          onPressed: _busy ? null : (onCode ? _checkCode : _savePassword),
+          child: _busy
+              ? const SizedBox(
+                  height: 20,
+                  width: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.accentInk),
+                )
+              : Text(onCode ? 'تحقّق من الرمز' : 'حفظ الكلمة الجديدة'),
+        ),
+        if (onCode)
+          TextButton(onPressed: _busy ? null : _askCode, child: const Text('لم يصلني — أعد الإرسال')),
+        TextButton(
+          onPressed: _busy ? null : _leaveRecovery,
+          child: const Text('رجوع إلى تسجيل الدخول'),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -192,6 +329,8 @@ class _AuthScreenState extends State<AuthScreen> {
                   Muted(
                     _pendingEmail != null
                         ? 'خطوة أخيرة — أكّد بريدك'
+                        : _recover != _Recover.none
+                        ? 'استعادة كلمة المرور'
                         : _signUp
                         ? 'أنشئ حسابك لتبدأ تجهيز عرسك'
                         : 'سجّل الدخول لمتابعة حجوزاتك',
@@ -199,6 +338,8 @@ class _AuthScreenState extends State<AuthScreen> {
                   const SizedBox(height: Space.xl),
                   if (_pendingEmail != null)
                     _codeCard()
+                  else if (_recover != _Recover.none)
+                    _recoverCard()
                   else
                     AppCard(
                       children: [
@@ -254,6 +395,13 @@ class _AuthScreenState extends State<AuthScreen> {
                             _signUp ? 'عندي حساب — سجّل الدخول' : 'ما عندي حساب — أنشئ واحداً',
                           ),
                         ),
+                        // في شاشة الدخول وحدها: من يُنشئ حساباً جديداً لا كلمةَ
+                        // له تُنسى، وزرٌّ لا معنى له في موضعه يُشتّت لا يساعد.
+                        if (!_signUp)
+                          TextButton(
+                            onPressed: _busy ? null : _askCode,
+                            child: const Text('نسيت كلمة المرور'),
+                          ),
                       ],
                     ),
                   const SizedBox(height: Space.lg),
@@ -271,3 +419,9 @@ class _AuthScreenState extends State<AuthScreen> {
     );
   }
 }
+
+/// أين نحن من استعادة كلمة المرور.
+///
+/// حالةٌ مسمّاة لا رايتان (`_asking` و`_verified`): الراياتُ تسمح بحالٍ لا
+/// معنى لها — «تحقّق ولم يُطلب» — فتُكتب شروطٌ تحرسها ثم تُنسى واحدة.
+enum _Recover { none, code, password }

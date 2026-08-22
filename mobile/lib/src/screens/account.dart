@@ -6,6 +6,7 @@ import '../ui/kit.dart';
 import '../data/api.dart';
 import '../data/models.dart';
 import 'become_provider.dart';
+import 'disputes.dart';
 import 'edit_profile.dart';
 import 'support.dart';
 
@@ -244,6 +245,25 @@ class _AccountScreenState extends State<AccountScreen> {
             ),
             icon: const Icon(Icons.support_agent, size: 20),
             label: const Text('تذاكر الدعم'),
+          ),
+        ),
+
+        const SizedBox(height: Space.md),
+
+        // ── النزاعات ───────────────────────────────────────────────────────
+        // بطاقةٌ مستقلّة عن الدعم: النزاع خصومةٌ على حجزٍ بعينه لها مالٌ قد
+        // يُعاد، والتذكرة سؤالٌ عن المنصّة. وخلطُهما يدفن الأوّل في الثاني.
+        _SectionCard(
+          icon: Icons.gavel_rounded,
+          tone: AppColors.warning,
+          title: 'النزاعات',
+          body: 'اختلفت مع مقدّم خدمة على حجز؟ افتح نزاعاً من بطاقة الحجز، وتابعه هنا.',
+          action: OutlinedButton.icon(
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => DisputesScreen(session: session)),
+            ),
+            icon: const Icon(Icons.gavel_rounded, size: 20),
+            label: const Text('نزاعاتي'),
           ),
         ),
 

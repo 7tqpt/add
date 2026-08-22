@@ -204,6 +204,34 @@ const names = cols.map((c) => c.column_name)
 ok('و`id` ما زال أوّل أعمدة العرض', names[0] === 'id')
 ok('و`cover_path` مُلحقٌ في الآخر لا مدسوسٌ في الوسط', names.indexOf('cover_path') > names.indexOf('cancellation_rules'))
 
+// ── التوثيق في صفّ الخدمة، وترتيبُ الملفّات لا يكسر شيئاً ────────────────────
+//
+// **وهذا ما كان ينكسر بصمت:** `create or replace view` تقبل زيادة عمودٍ في
+// الآخر وترفض ما عداه، فكان تشغيل `api.sql` بعد هذا الملف يسقط — ومن أعاد
+// `install.sql` يوماً وجد خطأً لا يفهم سببه. فصار الملف يحذف الطريقة ويبنيها.
+const hasCol = async (col) => (await db.query(
+  `select 1 from information_schema.columns
+    where table_schema='public' and table_name='v_services' and column_name=$1`, [col])).rows.length > 0
+
+ok('والتوثيق مع صفّ الخدمة', await hasCol('provider_verified'))
+
+let reorderFailed = null
+try {
+  // إعادةُ `api.sql` بعد ملفّ الوسائط: لا تسقط — وكانت تسقط.
+  await db.exec(read('api.sql'))
+} catch (e) {
+  reorderFailed = e.message
+}
+ok('وإعادةُ api.sql بعده لا تسقط' + (reorderFailed ? ` — ${reorderFailed}` : ''),
+   reorderFailed === null)
+
+// **وأثرُها يُقال لا يُخفى:** `api.sql` يبني الطريقة الأساسية، فيذهب الغلاف
+// حتى يُعاد ملفّ الوسائط. وهذا ما يقوله التعليق في الملف نفسه، والاختبار
+// يثبت أنه صادق — لا أن الأمر بلا أثر.
+ok('ويذهب الغلاف حتى يُعاد ملفّ الوسائط', !(await hasCol('cover_path')))
+await db.exec(read('service_media.sql'))
+ok('ويبقى الغلاف والتوثيق بعدها', (await hasCol('cover_path')) && (await hasCol('provider_verified')))
+
 await db.close()
 console.log(fail === 0 ? '\nكل اختبارات service_media.sql نجحت.' : `\n${fail} فشل.`)
 process.exit(fail === 0 ? 0 : 1)

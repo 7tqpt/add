@@ -57,6 +57,7 @@ const demoServices = [
     providerRating: 4.9,
     providerReviewsCount: 87,
     providerIsFeatured: true,
+    providerVerified: true,
     cancellationPolicyName: 'مرنة',
     coverPath: 'p1/s1/hall.jpg',
     imagesCount: 1,
@@ -78,6 +79,7 @@ const demoServices = [
     providerRating: 4.7,
     providerReviewsCount: 52,
     providerIsFeatured: false,
+    providerVerified: true,
     cancellationPolicyName: 'مرنة',
   ),
   ServiceItem(
@@ -96,6 +98,7 @@ const demoServices = [
     providerRating: 4.4,
     providerReviewsCount: 24,
     providerIsFeatured: false,
+    providerVerified: true,
     cancellationPolicyName: 'صارمة',
     hasAudio: true,
   ),
@@ -115,6 +118,7 @@ const demoServices = [
     providerRating: 4.8,
     providerReviewsCount: 31,
     providerIsFeatured: false,
+    providerVerified: true,
     cancellationPolicyName: 'مرنة',
   ),
   ServiceItem(
@@ -133,6 +137,7 @@ const demoServices = [
     providerRating: 4.2,
     providerReviewsCount: 18,
     providerIsFeatured: false,
+    providerVerified: true,
     cancellationPolicyName: 'مرنة',
   ),
   // خدمتان أُخريان لـ«قاعة التاج»: مزوّدٌ بخدمةٍ واحدة لا يُري ملفَّه شيئاً،
@@ -153,6 +158,7 @@ const demoServices = [
     providerRating: 4.9,
     providerReviewsCount: 87,
     providerIsFeatured: true,
+    providerVerified: true,
     cancellationPolicyName: 'مرنة',
   ),
   ServiceItem(
@@ -171,6 +177,7 @@ const demoServices = [
     providerRating: 4.9,
     providerReviewsCount: 87,
     providerIsFeatured: true,
+    providerVerified: true,
     cancellationPolicyName: 'متوسّطة',
   ),
 ];
@@ -1146,4 +1153,68 @@ void demoPushNotification(NotificationKind kind, String title, String body) {
     ),
     ...demoNotifications,
   ];
+}
+
+// ── النزاعات ────────────────────────────────────────────────────────────────
+/// تبدأ فارغة: النزاع حدثٌ نادر، وعرضُ نزاعٍ جاهزٍ لمن يتصفّح التطبيق أوّل
+/// مرّة يقول إن في المنصّة خصومات.
+List<Dispute> demoDisputes = [];
+final Map<String, List<DisputeMessage>> _demoDisputeMessages = {};
+
+void demoOpenDispute({
+  required String bookingId,
+  required String subject,
+  required String description,
+  required String category,
+}) {
+  final booking = demoBookings.where((b) => b.id == bookingId).firstOrNull;
+  final id = 'd${demoDisputes.length + 1}';
+  demoDisputes = [
+    Dispute(
+      id: id,
+      reference: 'DSP-2026-${(demoDisputes.length + 1).toString().padLeft(6, '0')}',
+      bookingId: bookingId,
+      bookingReference: booking?.reference ?? '',
+      openedBy: 'customer',
+      providerName: booking?.providerName ?? '',
+      subject: subject,
+      description: description,
+      category: category,
+      status: 'open',
+      resolution: '',
+      refundAmount: 0,
+      createdAt: DateTime.now().toIso8601String(),
+      resolvedAt: null,
+    ),
+    ...demoDisputes,
+  ];
+  _demoDisputeMessages[id] = [
+    DisputeMessage(
+      id: '${id}m1',
+      author: 'customer',
+      authorName: 'أنا',
+      body: description.isEmpty ? subject : description,
+      createdAt: DateTime.now().toIso8601String(),
+    ),
+  ];
+}
+
+List<DisputeMessage> demoDisputeMessagesOf(String id) => _demoDisputeMessages[id] ?? const [];
+
+void demoReplyDispute(String id, String body, String author, String authorName) {
+  _demoDisputeMessages[id] = [
+    ...(_demoDisputeMessages[id] ?? const []),
+    DisputeMessage(
+      id: '${id}m${(_demoDisputeMessages[id]?.length ?? 0) + 1}',
+      author: author,
+      authorName: authorName,
+      body: body,
+      createdAt: DateTime.now().toIso8601String(),
+    ),
+  ];
+}
+
+void demoResetDisputes() {
+  demoDisputes = [];
+  _demoDisputeMessages.clear();
 }

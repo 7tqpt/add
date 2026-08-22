@@ -193,6 +193,12 @@ class _ProviderLine extends StatelessWidget {
                     ),
                   ),
                 ),
+                // العلامة ملاصقةٌ للاسم في القائمة كما هي في الملفّ: صفةٌ له
+                // لا خبرٌ مستقلّ. وحجمُها من حجم السطر لا ثابتٌ يزاحمه.
+                if (item.providerVerified) ...[
+                  const SizedBox(width: 3),
+                  const VerifiedMark(size: 13),
+                ],
               ],
             ),
           ),
