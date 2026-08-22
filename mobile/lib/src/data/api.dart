@@ -1,10 +1,35 @@
 import 'dart:typed_data';
 
-import 'package:supabase_flutter/supabase_flutter.dart' show FileOptions;
+import 'package:supabase_flutter/supabase_flutter.dart' show FileOptions, PostgrestException;
 
 import 'models.dart';
 import 'supabase.dart';
 import 'demo.dart';
+
+/// رمزُ Postgres لعمودٍ لا وجود له.
+///
+/// يُقارَن به لا بنصّ الرسالة: النصّ إنجليزيٌّ قد يتغيّر بين إصدارات الخادم،
+/// والرمز جزءٌ من المعيار.
+const undefinedColumn = '42703';
+
+/// ينفّذ القراءةَ الكاملة، فإن أنكرت القاعدةُ عموداً أعاد الأضيق منها.
+///
+/// **ولماذا هذا موجود:** التطبيق يُحدَّث من متجرٍ أو رابط، والقاعدة تُحدَّث
+/// بيد صاحبها في محرّر SQL. فبينهما دائماً نافذةٌ يكون فيها التطبيق أحدثَ من
+/// قاعدته — وفي تلك النافذة يجب أن تنقص ميزةٌ لا أن تسقط شاشة.
+///
+/// وقد سقطت: شاشةُ المزوّد كلُّها صارت رسالةً حمراء لأجل عمود صورة.
+Future<T> whenColumnMissing<T>(
+  Future<T> Function() full,
+  Future<T> Function() lean,
+) async {
+  try {
+    return await full();
+  } on PostgrestException catch (e) {
+    if (e.code != undefinedColumn) rethrow;
+    return await lean();
+  }
+}
 
 /// كل ما يقرؤه التطبيق أو يكتبه.
 ///
@@ -208,13 +233,29 @@ class Api {
 
   static Future<ProviderProfile?> providerProfile(String providerId) async {
     if (!isSupabaseConfigured) return demoDelay(demoProviderProfile);
-    final row = await db
+
+    // **العمود قد لا يكون في القاعدة بعد.**
+    //
+    // من لم يشغّل `provider_logo.sql` كانت شاشتُه كلُّها تسقط برسالةٍ حمراء —
+    // `column service_providers.logo_path does not exist` — لأجل صورةٍ زينة.
+    // وهذا وقع على جهاز صاحب المنتج.
+    //
+    // فتُقرأ مرّةً بالعمود، وإن أنكرته القاعدة (‏`42703`‏) أُعيدت القراءة
+    // بدونه. والشاشة تعمل كما كانت، ويبقى الشعار حرفاً في قرص حتى يُشغَّل
+    // الملف — وهو الفرق بين ميزةٍ لم تصل وشاشةٍ مكسورة.
+    Future<Map<String, dynamic>?> read(String columns) => db
         .from('service_providers')
-        .select(
-          'id, full_name, business_name, governorate, bio, logo_path, status, rating, reviews_count, completed_bookings, total_earnings, rejection_reason',
-        )
+        .select(columns)
         .eq('id', providerId)
         .maybeSingle();
+
+    const base = 'id, full_name, business_name, governorate, bio, status, rating, '
+        'reviews_count, completed_bookings, total_earnings, rejection_reason';
+
+    final row = await whenColumnMissing(
+      () => read('$base, logo_path'),
+      () => read(base),
+    );
     return row == null ? null : ProviderProfile.fromMap(row);
   }
 
@@ -261,7 +302,16 @@ class Api {
       demoUpdateProviderProfile(businessName: businessName, bio: bio, logoPath: logoPath);
       return;
     }
-    await db.from('service_providers').update(values).eq('id', providerId);
+    try {
+      await db.from('service_providers').update(values).eq('id', providerId);
+    } on PostgrestException catch (e) {
+      // ونصٌّ عربيٌّ يقول ما يُفعل بدل رسالةِ Postgres: صاحبُ القاعة لا يعرف
+      // ما «42703»، ويعرف تماماً معنى «شغّل هذا الملف».
+      if (e.code == undefinedColumn && e.message.contains('logo_path')) {
+        throw 'قاعدتك لم تُحدَّث بعد: شغّل ملف supabase/provider_logo.sql ثم أعد المحاولة.';
+      }
+      rethrow;
+    }
   }
 
   // ----- الحجوزات -----
