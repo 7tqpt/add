@@ -676,3 +676,91 @@ class AppNotification {
     createdAt: (m['created_at'] ?? '') as String,
   );
 }
+
+/// نزاعٌ على حجز.
+///
+/// غير تذكرة الدعم: التذكرة سؤالٌ للإدارة عن المنصّة، والنزاع **خصومةٌ بين
+/// طرفَي حجز** — لها رقمُ حجزٍ وطرفان ومبلغٌ قد يُعاد. ولذلك لها جدولها
+/// وسجلُّها، ولا تُخلط بالأولى.
+class Dispute {
+  const Dispute({
+    required this.id,
+    required this.reference,
+    required this.bookingId,
+    required this.bookingReference,
+    required this.openedBy,
+    required this.providerName,
+    required this.subject,
+    required this.description,
+    required this.category,
+    required this.status,
+    required this.resolution,
+    required this.refundAmount,
+    required this.createdAt,
+    required this.resolvedAt,
+  });
+
+  final String id;
+  final String reference;
+  final String? bookingId;
+  final String bookingReference;
+
+  /// `customer` أو `provider` — من فتحه.
+  final String openedBy;
+  final String providerName;
+  final String subject;
+  final String description;
+  final String category;
+  final String status;
+
+  /// ما قرّرته الإدارة عند الحسم، وما أعادته من مال.
+  final String resolution;
+  final num refundAmount;
+
+  final String createdAt;
+  final String? resolvedAt;
+
+  bool get isOpen => status == 'open' || status == 'investigating';
+
+  factory Dispute.fromMap(Map<String, dynamic> m) => Dispute(
+    id: m['id'] as String,
+    reference: (m['reference'] ?? '') as String,
+    bookingId: m['booking_id'] as String?,
+    bookingReference: (m['booking_reference'] ?? '') as String,
+    openedBy: (m['opened_by'] ?? 'customer') as String,
+    providerName: (m['provider_name'] ?? '') as String,
+    subject: (m['subject'] ?? '') as String,
+    description: (m['description'] ?? '') as String,
+    category: (m['category'] ?? 'other') as String,
+    status: (m['status'] ?? 'open') as String,
+    resolution: (m['resolution'] ?? '') as String,
+    refundAmount: (m['refund_amount'] ?? 0) as num,
+    createdAt: (m['created_at'] ?? '') as String,
+    resolvedAt: m['resolved_at'] as String?,
+  );
+}
+
+/// رسالةٌ في خيط النزاع — من العميل أو المزوّد أو الإدارة.
+class DisputeMessage {
+  const DisputeMessage({
+    required this.id,
+    required this.author,
+    required this.authorName,
+    required this.body,
+    required this.createdAt,
+  });
+
+  final String id;
+  final String author;
+  final String authorName;
+  final String body;
+  final String createdAt;
+
+  factory DisputeMessage.fromMap(Map<String, dynamic> m) => DisputeMessage(
+    id: m['id'] as String,
+    author: (m['author'] ?? 'customer') as String,
+    authorName: (m['author_name'] ?? '') as String,
+    body: (m['body'] ?? '') as String,
+    createdAt: (m['created_at'] ?? '') as String,
+  );
+}

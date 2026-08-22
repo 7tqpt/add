@@ -953,4 +953,80 @@ class Api {
     }
     await db.rpc('api_close_ticket', params: {'p_ticket_id': ticketId});
   }
+
+  // ----- النزاعات -----
+  //
+  // ولا ملفَّ SQL جديد لها: الجدولان وسياساتُهما ودالّة `api_open_dispute`
+  // في المخطّط منذ أوّل يوم — تقرأ الإدارة النزاعات من اللوحة، ولم يكن
+  // للعميل بابٌ يفتح منه واحداً. وهذا الباب.
+
+  /// نزاعاتي — والسياسة تحصرها في نزاعاتي وحدها، فلا شرط هنا.
+  static Future<List<Dispute>> myDisputes() async {
+    if (!isSupabaseConfigured) return demoDelay(List<Dispute>.from(demoDisputes));
+    final rows = await db
+        .from('disputes')
+        .select()
+        .order('created_at', ascending: false);
+    return rows.map(Dispute.fromMap).toList();
+  }
+
+  /// **الفتحُ بدالّة لا بـ`insert`**: هي التي تقرّر أنك طرفٌ في هذا الحجز
+  /// أصلاً، وتنسخ رقمه واسمَي طرفيه — ولو كتبها التطبيق لكتب ما شاء.
+  static Future<void> openDispute({
+    required String bookingId,
+    required String subject,
+    required String description,
+    required String category,
+  }) async {
+    if (!isSupabaseConfigured) {
+      demoOpenDispute(
+        bookingId: bookingId,
+        subject: subject,
+        description: description,
+        category: category,
+      );
+      return;
+    }
+    await db.rpc(
+      'api_open_dispute',
+      params: {
+        'p_booking_id': bookingId,
+        'p_subject': subject,
+        'p_description': description,
+        'p_category': category,
+      },
+    );
+  }
+
+  static Future<List<DisputeMessage>> disputeMessages(String disputeId) async {
+    if (!isSupabaseConfigured) return demoDelay(demoDisputeMessagesOf(disputeId));
+    final rows = await db
+        .from('dispute_messages')
+        .select('id, author, author_name, body, created_at')
+        .eq('dispute_id', disputeId)
+        .order('created_at', ascending: true);
+    return rows.map(DisputeMessage.fromMap).toList();
+  }
+
+  /// ردٌّ في خيط النزاع.
+  ///
+  /// `insert` مباشر: سياسة `dispute_messages_write` تشترط أن يكون الكاتب طرفاً
+  /// في النزاع **وأن يطابق `author` طرفَه** — فلا يكتب عميلٌ باسم المزوّد.
+  static Future<void> replyDispute({
+    required String disputeId,
+    required String body,
+    required bool asProvider,
+    required String authorName,
+  }) async {
+    if (!isSupabaseConfigured) {
+      demoReplyDispute(disputeId, body, asProvider ? 'provider' : 'customer', authorName);
+      return;
+    }
+    await db.from('dispute_messages').insert({
+      'dispute_id': disputeId,
+      'author': asProvider ? 'provider' : 'customer',
+      'author_name': authorName,
+      'body': body,
+    });
+  }
 }

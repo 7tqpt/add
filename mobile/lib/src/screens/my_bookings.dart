@@ -7,6 +7,7 @@ import '../data/api.dart';
 import '../data/models.dart';
 import '../data/supabase.dart';
 import '../ui/kit.dart';
+import 'disputes.dart';
 import 'labels.dart';
 
 class MyBookingsScreen extends StatefulWidget {
@@ -22,6 +23,12 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
   /// الحجوزات التي قُيّمت. القاعدة تمنع تقييم الحجز مرّتين بقيد فريد، فإظهار
   /// الزرّ بعد التقييم يَعِد بما سيرفضه الخادم.
   Set<String> _reviewed = {};
+
+  /// الحجوزات التي لها نزاعٌ مفتوح، ونزاعُ كلٍّ منها.
+  ///
+  /// تُقرأ مع الحجوزات لا عند الضغط: الزرّ يجب أن يقول «متابعة النزاع» لمن
+  /// فتح واحداً — لا أن يعده بفتح ثانٍ ثم يرفضه شيء.
+  Map<String, Dispute> _disputes = {};
   String? _busyId;
 
   @override
@@ -36,6 +43,16 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
     final rows = await Api.myBookings(id);
     final done = rows.where((b) => b.status == BookingStatus.completed).map((b) => b.id).toList();
     _reviewed = await Api.reviewedBookingIds(done);
+    try {
+      final disputes = await Api.myDisputes();
+      _disputes = {
+        for (final d in disputes)
+          if (d.bookingId != null) d.bookingId!: d,
+      };
+    } catch (_) {
+      // النزاعات زينةٌ على هذه الشاشة: تعذُّر قراءتها لا يمنع عرض الحجوزات.
+      _disputes = {};
+    }
     return rows;
   }
 
@@ -117,6 +134,23 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
     } finally {
       if (mounted) setState(() => _busyId = null);
     }
+  }
+
+  Future<void> _dispute(Booking b) async {
+    final existing = _disputes[b.id];
+    if (existing != null) {
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => DisputeScreen(dispute: existing, session: widget.session),
+        ),
+      );
+      _reload();
+      return;
+    }
+    final opened = await openDisputeSheet(context, b);
+    if (!opened || !mounted) return;
+    showMessage(context, 'فُتح النزاع — تنظر فيه الإدارة وتصلك ردودها هنا.');
+    _reload();
   }
 
   @override
@@ -213,6 +247,31 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                       onPressed: _busyId == null ? () => _review(b) : null,
                       icon: const Icon(Icons.star_rounded, size: 20),
                       label: const Text('قيّم الخدمة'),
+                    ),
+                  ],
+                  // النزاع متاحٌ على كل حجزٍ تجاوز الانتظار.
+                  //
+                  // والملغى والمرفوض منها عمداً: أكثرُ ما يُختلف عليه مالٌ
+                  // دُفع ولم يُعَد بعد إلغاء — ومن أُغلق عليه هذا الباب لم
+                  // يبقَ له إلّا تذكرةُ دعمٍ عامّة أو ترك حقّه.
+                  if (b.status != BookingStatus.pendingProvider) ...[
+                    const SizedBox(height: Space.sm),
+                    TextButton.icon(
+                      onPressed: _busyId == null ? () => _dispute(b) : null,
+                      icon: Icon(
+                        _disputes.containsKey(b.id)
+                            ? Icons.gavel_rounded
+                            : Icons.report_gmailerrorred_outlined,
+                        size: 19,
+                      ),
+                      style: TextButton.styleFrom(
+                        foregroundColor: _disputes.containsKey(b.id)
+                            ? AppColors.accent
+                            : AppColors.muted,
+                      ),
+                      label: Text(
+                        _disputes.containsKey(b.id) ? 'متابعة النزاع' : 'عندي مشكلة في هذا الحجز',
+                      ),
                     ),
                   ],
                 ],

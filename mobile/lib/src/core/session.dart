@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart';
-import 'package:supabase_flutter/supabase_flutter.dart' show OtpType;
+import 'package:supabase_flutter/supabase_flutter.dart' show OtpType, UserAttributes;
 
 import '../data/api.dart';
 import 'push.dart';
@@ -127,6 +127,38 @@ class Session extends ChangeNotifier {
   Future<void> resendSignUpCode(String mail) async {
     if (!isSupabaseConfigured) return;
     await db.auth.resend(type: OtpType.signup, email: mail);
+  }
+
+  // ----- استعادة كلمة المرور -----
+  //
+  // **برمزٍ يُكتب لا برابطٍ يُفتح** — للسبب الذي جعل التفعيل كذلك: رابط
+  // Supabase يقصد `Site URL` وهو `localhost` افتراضاً، فيفتحه صاحب الجوال
+  // فيقول متصفّحه «رفض الاتصال». والرمز لا يحتاج عنواناً ولا يخرج من التطبيق.
+  //
+  // **ويلزم إعدادٌ في Supabase لا تكفي الشيفرة دونه:** قالب «Reset Password»
+  // يجب أن يعرض `{{ .Token }}` بدل `{{ .ConfirmationURL }}`، وإلا بقيت
+  // الرسالة رابطاً لا رمز فيه.
+
+  /// يرسل رمز الاستعادة إلى البريد.
+  ///
+  /// ولا يقول إن كان البريد مسجّلاً أو لا: Supabase نفسه لا يقول، ولو قال
+  /// لصار بابَ سؤالٍ يعرف به الغريب من له حسابٌ في المنصّة ومن لا.
+  Future<void> sendPasswordReset(String mail) async {
+    if (!isSupabaseConfigured) return;
+    await db.auth.resetPasswordForEmail(mail);
+  }
+
+  /// يتحقّق من الرمز فيفتح جلسةً مؤقّتة تكفي لتغيير الكلمة.
+  Future<void> verifyPasswordReset(String mail, String code) async {
+    if (!isSupabaseConfigured) return;
+    await db.auth.verifyOTP(type: OtpType.recovery, email: mail, token: code);
+  }
+
+  /// يضع الكلمة الجديدة على الجلسة التي فتحها الرمز.
+  Future<void> setPassword(String password) async {
+    if (password.length < 8) throw 'كلمة المرور قصيرة جداً (8 أحرف على الأقل).';
+    if (!isSupabaseConfigured) return;
+    await db.auth.updateUser(UserAttributes(password: password));
   }
 
   Future<void> signOut() async {
