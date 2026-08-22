@@ -18,6 +18,20 @@ import 'demo.dart';
 /// في هذه الجداول يحسبه الخادم حتى يُحمى. ودالةٌ تكتفي بتمرير ما أُعطيت إلى
 /// `insert` تضيف طبقةً بلا حماية.
 class Api {
+  // ‎**كل `order` هنا يذكر `ascending` صراحةً — ولو كان صعوداً.**
+  //
+  // `postgrest` في Dart افتراضُها `ascending: false`، أي أن `.order('created_at')`
+  // تعني **نزولاً**. وهي عكسُ نظيرتها في JavaScript (‏`ascending = true`‏)،
+  // فمن قرأ وثائق Supabase أو نقل سطراً من اللوحة وقع فيها.
+  //
+  // وقد وقعتُ فيها في تسعة مواضع: المحادثة كانت تُقرأ من أسفل إلى أعلى،
+  // والأقسام الاثنا عشر معكوسة، والحجوزات أبعدُها موعداً أوّلاً. ولم يكشفها
+  // اختبارٌ واحد لأن وضع العرض يرتّب في الذاكرة ولا يمرّ بـ`postgrest` أصلاً
+  // — أي أن الطريق الذي كُسر هو الطريق الوحيد الذي لا تسلكه الاختبارات.
+  //
+  // ويحرسه الآن `api_order_test.dart`: يقرأ هذا الملف ويسقط عند أوّل
+  // `order` بلا `ascending`.
+
   // ----- المرجعيات والاستكشاف -----
 
   static Future<List<Governorate>> governorates() async {
@@ -26,7 +40,7 @@ class Api {
         .from('governorates')
         .select('id, name')
         .eq('is_active', true)
-        .order('sort_order');
+        .order('sort_order', ascending: true);
     return rows.map(Governorate.fromMap).toList();
   }
 
@@ -36,7 +50,7 @@ class Api {
         .from('service_categories')
         .select('id, name, slug')
         .eq('is_active', true)
-        .order('sort_order');
+        .order('sort_order', ascending: true);
     return rows.map(ServiceCategory.fromMap).toList();
   }
 
@@ -169,7 +183,7 @@ class Api {
   /// يقصده التطبيق أصلاً — كان يرى مبيعاته مختلطةً بمشترياته في الشاشتين معاً.
   static Future<List<Booking>> myBookings(String appUserId) async {
     if (!isSupabaseConfigured) return demoDelay(demoBookings);
-    final rows = await db.from('bookings').select().eq('user_id', appUserId).order('event_date');
+    final rows = await db.from('bookings').select().eq('user_id', appUserId).order('event_date', ascending: true);
     return rows.map(Booking.fromMap).toList();
   }
 
@@ -180,7 +194,7 @@ class Api {
         .from('bookings')
         .select()
         .eq('provider_id', providerId)
-        .order('event_date');
+        .order('event_date', ascending: true);
     return rows.map(Booking.fromMap).toList();
   }
 
@@ -295,7 +309,7 @@ class Api {
 
   static Future<List<WeddingPlan>> myPlans() async {
     if (!isSupabaseConfigured) return demoDelay(demoPlans);
-    final rows = await db.from('v_plan_summary').select().order('wedding_date');
+    final rows = await db.from('v_plan_summary').select().order('wedding_date', ascending: true);
     return rows.map(WeddingPlan.fromMap).toList();
   }
 
@@ -482,7 +496,7 @@ class Api {
         .from('conversation_messages')
         .select('id, sender, body, created_at')
         .eq('conversation_id', conversationId)
-        .order('created_at');
+        .order('created_at', ascending: true);
     return rows.map(ChatMessage.fromMap).toList();
   }
 
@@ -498,7 +512,7 @@ class Api {
         .from('conversation_messages')
         .stream(primaryKey: ['id'])
         .eq('conversation_id', conversationId)
-        .order('created_at')
+        .order('created_at', ascending: true)
         .map((rows) => rows.map(ChatMessage.fromMap).toList());
   }
 
@@ -545,8 +559,8 @@ class Api {
         .from('service_media')
         .select('id, kind, path, title, duration_seconds, size_bytes, sort_order')
         .eq('service_id', serviceId)
-        .order('kind')
-        .order('sort_order');
+        .order('kind', ascending: true)
+        .order('sort_order', ascending: true);
     return rows.map(ServiceMedia.fromMap).toList();
   }
 
@@ -758,7 +772,7 @@ class Api {
         .from('support_messages')
         .select('id, author, author_name, body, created_at')
         .eq('ticket_id', ticketId)
-        .order('created_at');
+        .order('created_at', ascending: true);
     return rows.map(SupportMessage.fromMap).toList();
   }
 

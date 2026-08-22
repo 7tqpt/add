@@ -131,6 +131,19 @@ void main() {
       expect(find.textContaining('العربون ٣٠٪'), findsOneWidget);
     });
 
+    testWidgets('الأقدم أعلى والأحدث أسفل', (tester) async {
+      // حارسُ الجهة الأخرى: `api_order_test` يحرس ترتيبَ الاستعلام، وهذا
+      // يحرس ترتيبَ الرسم. فلو عُكس بـ`reverse: true` أو `.reversed` في
+      // الشاشة لعاد الخيط مقلوباً وإن كان الاستعلام صعودياً.
+      _phone(tester);
+      await tester.pumpWidget(_wrap(thread()));
+      await _settle(tester);
+
+      final oldest = tester.getCenter(find.textContaining('القاعة متاحة يوم')).dy;
+      final newest = tester.getCenter(find.textContaining('وتشمل التنسيق')).dy;
+      expect(oldest, lessThan(newest));
+    });
+
     testWidgets('وكلامي في جهةٍ وكلامه في الأخرى', (tester) async {
       // الجهة علامةٌ ثانية غير اللون: من لا يفرّق الألوان يعرف صاحب الرسالة
       // من موضعها.
