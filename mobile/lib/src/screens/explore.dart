@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 
-import '../core/format.dart';
 import '../core/theme.dart';
 import '../data/api.dart';
 import '../data/models.dart';
 import '../data/supabase.dart';
 import '../ui/kit.dart';
-import '../ui/media.dart';
+import '../ui/service_card.dart';
+import 'provider_public.dart';
 import 'service_detail.dart';
 
 class ExploreScreen extends StatefulWidget {
@@ -220,10 +220,25 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 padding: const EdgeInsets.fromLTRB(Space.lg, Space.lg, Space.lg, glassNavSpace),
                 itemCount: items.length,
                 separatorBuilder: (_, _) => const SizedBox(height: Space.md),
-                itemBuilder: (context, i) => _ServiceCard(
+                itemBuilder: (context, i) => ServiceListCard(
                   item: items[i],
                   isFavourite: _favourites.contains(items[i].id),
                   onToggleFavourite: () => _toggleFavourite(items[i].id),
+                  onOpen: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => ServiceDetailScreen(serviceId: items[i].id),
+                    ),
+                  ),
+                  // اسمُ المزوّد بابٌ إلى ملفّه: من رأى «كوشة ورد» قد يريد أن
+                  // يرى ما يعرضه صاحبها كلَّه قبل أن يقارن ثمناً بثمن.
+                  onOpenProvider: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => PublicProviderScreen(
+                        providerId: items[i].providerId,
+                        name: items[i].providerName,
+                      ),
+                    ),
+                  ),
                 ),
               );
             },
@@ -232,154 +247,4 @@ class _ExploreScreenState extends State<ExploreScreen> {
       ],
     );
   }
-}
-
-class _ServiceCard extends StatelessWidget {
-  const _ServiceCard({
-    required this.item,
-    required this.isFavourite,
-    required this.onToggleFavourite,
-  });
-  final ServiceItem item;
-  final bool isFavourite;
-  final VoidCallback onToggleFavourite;
-
-  @override
-  Widget build(BuildContext context) {
-    return AppCard(
-      onTap: () =>
-          Navigator.of(context)
-              .push(MaterialPageRoute(builder: (_) => ServiceDetailScreen(serviceId: item.id))),
-      children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // الغلاف إلى جانب العنوان لا فوقه: صفٌّ من عشرين بطاقةٍ بصورةٍ
-            // بعرض الشاشة في كلٍّ منها يصير صفحةَ صورٍ تُمرَّر طويلاً، والقصد
-            // مقارنةُ خدماتٍ لا تصفّحُ ألبوم.
-            if (item.coverPath != null) ...[
-              ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: SizedBox(
-                  width: 76,
-                  height: 76,
-                  child: MediaThumb(url: Api.mediaUrl(item.coverPath)),
-                ),
-              ),
-              const SizedBox(width: Space.md),
-            ],
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          item.title,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.ink,
-                          ),
-                        ),
-                      ),
-                      if (item.providerIsFeatured) ...[
-                        const SizedBox(width: Space.sm),
-                        const StatusBadge('مميّز', color: AppColors.warning),
-                      ],
-                      // القلب داخل البطاقة على InkWell البطاقة نفسها: يُعطى
-                      // مساحته الخاصة كي لا تفتح الضغطةُ عليه صفحةَ التفاصيل.
-                      IconButton(
-                        onPressed: onToggleFavourite,
-                        visualDensity: VisualDensity.compact,
-                        tooltip: isFavourite ? 'أزل من المفضّلة' : 'أضف للمفضّلة',
-                        icon: Icon(
-                          isFavourite ? Icons.favorite : Icons.favorite_border,
-                          size: 20,
-                          color: isFavourite ? AppColors.critical : AppColors.muted,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: Space.xs),
-                  Muted(
-                    '${item.providerName} · ${item.categoryName} · ${item.providerGovernorate}',
-                  ),
-                  // شارتان تقولان إن وراء البطاقة ما يُرى ويُسمع: بلا هذه
-                  // العلامة لا يعرف أحدٌ أن للخدمة مقطعاً حتى يفتحها — ومن لم
-                  // يفتحها لم يعرف.
-                  if (item.hasVideo || item.hasAudio) ...[
-                    const SizedBox(height: Space.sm),
-                    Row(
-                      children: [
-                        if (item.hasVideo) const _MediaChip(Icons.play_circle_outline, 'فيديو'),
-                        if (item.hasVideo && item.hasAudio) const SizedBox(width: Space.xs),
-                        if (item.hasAudio) const _MediaChip(Icons.graphic_eq, 'مقطع صوتي'),
-                      ],
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: Space.sm),
-        // النطاق السعري يطول: «850,000 ر.ي – 1,200,000 ر.ي» وحده يتجاوز عرض
-        // الشاشة الضيّقة، فبلا Expanded يفيض الصفّ ويختفي التقييم خلف الحافة.
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Expanded(
-              child: Text(
-                item.priceTo == null
-                    ? formatMoney(item.price)
-                    : '${formatMoney(item.price)} – ${formatMoney(item.priceTo!)}',
-                style: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.accent,
-                ),
-              ),
-            ),
-            const SizedBox(width: Space.sm),
-            if (item.providerRating > 0)
-              Rating(item.providerRating, count: item.providerReviewsCount)
-            else
-              const Muted('جديد'),
-          ],
-        ),
-        const SizedBox(height: Space.xs),
-        Muted('العربون ${item.depositPercent}٪ · ${item.unit}', size: 11),
-      ],
-    );
-  }
-}
-
-/// شارةٌ صغيرة: للخدمة فيديو أو صوت.
-class _MediaChip extends StatelessWidget {
-  const _MediaChip(this.icon, this.label);
-  final IconData icon;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-    decoration: BoxDecoration(
-      color: AppColors.accent.withValues(alpha: 0.08),
-      borderRadius: BorderRadius.circular(999),
-    ),
-    child: Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 13, color: AppColors.accent),
-        const SizedBox(width: 3),
-        Text(
-          label,
-          style: const TextStyle(fontSize: 10.5, color: AppColors.accent, fontWeight: FontWeight.w600),
-        ),
-      ],
-    ),
-  );
 }

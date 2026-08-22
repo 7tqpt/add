@@ -72,6 +72,7 @@ const minuteForms = (one: 'دقيقة', two: 'دقيقتين', few: 'دقائق'
 const guestForms = (one: 'ضيف واحد', two: 'ضيفان', few: 'ضيوف', many: 'ضيفاً');
 const bookingForms = (one: 'حجزٌ واحد', two: 'حجزان', few: 'حجوزات', many: 'حجزاً');
 const secondForms = (one: 'ثانية', two: 'ثانيتان', few: 'ثوانٍ', many: 'ثانية');
+const reviewForms = (one: 'تقييمٍ واحد', two: 'تقييمين', few: 'تقييمات', many: 'تقييماً');
 
 /// مدّة مقطع. والدقيقة تُسمّى دقيقةً لا «٦٠ ثانية».
 String formatSeconds(int seconds) {
