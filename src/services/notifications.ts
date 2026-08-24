@@ -1,6 +1,6 @@
 import { requireSupabase } from '@/lib/supabase'
 import type { Audience, NotificationStatus, Paged, PushNotification } from '@/lib/types'
-import { mockNotifications } from '@/data/mock'
+import { mockNotifications, mockUsers } from '@/data/mock'
 import { delay, isSupabaseConfigured } from './base'
 import { recordAudit } from './audit'
 
@@ -46,18 +46,90 @@ export async function listNotifications(
 }
 
 export async function createNotification(draft: NotificationDraft): Promise<PushNotification> {
-  const status: NotificationStatus = draft.scheduledAt ? 'scheduled' : 'sent'
-  const created = await insertNotification(draft, status)
+  // **الصفُّ يُكتب مسوّدةً ثم يُرسَل، لا يُكتب «مُرسلاً».**
+  //
+  // كان يُكتب بحالة `sent` وينتهي الأمر — ولا أحد يقرأ ذلك الجدول: لا التطبيق
+  // ولا دالّةُ الدفع. فالمسؤول يقرأ «مُرسل ✅» ولا يصل أحداً شيء. والإرسال
+  // الحقيقي في `api_admin_broadcast`: تتفرّق الحملة صفوفاً في صناديق جمهورها،
+  // فتوقظ كلَّ واحدةٍ منها طريقَ الدفع إلى الجوال.
+  const created = await insertNotification(draft, draft.scheduledAt ? 'scheduled' : 'draft')
+  const sent = draft.scheduledAt ? created : await sendNotification(created)
 
   await recordAudit({
     action: draft.scheduledAt ? 'notification.schedule' : 'notification.send',
     entity: 'notification',
-    entityId: created.id,
-    entityLabel: created.title,
-    details: { audience: draft.audience, scheduled_at: draft.scheduledAt },
+    entityId: sent.id,
+    entityLabel: sent.title,
+    details: {
+      audience: draft.audience,
+      scheduled_at: draft.scheduledAt,
+      recipients: sent.recipients,
+    },
   })
 
-  return created
+  return sent
+}
+
+/**
+ * يُرسل حملةً قائمة — للمجدولة التي حان وقتها ولم يُرسلها جدول القاعدة، ولمن
+ * أراد تقديمها.
+ *
+ * والعدد الراجع من القاعدة هو عدد الصناديق التي وصلتها فعلاً: لا يُقدَّر هنا
+ * ولا يُحسب من صفٍّ في الواجهة.
+ */
+export async function sendNotification(
+  notification: PushNotification,
+): Promise<PushNotification> {
+  if (!isSupabaseConfigured) {
+    const reached = demoAudienceSize(notification.audience)
+    const index = demoNotifications.findIndex((row) => row.id === notification.id)
+    const updated: PushNotification = {
+      ...notification,
+      status: 'sent',
+      sent_at: new Date().toISOString(),
+      recipients: reached,
+    }
+    if (index >= 0) demoNotifications[index] = updated
+    return delay(updated, 420)
+  }
+
+  const client = requireSupabase()
+  const { data, error } = await client.rpc('api_admin_broadcast', { p_id: notification.id })
+  if (error) throw error
+
+  const { data: row } = await client
+    .from('push_notifications')
+    .select('*')
+    .eq('id', notification.id)
+    .single()
+  return (row as PushNotification | null) ?? {
+    ...notification,
+    status: 'sent',
+    sent_at: new Date().toISOString(),
+    recipients: Number(data ?? 0),
+  }
+}
+
+/** جمهور الحملة في وضع العرض — تُحسب من المستخدمين الوهميين لا تُخترع. */
+function demoAudienceSize(audience: Audience): number {
+  const month = Date.now() - 30 * 24 * 60 * 60 * 1000
+  const live = mockUsers.filter((user) => user.status !== 'suspended')
+  const seen = (iso: string | null) => (iso ? new Date(iso).getTime() : 0)
+  switch (audience) {
+    case 'all':
+      return live.length
+    case 'ios':
+    case 'android':
+      return live.filter((user) => user.platform === audience).length
+    case 'active':
+      return live.filter((user) => seen(user.last_seen_at) >= month).length
+    case 'inactive':
+      return live.filter((user) => seen(user.last_seen_at) < month).length
+    // بيانات العرض لا تربط المزوّدين بحساباتهم، فلا سبيل إلى فرزٍ صادق هنا.
+    case 'providers':
+    case 'customers':
+      return live.length
+  }
 }
 
 async function insertNotification(

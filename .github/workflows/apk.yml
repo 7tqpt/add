@@ -61,6 +61,53 @@ jobs:
             echo "الحزمة تعمل على **البيانات التجريبية** لا قاعدتك. لربطها: Settings ← Secrets and variables ← Actions، وأضِف \`SUPABASE_URL\` و\`SUPABASE_ANON_KEY\`، ثم أعِد التشغيل." >> "$GITHUB_STEP_SUMMARY"
           fi
 
+      # ــــ الدفع إلى الجوال ــــــــــــــــــــــــــــــــــــــــــــــــــ
+      #
+      # `google-services.json` متروكٌ خارج المستودع: هو ملكُ مشروع Firebase
+      # الخاص بصاحب المنصّة. وما لم يُوضع هنا فالحزمةُ الخارجة من هذا السير
+      # **لا تصلها إشعاراتٌ وهي مغلقة أبداً** — مهما ضُبطت الأسرار في Supabase
+      # ومهما شُغّلت ملفات SQL. وهذا ما كان يُنسى: يُوضع الملف على حاسوب
+      # صاحبه فتعمل نسختُه المحلّية، ثم يُنزَّل الإصدارُ من GitHub فلا يصل شيء
+      # ولا خطأ يقول لماذا.
+      - name: تهيئة الدفع إلى الجوال
+        working-directory: mobile
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          set -euo pipefail
+          if [ -z "${GOOGLE_SERVICES_JSON:-}" ]; then
+            echo "PUSH_EXPECTED=0" >> "$GITHUB_ENV"
+            echo "### الدفع إلى الجوال: مطفأ ⚠️" >> "$GITHUB_STEP_SUMMARY"
+            echo "الإشعارات تعمل **داخل التطبيق** وحده. لتصل الجوالَ وهو مغلق: أضِف سرَّ \`GOOGLE_SERVICES_JSON\` في Settings ← Secrets and variables ← Actions، ثم أعِد التشغيل. الخطوات في \`supabase/functions/push/README.md\`." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          printf '%s' "$GOOGLE_SERVICES_JSON" > android/app/google-services.json
+
+          # يُفحص هنا لا عند Gradle: محتوىً مكسور يُسقط البناء بعد دقائق
+          # برسالةٍ لا تقول إن العلّة في السرّ.
+          jq -e . android/app/google-services.json > /dev/null || {
+            echo "::error::محتوى GOOGLE_SERVICES_JSON ليس JSON صالحاً — انسخ الملف كاملاً كما نزّلته من Firebase."
+            exit 1
+          }
+
+          # واسمُ الحزمة: إضافة Google Services ترفض ملفاً لمشروعٍ آخر، ورسالتُها
+          # (‏«No matching client found»‏) تُقرأ كعطبٍ في المشروع لا كخطأ في
+          # الملف. وهو أكثر ما يقع: يُضاف تطبيق أندرويد باسمٍ مخترَع.
+          # `any(…)` لا `.client[]? == $p`: الثانية تطبع سطراً لكل عميل، فيصير
+          # حكمُ `jq -e` على آخر سطرٍ وحده — فملفٌ فيه تطبيقان أوّلُهما تطبيقُنا
+          # يُرفض لأن الأخير ليس هو. والأولى تُخرج قيمةً واحدة.
+          want=ye.aras.aras
+          if ! jq -e --arg p "$want" \
+              'any(.client[]?; .client_info.android_client_info.package_name == $p)' \
+              android/app/google-services.json > /dev/null; then
+            echo "::error::هذا الملف ليس لتطبيقنا: لا عميل فيه باسم الحزمة $want. أضِف تطبيق أندرويد بهذا الاسم بالضبط في Firebase ونزّل الملف من جديد."
+            exit 1
+          fi
+
+          echo "PUSH_EXPECTED=1" >> "$GITHUB_ENV"
+          echo "الدفع مضبوط — الحزمة ستصلها إشعاراتٌ وهي مغلقة."
+
       # أثقل ما في البناء البارد ليس الشيفرة بل ما يُنزَّل: توزيعة Gradle
       # ومكتبات AGP و Kotlin و AndroidX. حفظها يختصر البناء التالي إلى دقائق.
       - name: ذاكرة Gradle المؤقتة
@@ -108,10 +155,29 @@ jobs:
           LABEL=$("$AAPT" dump badging "$APK" | sed -n "s/^application-label:'\(.*\)'/\1/p")
           [ "$LABEL" != "aras" ] || { echo "::error::اسم التطبيق ما زال اسم القالب."; exit 1; }
 
+          # وهل حملت الحزمةُ تهيئةَ Firebase فعلاً؟
+          #
+          # لا يكفي أن يُكتب الملف: إضافة Google Services تُطبَّق بشرطٍ في
+          # `build.gradle.kts`، فلو تغيّر مسارٌ أو شرط لخرجت حزمةٌ سليمةُ
+          # المظهر لا يصلها إشعارٌ أبداً — ولا سطرَ خطأ في أي سجلّ. والذي
+          # يفصل هو الحزمة نفسها: الإضافة تولّد مورد `google_app_id`، فوجودُه
+          # دليلٌ على أنها عملت، وغيابُه دليلٌ على أنها لم تعمل.
+          PUSH=off
+          if "$AAPT" dump resources "$APK" | grep -q 'google_app_id'; then PUSH=on; fi
+          if [ "${PUSH_EXPECTED:-0}" = "1" ] && [ "$PUSH" = "off" ]; then
+            echo "::error::السرّ مضبوطٌ ومع ذلك خرجت الحزمة بلا تهيئة Firebase — إضافة Google Services لم تُطبَّق."
+            exit 1
+          fi
+
           {
             echo "### الحزمة"
             echo "- الاسم تحت الأيقونة: **$LABEL**"
             echo "- إذن الإنترنت: موجود ✅"
+            if [ "$PUSH" = "on" ]; then
+              echo "- الدفع إلى الجوال: مضبوط ✅ (تصلها إشعاراتٌ وهي مغلقة)"
+            else
+              echo "- الدفع إلى الجوال: مطفأ ⚠️ (الإشعارات داخل التطبيق وحده)"
+            fi
             echo ""
             echo "| الحزمة | الحجم |"
             echo "|---|---|"
@@ -162,6 +228,16 @@ jobs:
             المستودع، فهذه الحزمة تعمل على **بيانات تجريبية** لا على قاعدتك.
             وملخّص تشغيل البناء يقول أيّهما.
           NOTES
+
+          # حالُ الدفع في الوصف لا في السجلّ: من ينزّل الحزمة ولا يصله إشعارٌ
+          # وهو مغلق يظنّ العطب في جواله، والصفحة التي نزّل منها هي أوّل ما
+          # يعود إليه.
+          if [ "${PUSH_EXPECTED:-0}" != "1" ]; then
+            cat >> notes.md <<'OFF'
+          - إشعارات الجوال **وهو مغلق** مطفأةٌ في هذه الحزمة (لا `GOOGLE_SERVICES_JSON`
+            في أسرار المستودع). والجرس داخل التطبيق يعمل كما هو.
+          OFF
+          fi
 
           # إعادة تشغيل بناءٍ فاشل تُبقي الرقم نفسه، فيصطدم الإنشاء بإصدارٍ
           # قائم. الحذف أوّلاً يجعل الخطوة تُعاد بلا أثر.
