@@ -68,19 +68,62 @@ class Session extends ChangeNotifier {
     }
   }
 
+  /// رمزُ الخطأ الذي منع القراءة — تُبنى عليه الرسالة المعروضة.
+  ///
+  /// لا يكفي النصّ: «الجدول غير موجود» و«الرمز صادرٌ في المستقبل» عطبان
+  /// متباعدان، وعلاجُ كلٍّ غيرُ الآخر. وكانت الشاشة تقول للاثنين «الغالب أن
+  /// الملفات لم تُطبَّق» — فيبحث صاحبُها في مكانٍ لا شيء فيه.
+  String? identityErrorCode;
+
+  /// فرقُ الساعة المقيس حين يكون هو السبب — يُعرض رقماً لا وصفاً.
+  Duration? clockDrift;
+
+  Future<void> _readIdentity() async {
+    appUserId = await Api.myAppUserId();
+    providerId = appUserId == null ? null : await Api.myProviderId(appUserId!);
+  }
+
+  /// فرقُ ساعةٍ بين مُصدِر الرمز وقارئه: يُطلب رمزٌ جديد ويُعاد السؤال.
+  ///
+  /// **ولماذا إعادة المحاولة لا رسالة عطب:** الفرق ثوانٍ في العادة، فرمزٌ
+  /// يُصدَر بعد ثانيتين يمرّ. ومحاولتان تكفيان — وما زاد عليهما انتظارٌ أمام
+  /// شاشةٍ جامدة لعطبٍ لن يزول.
+  Future<bool> _healClockSkew() async {
+    for (var i = 0; i < 2; i++) {
+      await Future.delayed(const Duration(seconds: 2));
+      try {
+        await db.auth.refreshSession();
+        await _readIdentity();
+        return true;
+      } catch (_) {
+        // ما زال الفرق قائماً — تُعاد المحاولة أو يُقال العطب.
+      }
+    }
+    return false;
+  }
+
   Future<void> refreshIdentity() async {
     loading = true;
     identityError = null;
+    identityErrorCode = null;
+    clockDrift = null;
     notifyListeners();
     try {
-      appUserId = await Api.myAppUserId();
-      providerId = appUserId == null ? null : await Api.myProviderId(appUserId!);
+      await _readIdentity();
     } catch (e) {
+      if (errorCodeOf(e) == jwtIssuedAtFuture && await _healClockSkew()) {
+        loading = false;
+        notifyListeners();
+        return;
+      }
       // لا يُبتلع. `maybeSingle` تُعيد null حين لا صفّ ولا ترمي، فكلّ ما يصل
       // هنا عطبٌ حقيقي: جدولٌ غير موجود، أو مخطّطٌ لم يُطبَّق على المشروع.
       // وابتلاعه كان يجعل ذلك يبدو «مستخدماً بلا ملف»، فيُساق إلى شاشة
       // الإكمال ليصطدم بالجدار نفسه من حيث لا يعرف سببه.
       identityError = messageOf(e);
+      identityErrorCode = errorCodeOf(e);
+      // يُقاس عند هذا العطب وحده: نداءٌ زائد في كل عطبٍ آخر بلا فائدة.
+      if (identityErrorCode == jwtIssuedAtFuture) clockDrift = await clockSkew();
       appUserId = null;
       providerId = null;
     }
