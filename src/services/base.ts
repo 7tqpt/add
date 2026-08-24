@@ -29,6 +29,26 @@ export function periodChange(values: number[], days: number): number {
 
 export const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0)
 
+/**
+ * نصُّ الخطأ كما جاء من القاعدة، لا رسالةٌ عامّة مكانه.
+ *
+ * **ولماذا هذا موجود:** `PostgrestError` كائنٌ عاديّ لا يرث `Error`، فكل شاشةٍ
+ * تكتب `cause instanceof Error ? cause.message : 'تعذّر…'` ترمي النصَّ الحقيقي
+ * وتعرض جملةً لا تدلّ على شيء. وقد وقع: «تعذّر إرسال الإشعار» بينما القاعدة
+ * كانت تقول بالحرف أيَّ صلاحيةٍ تنقص — فبحثنا نصف ساعة عمّا كان مكتوباً.
+ *
+ * وما ترميه القاعدة عربيٌّ مكتوبٌ للمستخدم أصلاً (`raise exception 'لا صلاحية…'`)،
+ * فعرضُه أنفعُ من إخفائه.
+ */
+export function errorText(cause: unknown, fallback: string): string {
+  if (typeof cause === 'string' && cause.trim()) return cause
+  if (cause && typeof cause === 'object') {
+    const message = (cause as { message?: unknown }).message
+    if (typeof message === 'string' && message.trim()) return message
+  }
+  return fallback
+}
+
 /** The ISO day `days` back from today, used to bound Supabase queries. */
 export function isoDaysAgo(days: number): string {
   const d = new Date()

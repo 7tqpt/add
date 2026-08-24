@@ -52,6 +52,7 @@ import {
   setProviderStatus,
 } from '@/services/directory'
 import { REVIEW_STATUS_LABEL, listProviderReviews } from '@/services/trust'
+import { errorText } from '@/services/base'
 
 const STATUS_TONE: Record<ProviderStatus, Tone> = {
   verified: 'good',
@@ -105,7 +106,7 @@ export function ProviderDetailPage() {
       setToast(`تم تحديث الحالة إلى «${PROVIDER_STATUS_LABEL[status]}».`)
       provider.reload()
     } catch (cause) {
-      setToast(cause instanceof Error ? cause.message : 'تعذّر تحديث الحالة.')
+      setToast(errorText(cause, 'تعذّر تحديث الحالة.'))
     } finally {
       setBusy(false)
       setPending(null)
@@ -119,7 +120,7 @@ export function ProviderDetailPage() {
       setToast('حُذف الوسيط من الخدمة ومن التخزين.')
       portfolio.reload()
     } catch (cause) {
-      setToast(cause instanceof Error ? cause.message : 'تعذّر حذف الوسيط.')
+      setToast(errorText(cause, 'تعذّر حذف الوسيط.'))
     } finally {
       setBusy(false)
       setPendingMedia(null)
@@ -142,7 +143,7 @@ export function ProviderDetailPage() {
       setToast(status === 'approved' ? 'تم قبول المستند.' : 'تم رفض المستند.')
       portfolio.reload()
     } catch (cause) {
-      setToast(cause instanceof Error ? cause.message : 'تعذّر تحديث المستند.')
+      setToast(errorText(cause, 'تعذّر تحديث المستند.'))
     } finally {
       setBusy(false)
     }
@@ -615,7 +616,7 @@ function CommissionCard({
       onDone('تم تحديث نسبة العمولة.')
       onSaved()
     } catch (cause) {
-      onDone(cause instanceof Error ? cause.message : 'تعذّر حفظ العمولة.')
+      onDone(errorText(cause, 'تعذّر حفظ العمولة.'))
     } finally {
       setBusy(false)
     }

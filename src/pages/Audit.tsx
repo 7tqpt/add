@@ -11,7 +11,7 @@ import { useAuth } from '@/context/AuthContext'
 import { useAsync } from '@/hooks/useAsync'
 import { useDebounced } from '@/hooks/useDebounced'
 import { cn } from '@/lib/cn'
-import { formatDateTime, formatMoney } from '@/lib/format'
+import { formatDateTime, formatMoney, formatNumber } from '@/lib/format'
 import { isSupabaseConfigured } from '@/lib/supabase'
 import {
   AUDIT_ACTION_LABEL,
@@ -20,6 +20,7 @@ import {
   listAudit,
   type AuditQuery,
 } from '@/services/audit'
+import { errorText } from '@/services/base'
 
 const PAGE_SIZE = 15
 const EXPORT_LIMIT = 5000
@@ -40,6 +41,11 @@ function describe(details: Record<string, unknown>): string {
   }
   if (typeof details.audience === 'string') {
     parts.push(`الفئة: ${details.audience}`)
+  }
+  // عددُ من وصلتهم الحملة: «أُرسل إشعار» بلا عددٍ لا تُفرَّق عن «أُرسل إلى صفر»،
+  // وهو الفرق بين حملةٍ عملت وحملةٍ سقطت في صمت.
+  if (typeof details.recipients === 'number') {
+    parts.push(`المستلمون: ${formatNumber(details.recipients)}`)
   }
   if (typeof details.amount === 'number') {
     parts.push(`المبلغ: ${formatMoney(details.amount)}`)
@@ -130,7 +136,7 @@ export function AuditPage() {
     } catch (cause) {
       // يبقى الحوار مفتوحاً حاملاً السبب: إغلاقه مع رسالةٍ في `Toast` يدفنها
       // تحت ستار النافذة، فيبدو الزر معطّلاً بلا تفسير.
-      setPurgeError(cause instanceof Error ? cause.message : 'تعذّر تفريغ السجل.')
+      setPurgeError(errorText(cause, 'تعذّر تفريغ السجل.'))
     } finally {
       setPurging(false)
     }

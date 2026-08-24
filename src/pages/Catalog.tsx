@@ -19,6 +19,7 @@ import {
   setCategoryActive,
   setServiceActive,
 } from '@/services/catalog'
+import { errorText } from '@/services/base'
 
 const PAGE_SIZE = 10
 
@@ -88,7 +89,7 @@ function CategoriesTab({ onToast }: { onToast: (message: string) => void }) {
       onToast(next ? `فُعّل قسم «${name}».` : `عُطّل قسم «${name}».`)
       reload()
     } catch (cause) {
-      onToast(cause instanceof Error ? cause.message : 'تعذّر تنفيذ الإجراء.')
+      onToast(errorText(cause, 'تعذّر تنفيذ الإجراء.'))
     } finally {
       setBusyId(null)
     }
@@ -188,7 +189,7 @@ function ServicesTab({ onToast }: { onToast: (message: string) => void }) {
       onToast(next ? 'عُرضت الخدمة في التطبيق.' : 'أُخفيت الخدمة عن التطبيق.')
       reload()
     } catch (cause) {
-      onToast(cause instanceof Error ? cause.message : 'تعذّر تنفيذ الإجراء.')
+      onToast(errorText(cause, 'تعذّر تنفيذ الإجراء.'))
     } finally {
       setBusyId(null)
     }

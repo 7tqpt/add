@@ -30,6 +30,7 @@ import {
   setTicketStatus,
 } from '@/services/support'
 import { TICKET_PRIORITY_TONE, TICKET_STATUS_TONE } from './Support'
+import { errorText } from '@/services/base'
 
 const AUTHOR_LABEL: Record<'customer' | 'provider' | 'admin', string> = {
   customer: 'العميل',
@@ -75,7 +76,7 @@ export function SupportTicketPage() {
       messages.reload()
       ticket.reload()
     } catch (cause) {
-      setToast(cause instanceof Error ? cause.message : 'تعذّر إرسال الرد.')
+      setToast(errorText(cause, 'تعذّر إرسال الرد.'))
     } finally {
       setSending(false)
     }
@@ -90,7 +91,7 @@ export function SupportTicketPage() {
       setToast(`الحالة الآن «${TICKET_STATUS_LABEL[status]}».`)
       ticket.reload()
     } catch (cause) {
-      setToast(cause instanceof Error ? cause.message : 'تعذّر تحديث الحالة.')
+      setToast(errorText(cause, 'تعذّر تحديث الحالة.'))
     } finally {
       setBusy(false)
     }
@@ -105,7 +106,7 @@ export function SupportTicketPage() {
       setToast(email ? `أُسندت إلى ${email}.` : 'رُفع الإسناد.')
       ticket.reload()
     } catch (cause) {
-      setToast(cause instanceof Error ? cause.message : 'تعذّر تغيير الإسناد.')
+      setToast(errorText(cause, 'تعذّر تغيير الإسناد.'))
     } finally {
       setBusy(false)
     }
@@ -120,7 +121,7 @@ export function SupportTicketPage() {
       setToast(`الأولوية الآن «${TICKET_PRIORITY_LABEL[priority]}».`)
       ticket.reload()
     } catch (cause) {
-      setToast(cause instanceof Error ? cause.message : 'تعذّر تحديث الأولوية.')
+      setToast(errorText(cause, 'تعذّر تحديث الأولوية.'))
     } finally {
       setBusy(false)
     }

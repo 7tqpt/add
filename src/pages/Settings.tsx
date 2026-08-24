@@ -32,6 +32,7 @@ import {
   transferOwnership,
 } from '@/services/admins'
 import { getSettings, hasPaymentFields, saveSettings } from '@/services/settings'
+import { errorText } from '@/services/base'
 
 export function SettingsPage() {
   const { user, role, can } = useAuth()
@@ -72,7 +73,7 @@ export function SettingsPage() {
       setToast('تم حفظ الإعدادات.')
       reload()
     } catch (cause) {
-      setToast(cause instanceof Error ? cause.message : 'تعذّر حفظ الإعدادات.')
+      setToast(errorText(cause, 'تعذّر حفظ الإعدادات.'))
     } finally {
       setSaving(false)
     }
@@ -403,7 +404,7 @@ function AdminsCard({ onToast }: { onToast: (message: string) => void }) {
       onToast(`تم تغيير دور ${target.email} إلى ${ROLE_LABEL[next]}.`)
       reload()
     } catch (cause) {
-      onToast(cause instanceof Error ? cause.message : 'تعذّر تغيير الدور.')
+      onToast(errorText(cause, 'تعذّر تغيير الدور.'))
     } finally {
       setBusyId(null)
     }
@@ -419,7 +420,7 @@ function AdminsCard({ onToast }: { onToast: (message: string) => void }) {
       setNewEmail('')
       invitations.reload()
     } catch (cause) {
-      onToast(cause instanceof Error ? cause.message : 'تعذّر إنشاء الدعوة.')
+      onToast(errorText(cause, 'تعذّر إنشاء الدعوة.'))
     } finally {
       setAdding(false)
     }
@@ -441,7 +442,7 @@ function AdminsCard({ onToast }: { onToast: (message: string) => void }) {
       onToast('أُلغيت الدعوة.')
       invitations.reload()
     } catch (cause) {
-      onToast(cause instanceof Error ? cause.message : 'تعذّر إلغاء الدعوة.')
+      onToast(errorText(cause, 'تعذّر إلغاء الدعوة.'))
     }
   }
 
@@ -464,7 +465,7 @@ function AdminsCard({ onToast }: { onToast: (message: string) => void }) {
       // تبقى معروضةً حتى تُحدّث الصفحة، فتفشل بين يديك.
       refreshRole()
     } catch (cause) {
-      setHandoverError(cause instanceof Error ? cause.message : 'تعذّر نقل الملكية.')
+      setHandoverError(errorText(cause, 'تعذّر نقل الملكية.'))
     } finally {
       setHandingOver(false)
     }
@@ -487,7 +488,7 @@ function AdminsCard({ onToast }: { onToast: (message: string) => void }) {
       reload()
       invitations.reload()
     } catch (cause) {
-      setEraseError(cause instanceof Error ? cause.message : 'تعذّر حذف الحساب.')
+      setEraseError(errorText(cause, 'تعذّر حذف الحساب.'))
     } finally {
       setErasingBusy(false)
     }
@@ -501,7 +502,7 @@ function AdminsCard({ onToast }: { onToast: (message: string) => void }) {
       onToast(`سُحبت صلاحية ${removing.email}.`)
       reload()
     } catch (cause) {
-      onToast(cause instanceof Error ? cause.message : 'تعذّر سحب الصلاحية.')
+      onToast(errorText(cause, 'تعذّر سحب الصلاحية.'))
     } finally {
       setBusyId(null)
       setRemoving(null)

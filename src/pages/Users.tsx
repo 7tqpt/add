@@ -21,6 +21,7 @@ import {
   listUsers,
   updateUserStatus,
 } from '@/services/directory'
+import { errorText } from '@/services/base'
 
 const PAGE_SIZE = 10
 /** Upper bound on a single CSV export, so a huge table cannot hang the browser. */
@@ -75,7 +76,7 @@ export function UsersPage() {
       setToast(next === 'suspended' ? 'تم إيقاف المستخدم.' : 'تم تفعيل المستخدم.')
       reload()
     } catch (cause) {
-      setToast(cause instanceof Error ? cause.message : 'تعذّر تحديث الحالة.')
+      setToast(errorText(cause, 'تعذّر تحديث الحالة.'))
     } finally {
       setBusy(false)
       setPending(null)

@@ -19,6 +19,7 @@ import {
   listNotifications,
   sendNotification,
 } from '@/services/notifications'
+import { errorText } from '@/services/base'
 
 const STATUS_TONE: Record<NotificationStatus, Tone> = {
   sent: 'good',
@@ -57,7 +58,7 @@ export function NotificationsPage() {
       setToast(`أُرسل إلى ${formatNumber(sent.recipients)} مستخدماً.`)
       reload()
     } catch (cause) {
-      setToast(cause instanceof Error ? cause.message : 'تعذّر الإرسال.')
+      setToast(errorText(cause, 'تعذّر الإرسال.'))
     } finally {
       setSending(null)
     }
@@ -106,7 +107,7 @@ export function NotificationsPage() {
       if (page === 0) reload()
       else setPage(0)
     } catch (cause) {
-      setFormError(cause instanceof Error ? cause.message : 'تعذّر إرسال الإشعار.')
+      setFormError(errorText(cause, 'تعذّر إرسال الإشعار.'))
     } finally {
       setSubmitting(false)
     }

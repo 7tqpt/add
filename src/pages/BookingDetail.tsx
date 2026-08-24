@@ -23,6 +23,7 @@ import {
 import { PAYMENT_KIND_LABEL, PAYMENT_METHOD_LABEL, PAYMENT_STATUS_LABEL } from '@/services/finance'
 import { describeRule } from '@/services/catalog'
 import { BOOKING_STATUS_TONE } from './Bookings'
+import { errorText } from '@/services/base'
 
 const PAYMENT_TONE: Record<PaymentStatus, Tone> = {
   paid: 'good',
@@ -99,7 +100,7 @@ export function BookingDetailPage() {
       booking.reload()
       payments.reload()
     } catch (cause) {
-      setToast(cause instanceof Error ? cause.message : 'تعذّر تنفيذ الإجراء.')
+      setToast(errorText(cause, 'تعذّر تنفيذ الإجراء.'))
     } finally {
       setBusy(false)
       setPending(null)

@@ -9,6 +9,7 @@ import { cn } from '@/lib/cn'
 import { PLATFORM_LABEL, formatDate } from '@/lib/format'
 import type { AppVersion } from '@/lib/types'
 import { listVersions, setForceUpdate, setRollout } from '@/services/versions'
+import { errorText } from '@/services/base'
 
 export function VersionsPage() {
   const load = useCallback(() => listVersions(), [])
@@ -72,7 +73,7 @@ function VersionCard({
       onDone(message)
       onSaved()
     } catch (cause) {
-      onDone(cause instanceof Error ? cause.message : 'تعذّر حفظ التغيير.')
+      onDone(errorText(cause, 'تعذّر حفظ التغيير.'))
     } finally {
       setBusy(false)
     }

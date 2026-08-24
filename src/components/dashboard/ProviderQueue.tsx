@@ -13,6 +13,7 @@ import { cn } from '@/lib/cn'
 import { formatDate } from '@/lib/format'
 import type { ProviderStatus, ServiceProvider } from '@/lib/types'
 import { PROVIDER_STATUS_LABEL, listProviders, setProviderStatus } from '@/services/directory'
+import { errorText } from '@/services/base'
 
 type Tab = 'pending' | 'verified' | 'all'
 
@@ -61,7 +62,7 @@ export function ProviderQueue() {
       await setProviderStatus(pending.row, pending.next, reason.trim())
       reload()
     } catch (cause) {
-      setToast(cause instanceof Error ? cause.message : 'تعذّر تنفيذ الإجراء.')
+      setToast(errorText(cause, 'تعذّر تنفيذ الإجراء.'))
     } finally {
       setBusy(false)
       setPending(null)

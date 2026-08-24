@@ -34,6 +34,7 @@ import {
   confirmPayment,
   rejectPayment,
 } from '@/services/finance'
+import { errorText } from '@/services/base'
 
 const PAGE_SIZE = 12
 const EXPORT_LIMIT = 5000
@@ -110,7 +111,7 @@ export function PaymentsPage() {
       rows.reload()
       totals.reload()
     } catch (cause) {
-      setToast(cause instanceof Error ? cause.message : 'تعذّر تنفيذ العملية.')
+      setToast(errorText(cause, 'تعذّر تنفيذ العملية.'))
     } finally {
       setBusy(false)
       setPending(null)
