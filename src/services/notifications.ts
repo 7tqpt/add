@@ -176,6 +176,46 @@ async function insertNotification(
   return data as PushNotification
 }
 
+/**
+ * يُفرّغ سجل الحملات في اللوحة — ولا يمسّ صناديق المستخدمين.
+ *
+ * **والفرق جوهريّ:** الحملة تتفرّق صفوفاً في صناديق الناس ساعةَ الإرسال، وتلك
+ * صارت ملكَهم — تُقرأ في جرس التطبيق وقد بُني عليها. فهذا تنظيفُ دفترٍ عندنا
+ * لا تعديلٌ في ماضي غيرنا. والقاعدة هي التي تتحقّق من الصلاحية لا هذه الدالّة.
+ *
+ * يُعيد عدد ما أُزيل.
+ */
+export async function clearNotificationLog(): Promise<number> {
+  if (!isSupabaseConfigured) {
+    const removed = demoNotifications.length
+    demoNotifications.length = 0
+    await delay(null, 420)
+    await recordAudit({
+      action: 'notification.purge',
+      entity: 'notification',
+      entityId: '',
+      entityLabel: 'سجل الإشعارات',
+      details: { removed },
+    })
+    return removed
+  }
+
+  const { data, error } = await requireSupabase().rpc('api_clear_push_log')
+  if (error) {
+    // الدالّة أحدثُ من بعض القواعد: رسالةٌ تقول أيَّ ملفٍ يُشغَّل أنفعُ من رمز
+    // خطأٍ لا يدلّ على شيء.
+    if (error.code === 'PGRST202') {
+      throw new Error(
+        'الدالة api_clear_push_log غير موجودة في قاعدتك — شغّل ' +
+          'supabase/broadcast.sql في محرّر SQL ثم أعد تحميل الصفحة.',
+      )
+    }
+    throw error
+  }
+  // السجلّ في القاعدة هو المصدر، والأثر يُكتب هناك — فلا `recordAudit` هنا.
+  return (data as number) ?? 0
+}
+
 export const AUDIENCE_LABEL: Record<Audience, string> = {
   all: 'كل المستخدمين',
   customers: 'العملاء',

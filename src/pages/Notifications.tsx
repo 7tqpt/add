@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
-import { Send } from 'lucide-react'
+import { Send, Trash2 } from 'lucide-react'
 import { Badge, type Tone } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Card, CardBody, CardHeader } from '@/components/ui/Card'
 import { ExportButton } from '@/components/ui/ExportButton'
 import { EmptyState, ErrorState, LoadingBlock, Spinner, Toast } from '@/components/ui/Feedback'
 import { Field, Input, Select, Textarea, Toggle } from '@/components/ui/Field'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { Pagination } from '@/components/ui/Pagination'
 import { useAuth } from '@/context/AuthContext'
 import { useAsync } from '@/hooks/useAsync'
@@ -15,6 +16,7 @@ import type { Audience, NotificationStatus, PushNotification } from '@/lib/types
 import {
   AUDIENCE_LABEL,
   NOTIFICATION_STATUS_LABEL,
+  clearNotificationLog,
   createNotification,
   listNotifications,
   sendNotification,
@@ -50,6 +52,25 @@ export function NotificationsPage() {
   const [formError, setFormError] = useState<string | null>(null)
   const [toast, setToast] = useState<string | null>(null)
   const [sending, setSending] = useState<string | null>(null)
+  const [purging, setPurging] = useState(false)
+  const [purgeBusy, setPurgeBusy] = useState(false)
+  const [purgeError, setPurgeError] = useState<string | null>(null)
+
+  async function confirmPurge() {
+    setPurgeBusy(true)
+    setPurgeError(null)
+    try {
+      const removed = await clearNotificationLog()
+      setPurging(false)
+      setToast(`أُزيل ${formatNumber(removed)} من السجل.`)
+      if (page === 0) reload()
+      else setPage(0)
+    } catch (cause) {
+      setPurgeError(errorText(cause, 'تعذّر التفريغ.'))
+    } finally {
+      setPurgeBusy(false)
+    }
+  }
 
   async function sendNow(notification: PushNotification) {
     setSending(notification.id)
@@ -226,12 +247,26 @@ export function NotificationsPage() {
             title="سجل الإشعارات"
             subtitle="آخر الإشعارات المرسلة والمجدولة"
             actions={
-              <ExportButton
-                filenamePrefix="تقرير-الإشعارات"
-                build={buildExport}
-                disabled={!data || data.total === 0}
-                onError={setToast}
-              />
+              <div className="flex items-center gap-1">
+                <ExportButton
+                  filenamePrefix="تقرير-الإشعارات"
+                  build={buildExport}
+                  disabled={!data || data.total === 0}
+                  onError={setToast}
+                />
+                {canWrite ? (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    disabled={!data || data.total === 0}
+                    onClick={() => setPurging(true)}
+                    className="text-[var(--critical)]"
+                  >
+                    <Trash2 size={13} aria-hidden />
+                    تفريغ السجل
+                  </Button>
+                ) : null}
+              </div>
             }
           />
 
@@ -297,6 +332,22 @@ export function NotificationsPage() {
           ) : null}
         </Card>
       </div>
+
+      <ConfirmDialog
+        open={purging}
+        title="تفريغ سجل الإشعارات؟"
+        message={
+          'يُمحى سجل الحملات في اللوحة نهائياً. ' +
+          'وما وصل أجهزة المستخدمين يبقى عندهم كما هو — هذا تنظيف دفترٍ عندك ' +
+          'لا تعديلٌ في ما قرأه غيرك. ويُسجَّل التفريغ في سجل العمليات باسمك.'
+        }
+        confirmLabel="نعم، فرّغ السجل"
+        tone="danger"
+        busy={purgeBusy}
+        error={purgeError}
+        onConfirm={confirmPurge}
+        onCancel={() => setPurging(false)}
+      />
 
       {toast ? <Toast message={toast} /> : null}
     </div>

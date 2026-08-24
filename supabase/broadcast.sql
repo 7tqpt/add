@@ -142,6 +142,47 @@ grant execute on function public.api_admin_broadcast(uuid) to authenticated;
 grant execute on function public.broadcast_audience(text) to authenticated;
 
 -- ----------------------------------------------------------------------------
+-- تفريغ سجل الحملات
+--
+--  **وما لا يمسّه:** صناديقُ الناس. الحملة تتفرّق صفوفاً في `notifications`
+--  ساعةَ الإرسال، وتلك صارت ملكَ أصحابها — تُقرأ في جرس التطبيق وقد بُني
+--  عليها. فمحوُ سطرٍ من سجلّي لا يمحو إشعاراً من جوال أحد، وهذا هو الصواب:
+--  التفريغ تنظيفُ دفترٍ عندي لا تعديلٌ في ماضي غيري.
+--
+--  و`truncate` لا `delete`: مشاريع Supabase تحمّل `pg-safeupdate` على أدوار
+--  الـAPI، فترفض كل `DELETE` بلا `WHERE` برمز 21000. والحمايةُ هنا قائمةٌ في
+--  فحص الصلاحية قبله، لا في شكل الجملة.
+-- ----------------------------------------------------------------------------
+create or replace function public.api_clear_push_log()
+returns integer
+language plpgsql security definer set search_path = public as $$
+declare
+  removed integer;
+  mail text := public.auth_email();
+begin
+  if not public.can_write_area('ops') then
+    raise exception 'تفريغ سجل الإشعارات لمن يملك الكتابة في التشغيل';
+  end if;
+
+  select count(*) into removed from public.push_notifications;
+  truncate table public.push_notifications;
+
+  -- ويُخلّف أثره في سجل العمليات: سجلٌّ يُفرَّغ بلا أن يُعرف من فرّغه يفتح
+  -- باباً لمحو ما لا يُراد أن يُرى.
+  insert into public.audit_log (actor_email, action, entity, entity_label, details)
+  values (mail, 'notification.purge', 'push_notifications', 'سجل الإشعارات',
+          jsonb_build_object('removed', removed));
+
+  return removed;
+end $$;
+
+comment on function public.api_clear_push_log() is
+  'يُفرّغ سجل الحملات في اللوحة. لا يمسّ صناديق المستخدمين، ويُخلّف أثره في سجل العمليات.';
+
+revoke all on function public.api_clear_push_log() from public;
+grant execute on function public.api_clear_push_log() to authenticated;
+
+-- ----------------------------------------------------------------------------
 -- الجدول الدوريّ — إن أمكن
 --
 --  `pg_cron` موجودٌ في Supabase ويُفعَّل بأمر، ولا وجود له في قاعدةٍ محلّية.
@@ -184,6 +225,12 @@ select 'دالّة المجدولة',
        case when exists (
          select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
           where n.nspname = 'public' and p.proname = 'send_due_broadcasts')
+       then '✅' else '❌' end
+union all
+select 'دالّة التفريغ',
+       case when exists (
+         select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+          where n.nspname = 'public' and p.proname = 'api_clear_push_log')
        then '✅' else '❌' end
 union all
 select 'الجدول الدوريّ',

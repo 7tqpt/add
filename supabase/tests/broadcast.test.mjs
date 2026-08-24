@@ -196,6 +196,37 @@ ok('والتي لم يَحِن وقتها بقيت مجدولة',
 ok('ودورةٌ ثانيةٌ لا تُرسل شيئاً',
    Number((await one(`select public.send_due_broadcasts() as ع`)).ع) === 0)
 
+// ── ٦. التفريغ: يمحو الدفتر ولا يمسّ صناديق الناس ───────────────────────────
+const inboxBefore = Number((await one(`select count(*) as ع from public.notifications`)).ع)
+ok('وفي الصناديق صفوفٌ قبل التفريغ — وإلّا لم يقس الاختبار شيئاً', inboxBefore > 0)
+
+// العميل لا يفرّغ سجلّ المنصّة.
+await db.exec(`select set_config('test.uid', '${cuid}', false)`)
+await db.exec(`set role authenticated`)
+raised = null
+try {
+  await db.query(`select public.api_clear_push_log()`)
+} catch (e) { raised = e.message }
+ok('والعميل لا يفرّغ سجل الإشعارات', /يملك الكتابة/.test(raised ?? ''))
+await db.exec(`reset role`)
+
+const campaignsBefore = Number(
+  (await one(`select count(*) as ع from public.push_notifications`)).ع)
+await db.exec(`select set_config('test.uid', '${auid}', false)`)
+await db.exec(`set role authenticated`)
+const purged = Number((await one(`select public.api_clear_push_log() as ع`)).ع)
+await db.exec(`reset role`)
+
+ok('والعدد الراجع = ما كان في السجل', purged === campaignsBefore && purged > 0)
+ok('والسجل فرغ',
+   Number((await one(`select count(*) as ع from public.push_notifications`)).ع) === 0)
+// **وهذا أهمّ تأكيدٍ هنا:** إشعارٌ وصل جوال أحدهم لا يُمحى بتنظيف دفترٍ عندنا.
+ok('وصناديق المستخدمين لم تُمسّ',
+   Number((await one(`select count(*) as ع from public.notifications`)).ع) === inboxBefore)
+ok('والتفريغ خلّف أثره في سجل العمليات',
+   Number((await one(`select count(*) as ع from public.audit_log
+                       where action = 'notification.purge'`)).ع) === 1)
+
 await db.close()
 console.log(fail === 0 ? '\nكل اختبارات broadcast.sql نجحت.' : `\n${fail} فشل.`)
 process.exit(fail === 0 ? 0 : 1)
