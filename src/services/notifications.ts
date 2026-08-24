@@ -144,9 +144,9 @@ async function insertNotification(
       audience: draft.audience,
       status,
       scheduled_at: draft.scheduledAt,
-      sent_at: draft.scheduledAt ? null : new Date().toISOString(),
-      // Delivery counts come from the push provider; demo mode leaves them at
-      // zero rather than inventing a reach figure.
+      // لا ختم إرسالٍ عند الإنشاء — الختم أثرُ فعلٍ وقع، لا نيّةٍ عُقدت.
+      sent_at: null,
+      // العدد يأتي من القاعدة عند الإرسال، ولا يُخترع هنا.
       recipients: 0,
       opened: 0,
     }
@@ -162,7 +162,13 @@ async function insertNotification(
       audience: draft.audience,
       status,
       scheduled_at: draft.scheduledAt,
-      sent_at: draft.scheduledAt ? null : new Date().toISOString(),
+      // **بقيّةُ الشيفرة القديمة، وكانت تُبطل الإرسال كلَّه.**
+      //
+      // حين صار الصفُّ يُكتب «مسوّدة» ثم يُرسَل بالدالّة، بقي هذا السطر يختم
+      // `sent_at` وقت الإنشاء. فتُولد الحملة موسومةً بأنها أُرسلت، ثم يردّها
+      // حارسُ التكرار في `api_admin_broadcast` بـ«أُرسلت هذه الحملة من قبل».
+      // والختم أثرُ فعلٍ وقع لا نيّةٍ عُقدت، فمن يضعه قبل الفعل يكذب على نفسه.
+      sent_at: null,
     })
     .select()
     .single()
