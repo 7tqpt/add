@@ -43,6 +43,11 @@ dependencies:
   file_picker: ^12.0.0
   firebase_core: ^4.13.0
   firebase_messaging: ^16.5.0
+  # لقياس فرق الساعة بين الجهاز والخادم من ترويسة `Date` — وهو ما يحوّل
+  # «فرقٌ في الساعة» من تخمينٍ إلى رقمٍ يُقال لصاحب الجهاز.
+  http: ^1.6.0
+  # لقراءة ترويسة `Date` بصيغتها المعيارية.
+  http_parser: ^4.1.2
 dev_dependencies:
   flutter_test:
     sdk: flutter
