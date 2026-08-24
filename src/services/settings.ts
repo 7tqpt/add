@@ -13,10 +13,36 @@ const demoSettings: AppSettings = { ...mockSettings }
  */
 let lastLoaded: AppSettings | null = null
 
+/**
+ * أعمدة أرقام التحويل — أحدثُ من اللوحة نفسها.
+ *
+ * **ولماذا تُعدّ:** القاعدة والواجهة يُحدَّثان بيدين في وقتين. فلوحةٌ ترسل
+ * `pay_jawali` إلى قاعدةٍ لم يُطبَّق عليها `payments_app.sql` لا يفشل فيها
+ * حقلُ الدفع وحده — يفشل الحفظ كلّه بـ 42703، فلا يُحفظ وضعُ الصيانة ولا
+ * العمولة. فتُقرأ الأعمدة الموجودة فعلاً، ويُبنى عليها الإرسال.
+ */
+const PAY_FIELDS = ['pay_jawali', 'pay_kuraimi', 'pay_bank', 'pay_note'] as const
+
+let payFieldsPresent = true
+
+/** هل تحمل القاعدة أعمدة أرقام التحويل؟ يصحّ بعد `getSettings`. */
+export function hasPaymentFields(): boolean {
+  return payFieldsPresent
+}
+
+/** يملأ ما لم تُنشئه القاعدة بعدُ بفراغٍ، ليبقى الحقل مضبوطاً لا معلّقاً. */
+function normalise(row: Record<string, unknown>): AppSettings {
+  payFieldsPresent = PAY_FIELDS.every((key) => key in row)
+  const filled: Record<string, unknown> = { ...row }
+  for (const key of PAY_FIELDS) filled[key] ??= ''
+  return filled as unknown as AppSettings
+}
+
 export async function getSettings(): Promise<AppSettings> {
   if (!isSupabaseConfigured) {
     const settings = { ...demoSettings }
     lastLoaded = settings
+    payFieldsPresent = true
     return delay(settings)
   }
 
@@ -26,8 +52,9 @@ export async function getSettings(): Promise<AppSettings> {
     .eq('id', 1)
     .single()
   if (error) throw error
-  lastLoaded = data as AppSettings
-  return data as AppSettings
+  const settings = normalise(data as Record<string, unknown>)
+  lastLoaded = settings
+  return settings
 }
 
 export async function saveSettings(settings: AppSettings): Promise<void> {
@@ -42,10 +69,12 @@ export async function saveSettings(settings: AppSettings): Promise<void> {
     Object.assign(demoSettings, settings)
     await delay(null, 420)
   } else {
-    const { error } = await requireSupabase()
-      .from('app_settings')
-      .update({ ...settings, updated_at: new Date().toISOString() })
-      .eq('id', 1)
+    const payload: Record<string, unknown> = {
+      ...settings,
+      updated_at: new Date().toISOString(),
+    }
+    if (!payFieldsPresent) for (const key of PAY_FIELDS) delete payload[key]
+    const { error } = await requireSupabase().from('app_settings').update(payload).eq('id', 1)
     if (error) throw error
   }
 
