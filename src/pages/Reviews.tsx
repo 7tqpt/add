@@ -16,6 +16,7 @@ import { cn } from '@/lib/cn'
 import { formatRelative } from '@/lib/format'
 import type { Review, ReviewStatus } from '@/lib/types'
 import { REVIEW_STATUS_LABEL, listReviews, setReviewStatus } from '@/services/trust'
+import { errorText } from '@/services/base'
 
 const PAGE_SIZE = 10
 
@@ -67,7 +68,7 @@ export function ReviewsPage() {
       setToast(message)
       reload()
     } catch (cause) {
-      setToast(cause instanceof Error ? cause.message : 'تعذّر تنفيذ الإجراء.')
+      setToast(errorText(cause, 'تعذّر تنفيذ الإجراء.'))
     } finally {
       setBusy(false)
       setHiding(null)

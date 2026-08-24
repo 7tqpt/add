@@ -30,6 +30,7 @@ import {
   listSubscriptionPlans,
   setSubscriptionPlanActive,
 } from '@/services/growth'
+import { errorText } from '@/services/base'
 
 const PAGE_SIZE = 10
 
@@ -73,7 +74,7 @@ function SubscriptionPlans({ onToast }: { onToast: (message: string) => void }) 
       onToast(next ? `أُتيحت باقة «${plan.name}».` : `أُوقفت باقة «${plan.name}».`)
       reload()
     } catch (cause) {
-      onToast(cause instanceof Error ? cause.message : 'تعذّر تنفيذ الإجراء.')
+      onToast(errorText(cause, 'تعذّر تنفيذ الإجراء.'))
     } finally {
       setBusyId(null)
     }
@@ -182,7 +183,7 @@ function Campaigns({ onToast }: { onToast: (message: string) => void }) {
       onToast('أُلغيت الحملة.')
       reload()
     } catch (cause) {
-      onToast(cause instanceof Error ? cause.message : 'تعذّر إلغاء الحملة.')
+      onToast(errorText(cause, 'تعذّر إلغاء الحملة.'))
     } finally {
       setBusy(false)
       setCancelling(null)

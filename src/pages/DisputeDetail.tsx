@@ -23,6 +23,7 @@ import {
 } from '@/services/trust'
 import { getBooking } from '@/services/bookings'
 import { DISPUTE_STATUS_TONE } from './Disputes'
+import { errorText } from '@/services/base'
 
 export function DisputeDetailPage() {
   const { id = '' } = useParams()
@@ -94,7 +95,7 @@ export function DisputeDetailPage() {
       setToast('أُرسل الرد إلى طرفَي النزاع.')
       messages.reload()
     } catch (cause) {
-      setToast(cause instanceof Error ? cause.message : 'تعذّر إرسال الرد.')
+      setToast(errorText(cause, 'تعذّر إرسال الرد.'))
     } finally {
       setSending(false)
     }
@@ -108,7 +109,7 @@ export function DisputeDetailPage() {
       setToast(`تم نقل النزاع إلى «${DISPUTE_STATUS_LABEL[decision]}».`)
       dispute.reload()
     } catch (cause) {
-      setToast(cause instanceof Error ? cause.message : 'تعذّر حسم النزاع.')
+      setToast(errorText(cause, 'تعذّر حسم النزاع.'))
     } finally {
       setBusy(false)
       setDeciding(false)

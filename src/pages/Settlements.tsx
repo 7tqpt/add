@@ -16,6 +16,7 @@ import { cn } from '@/lib/cn'
 import { formatDate, formatMoney, formatNumber } from '@/lib/format'
 import type { Settlement, SettlementStatus } from '@/lib/types'
 import { SETTLEMENT_STATUS_LABEL, listSettlements, setSettlementStatus } from '@/services/finance'
+import { errorText } from '@/services/base'
 
 const PAGE_SIZE = 10
 const EXPORT_LIMIT = 5000
@@ -78,7 +79,7 @@ export function SettlementsPage() {
       setToast(`نُقلت التسوية إلى «${SETTLEMENT_STATUS_LABEL[pending.next]}».`)
       reload()
     } catch (cause) {
-      setToast(cause instanceof Error ? cause.message : 'تعذّر تنفيذ الإجراء.')
+      setToast(errorText(cause, 'تعذّر تنفيذ الإجراء.'))
     } finally {
       setBusy(false)
       setPending(null)

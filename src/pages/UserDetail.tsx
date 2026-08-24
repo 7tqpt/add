@@ -37,6 +37,7 @@ import {
   getUserActivity,
   updateUserStatus,
 } from '@/services/directory'
+import { errorText } from '@/services/base'
 
 const STATUS_TONE: Record<UserStatus, Tone> = {
   active: 'good',
@@ -78,7 +79,7 @@ export function UserDetailPage() {
       setToast(next === 'suspended' ? 'تم إيقاف المستخدم.' : 'تم تفعيل المستخدم.')
       user.reload()
     } catch (cause) {
-      setToast(cause instanceof Error ? cause.message : 'تعذّر تحديث الحالة.')
+      setToast(errorText(cause, 'تعذّر تحديث الحالة.'))
     } finally {
       setBusy(false)
       setConfirming(false)

@@ -3,6 +3,7 @@ import { Download } from 'lucide-react'
 import { downloadCsv, stampedFilename, type CsvTable } from '@/lib/csv'
 import { Button } from './Button'
 import { Spinner } from './Feedback'
+import { errorText } from '@/services/base'
 
 /**
  * Exports a report as CSV.
@@ -29,7 +30,7 @@ export function ExportButton({
       const table = await build()
       await downloadCsv(stampedFilename(filenamePrefix), table)
     } catch (cause) {
-      onError?.(cause instanceof Error ? cause.message : 'تعذّر إنشاء ملف التصدير.')
+      onError?.(errorText(cause, 'تعذّر إنشاء ملف التصدير.'))
     } finally {
       setBusy(false)
     }
