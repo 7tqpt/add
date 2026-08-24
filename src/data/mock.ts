@@ -1017,6 +1017,10 @@ export const mockSettings: AppSettings = {
   support_email: 'support@example.com',
   support_phone: '+967700000000',
   default_locale: 'ar',
+  pay_jawali: '770 000 000',
+  pay_kuraimi: '1234567890',
+  pay_bank: 'بنك التضامن — 0011223344',
+  pay_note: 'اكتب رقم الحجز في خانة الملاحظة عند التحويل.',
 }
 
 export const mockAdmins: AdminAccount[] = [

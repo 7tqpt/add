@@ -1014,11 +1014,17 @@ class Api {
   /// أين يُحوَّل المال — من إعدادات المنصّة.
   static Future<PaymentSettings> paymentSettings() async {
     if (!isSupabaseConfigured) return demoDelay(demoPaymentSettings);
-    final row = await db
-        .from('app_settings')
-        .select('pay_jawali, pay_kuraimi, pay_bank, pay_note')
-        .eq('id', 1)
-        .maybeSingle();
+    // وقاعدةٌ لم يُطبَّق عليها `payments_app.sql` تنكر الأعمدة الأربعة، فتُقرأ
+    // على أنها «لم تُضبط وسائلُ التحويل بعد» — وهو الصدق: لا رقم مُعلَناً.
+    // أما رميُ الخطأ فيجعل شاشة الدفع حمراء، وهي لا تُصلَح من التطبيق أصلاً.
+    final row = await whenColumnMissing<Map<String, dynamic>?>(
+      () => db
+          .from('app_settings')
+          .select('pay_jawali, pay_kuraimi, pay_bank, pay_note')
+          .eq('id', 1)
+          .maybeSingle(),
+      () async => null,
+    );
     return PaymentSettings.fromMap(row ?? const {});
   }
 

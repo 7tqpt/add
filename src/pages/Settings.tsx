@@ -31,7 +31,7 @@ import {
   setAdminRole,
   transferOwnership,
 } from '@/services/admins'
-import { getSettings, saveSettings } from '@/services/settings'
+import { getSettings, hasPaymentFields, saveSettings } from '@/services/settings'
 
 export function SettingsPage() {
   const { user, role, can } = useAuth()
@@ -57,6 +57,8 @@ export function SettingsPage() {
     if (error && !data) return <ErrorState message={error} onRetry={reload} />
     return <LoadingBlock />
   }
+
+  const payReady = hasPaymentFields()
 
   const patch = (changes: Partial<AppSettings>) =>
     setForm((current) => (current ? { ...current, ...changes } : current))
@@ -176,6 +178,82 @@ export function SettingsPage() {
                 <option value="SAR">الريال السعودي (ر.س)</option>
                 <option value="USD">الدولار الأمريكي ($)</option>
               </Select>
+            )}
+          </Field>
+        </CardBody>
+        </Card>
+
+        <Card>
+        <CardHeader
+          title="أرقام التحويل"
+          subtitle="يحوّل العميل إليها ثم يُبلغ من التطبيق، وتؤكّدون الحوالة من صفحة المدفوعات"
+        />
+        <CardBody className="flex flex-col gap-5">
+          {/*
+            الرقم الفارغ يُخفي وسيلته في التطبيق ولا يعرضها بلا رقم. وهذا
+            متعمَّد: سطرٌ مكتوبٌ فيه «الكريمي» بلا حساب يدفع العميل إلى السؤال
+            عنه في الدردشة، فيُعطى رقماً لا تعرفونه.
+          */}
+          {payReady ? null : (
+            <p className="glass-item rounded-lg px-3 py-2 text-[11px] leading-6 text-ink-2">
+              أعمدة أرقام التحويل غير موجودة في قاعدتكم بعد. شغّلوا
+              <code dir="ltr" className="mx-1">supabase/payments_app.sql</code>
+              ثم حدّثوا الصفحة — وحتى ذلك الحين يبقى الحفظ عاملاً لبقية الإعدادات، وهذه
+              الحقول وحدها معطّلة.
+            </p>
+          )}
+
+          <Field label="محفظة جوالي" hint="اتركه فارغاً لإخفاء «جوالي» من وسائل الدفع في التطبيق.">
+            {(id) => (
+              <Input
+                id={id}
+                dir="ltr"
+                inputMode="tel"
+                className="text-start"
+                placeholder="770 000 000"
+                disabled={!payReady}
+                value={form.pay_jawali}
+                onChange={(event) => patch({ pay_jawali: event.target.value })}
+              />
+            )}
+          </Field>
+
+          <Field label="حساب الكريمي">
+            {(id) => (
+              <Input
+                id={id}
+                dir="ltr"
+                inputMode="numeric"
+                className="text-start"
+                placeholder="1234567890"
+                disabled={!payReady}
+                value={form.pay_kuraimi}
+                onChange={(event) => patch({ pay_kuraimi: event.target.value })}
+              />
+            )}
+          </Field>
+
+          <Field label="الحساب البنكي" hint="اسم البنك ورقم الحساب معاً، كما يكتبهما العميل في الحوالة.">
+            {(id) => (
+              <Input
+                id={id}
+                placeholder="بنك التضامن — 0011223344"
+                disabled={!payReady}
+                value={form.pay_bank}
+                onChange={(event) => patch({ pay_bank: event.target.value })}
+              />
+            )}
+          </Field>
+
+          <Field label="ملاحظة تظهر مع الأرقام" hint="مثل: اكتب رقم الحجز في خانة الملاحظة عند التحويل.">
+            {(id) => (
+              <Textarea
+                id={id}
+                rows={2}
+                disabled={!payReady}
+                value={form.pay_note}
+                onChange={(event) => patch({ pay_note: event.target.value })}
+              />
             )}
           </Field>
         </CardBody>
