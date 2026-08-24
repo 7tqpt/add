@@ -100,14 +100,28 @@ async function accessToken(): Promise<string> {
 // ── الإرسال ─────────────────────────────────────────────────────────────────
 Deno.serve(async (request) => {
   try {
-    const payload = await request.json() as { record?: NotificationRow; type?: string }
-    const row = payload.record
-    if (!row) return new Response('لا صفّ في الحمولة', { status: 400 })
+    const payload = await request.json() as { record?: { id?: string }; type?: string }
+    const id = payload.record?.id
+    if (!id) return new Response('لا صفّ في الحمولة', { status: 400 })
 
     const admin = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     )
+
+    // **لا يُصدَّق ما في الحمولة إلّا المعرّف.** الدالّة منشورةٌ بلا تحقّقٍ من
+    // الرمز — لأن المنادي مُشغِّلٌ لا مستخدمٌ يحمل جلسة — ورابطُ المشروع علنيّ.
+    // فلو أُخذ العنوانُ والنصُّ من الجسد لأمكن لمن عرف الرابط أن يدفع إلى
+    // جوال أيّ مستخدمٍ رسالةً باسم «فرحتي» يكتبها هو: «حوّل العربون إلى هذا
+    // الرقم». فيُقرأ الصفُّ من القاعدة بمعرّفه، ويُرسَل ما فيها لا ما جاء.
+    // وأقصى ما يبلغه المزوِّر حينئذٍ إعادةُ إشعارٍ حقيقيٍّ إلى صاحبه.
+    const stored = await admin
+      .from('notifications')
+      .select('id, user_id, provider_id, kind, title, body, data')
+      .eq('id', id)
+      .maybeSingle()
+    const row = stored.data as NotificationRow | null
+    if (!row) return new Response('لا إشعار بهذا المعرّف', { status: 200 })
 
     // صاحبُ الإشعار إمّا مستخدمٌ أو مقدّم خدمة، والقيدُ في الجدول يضمن أنه
     // واحدٌ منهما لا الاثنان. ومقدّم الخدمة يُردّ إلى حساب مستخدمه لأن

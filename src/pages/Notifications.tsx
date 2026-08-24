@@ -11,12 +11,13 @@ import { useAuth } from '@/context/AuthContext'
 import { useAsync } from '@/hooks/useAsync'
 import { cn } from '@/lib/cn'
 import { formatDate, formatDateTime, formatNumber, formatPercent } from '@/lib/format'
-import type { Audience, NotificationStatus } from '@/lib/types'
+import type { Audience, NotificationStatus, PushNotification } from '@/lib/types'
 import {
   AUDIENCE_LABEL,
   NOTIFICATION_STATUS_LABEL,
   createNotification,
   listNotifications,
+  sendNotification,
 } from '@/services/notifications'
 
 const STATUS_TONE: Record<NotificationStatus, Tone> = {
@@ -47,6 +48,20 @@ export function NotificationsPage() {
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
   const [toast, setToast] = useState<string | null>(null)
+  const [sending, setSending] = useState<string | null>(null)
+
+  async function sendNow(notification: PushNotification) {
+    setSending(notification.id)
+    try {
+      const sent = await sendNotification(notification)
+      setToast(`أُرسل إلى ${formatNumber(sent.recipients)} مستخدماً.`)
+      reload()
+    } catch (cause) {
+      setToast(cause instanceof Error ? cause.message : 'تعذّر الإرسال.')
+    } finally {
+      setSending(null)
+    }
+  }
 
   useEffect(() => {
     if (!toast) return
@@ -69,7 +84,7 @@ export function NotificationsPage() {
 
     setSubmitting(true)
     try {
-      await createNotification({
+      const created = await createNotification({
         title: title.trim(),
         body: body.trim(),
         audience,
@@ -80,7 +95,13 @@ export function NotificationsPage() {
       setBody('')
       setScheduled(false)
       setScheduledAt('')
-      setToast(scheduled ? 'تمت جدولة الإشعار.' : 'تم إرسال الإشعار.')
+      // العدد من القاعدة لا من تقديرٍ هنا: «أُرسل» بلا رقمٍ لا تُفرَّق عن
+      // «أُرسل إلى صفر».
+      setToast(
+        scheduled
+          ? 'تمت جدولة الإشعار.'
+          : `أُرسل إلى ${formatNumber(created.recipients)} مستخدماً.`,
+      )
       // A new notification lands at the top, so jump back to the first page.
       if (page === 0) reload()
       else setPage(0)
@@ -163,7 +184,7 @@ export function NotificationsPage() {
               checked={scheduled}
               onChange={setScheduled}
               label="جدولة الإرسال"
-              description="أرسل الإشعار في وقت محدد بدلاً من الآن."
+              description="تُرسَل في موعدها من القاعدة، أو بزرّ «أرسل الآن» في السجل."
             />
 
             {scheduled ? (
@@ -246,6 +267,22 @@ export function NotificationsPage() {
                       ) : null}
                       {openRate !== null ? (
                         <span className="tnum">نسبة الفتح {formatPercent(openRate)}</span>
+                      ) : null}
+                      {/*
+                        زرٌّ للمجدولة والمسوّدات: جدول القاعدة يُرسلها كلَّ خمس
+                        دقائق إن كان `pg_cron` مفعّلاً، وهذا هو الطريق حين لا
+                        يكون — أو حين تُقدَّم حملةٌ عن موعدها.
+                      */}
+                      {notification.status !== 'sent' && canWrite ? (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          disabled={sending === notification.id}
+                          onClick={() => sendNow(notification)}
+                        >
+                          {sending === notification.id ? <Spinner /> : <Send size={12} aria-hidden />}
+                          أرسل الآن
+                        </Button>
                       ) : null}
                     </div>
                   </li>
