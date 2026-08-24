@@ -770,3 +770,75 @@ class DisputeMessage {
     createdAt: (m['created_at'] ?? '') as String,
   );
 }
+
+/// عمليةُ دفعٍ كما يراها العميل.
+class PaymentRow {
+  const PaymentRow({
+    required this.id,
+    required this.reference,
+    required this.bookingId,
+    required this.bookingReference,
+    required this.kind,
+    required this.description,
+    required this.amount,
+    required this.method,
+    required this.status,
+    required this.createdAt,
+  });
+
+  final String id;
+  final String reference;
+  final String? bookingId;
+  final String bookingReference;
+  final String kind;
+  final String description;
+  final num amount;
+  final String method;
+
+  /// `pending` أو `paid` أو `failed` أو `refunded`.
+  final String status;
+  final String createdAt;
+
+  bool get isPending => status == 'pending';
+
+  factory PaymentRow.fromMap(Map<String, dynamic> m) => PaymentRow(
+    id: m['id'] as String,
+    reference: (m['reference'] ?? '') as String,
+    bookingId: m['booking_id'] as String?,
+    bookingReference: (m['booking_reference'] ?? '') as String,
+    kind: (m['kind'] ?? 'deposit') as String,
+    description: (m['description'] ?? '') as String,
+    amount: (m['amount'] ?? 0) as num,
+    method: (m['method'] ?? 'jawali') as String,
+    status: (m['status'] ?? 'pending') as String,
+    createdAt: (m['created_at'] ?? '') as String,
+  );
+}
+
+/// أين يُحوَّل المال — يملؤها المسؤول من اللوحة.
+///
+/// وتُقرأ من القاعدة لا من الشيفرة: الأرقام تتغيّر، وتغييرُها في الشيفرة يعني
+/// بناءً جديداً وتحديثاً على كل جهاز.
+class PaymentSettings {
+  const PaymentSettings({
+    required this.jawali,
+    required this.kuraimi,
+    required this.bank,
+    required this.note,
+  });
+
+  final String jawali;
+  final String kuraimi;
+  final String bank;
+  final String note;
+
+  /// هل ضبط المسؤول وسيلةً واحدة على الأقل.
+  bool get any => jawali.isNotEmpty || kuraimi.isNotEmpty || bank.isNotEmpty;
+
+  factory PaymentSettings.fromMap(Map<String, dynamic> m) => PaymentSettings(
+    jawali: (m['pay_jawali'] ?? '') as String,
+    kuraimi: (m['pay_kuraimi'] ?? '') as String,
+    bank: (m['pay_bank'] ?? '') as String,
+    note: (m['pay_note'] ?? '') as String,
+  );
+}

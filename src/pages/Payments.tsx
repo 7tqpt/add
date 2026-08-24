@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Banknote, PercentCircle, RotateCcw, Search, TrendingUp, Undo2 } from 'lucide-react'
+import { Banknote, Check, PercentCircle, RotateCcw, Search, TrendingUp, Undo2, X } from 'lucide-react'
 import { BarChart } from '@/components/charts/BarChart'
 import { StatTile } from '@/components/charts/StatTile'
 import { Badge, type Tone } from '@/components/ui/Badge'
@@ -31,6 +31,8 @@ import {
   getPaymentTotals,
   listPayments,
   refundPayment,
+  confirmPayment,
+  rejectPayment,
 } from '@/services/finance'
 
 const PAGE_SIZE = 12
@@ -61,6 +63,9 @@ export function PaymentsPage() {
   const [page, setPage] = useState(0)
   const [toast, setToast] = useState<string | null>(null)
   const [pending, setPending] = useState<Payment | null>(null)
+  // أيُّ فعلٍ ينتظر التأكيد على `pending`. حالةٌ واحدة لثلاثة أفعال: نافذةٌ
+  // لكلٍّ منها تُكرّر النصّ والحارس والـbusy ثلاث مرّات، وتفترق عند أول تعديل.
+  const [action, setAction] = useState<'refund' | 'confirm' | 'reject'>('refund')
   const [busy, setBusy] = useState(false)
 
   const debouncedSearch = useDebounced(search)
@@ -89,19 +94,32 @@ export function PaymentsPage() {
     return () => clearTimeout(timer)
   }, [toast])
 
-  async function applyRefund(payment: Payment) {
+  async function apply(payment: Payment) {
     setBusy(true)
     try {
-      await refundPayment(payment)
-      setToast(`تم استرجاع ${formatMoney(payment.amount)} للعميل.`)
+      if (action === 'refund') {
+        await refundPayment(payment)
+        setToast(`تم استرجاع ${formatMoney(payment.amount)} للعميل.`)
+      } else if (action === 'confirm') {
+        await confirmPayment(payment)
+        setToast(`أُكِّدت ${formatMoney(payment.amount)} وأُضيفت إلى الحجز.`)
+      } else {
+        await rejectPayment(payment)
+        setToast('رُدّ الإبلاغ وأُخبِر العميل.')
+      }
       rows.reload()
       totals.reload()
     } catch (cause) {
-      setToast(cause instanceof Error ? cause.message : 'تعذّر تنفيذ الاسترجاع.')
+      setToast(cause instanceof Error ? cause.message : 'تعذّر تنفيذ العملية.')
     } finally {
       setBusy(false)
       setPending(null)
     }
+  }
+
+  function ask(payment: Payment, next: 'refund' | 'confirm' | 'reject') {
+    setAction(next)
+    setPending(payment)
   }
 
   const buildExport = useCallback(async () => {
@@ -403,11 +421,38 @@ export function PaymentsPage() {
                           variant="ghost"
                           disabled={busy || !canWrite}
                           title={canWrite ? undefined : 'دورك الحالي للقراءة فقط'}
-                          onClick={() => setPending(payment)}
+                          onClick={() => ask(payment, 'refund')}
                         >
                           <RotateCcw size={14} aria-hidden />
                           استرجاع
                         </Button>
+                      ) : null}
+                      {/* المعلّقة هي حوالةٌ أبلغ بها العميل من التطبيق: تُطابَق
+                          في كشف الحساب ثم تُؤكَّد أو تُردّ. وبلا هذين الزرّين
+                          كان الإبلاغ يصل ولا يجد من يبتّ فيه. */}
+                      {payment.status === 'pending' ? (
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            disabled={busy || !canWrite}
+                            title={canWrite ? undefined : 'دورك الحالي للقراءة فقط'}
+                            onClick={() => ask(payment, 'confirm')}
+                          >
+                            <Check size={14} aria-hidden />
+                            تأكيد
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            disabled={busy || !canWrite}
+                            title={canWrite ? undefined : 'دورك الحالي للقراءة فقط'}
+                            onClick={() => ask(payment, 'reject')}
+                          >
+                            <X size={14} aria-hidden />
+                            ردّ
+                          </Button>
+                        </div>
                       ) : null}
                     </td>
                   </tr>
@@ -424,15 +469,27 @@ export function PaymentsPage() {
 
       <ConfirmDialog
         open={pending !== null}
-        title="استرجاع المبلغ للعميل؟"
-        message={
-          pending
-            ? `سيُعاد ${formatMoney(pending.amount)} إلى ${pending.user_name} عبر ${PAYMENT_METHOD_LABEL[pending.method]}. الاسترجاع لا يمكن التراجع عنه، وسيُسجَّل باسمك في سجل العمليات.`
-            : ''
+        title={
+          action === 'refund'
+            ? 'استرجاع المبلغ للعميل؟'
+            : action === 'confirm'
+              ? 'تأكيد وصول الحوالة؟'
+              : 'ردّ الإبلاغ؟'
         }
-        confirmLabel="تنفيذ الاسترجاع"
+        message={
+          !pending
+            ? ''
+            : action === 'refund'
+              ? `سيُعاد ${formatMoney(pending.amount)} إلى ${pending.user_name} عبر ${PAYMENT_METHOD_LABEL[pending.method]}. الاسترجاع لا يمكن التراجع عنه، وسيُسجَّل باسمك في سجل العمليات.`
+              : action === 'confirm'
+                ? `تأكّد أن ${formatMoney(pending.amount)} وصلت فعلاً عبر ${PAYMENT_METHOD_LABEL[pending.method]} قبل التأكيد — سيُضاف المبلغ إلى الحجز ${pending.booking_reference} ويُخبَر الطرفان.`
+                : `سيُخبَر ${pending.user_name} أننا لم نجد حوالته. تحقّق من كشف الحساب أولاً.`
+        }
+        confirmLabel={
+          action === 'refund' ? 'تنفيذ الاسترجاع' : action === 'confirm' ? 'تأكيد' : 'ردّ الإبلاغ'
+        }
         busy={busy}
-        onConfirm={() => pending && applyRefund(pending)}
+        onConfirm={() => pending && apply(pending)}
         onCancel={() => setPending(null)}
       />
 

@@ -1005,6 +1005,63 @@ class Api {
     await db.rpc('api_close_ticket', params: {'p_ticket_id': ticketId});
   }
 
+  // ----- الدفع -----
+  //
+  // **المبلغ لا يُرسَل من هنا.** `api_submit_payment` تحسبه من الحجز نفسه:
+  // العربونُ ما بقي منه، والباقي ما بقي من الإجمالي. ولو قبِلت مبلغاً من
+  // التطبيق لأمكن دفع عربون قاعةٍ بريالٍ واحد.
+
+  /// أين يُحوَّل المال — من إعدادات المنصّة.
+  static Future<PaymentSettings> paymentSettings() async {
+    if (!isSupabaseConfigured) return demoDelay(demoPaymentSettings);
+    final row = await db
+        .from('app_settings')
+        .select('pay_jawali, pay_kuraimi, pay_bank, pay_note')
+        .eq('id', 1)
+        .maybeSingle();
+    return PaymentSettings.fromMap(row ?? const {});
+  }
+
+  /// عملياتُ حجزٍ بعينه — أحدثُها أوّلاً.
+  static Future<List<PaymentRow>> bookingPayments(String bookingId) async {
+    if (!isSupabaseConfigured) return demoDelay(demoPaymentsOf(bookingId));
+    final rows = await db
+        .from('payments')
+        .select()
+        .eq('booking_id', bookingId)
+        .order('created_at', ascending: false);
+    return rows.map(PaymentRow.fromMap).toList();
+  }
+
+  /// كلُّ عملياتي — لشاشةٍ واحدة تجمعها.
+  static Future<List<PaymentRow>> myPayments() async {
+    if (!isSupabaseConfigured) return demoDelay(demoPayments);
+    final rows = await db.from('payments').select().order('created_at', ascending: false);
+    return rows.map(PaymentRow.fromMap).toList();
+  }
+
+  /// إبلاغٌ بحوالة. يُنشئ عمليةً **معلّقة** تؤكّدها الإدارة.
+  static Future<PaymentRow> submitPayment({
+    required String bookingId,
+    required String method,
+    String kind = 'deposit',
+    String senderRef = '',
+  }) async {
+    if (!isSupabaseConfigured) {
+      return demoSubmitPayment(bookingId: bookingId, method: method, kind: kind);
+    }
+    final row = await db.rpc(
+      'api_submit_payment',
+      params: {
+        'p_booking_id': bookingId,
+        'p_method': method,
+        'p_kind': kind,
+        'p_sender_ref': senderRef,
+      },
+    );
+    return PaymentRow.fromMap(Map<String, dynamic>.from(row as Map));
+  }
+
   // ----- النزاعات -----
   //
   // ولا ملفَّ SQL جديد لها: الجدولان وسياساتُهما ودالّة `api_open_dispute`

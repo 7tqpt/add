@@ -1218,3 +1218,46 @@ void demoResetDisputes() {
   demoDisputes = [];
   _demoDisputeMessages.clear();
 }
+
+// ── الدفع ───────────────────────────────────────────────────────────────────
+/// أرقامٌ تجريبية — وفي القاعدة يملؤها المسؤول من اللوحة.
+const demoPaymentSettings = PaymentSettings(
+  jawali: '770 000 000',
+  kuraimi: '1234567890',
+  bank: 'بنك التضامن — 0011223344',
+  note: 'اكتب رقم الحجز في خانة الملاحظة عند التحويل.',
+);
+
+List<PaymentRow> demoPayments = [];
+
+List<PaymentRow> demoPaymentsOf(String bookingId) =>
+    demoPayments.where((p) => p.bookingId == bookingId).toList();
+
+PaymentRow demoSubmitPayment({
+  required String bookingId,
+  required String method,
+  required String kind,
+}) {
+  final booking = demoBookings.where((b) => b.id == bookingId).firstOrNull;
+  final due = booking == null
+      ? 0
+      : kind == 'deposit'
+      ? booking.depositAmount - booking.paidAmount
+      : booking.totalPrice - booking.paidAmount;
+  final row = PaymentRow(
+    id: 'pay${demoPayments.length + 1}',
+    reference: 'PAY-2026-${(demoPayments.length + 1).toString().padLeft(6, '0')}',
+    bookingId: bookingId,
+    bookingReference: booking?.reference ?? '',
+    kind: kind,
+    description: kind == 'deposit' ? 'عربون الحجز' : 'إكمال مبلغ الحجز',
+    amount: due,
+    method: method,
+    status: 'pending',
+    createdAt: DateTime.now().toIso8601String(),
+  );
+  demoPayments = [row, ...demoPayments];
+  return row;
+}
+
+void demoResetPayments() => demoPayments = [];

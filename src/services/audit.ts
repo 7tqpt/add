@@ -166,6 +166,8 @@ export const AUDIT_ACTION_LABEL: Record<string, string> = {
   'booking.expired': 'انتهاء مهلة حجز',
 
   'payment.refund': 'استرجاع مبلغ',
+  'payment.confirm': 'تأكيد حوالة',
+  'payment.reject': 'ردّ حوالة',
   'settlement.status': 'تغيير حالة تسوية',
 
   'dispute.reply': 'الرد على نزاع',

@@ -9,6 +9,7 @@ import '../data/supabase.dart';
 import '../ui/kit.dart';
 import 'disputes.dart';
 import 'labels.dart';
+import 'payment.dart';
 
 class MyBookingsScreen extends StatefulWidget {
   const MyBookingsScreen({super.key, required this.session});
@@ -136,6 +137,19 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
     }
   }
 
+  Future<void> _pay(Booking b) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => PaymentScreen(
+          booking: b,
+          kind: b.paidAmount < b.depositAmount ? 'deposit' : 'balance',
+        ),
+      ),
+    );
+    // عند العودة: قد يكون أُبلغ بحوالةٍ أو أُكّدت، فتتغيّر أرقام البطاقة.
+    if (mounted) _reload();
+  }
+
   Future<void> _dispute(Booking b) async {
     final existing = _disputes[b.id];
     if (existing != null) {
@@ -231,6 +245,25 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                       style: const TextStyle(fontSize: 11, color: AppColors.muted),
                     ),
                   ),
+                  // الدفع أوّل ما يُعرض بعد الأرقام: الحجز لا يصير حجزاً
+                  // حتى يصل عربونه، ومن حجز اليوم لا يعرف أين يدفع.
+                  //
+                  // والمستحقُّ يُحسب هنا للعرض وحده — والخادم يحسبه من جديد
+                  // عند الإرسال ولا يقبل رقماً من التطبيق.
+                  if ((b.status == BookingStatus.pendingProvider ||
+                          b.status == BookingStatus.confirmed) &&
+                      b.paidAmount < b.totalPrice) ...[
+                    const SizedBox(height: Space.md),
+                    FilledButton.icon(
+                      onPressed: _busyId == null ? () => _pay(b) : null,
+                      icon: const Icon(Icons.account_balance_wallet_outlined, size: 19),
+                      label: Text(
+                        b.paidAmount < b.depositAmount
+                            ? 'ادفع العربون ${formatMoney(b.depositAmount - b.paidAmount)}'
+                            : 'أكمل المبلغ ${formatMoney(b.totalPrice - b.paidAmount)}',
+                      ),
+                    ),
+                  ],
                   // الإلغاء متاحٌ ما دام الحجز قائماً؛ والقاعدة ترفضه بعد
                   // التنفيذ، فإخفاؤه هنا يوافق ما ستقوله هناك.
                   if (b.status == BookingStatus.pendingProvider ||

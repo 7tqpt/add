@@ -128,6 +128,63 @@ export async function getPaymentTotals(
   return summarise((data ?? []) as Payment[])
 }
 
+/**
+ * تأكيدُ حوالةٍ أبلغ بها العميل من التطبيق.
+ *
+ * **بدالّة لا بتحديثٍ مباشر:** `api_admin_confirm_payment` تزيد المدفوع في
+ * الحجز وتُشعر الطرفين — وتحديثُ الصفّ هنا يترك الحجزَ يقول «لم يُدفع» وقد
+ * دُفع، ويترك العميل بلا خبر.
+ */
+export async function confirmPayment(payment: Payment, gatewayRef = ''): Promise<void> {
+  if (!isSupabaseConfigured) {
+    const target = demoPayments.find((candidate) => candidate.id === payment.id)
+    if (target) target.status = 'paid'
+    await delay(null, 380)
+  } else {
+    const { error } = await requireSupabase().rpc('api_admin_confirm_payment', {
+      p_payment_id: payment.id,
+      p_gateway_ref: gatewayRef,
+    })
+    if (error) throw error
+  }
+
+  await recordAudit({
+    action: 'payment.confirm',
+    entity: 'payment',
+    entityId: payment.id,
+    entityLabel: payment.reference,
+    details: { amount: payment.amount, user: payment.user_name },
+  })
+}
+
+/**
+ * ردُّ إبلاغٍ لم نجد حوالته.
+ *
+ * تُعلَّم `failed` ولا تُحذف: العميل يجب أن يرى أن إبلاغه رُدّ ولماذا، لا أن
+ * يختفي بلا أثرٍ فيظنّ أن المنصّة أخذت ماله.
+ */
+export async function rejectPayment(payment: Payment, reason = ''): Promise<void> {
+  if (!isSupabaseConfigured) {
+    const target = demoPayments.find((candidate) => candidate.id === payment.id)
+    if (target) target.status = 'failed'
+    await delay(null, 380)
+  } else {
+    const { error } = await requireSupabase().rpc('api_admin_reject_payment', {
+      p_payment_id: payment.id,
+      p_reason: reason,
+    })
+    if (error) throw error
+  }
+
+  await recordAudit({
+    action: 'payment.reject',
+    entity: 'payment',
+    entityId: payment.id,
+    entityLabel: payment.reference,
+    details: { amount: payment.amount, reason },
+  })
+}
+
 export async function refundPayment(payment: Payment): Promise<void> {
   const refunded_at = new Date().toISOString()
 
