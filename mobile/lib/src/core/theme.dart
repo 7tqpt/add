@@ -2,38 +2,47 @@ import 'package:flutter/material.dart';
 
 /// ألوان المنصة ومقاييسها.
 ///
-/// منقولة من لوحة التحكم ليبدو الطرفان منصةً واحدة: الأزرق نفسه والرمادي
-/// المزرقّ نفسه. وكانت العائلة ذهبيةً على بيج، فصارت زرقاء على أبيضٍ منحازٍ
-/// إلى الأزرق — الأبيض المحايد يبدو غير مقصود، والانحياز الخفيف نحو لون
-/// العلامة يجعله مُختاراً.
+/// **نبيذيٌّ على كريم، وذهبٌ للزينة** — هويّةُ «فرحتي» كما رُسمت في لوحة
+/// التصميم، لا زرقةُ لوحة التحكم. وكان التطبيق يحمل أزرقها ليبدو الطرفان
+/// منصّةً واحدة، وهذا صحيحٌ في التقنية خطأٌ في السوق: من يشتري عرساً لا
+/// يرى لوحةَ الإدارة أبداً، ويرى تطبيقاً بلون المصارف بينما هو يجهّز فرحاً.
+/// فالوحدة تُطلب مع من يراهما معاً — والمسؤول وحده يراهما.
 ///
-/// **وما نُقل حرفياً وما لم يُنقل:**
+/// والكريم لا الأبيض: الأبيض المحايد يبدو غير مقصود، وانحيازُه الخفيف نحو
+/// دفء العلامة يجعله مُختاراً — وهي القاعدة نفسها التي كانت تُميل الأبيض
+/// إلى الزرقة من قبل، مطبَّقةً على عائلةٍ أخرى.
 ///
-/// الهويّة نُقلت كما هي — الأسطح والحبر واللون المميّز — فهي ما يجعل
-/// الطرفين شيئاً واحداً.
+/// **وكلُّ لونٍ هنا مقيسٌ لا مذوق** (`kit_test` يعيد القياس في كل تشغيل):
 ///
-/// أمّا الألوان الدلالية فلا: اللوحة تستعملها حشواً ونقاطاً، والتطبيق
-/// يستعملها **نصّاً** — في شارات الحالة وفي رسائل ملف مقدّم الخدمة. وأصفر
-/// اللوحة (‏`#fab219`‏) يعطي على أبيض **١٫٨٣:١**، وأخضرها ‎٣٫٣٥:١‎ — قِيسا
-/// لا خُمّنا. فنُقلت عائلة اللون وأُغمقت حتى تُقرأ:
+///   ink ‎١٧٫٦١:١‎ · ink2 ‎١٠٫٤٢:١‎ · muted ‎٥٫٩٣:١‎ · accent ‎١٠٫٧٧:١‎
+///   والأبيضُ على النبيذيّ ‎١٠٫٧٧:١‎.
 ///
-///   good ‎#0a7a35‎ → ‎٥٫٤٦:١‎ · warning ‎#976113‎ → ‎٥٫٢٠:١‎ ·
-///   critical ‎#b3261e‎ → ‎٦٫٥٤:١‎
+/// وذهبان لا ذهبٌ واحد، لأن الذهب الواحد لا يُقرأ في الموضعين: ذهبُ لوحة
+/// التصميم (‏`#c9a227`‏) على النبيذيّ يعطي ‎٤٫٤٥:١‎ — تحت العتبة بقليل —
+/// وعلى الأبيض ‎٢٫٢٥:١‎ وهو غيرُ مقروءٍ أصلاً. فصار `gold` للحبر على الفاتح
+/// (‎٤٫٦٨:١‎) و`goldOnAccent` للحبر على النبيذيّ (‎٥٫٤٥:١‎).
 ///
-/// و`muted` أُغمق عن نظيره في اللوحة (‏`#7b8699`‏، ‎٣٫٦٨:١‎) إلى ‎#6b7689‎
-/// (‎٤٫٥٩:١‎) وهو من العائلة نفسها: في اللوحة يُقرأ على شاشةٍ كبيرة، وهنا
-/// يحمل نصّاً بحجم ‎١١‎ نقطة على جوالٍ بيد.
+/// أمّا الألوان الدلالية فبقيت كما هي: الأخضر والأحمر والكهرماني معانٍ لا
+/// أذواق، وصبغُها بالنبيذيّ يجعل «مرفوض» و«مؤكَّد» أخوين في اللون.
 class AppColors {
-  static const page = Color(0xFFF4F7FC);
+  static const page = Color(0xFFFBF4EF);
   static const surface = Color(0xFFFFFFFF);
-  static const surface2 = Color(0xFFEEF2F9);
-  static const hairline = Color(0xFFE3E9F3);
-  static const ink = Color(0xFF0B1220);
-  static const ink2 = Color(0xFF47536B);
-  static const muted = Color(0xFF6B7689);
+  static const surface2 = Color(0xFFF6E9E6);
+  static const hairline = Color(0xFFEBDCD4);
+  static const ink = Color(0xFF2A1119);
+  static const ink2 = Color(0xFF54383F);
+  static const muted = Color(0xFF7A5C64);
 
-  static const accent = Color(0xFF1D4ED8);
+  static const accent = Color(0xFF7B0F2E);
   static const accentInk = Color(0xFFFFFFFF);
+
+  /// طرفا التدرّج النبيذيّ — رأسُ الشاشة والبطاقات الكبيرة.
+  static const accentLift = Color(0xFF9A1B3E);
+  static const accentDeep = Color(0xFF5C0820);
+
+  /// ذهبٌ على الفاتح (‎٤٫٦٨:١‎)، وذهبٌ على النبيذيّ (‎٥٫٤٥:١‎).
+  static const gold = Color(0xFF9A6B18);
+  static const goldOnAccent = Color(0xFFD9B45C);
 
   static const good = Color(0xFF0A7A35);
   static const warning = Color(0xFF976113);
@@ -57,10 +66,23 @@ class Tint {
   static const row = 0.05;
 }
 
-/// الخطّ العربي المرفق. يُذكر صراحةً في كل نمطٍ مكتوبٍ باليد: النمط الكامل
+/// خطُّ العلامة — IBM Plex Sans Arabic، وهو خطُّ لوحة التحكم نفسه.
+///
+/// **ولماذا يُشحن بدل خطّ النظام:** كان التطبيق يترك خطّ الجهاز أوّلاً،
+/// فيخرج الشكلُ مختلفاً على كل جوال — نُسخُ سامسونج بخطّها، وشاومي بخطّها،
+/// ومن غيّر خطّ نظامه بخطّه هو. وهويّةٌ تتبدّل بتبدّل الجهاز ليست هويّة.
+/// فصار المرفقُ أصلاً لا احتياطاً، بأربعة أوزان لأن نصفَ التصميم وزنٌ:
+/// عنوانٌ ثقيلٌ فوق سطرٍ خفيف يُقرأ سُلَّماً، وكلاهما بوزنٍ واحد يُقرأ
+/// كتلةً.
+///
+/// ورخصتُه SIL OFL — مفتوحةٌ تُشحن في التطبيقات، ونصُّها في
+/// `assets/fonts/IBMPlexSansArabic-OFL.txt`.
+const brandFont = 'IBMPlexSansArabic';
+
+/// احتياطُ العربية. يُذكر صراحةً في كل نمطٍ مكتوبٍ باليد: النمط الكامل
 /// يحلّ محلّ الموروث ولا يرث احتياط الثيمة، فزرٌّ بنمطٍ خاص يفقد العربية
 /// ويرسم مربّعات فارغة مكان النصّ.
-const arabicFallback = ['NotoNaskhArabic'];
+const arabicFallback = [brandFont, 'NotoNaskhArabic'];
 
 class Space {
   static const xs = 4.0;
@@ -73,9 +95,9 @@ class Space {
 ThemeData buildTheme() {
   final base = ThemeData(
     useMaterial3: true,
-    // احتياطٌ لا أصل: يُترك خطّ النظام أوّلاً ليبقى المظهر مألوفاً على الجهاز
-    // وبأوزانه الحقيقية، ويُلجأ إلى المرفق حين لا يغطّي النظام العربية — وهو
-    // ما يقع على الويب وعلى بعض الأجهزة، فيختفي النصّ كلّه بلا رسالة.
+    // أصلٌ لا احتياط — انظر `brandFont`. والاحتياط يبقى خلفه: النسخُ يغطّي
+    // ما لا يغطّيه Plex من محارف، فلا يختفي نصٌّ بلا رسالة.
+    fontFamily: brandFont,
     fontFamilyFallback: arabicFallback,
     scaffoldBackgroundColor: AppColors.page,
     colorScheme: ColorScheme.fromSeed(
@@ -100,7 +122,7 @@ ThemeData buildTheme() {
       elevation: 0,
       margin: EdgeInsets.zero,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         side: const BorderSide(color: AppColors.hairline),
       ),
     ),
@@ -109,22 +131,22 @@ ThemeData buildTheme() {
       fillColor: AppColors.surface,
       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(12),
         borderSide: const BorderSide(color: AppColors.hairline),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(12),
         borderSide: const BorderSide(color: AppColors.hairline),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(12),
         borderSide: const BorderSide(color: AppColors.accent, width: 1.5),
       ),
     ),
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
         minimumSize: const Size.fromHeight(48),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         textStyle: const TextStyle(
           fontSize: 15,
           fontWeight: FontWeight.w600,
@@ -137,7 +159,7 @@ ThemeData buildTheme() {
         minimumSize: const Size.fromHeight(48),
         foregroundColor: AppColors.ink,
         side: const BorderSide(color: AppColors.hairline),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         textStyle: const TextStyle(
           fontSize: 15,
           fontWeight: FontWeight.w600,
@@ -147,11 +169,11 @@ ThemeData buildTheme() {
     ),
     // الورقة السفلية والزرّ العائم يشتقّان لونهما من البذرة في Material
     // فيخرجان بصبغةٍ لم يخترها أحد. اللونان يُثبَّتان هنا: بياض البطاقات
-    // للورقة، والأزرق الصريح للزرّ.
+    // للورقة، والنبيذيّ الصريح للزرّ.
     bottomSheetTheme: const BottomSheetThemeData(
       backgroundColor: AppColors.surface,
       surfaceTintColor: Colors.transparent,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
     ),
     dialogTheme: const DialogThemeData(
       backgroundColor: AppColors.surface,

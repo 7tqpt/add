@@ -70,7 +70,7 @@ void main() {
       double lin(double c) =>
           c <= 0.03928 ? c / 12.92 : math.pow((c + 0.055) / 1.055, 2.4) as double;
       double lum(Color c) => 0.2126 * lin(c.r) + 0.7152 * lin(c.g) + 0.0722 * lin(c.b);
-      const card = Color(0xFFFBFCFE);
+      const card = Color(0xFFFFFFFE);
       Color over(Color fg, double alpha) => Color.from(
         alpha: 1,
         red: fg.r * alpha + card.r * (1 - alpha),
@@ -94,11 +94,12 @@ void main() {
 
     test('وكلُّها تُقرأ على أرضية البطاقة', () {
       // القياس هنا لا في ورقةٍ جانبية: لونٌ يُضاف غداً بلا قياسٍ يمرّ صامتاً.
-      // العتبة ٤٫٥:١ — والأرضية `#fbfcfe` وهي أعلى نقطةٍ في تدرّج البطاقة.
+      // العتبة ٤٫٥:١ — والأرضية `#fffffe` وهي أعلى نقطةٍ في تدرّج البطاقة:
+      // أبيضُ البطاقة بشفافية ٠٫٩٦ فوق كريم الصفحة.
       double lin(double c) => c <= 0.03928 ? c / 12.92 : math.pow((c + 0.055) / 1.055, 2.4) as double;
       double lum(Color c) =>
           0.2126 * lin(c.r) + 0.7152 * lin(c.g) + 0.0722 * lin(c.b);
-      const card = Color(0xFFFBFCFE);
+      const card = Color(0xFFFFFFFE);
       for (final slug in slugs) {
         final a = lum(categoryTone(slug));
         final b = lum(card);

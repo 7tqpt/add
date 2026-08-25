@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- كريمُ الصفحة نفسه الذي في `AppColors.page`. يُكتب هنا لأن نافذة أندرويد
+     تُرسم قبل أن يقلع محرّك Flutter، فما يظهر في تلك اللحظة من أندرويد لا
+     من دارت. -->
+<resources>
+    <color name="brand_page">#FBF4EF</color>
+</resources>

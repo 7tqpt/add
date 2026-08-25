@@ -73,6 +73,17 @@ flutter:
   # شبكة Google فيغيب النصّ كلّه حيث تُحجب. الإرفاق يجعل الشكل واحداً في كل
   # جهاز. الخطّ Noto Naskh Arabic برخصة SIL OFL 1.1.
   fonts:
+    # خطُّ العلامة — أربعةُ أوزان لأن نصفَ التصميم وزنٌ لا لون. ورخصته
+    # SIL OFL 1.1، ونصُّها في assets/fonts/IBMPlexSansArabic-OFL.txt.
+    - family: IBMPlexSansArabic
+      fonts:
+        - asset: assets/fonts/IBMPlexSansArabic-400.ttf
+        - asset: assets/fonts/IBMPlexSansArabic-500.ttf
+          weight: 500
+        - asset: assets/fonts/IBMPlexSansArabic-600.ttf
+          weight: 600
+        - asset: assets/fonts/IBMPlexSansArabic-700.ttf
+          weight: 700
     - family: NotoNaskhArabic
       fonts:
         - asset: assets/fonts/NotoNaskhArabic-Regular.ttf

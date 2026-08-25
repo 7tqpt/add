@@ -206,7 +206,7 @@ class _Head extends StatelessWidget {
               gradient: LinearGradient(
                 begin: Alignment.topRight,
                 end: Alignment.bottomLeft,
-                colors: [Color(0xFF3B6FE8), Color(0xFF14349B)],
+                colors: [AppColors.accentLift, AppColors.accentDeep],
               ),
             ),
             child: const _CoverBlobs(),

@@ -131,11 +131,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 ({IconData icon, Color tone}) notificationLook(NotificationKind kind) => switch (kind) {
   NotificationKind.booking => (icon: Icons.event_available_rounded, tone: AppColors.accent),
   NotificationKind.payment => (icon: Icons.payments_outlined, tone: AppColors.good),
-  NotificationKind.message => (icon: Icons.forum_outlined, tone: Color(0xFF7C3AED)),
+  NotificationKind.message => (icon: Icons.forum_outlined, tone: Color(0xFF6B2E8F)),
   NotificationKind.review => (icon: Icons.star_rounded, tone: AppColors.warning),
   NotificationKind.dispute => (icon: Icons.gavel_rounded, tone: AppColors.critical),
   NotificationKind.account => (icon: Icons.person_outline, tone: AppColors.ink2),
-  NotificationKind.reminder => (icon: Icons.alarm, tone: Color(0xFF0E7490)),
+  NotificationKind.reminder => (icon: Icons.alarm, tone: Color(0xFF14615F)),
   NotificationKind.general => (icon: Icons.notifications_none, tone: AppColors.ink2),
 };
 

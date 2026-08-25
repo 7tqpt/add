@@ -233,8 +233,9 @@ class _HeroCardsState extends State<_HeroCards> {
     final paid = has && p.totalCost > 0 ? (p.paidAmount / p.totalCost).clamp(0.0, 1.0).toDouble() : null;
 
     return _HeroCard(
-      // أزرقٌ من لون العلامة إلى أغمقَ منه: البطاقة سطحٌ لا لطخة.
-      colors: const [Color(0xFF3B6FE8), Color(0xFF14349B)],
+      // نبيذيٌّ من لون العلامة إلى أغمقَ منه: البطاقة سطحٌ لا لطخة.
+      // والأبيضُ على أفتح طرفيه ‎٨٫٠٨:١‎.
+      colors: const [AppColors.accentLift, AppColors.accentDeep],
       icon: Icons.favorite_rounded,
       title: 'خطة العرس',
       headline: has ? _countdownLabel(days) : 'ابدأ خطة عرسك',
@@ -258,9 +259,9 @@ class _HeroCardsState extends State<_HeroCards> {
     final pending = widget.data.countOf(BookingStatus.pendingProvider);
 
     return _HeroCard(
-      // ورديٌّ داكن: لونٌ ثانٍ يفصل البطاقتين بلمحةٍ قبل قراءة العنوان، وهو
-      // مقيسٌ كالأوّل — الأبيض عليه ‎٨٫٥٥:١‎.
-      colors: const [Color(0xFFD6407A), Color(0xFF8C1246)],
+      // طَفليٌّ محروق: لونٌ ثانٍ يفصل البطاقتين بلمحةٍ قبل قراءة العنوان،
+      // وهو من عائلة الكريم والذهب لا غريبٌ عنها — والأبيض عليه ‎٥٫٥٦:١‎.
+      colors: const [Color(0xFFA3521A), Color(0xFF6B3208)],
       icon: Icons.event_available_rounded,
       title: 'حجوزاتي',
       headline: list.isEmpty ? 'لا حجوزات قادمة' : formatCount(list.length, bookingForms),
