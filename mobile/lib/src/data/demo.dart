@@ -1322,3 +1322,53 @@ void demoResetDays() => demoDays = [
         note: 'صيانة',
       ),
     ];
+
+// ----- الاشتراكات -----
+
+const demoSubPlans = [
+  SubPlan(
+    id: 'plan-free',
+    name: 'الباقة الأساسية',
+    description: 'ظهور عادي وحتى ٥ خدمات معروضة.',
+    price: 0,
+    days: 30,
+    perks: ['حتى 5 خدمات', 'ملف تعريفي أساسي'],
+  ),
+  SubPlan(
+    id: 'plan-silver',
+    name: 'الباقة الفضية',
+    description: 'خدمات غير محدودة وأولوية في نتائج البحث.',
+    price: 15000,
+    days: 30,
+    perks: ['خدمات غير محدودة', 'أولوية في البحث', 'شارة نشط'],
+  ),
+  SubPlan(
+    id: 'plan-gold',
+    name: 'الباقة الذهبية',
+    description: 'ظهور مميز في الصفحة الرئيسية وتقارير أداء شهرية.',
+    price: 40000,
+    days: 30,
+    perks: ['كل مزايا الفضية', 'ظهور مميز في الرئيسية', 'تقارير أداء'],
+  ),
+];
+
+MySub? demoMySub;
+
+MySub demoSubscribe(String planId, String method, String senderRef) {
+  final plan = demoSubPlans.firstWhere((p) => p.id == planId);
+  if (demoMySub != null && demoMySub!.pending) {
+    throw 'لك طلبُ اشتراكٍ قيد التأكيد';
+  }
+  final sub = MySub(
+    id: 'sub-${DateTime.now().millisecondsSinceEpoch}',
+    planName: plan.name,
+    amount: plan.price,
+    // المجّانية تُفعَّل فوراً، وما له سعرٌ ينتظر تأكيد الحوالة — كما في القاعدة.
+    status: plan.free ? 'active' : 'pending',
+    endsAt: DateTime.now().add(Duration(days: plan.days)),
+  );
+  demoMySub = sub;
+  return sub;
+}
+
+void demoResetSubscription() => demoMySub = null;

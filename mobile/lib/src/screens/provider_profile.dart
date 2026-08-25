@@ -11,6 +11,7 @@ import '../ui/kit.dart';
 import 'documents.dart';
 import 'labels.dart';
 import 'provider_public.dart';
+import 'subscription.dart';
 import 'support.dart';
 
 class ProviderProfileScreen extends StatefulWidget {
@@ -176,6 +177,32 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen> {
                   KeyValue('عدد التقييمات', formatNumber(p.reviewsCount)),
                   KeyValue('حجوزات منفّذة', formatNumber(p.completedBookings)),
                   KeyValue('إجمالي الأرباح', formatMoney(p.totalEarnings)),
+                ],
+              ),
+              const SizedBox(height: Space.md),
+              // الاشتراك في بطاقةٍ لا في تبويبٍ خامس: المزوّد يفتحه مرّةً في
+              // الشهر، وتبويبٌ دائمٌ لِما يُفتح مرّةً يضيّق ما يُفتح كل يوم.
+              AppCard(
+                children: [
+                  const SectionTitle('اشتراكك'),
+                  const SizedBox(height: Space.sm),
+                  const Text(
+                    'الباقة تحدّد ظهورك في نتائج البحث وعدد خدماتك.',
+                    style: TextStyle(height: 1.7),
+                  ),
+                  const SizedBox(height: Space.md),
+                  OutlinedButton.icon(
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => Scaffold(
+                          appBar: AppBar(title: const Text('اشتراكك')),
+                          body: SubscriptionScreen(session: widget.session),
+                        ),
+                      ),
+                    ),
+                    icon: const Icon(Icons.workspace_premium_outlined, size: 20),
+                    label: const Text('الباقات والاشتراك'),
+                  ),
                 ],
               ),
             ] else

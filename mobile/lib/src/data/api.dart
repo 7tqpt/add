@@ -1189,4 +1189,39 @@ class Api {
     }) as List<dynamic>;
     return rows.map((r) => DateTime.parse(r as String)).toSet();
   }
+
+  // ----- الاشتراكات -----
+
+  /// الباقات المتاحة. سياسةُ `plans_public_read` تُخفي الموقوفة، فلا شرط هنا.
+  static Future<List<SubPlan>> plans() async {
+    if (!isSupabaseConfigured) return demoDelay(demoSubPlans);
+    final rows = await db
+        .from('subscription_plans')
+        .select('id, name, description, price, duration_days, perks')
+        .order('price', ascending: true);
+    return rows.map(SubPlan.fromMap).toList();
+  }
+
+  /// اشتراكي — أو `null` إن لم يكن لي اشتراكٌ قائمٌ ولا معلّق.
+  static Future<MySub?> mySubscription() async {
+    if (!isSupabaseConfigured) return demoDelay(demoMySub);
+    final row = await db.rpc('api_my_subscription');
+    if (row == null) return null;
+    return MySub.fromMap(Map<String, dynamic>.from(row as Map));
+  }
+
+  /// يطلب باقة. المجّانية تُفعَّل فوراً، وما له سعرٌ ينتظر تأكيد الحوالة.
+  static Future<MySub> subscribe({
+    required String planId,
+    required String method,
+    String senderRef = '',
+  }) async {
+    if (!isSupabaseConfigured) return demoSubscribe(planId, method, senderRef);
+    final row = await db.rpc('api_subscribe', params: {
+      'p_plan_id': planId,
+      'p_method': method,
+      'p_sender_ref': senderRef,
+    });
+    return MySub.fromMap(Map<String, dynamic>.from(row as Map));
+  }
 }

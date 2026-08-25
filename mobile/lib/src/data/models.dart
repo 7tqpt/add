@@ -864,3 +864,61 @@ class DayMark {
     note: (m['note'] ?? '') as String,
   );
 }
+
+/// باقةٌ معروضة على مقدّم الخدمة.
+class SubPlan {
+  const SubPlan({
+    required this.id,
+    required this.name,
+    required this.description,
+    required this.price,
+    required this.days,
+    required this.perks,
+  });
+
+  final String id;
+  final String name;
+  final String description;
+  final num price;
+  final int days;
+  final List<String> perks;
+
+  bool get free => price == 0;
+
+  factory SubPlan.fromMap(Map<String, dynamic> m) => SubPlan(
+    id: m['id'] as String,
+    name: (m['name'] ?? '') as String,
+    description: (m['description'] ?? '') as String,
+    price: (m['price'] ?? 0) as num,
+    days: (m['duration_days'] ?? 30) as int,
+    perks: ((m['perks'] ?? const []) as List).map((e) => e.toString()).toList(),
+  );
+}
+
+/// اشتراكي أنا — حالتُه ومدّته.
+class MySub {
+  const MySub({
+    required this.id,
+    required this.planName,
+    required this.amount,
+    required this.status,
+    required this.endsAt,
+  });
+
+  final String id;
+  final String planName;
+  final num amount;
+  final String status;
+  final DateTime endsAt;
+
+  bool get pending => status == 'pending';
+  bool get active => status == 'active';
+
+  factory MySub.fromMap(Map<String, dynamic> m) => MySub(
+    id: m['id'] as String,
+    planName: (m['plan_name'] ?? '') as String,
+    amount: (m['amount'] ?? 0) as num,
+    status: (m['status'] ?? 'pending') as String,
+    endsAt: DateTime.parse(m['ends_at'] as String),
+  );
+}
