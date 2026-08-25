@@ -190,10 +190,13 @@ class _CustomerShellState extends State<CustomerShell> {
             activeIcon: Icons.calendar_today,
           ),
           GlassNavItem(label: 'استكشف', icon: Icons.search_outlined, activeIcon: Icons.search),
+          // دفترٌ لا قلب: القلب صار للمفضّلة — يُضغط على الخدمة فتُحفظ،
+          // وتُفتح من «حسابي». ورمزٌ واحد لمعنيين يجعل المستخدم يضغط
+          // «خطة العرس» يبحث عمّا حفظه.
           GlassNavItem(
             label: 'خطة العرس',
-            icon: Icons.favorite_outline,
-            activeIcon: Icons.favorite,
+            icon: Icons.event_note_outlined,
+            activeIcon: Icons.event_note,
           ),
           GlassNavItem(label: 'حسابي', icon: Icons.person_outline, activeIcon: Icons.person),
         ],

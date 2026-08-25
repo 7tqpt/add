@@ -486,6 +486,30 @@ class Api {
     return rows.map((r) => r['service_id'] as String).toSet();
   }
 
+  /// المفضّلة صفوفاً لا معرّفات.
+  ///
+  /// **وقد تعود أقصرَ من عدد المعرّفات، وهذا صواب:** `v_services` تُخفي
+  /// الخدمةَ المعطَّلة وخدمةَ من لم يُوثَّق. فمن حفظ قاعةً ثم أُوقفت لا يجدها.
+  /// ويُعاد `missing` ليقول ذلك في الشاشة — وإلّا نقص العددُ بلا تفسيرٍ
+  /// فظنّ المستخدم أن حفظه ضاع.
+  static Future<({List<ServiceItem> items, int missing})> favouriteServices() async {
+    final ids = await myFavourites();
+    if (ids.isEmpty) return (items: <ServiceItem>[], missing: 0);
+
+    if (!isSupabaseConfigured) {
+      final items = demoServices.where((s) => ids.contains(s.id)).toList();
+      return demoDelay((items: items, missing: ids.length - items.length));
+    }
+
+    final rows = await db
+        .from('v_services')
+        .select()
+        .inFilter('id', ids.toList())
+        .order('provider_rating', ascending: false);
+    final items = rows.map(ServiceItem.fromMap).toList();
+    return (items: items, missing: ids.length - items.length);
+  }
+
   static Future<void> toggleFavourite(String serviceId) async {
     if (!isSupabaseConfigured) {
       demoToggleFavourite(serviceId);

@@ -7,6 +7,7 @@ import '../data/api.dart';
 import '../data/models.dart';
 import 'become_provider.dart';
 import 'disputes.dart';
+import 'favourites.dart';
 import 'edit_profile.dart';
 import 'money.dart';
 import 'support.dart';
@@ -253,6 +254,30 @@ class _AccountScreenState extends State<AccountScreen> {
             ),
             icon: const Icon(Icons.receipt_long_rounded, size: 20),
             label: const Text('عرض الفواتير'),
+          ),
+        ),
+
+        const SizedBox(height: Space.md),
+
+        // ── المفضّلة ───────────────────────────────────────────────────────
+        // بابُ ما حُفظ. والقلب في الاستكشاف كان يحفظ فعلاً ولا مكان يعرض ما
+        // حُفظ — فمن حفظ ستّ قاعاتٍ ليقارن بينها كان يبحث عنها من جديد.
+        _SectionCard(
+          icon: Icons.favorite_rounded,
+          tone: AppColors.accent,
+          title: 'المفضّلة',
+          body: 'الخدمات التي حفظتها بالقلب — تُفتح هنا لتقارن بينها قبل أن تحجز.',
+          action: OutlinedButton.icon(
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => Scaffold(
+                  appBar: AppBar(title: const Text('المفضّلة')),
+                  body: const FavouritesScreen(),
+                ),
+              ),
+            ),
+            icon: const Icon(Icons.favorite_rounded, size: 20),
+            label: const Text('عرض المفضّلة'),
           ),
         ),
 

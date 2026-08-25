@@ -92,7 +92,9 @@ class ServiceListCard extends StatelessWidget {
                           icon: Icon(
                             favourite ? Icons.favorite : Icons.favorite_border,
                             size: 20,
-                            color: favourite ? AppColors.critical : AppColors.muted,
+                            // نبيذيُّ العلامة لا أحمرُ الخطأ: قلبٌ بلون «فشل» على خدمةٍ
+                            // أحبَّها المستخدم يقرأه بعضُهم تحذيراً.
+                            color: favourite ? AppColors.accent : AppColors.muted,
                           ),
                         ),
                     ],
