@@ -232,4 +232,41 @@ void main() {
     expect(find.byType(AppBar), findsNothing);
     expect(glassHeaderSpace, greaterThan(glassHeaderBar));
   });
+
+  testWidgets('والبحثُ من الرئيسية يفتح الاستكشاف على ما كُتب', (tester) async {
+    // **وهذا ما ينكسر بصمت:** حقلٌ في الرئيسية يبتلع ما يُكتب فيه ثم يفتح
+    // شاشةً فارغة. فالمستخدم يكتب «قاعة» ويجد كلَّ شيءٍ أمامه فيظنّ أن بحثه
+    // لم يقع — ويكتبه مرّةً ثانية.
+    _phone(tester);
+    await tester.pumpWidget(_wrap(_session()));
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pumpAndSettle();
+
+    final box = find.widgetWithText(TextField, 'ابحث عن خدمة أو مقدّم خدمة');
+    expect(box, findsOneWidget);
+
+    await tester.enterText(box, 'قاعة');
+    await tester.testTextInput.receiveAction(TextInputAction.search);
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pumpAndSettle();
+
+    // انتقل التبويب…
+    expect(find.text('استكشف'), findsWidgets);
+    // …والنصُّ وصل حقلَ الاستكشاف لا ضاع في الطريق.
+    final explore = tester.widgetList<TextField>(find.byType(TextField));
+    expect(explore.any((f) => f.controller?.text == 'قاعة'), isTrue);
+  });
+
+  testWidgets('وحقلٌ فارغٌ لا ينقل أحداً', (tester) async {
+    // ضغطةٌ على زرّ البحث بلا نصّ كانت ستفتح الاستكشاف بلا سبب — وهي أشيع
+    // من البحث نفسه: إبهامٌ يمرّ على الحقل.
+    _phone(tester);
+    await tester.pumpWidget(_wrap(_session()));
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('ابحث'));
+    await tester.pumpAndSettle();
+    expect(find.text('مرحباً بك في فرحتي'), findsOneWidget);
+  });
 }

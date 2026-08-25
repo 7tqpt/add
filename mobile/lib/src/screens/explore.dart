@@ -10,7 +10,13 @@ import 'provider_public.dart';
 import 'service_detail.dart';
 
 class ExploreScreen extends StatefulWidget {
-  const ExploreScreen({super.key, this.categoryId});
+  const ExploreScreen({super.key, this.categoryId, this.search});
+
+  /// نصُّ بحثٍ تُفتح عليه الشاشة.
+  ///
+  /// يأتي من حقل البحث في الرئيسية: من كتب «قاعة» هناك يريد النتائج، لا
+  /// شاشةً فارغةً يكتب فيها كلمته من جديد.
+  final String? search;
 
   /// القسم الذي تُفتح عليه الشاشة.
   ///
@@ -24,8 +30,8 @@ class ExploreScreen extends StatefulWidget {
 }
 
 class _ExploreScreenState extends State<ExploreScreen> {
-  final _search = TextEditingController();
-  String _applied = '';
+  late final _search = TextEditingController(text: widget.search ?? '');
+  late String _applied = (widget.search ?? '').trim();
   late String? _categoryId = widget.categoryId;
   late Future<List<ServiceCategory>> _categories;
   late Future<List<ServiceItem>> _services;
@@ -77,6 +83,12 @@ class _ExploreScreenState extends State<ExploreScreen> {
       _categoryId = widget.categoryId;
       _reload();
       _revealCategory();
+    }
+    // والنصُّ كذلك: بحثٌ ثانٍ من الرئيسية والشاشة حيّةٌ لا يجوز أن يُهمل.
+    if (widget.search != old.search) {
+      _search.text = widget.search ?? '';
+      _applied = (widget.search ?? '').trim();
+      _reload();
     }
   }
 
