@@ -7,10 +7,13 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:aras/src/core/theme.dart';
+import 'package:aras/src/data/api.dart';
+import 'package:aras/src/data/models.dart';
 import 'package:aras/src/screens/explore.dart';
 import 'package:aras/src/screens/provider_public.dart';
 import 'package:aras/src/screens/service_detail.dart';
 import 'package:aras/src/ui/kit.dart';
+import 'package:aras/src/ui/media.dart';
 import 'package:aras/src/ui/service_card.dart';
 
 Widget _wrap(Widget child) => MaterialApp(
@@ -41,6 +44,19 @@ void _phone(WidgetTester tester, {double height = 3200}) {
   addTearDown(tester.view.reset);
 }
 
+
+/// فتحُ تبويبٍ في ملفّ المزوّد.
+///
+/// **والتبويبُ حاجزٌ حقيقي:** `TabBarView` لا يبني إلا الصفحةَ المعروضة
+/// وجارتَها، فبحثٌ عن نصٍّ في التبويب الثالث قبل فتحه لا يجده — ولو مرّ
+/// بـ`skipOffstage: false`. فيُفتح ثم يُقاس.
+Future<void> _openTab(WidgetTester tester, String label) async {
+  await tester.tap(find.text(label));
+  await tester.pumpAndSettle();
+  await tester.pump(const Duration(seconds: 1));
+  await tester.pumpAndSettle();
+}
+
 void main() {
   testWidgets('الملفّ يعرض المزوّد وخدماته وآراء عملائه', (tester) async {
     _phone(tester);
@@ -55,12 +71,20 @@ void main() {
     expect(find.text('مميّز'), findsOneWidget);
     expect(find.text('القاعات والخيام'), findsOneWidget);
 
+    // وأربعةُ أبوابٍ إلى ما يسأل عنه.
+    expect(find.text('النبذة'), findsOneWidget);
+    expect(find.text('الخدمات'), findsOneWidget);
+    expect(find.text('الصور'), findsOneWidget);
+    expect(find.text('التقييمات'), findsOneWidget);
+
     // ماذا يعرض — الثلاث كلُّها.
+    await _openTab(tester, 'الخدمات');
     expect(find.text('قاعة التاج — باقة شاملة', skipOffstage: false), findsOneWidget);
     expect(find.text('قاعة التاج — باقة الخطوبة', skipOffstage: false), findsOneWidget);
     expect(find.text('خيمة أفراح متنقّلة', skipOffstage: false), findsOneWidget);
 
     // وماذا قال من تعامل معه.
+    await _openTab(tester, 'التقييمات');
     expect(find.textContaining('قاعة نظيفة والاستقبال', skipOffstage: false), findsOneWidget);
   });
 
@@ -99,6 +123,7 @@ void main() {
     _phone(tester);
     await tester.pumpWidget(_wrap(const PublicProviderScreen(providerId: 'p1')));
     await _settle(tester);
+    await _openTab(tester, 'الخدمات');
 
     final cards = tester.widgetList<ServiceListCard>(
       find.byType(ServiceListCard, skipOffstage: false),
@@ -112,6 +137,7 @@ void main() {
     await tester.pumpWidget(_wrap(const PublicProviderScreen(providerId: 'p1')));
     await _settle(tester);
 
+    await _openTab(tester, 'الخدمات');
     await tester.tap(find.text('خيمة أفراح متنقّلة'));
     await _settle(tester);
 
@@ -157,5 +183,39 @@ void main() {
     await _settle(tester);
 
     expect(find.text('الملفّ غير متاح'), findsOneWidget);
+  });
+
+  testWidgets('وتبويبُ الصور معرضٌ من خدماته كلِّها', (tester) async {
+    // **ولماذا معرضٌ للمزوّد أصلاً:** الصور كانت مدفونةً في صفحة كل خدمة،
+    // فمن أراد أن يرى شكل المكان قبل أن يقارن الأسعار كان يفتح ثلاث صفحات.
+    _phone(tester);
+    await tester.pumpWidget(_wrap(const PublicProviderScreen(providerId: 'p1')));
+    await _settle(tester);
+
+    await _openTab(tester, 'الصور');
+    expect(find.byType(MediaThumb), findsWidgets);
+  });
+
+  // `test` لا `testWidgets`: مؤقّتات الودجت مُزيَّفة، فانتظارُ `Future.delayed`
+  // فيها بلا `pump` لا ينتهي أبداً — الاختبار يعلّق لا يسقط.
+  test('ولا يُعرض في المعرض إلا الصور', () async {
+    // مقطعُ فيديو في شبكةٍ لا تُشغَّل مربّعٌ أسود، وعشرون منها تُنزَّل كلُّها
+    // على شبكة جوالٍ يمنية. ومكانُ المقاطع صفحةُ الخدمة حيث لها مشغّل.
+    final gallery = await Api.providerGallery('p1');
+    expect(gallery, isNotEmpty);
+    expect(gallery.every((m) => m.kind == MediaKind.image), isTrue);
+    // وضبطُ عيارٍ داخل الاختبار: في بيانات العرض مقاطعُ فعلاً — فلو لم تكن
+    // لَمرّ التأكيدُ أعلاه وهو لا يقيس شيئاً.
+    final all = await Api.serviceMedia('s1');
+    expect(all.any((m) => m.kind != MediaKind.image), isTrue);
+  });
+
+  testWidgets('ومزوّدٌ بلا صورٍ يقول ذلك ولا يعرض شبكةً فارغة', (tester) async {
+    _phone(tester);
+    await tester.pumpWidget(_wrap(const PublicProviderScreen(providerId: 'p3')));
+    await _settle(tester);
+
+    await _openTab(tester, 'الصور');
+    expect(find.text('لا صور بعد'), findsOneWidget);
   });
 }

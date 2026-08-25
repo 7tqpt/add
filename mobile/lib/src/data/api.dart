@@ -849,6 +849,27 @@ class Api {
     return rows.map(ServiceMedia.fromMap).toList();
   }
 
+  /// صورُ المزوّد كلِّها — من خدماته جميعاً في صفحةٍ واحدة.
+  ///
+  /// **ولماذا صورٌ فقط:** تبويب «الصور» في ملفّ المزوّد معرضٌ يُمرَّر بالإبهام،
+  /// ومقاطعُ الفيديو والصوت لا تُمرَّر — لكلٍّ منها مشغّلٌ ومكانُه صفحةُ
+  /// الخدمة نفسها. وعشرون مقطعاً في شبكةٍ واحدة تُنزَّل كلُّها على شبكة
+  /// جوالٍ يمنية.
+  ///
+  /// والسياسةُ نفسها تحرسها: `service_media` تتبع خدمتَها في القراءة، فخدمةٌ
+  /// معطَّلة لا تظهر صورُها هنا ولو كان صاحبها موثّقاً.
+  static Future<List<ServiceMedia>> providerGallery(String providerId) async {
+    if (!isSupabaseConfigured) return demoDelay(demoProviderGallery(providerId));
+    final rows = await db
+        .from('service_media')
+        .select('id, kind, path, title, duration_seconds, size_bytes, sort_order')
+        .eq('provider_id', providerId)
+        .eq('kind', 'image')
+        .order('sort_order', ascending: true)
+        .limit(40);
+    return rows.map(ServiceMedia.fromMap).toList();
+  }
+
   /// يرفع الملف ثم يسجّله.
   ///
   /// الترتيب مقصود كما في المستندات: لو سُجّل الصفّ أولاً وفشل الرفع لبقي في

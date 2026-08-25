@@ -867,6 +867,21 @@ Map<String, List<ServiceMedia>> demoMedia = {
   ],
 };
 
+/// معرضُ العرض: صورُ خدمات المزوّد كلِّها.
+///
+/// وبيانات العرض تربط الوسائط بالخدمة لا بالمزوّد، فيُجمع عبر خدماته.
+List<ServiceMedia> demoProviderGallery(String providerId) {
+  final ids = demoServices
+      .where((s) => s.providerId == providerId)
+      .map((s) => s.id)
+      .toSet();
+  return [
+    for (final entry in demoMedia.entries)
+      if (ids.contains(entry.key))
+        ...entry.value.where((m) => m.kind == MediaKind.image),
+  ];
+}
+
 List<ServiceMedia> demoMediaOf(String serviceId) =>
     List<ServiceMedia>.from(demoMedia[serviceId] ?? const []);
 
