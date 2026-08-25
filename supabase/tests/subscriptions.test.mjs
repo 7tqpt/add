@@ -48,7 +48,7 @@ const one = async (q, p) => (await rows(q, p))[0]
 // ── تجهيز: مزوّدٌ بحساب، ومسؤولٌ مالك ────────────────────────────────────────
 const puid = '66666666-6666-6666-6666-666666666666'
 const auid = '77777777-7777-7777-7777-777777777777'
-const provider = await one(`select id from public.service_providers limit 1`)
+const provider = await one(`select id from public.service_providers order by id limit 1`)
 await db.exec(`
   delete from public.provider_subscriptions where provider_id = '${provider.id}';
   insert into auth.users (id, email) values ('${puid}', 'p3@sdd.company')

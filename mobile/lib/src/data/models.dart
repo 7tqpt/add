@@ -825,12 +825,16 @@ class PaymentSettings {
     required this.kuraimi,
     required this.bank,
     required this.note,
+    this.promoDaily = 0,
   });
 
   final String jawali;
   final String kuraimi;
   final String bank;
   final String note;
+
+  /// سعرُ يومٍ من الظهور المميز. صفرٌ يعني أن البيع لم يُفتح، فيُخفى الشراء.
+  final num promoDaily;
 
   /// هل ضبط المسؤول وسيلةً واحدة على الأقل.
   bool get any => jawali.isNotEmpty || kuraimi.isNotEmpty || bank.isNotEmpty;
@@ -840,6 +844,7 @@ class PaymentSettings {
     kuraimi: (m['pay_kuraimi'] ?? '') as String,
     bank: (m['pay_bank'] ?? '') as String,
     note: (m['pay_note'] ?? '') as String,
+    promoDaily: (m['promo_featured_daily'] ?? 0) as num,
   );
 }
 
@@ -988,5 +993,33 @@ class Settlement {
     commission: (m['commission_amount'] ?? 0) as num,
     net: (m['net_amount'] ?? 0) as num,
     status: (m['status'] ?? 'pending') as String,
+  );
+}
+
+/// إعلانٌ قائمٌ في الرئيسية — بطاقةٌ في الشريط.
+class PromoSlot {
+  const PromoSlot({
+    required this.id,
+    required this.providerId,
+    required this.providerName,
+    required this.logoPath,
+    required this.governorate,
+    required this.rating,
+  });
+
+  final String id;
+  final String providerId;
+  final String providerName;
+  final String logoPath;
+  final String governorate;
+  final num rating;
+
+  factory PromoSlot.fromMap(Map<String, dynamic> m) => PromoSlot(
+    id: m['id'] as String,
+    providerId: (m['provider_id'] ?? '') as String,
+    providerName: (m['provider_name'] ?? '') as String,
+    logoPath: (m['logo_path'] ?? '') as String,
+    governorate: (m['governorate'] ?? '') as String,
+    rating: (m['rating'] ?? 0) as num,
   );
 }

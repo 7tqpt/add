@@ -80,7 +80,7 @@ const none = await as('22222222-2222-2222-2222-222222222222',
 ok('ومن لا ملفَّ له يقرأ فراغاً', none.rows[0].id === null, `${none.rows[0].id}`)
 
 console.log('\n=== التعديل ===')
-const gov = await db.query(`select id, name from public.governorates limit 1`)
+const gov = await db.query(`select id, name from public.governorates order by sort_order limit 1`)
 const saved = await as(UID,
   `select full_name, phone, governorate, avatar_path
      from public.api_update_profile($1, $2, $3, $4)`,

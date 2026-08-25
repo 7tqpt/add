@@ -45,7 +45,10 @@ void _phone(WidgetTester tester, {double height = 4200}) {
 }
 
 void main() {
-  setUp(demoResetSubscription);
+  setUp(() {
+    demoResetSubscription();
+    demoResetPromo();
+  });
 
   testWidgets('الباقات الثلاث تُعرض بأسعارها', (tester) async {
     _phone(tester);
@@ -100,5 +103,38 @@ void main() {
 
     expect(demoMySub?.status, 'pending');
     expect(find.text('قيد التأكيد'), findsOneWidget);
+  });
+
+  testWidgets('والظهور المميز يُعرض بمُدده وأسعارها', (tester) async {
+    _phone(tester);
+    await tester.pumpWidget(_wrap(SubscriptionScreen(session: _session())));
+    await _settle(tester);
+
+    // بيانات العرض: ٢٠٠٠ لليوم.
+    expect(find.text('ملفّك في مقدّمة الرئيسية'), findsOneWidget);
+    expect(find.textContaining('7 أيام'), findsOneWidget);
+  });
+
+  testWidgets('وشراؤه يقع معلّقاً لا ظاهراً', (tester) async {
+    // **وهذا ما ينكسر بصمت:** إعلانٌ يبدأ بالضغط يعني رئيسيةً تمتلئ بمن لم
+    // يدفع، ولا يظهر ذلك في أي شاشة.
+    _phone(tester);
+    demoResetPromo();
+    await tester.pumpWidget(_wrap(SubscriptionScreen(session: _session())));
+    await _settle(tester);
+
+    await tester.tap(find.textContaining('3 أيام'));
+    await _settle(tester);
+    expect(find.text('حوّلتُ المبلغ — أبلغ الإدارة'), findsOneWidget);
+    expect(demoPromoPending, isFalse);
+
+    await tester.tap(find.descendant(
+      of: find.byType(PickChip),
+      matching: find.text('جوالي'),
+    ));
+    await tester.tap(find.text('حوّلتُ المبلغ — أبلغ الإدارة'));
+    await _settle(tester);
+
+    expect(demoPromoPending, isTrue);
   });
 }

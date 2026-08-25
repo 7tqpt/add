@@ -48,7 +48,7 @@ const one = async (q, p) => (await rows(q, p))[0]
 
 // ── تجهيز: مزوّدٌ بحساب، وحجزٌ له في يومٍ بعيد ──────────────────────────────
 const puid = '44444444-4444-4444-4444-444444444444'
-const provider = await one(`select id from public.service_providers limit 1`)
+const provider = await one(`select id from public.service_providers order by id limit 1`)
 await db.exec(`
   insert into auth.users (id, email) values ('${puid}', 'p@sdd.company')
     on conflict (id) do nothing;
@@ -64,7 +64,7 @@ const booking = await one(`
   update public.bookings
      set provider_id = $1, event_date = $2, status = 'pending_provider',
          cancelled_at = null
-   where id = (select id from public.bookings limit 1)
+   where id = (select id from public.bookings order by reference limit 1)
   returning id, reference`, [provider.id, day])
 
 const blocked = async (d) => Number((await one(

@@ -1226,6 +1226,7 @@ const demoPaymentSettings = PaymentSettings(
   kuraimi: '1234567890',
   bank: 'بنك التضامن — 0011223344',
   note: 'اكتب رقم الحجز في خانة الملاحظة عند التحويل.',
+  promoDaily: 2000,
 );
 
 List<PaymentRow> demoPayments = [];
@@ -1400,3 +1401,26 @@ final demoSettlements = [
     status: 'pending',
   ),
 ];
+
+// ----- الإعلانات -----
+
+const demoPromos = [
+  PromoSlot(
+    id: 'promo-1',
+    providerId: 'p1',
+    providerName: 'قاعة التاج الملكي',
+    logoPath: '',
+    governorate: 'أمانة العاصمة',
+    rating: 4.8,
+  ),
+];
+
+/// وضعُ العرض يحاكي القاعدة: الطلب يقع معلّقاً ولا يظهر في الشريط.
+bool demoPromoPending = false;
+
+void demoRequestPromotion(int days) {
+  if (demoPromoPending) throw 'لك طلبُ إعلانٍ قيد التأكيد';
+  demoPromoPending = true;
+}
+
+void demoResetPromo() => demoPromoPending = false;

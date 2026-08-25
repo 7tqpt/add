@@ -1033,13 +1033,15 @@ class Api {
     // وقاعدةٌ لم يُطبَّق عليها `payments_app.sql` تنكر الأعمدة الأربعة، فتُقرأ
     // على أنها «لم تُضبط وسائلُ التحويل بعد» — وهو الصدق: لا رقم مُعلَناً.
     // أما رميُ الخطأ فيجعل شاشة الدفع حمراء، وهي لا تُصلَح من التطبيق أصلاً.
+    Future<Map<String, dynamic>?> read(String columns) =>
+        db.from('app_settings').select(columns).eq('id', 1).maybeSingle();
+
+    const base = 'pay_jawali, pay_kuraimi, pay_bank, pay_note';
     final row = await whenColumnMissing<Map<String, dynamic>?>(
-      () => db
-          .from('app_settings')
-          .select('pay_jawali, pay_kuraimi, pay_bank, pay_note')
-          .eq('id', 1)
-          .maybeSingle(),
-      () async => null,
+      // سعرُ الإعلان أحدثُ من أرقام التحويل، فقد تنقصه قاعدةٌ فيها الأرقام.
+      // وقراءتُه في النداء نفسه لا في ثانٍ: الشاشة تنتظر ما تنتظره.
+      () => read('$base, promo_featured_daily'),
+      () => whenColumnMissing(() => read(base), () async => null),
     );
     return PaymentSettings.fromMap(row ?? const {});
   }
@@ -1266,5 +1268,33 @@ class Api {
         .order('period_end', ascending: false)
         .limit(40);
     return rows.map(Settlement.fromMap).toList();
+  }
+
+  // ----- الإعلانات -----
+
+  /// الإعلاناتُ القائمة — شريطُ الرئيسية.
+  static Future<List<PromoSlot>> activePromotions() async {
+    if (!isSupabaseConfigured) return demoDelay(demoPromos);
+    final rows = await db.rpc('api_active_promotions') as List<dynamic>;
+    return rows
+        .map((r) => PromoSlot.fromMap(Map<String, dynamic>.from(r as Map)))
+        .toList();
+  }
+
+  /// يطلب مقدّمُ الخدمة ظهوراً مميزاً لمدّة. لا يظهر حتى تُؤكَّد حوالته.
+  static Future<void> requestPromotion({
+    required int days,
+    required String method,
+    String senderRef = '',
+  }) async {
+    if (!isSupabaseConfigured) {
+      demoRequestPromotion(days);
+      return;
+    }
+    await db.rpc('api_request_promotion', params: {
+      'p_days': days,
+      'p_method': method,
+      'p_sender_ref': senderRef,
+    });
   }
 }

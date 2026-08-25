@@ -129,7 +129,7 @@ const { rows: reopened } = await as('admin', `select status from public.support_
 ok('عادت مفتوحة', reopened[0].status === 'open', reopened[0].status)
 
 console.log('\n=== الحجز المرتبط ===')
-const { rows: foreign } = await db.query(`select id from public.bookings limit 1`)
+const { rows: foreign } = await db.query(`select id from public.bookings order by reference limit 1`)
 await expectFail('ربط التذكرة بحجز لا يخصّ صاحبها', () =>
   as('customer', `select public.api_open_ticket('سؤال', 'نص', 'booking', $1)`, [foreign[0].id]))
 

@@ -66,12 +66,33 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     }
   }
 
+  Future<void> _promoSheet(int days, PaymentSettings pay) async {
+    final done = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => _TransferSheet(
+        title: 'ظهور مميز $days ${days == 1 ? 'يوماً' : 'أيام'}',
+        amount: pay.promoDaily * days,
+        settings: pay,
+        send: (method, ref) =>
+            Api.requestPromotion(days: days, method: method, senderRef: ref),
+      ),
+    );
+    if (done == true && mounted) _load();
+  }
+
   /// ورقةُ التحويل: أين يُحوَّل، ثم بأي وسيلةٍ حوّل ورقمُه.
   Future<bool?> _transferSheet(SubPlan plan, PaymentSettings pay) {
     return showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
-      builder: (sheetContext) => _TransferSheet(plan: plan, settings: pay),
+      builder: (sheetContext) => _TransferSheet(
+        title: 'اشتراك ${plan.name}',
+        amount: plan.price,
+        settings: pay,
+        send: (method, ref) =>
+            Api.subscribe(planId: plan.id, method: method, senderRef: ref),
+      ),
     ).then((value) {
       if (value == true) _load();
       return value;
@@ -111,6 +132,18 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                   onPick: () => _subscribe(plan, pay),
                 ),
                 const SizedBox(height: 12),
+              ],
+              // الإعلان في الشاشة نفسها لا في شاشةٍ ثالثة: ما يُشترى من
+              // المنصّة بابٌ واحد، وتفريقُه أبوابٌ يعرف المزوّد أوّلها ولا
+              // يعرف الثاني.
+              if (pay.promoDaily > 0) ...[
+                const SizedBox(height: 8),
+                const SectionTitle('الظهور المميز'),
+                const SizedBox(height: 8),
+                _PromoCard(
+                  daily: pay.promoDaily,
+                  onPick: (days) => _promoSheet(days, pay),
+                ),
               ],
             ],
           ),
@@ -220,10 +253,17 @@ class _PlanCard extends StatelessWidget {
 
 /// أين يُحوَّل، وبأي وسيلةٍ حوّلت.
 class _TransferSheet extends StatefulWidget {
-  const _TransferSheet({required this.plan, required this.settings});
+  const _TransferSheet({
+    required this.title,
+    required this.amount,
+    required this.settings,
+    required this.send,
+  });
 
-  final SubPlan plan;
+  final String title;
+  final num amount;
   final PaymentSettings settings;
+  final Future<void> Function(String method, String senderRef) send;
 
   @override
   State<_TransferSheet> createState() => _TransferSheetState();
@@ -257,11 +297,7 @@ class _TransferSheetState extends State<_TransferSheet> {
       _error = null;
     });
     try {
-      await Api.subscribe(
-        planId: widget.plan.id,
-        method: _method!,
-        senderRef: _ref.text.trim(),
-      );
+      await widget.send(_method!, _ref.text.trim());
       if (mounted) Navigator.of(context).pop(true);
     } catch (e) {
       if (mounted) {
@@ -287,10 +323,10 @@ class _TransferSheetState extends State<_TransferSheet> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('اشتراك ${widget.plan.name}',
+            Text(widget.title,
                 style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
             const SizedBox(height: 4),
-            Muted('المبلغ ${formatMoney(widget.plan.price)} لمدّة ${widget.plan.days} يوماً.'),
+            Muted('المبلغ ${formatMoney(widget.amount)}.'),
             const SizedBox(height: 12),
             if (_methods.isEmpty)
               const EmptyBlock(
@@ -345,6 +381,45 @@ class _TransferSheetState extends State<_TransferSheet> {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// شراءُ ظهورٍ مميز — ثلاث مُدد لا حقلُ رقم.
+///
+/// **ولماذا:** حقلٌ يكتب فيه المزوّد عدد الأيام يفتح باب «١٠٠٠ يوم» فيُردّ من
+/// القاعدة، و«صفر» فيُردّ كذلك. وثلاثُ مُددٍ معروضةٍ بأسعارها تُقرأ وتُقارن.
+class _PromoCard extends StatelessWidget {
+  const _PromoCard({required this.daily, required this.onPick});
+
+  final num daily;
+  final void Function(int days) onPick;
+
+  static const _spans = [3, 7, 14];
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      children: [
+        const Text(
+          'ملفّك في مقدّمة الرئيسية',
+          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: 6),
+        Muted('يراك من يفتح التطبيق قبل غيرك. ${formatMoney(daily)} لليوم.'),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final days in _spans)
+              OutlinedButton(
+                onPressed: () => onPick(days),
+                child: Text('$days أيام — ${formatMoney(daily * days)}'),
+              ),
+          ],
+        ),
+      ],
     );
   }
 }

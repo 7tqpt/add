@@ -55,7 +55,7 @@ await db.exec(`
        values ('${auid}', 'a4@sdd.company', 'owner')
   on conflict (user_id) do update set role = 'owner';`)
 
-const provider = await one(`select id from public.service_providers limit 1`)
+const provider = await one(`select id from public.service_providers order by id limit 1`)
 // **بترتيبٍ ثابت وبتصفيرٍ صريح.** `limit 2` بلا `order by` تختار صفّين
 // مختلفين في كل تشغيل، و`deposit_within_total` تسقط حين يكون عربونُ الصفّ
 // المختار أكبر من السعر الذي يكتبه الاختبار. فمرّ الاختبار مرّتين وسقط في
