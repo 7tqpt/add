@@ -229,7 +229,7 @@ class _HeroCardsState extends State<_HeroCards> {
   Widget _planCard() {
     final p = widget.data.plan;
     final has = p != null && p.weddingDate.isNotEmpty;
-    final days = has ? _daysUntil(p.weddingDate) : null;
+    final days = has ? daysUntil(p.weddingDate) : null;
     final paid = has && p.totalCost > 0 ? (p.paidAmount / p.totalCost).clamp(0.0, 1.0).toDouble() : null;
 
     return _HeroCard(
@@ -238,7 +238,7 @@ class _HeroCardsState extends State<_HeroCards> {
       colors: const [AppColors.accentLift, AppColors.accentDeep],
       icon: Icons.favorite_rounded,
       title: 'خطة العرس',
-      headline: has ? _countdownLabel(days) : 'ابدأ خطة عرسك',
+      headline: has ? countdownLabel(days) : 'ابدأ خطة عرسك',
       subtitle: has
           ? [formatDate(p.weddingDate), if (p.governorate.isNotEmpty) p.governorate].join(' · ')
           : 'التاريخ والميزانية وعدد الضيوف في مكانٍ واحد',
@@ -267,7 +267,7 @@ class _HeroCardsState extends State<_HeroCards> {
       headline: list.isEmpty ? 'لا حجوزات قادمة' : formatCount(list.length, bookingForms),
       subtitle: next == null
           ? 'تصفّح الخدمات واحجز أوّل خدمة'
-          : 'أقربها ${_whenLabel(_daysUntil(next.eventDate))} · ${next.providerName}',
+          : 'أقربها ${_whenLabel(daysUntil(next.eventDate))} · ${next.providerName}',
       footer: list.isEmpty
           ? 'اضغط لعرض حجوزاتك'
           : [
@@ -277,28 +277,6 @@ class _HeroCardsState extends State<_HeroCards> {
       onTap: widget.onBookings,
     );
   }
-}
-
-/// الفرق بالأيام التقويمية لا بالساعات.
-///
-/// `DateTime.difference` يحسب بالساعات ثم يقسم، فعرسٌ غداً ظهراً يخرج «صفر
-/// يوم» إن نُظر إليه صباحاً. والمستخدم يعدّ الأيام لا الساعات.
-int? _daysUntil(String iso) {
-  final date = DateTime.tryParse(iso);
-  if (date == null) return null;
-  final now = DateTime.now();
-  return DateTime(date.year, date.month, date.day)
-      .difference(DateTime(now.year, now.month, now.day))
-      .inDays;
-}
-
-/// «بقي ٧ أيام» — والعدد يُصرَّف، فلا يُكتب «بقي 3 يوماً».
-String _countdownLabel(int? days) {
-  if (days == null) return '—';
-  if (days > 1) return 'بقي ${formatCount(days, dayForms)}';
-  if (days == 1) return 'غداً بإذن الله';
-  if (days == 0) return 'اليوم — مبارك!';
-  return 'مضى ${formatCount(-days, dayForms)}';
 }
 
 String _whenLabel(int? days) {

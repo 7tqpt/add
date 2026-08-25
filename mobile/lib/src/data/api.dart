@@ -554,6 +554,60 @@ class Api {
     }
   }
 
+  // ----- مهامّ الخطّة -----
+
+  /// تقدّمُ خطّةٍ بعينها.
+  ///
+  /// **قراءةٌ ثانيةٌ لا توسيعُ `v_plan_summary`:** تلك يُعيد `apply.sql`
+  /// إنشاءها، وطريقةٌ تعتمد عليها تجعل ذلك الإسقاط يفشل. والصفُّ صغيرٌ —
+  /// أربعةُ أعداد.
+  static Future<PlanProgress> planProgress(String planId) async {
+    if (!isSupabaseConfigured) return demoDelay(demoPlanProgress(planId));
+    final row = await db
+        .from('v_plan_progress')
+        .select()
+        .eq('plan_id', planId)
+        .maybeSingle();
+    // **وقاعدةٌ أقدمُ من التطبيق لا تُسقط الشاشة:** من لم يشغّل
+    // `plan_tasks.sql` بعدُ يرى الخطّة بلا قائمةٍ لا شاشةَ خطأ.
+    return row == null ? PlanProgress.empty : PlanProgress.fromMap(row);
+  }
+
+  static Future<List<PlanTask>> planTasks(String planId) async {
+    if (!isSupabaseConfigured) return demoDelay(demoPlanTasks);
+    final rows = await db
+        .from('plan_tasks')
+        .select()
+        .eq('plan_id', planId)
+        .order('sort_order', ascending: true)
+        .order('created_at', ascending: true);
+    return rows.map(PlanTask.fromMap).toList();
+  }
+
+  static Future<void> togglePlanTask(String taskId) async {
+    if (!isSupabaseConfigured) {
+      demoTogglePlanTask(taskId);
+      return;
+    }
+    await db.rpc('api_toggle_plan_task', params: {'p_task_id': taskId});
+  }
+
+  static Future<void> addPlanTask(String planId, String title) async {
+    if (!isSupabaseConfigured) {
+      demoAddPlanTask(planId, title);
+      return;
+    }
+    await db.rpc('api_add_plan_task', params: {'p_plan_id': planId, 'p_title': title});
+  }
+
+  static Future<void> deletePlanTask(String taskId) async {
+    if (!isSupabaseConfigured) {
+      demoDeletePlanTask(taskId);
+      return;
+    }
+    await db.rpc('api_delete_plan_task', params: {'p_task_id': taskId});
+  }
+
   // ----- خدمات مقدّم الخدمة -----
 
   /// خدماتي أنا — المعطَّلة منها كذلك، وهي التي تُخفيها `v_services`.

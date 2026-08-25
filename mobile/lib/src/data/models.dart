@@ -870,6 +870,65 @@ class DayMark {
   );
 }
 
+/// مهمّةٌ في قائمة تجهيز العرس.
+class PlanTask {
+  const PlanTask({
+    required this.id,
+    required this.title,
+    required this.done,
+    required this.dueDate,
+    required this.sortOrder,
+  });
+
+  final String id;
+  final String title;
+  final bool done;
+
+  /// موعدُها إن حُدِّد. نصٌّ فارغٌ لا `null`: الشاشة تعرضه أو تُخفيه، ولا
+  /// تحتاج تمييزاً بين «بلا موعد» و«لم يُقرأ».
+  final String dueDate;
+  final int sortOrder;
+
+  factory PlanTask.fromMap(Map<String, dynamic> m) => PlanTask(
+    id: m['id'] as String,
+    title: (m['title'] ?? '') as String,
+    done: (m['is_done'] ?? false) as bool,
+    dueDate: (m['due_date'] ?? '') as String,
+    sortOrder: ((m['sort_order'] ?? 0) as num).toInt(),
+  );
+}
+
+/// تقدّمُ خطّةٍ — يُحسب في القاعدة لا في الجوال.
+class PlanProgress {
+  const PlanProgress({
+    required this.tasksTotal,
+    required this.tasksDone,
+    required this.percent,
+    required this.upcomingBookings,
+  });
+
+  final int tasksTotal;
+  final int tasksDone;
+  final int percent;
+  final int upcomingBookings;
+
+  int get tasksLeft => tasksTotal - tasksDone;
+
+  static const empty = PlanProgress(
+    tasksTotal: 0,
+    tasksDone: 0,
+    percent: 0,
+    upcomingBookings: 0,
+  );
+
+  factory PlanProgress.fromMap(Map<String, dynamic> m) => PlanProgress(
+    tasksTotal: ((m['tasks_total'] ?? 0) as num).toInt(),
+    tasksDone: ((m['tasks_done'] ?? 0) as num).toInt(),
+    percent: ((m['tasks_percent'] ?? 0) as num).toInt(),
+    upcomingBookings: ((m['upcoming_bookings'] ?? 0) as num).toInt(),
+  );
+}
+
 /// باقةٌ معروضة على مقدّم الخدمة.
 class SubPlan {
   const SubPlan({
