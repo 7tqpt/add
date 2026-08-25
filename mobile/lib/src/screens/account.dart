@@ -8,6 +8,7 @@ import '../data/models.dart';
 import 'become_provider.dart';
 import 'disputes.dart';
 import 'edit_profile.dart';
+import 'money.dart';
 import 'support.dart';
 
 /// بطاقةُ قسمٍ في صفحة الحساب.
@@ -229,6 +230,30 @@ class _AccountScreenState extends State<AccountScreen> {
                   icon: const Icon(Icons.add_business_outlined, size: 20),
                   label: const Text('أريد تقديم خدمة'),
                 ),
+        ),
+
+        const SizedBox(height: Space.md),
+
+        // ── الفواتير ───────────────────────────────────────────────────────
+        // إيصالٌ مكتوبٌ بأرقامه: من دفع ثلاثمئة ألفٍ ولا ورقة عنده يسأل عنها
+        // في أوّل خلاف، ومن وجدها لا يسأل.
+        _SectionCard(
+          icon: Icons.receipt_long_rounded,
+          tone: AppColors.good,
+          title: 'فواتيري',
+          body: 'تصدر الفاتورة حين يؤكّد مقدّم الخدمة حجزك، وتبقى هنا.',
+          action: OutlinedButton.icon(
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => Scaffold(
+                  appBar: AppBar(title: const Text('فواتيري')),
+                  body: InvoicesScreen(session: session),
+                ),
+              ),
+            ),
+            icon: const Icon(Icons.receipt_long_rounded, size: 20),
+            label: const Text('عرض الفواتير'),
+          ),
         ),
 
         const SizedBox(height: Space.md),

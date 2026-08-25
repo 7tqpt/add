@@ -11,6 +11,7 @@ import '../ui/kit.dart';
 import 'documents.dart';
 import 'labels.dart';
 import 'provider_public.dart';
+import 'money.dart';
 import 'subscription.dart';
 import 'support.dart';
 
@@ -202,6 +203,19 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen> {
                     ),
                     icon: const Icon(Icons.workspace_premium_outlined, size: 20),
                     label: const Text('الباقات والاشتراك'),
+                  ),
+                  const SizedBox(height: Space.sm),
+                  OutlinedButton.icon(
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => Scaffold(
+                          appBar: AppBar(title: const Text('مستحقّاتي')),
+                          body: EarningsScreen(session: widget.session),
+                        ),
+                      ),
+                    ),
+                    icon: const Icon(Icons.account_balance_wallet_outlined, size: 20),
+                    label: const Text('مستحقّاتي'),
                   ),
                 ],
               ),

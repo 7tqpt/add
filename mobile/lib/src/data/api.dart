@@ -1240,4 +1240,31 @@ class Api {
     });
     return MySub.fromMap(Map<String, dynamic>.from(row as Map));
   }
+
+  // ----- الفواتير والمستحقّات -----
+  //
+  // قراءةٌ مباشرة بلا دالّة: `invoices_parties_read` تحصر الفواتير في طرفَي
+  // الحجز، و`settlements_owner_read` تحصر التسويات في صاحبها. فما يُقرأ هنا
+  // هو ما سمحت به القاعدة لا ما اختار التطبيق أن يعرضه.
+
+  static Future<List<Invoice>> myInvoices() async {
+    if (!isSupabaseConfigured) return demoDelay(demoInvoices);
+    final rows = await db
+        .from('invoices')
+        .select('id, number, booking_id, subtotal, commission, total, status, issued_at')
+        .order('issued_at', ascending: false)
+        .limit(60);
+    return rows.map(Invoice.fromMap).toList();
+  }
+
+  static Future<List<Settlement>> mySettlements() async {
+    if (!isSupabaseConfigured) return demoDelay(demoSettlements);
+    final rows = await db
+        .from('settlements')
+        .select('id, reference, period_start, period_end, gross_amount, '
+            'commission_amount, net_amount, status')
+        .order('period_end', ascending: false)
+        .limit(40);
+    return rows.map(Settlement.fromMap).toList();
+  }
 }

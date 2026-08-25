@@ -1372,3 +1372,31 @@ MySub demoSubscribe(String planId, String method, String senderRef) {
 }
 
 void demoResetSubscription() => demoMySub = null;
+
+// ----- الفواتير والمستحقّات -----
+
+final demoInvoices = [
+  Invoice(
+    id: 'inv-1',
+    number: 'INV-2026-A1B2C3D4',
+    bookingId: 'b1',
+    subtotal: 800000,
+    commission: 80000,
+    total: 800000,
+    status: 'issued',
+    issuedAt: DateTime.now().subtract(const Duration(days: 6)),
+  ),
+];
+
+final demoSettlements = [
+  Settlement(
+    id: 'stl-1',
+    reference: 'STL-202608-9F3A21',
+    periodStart: DateTime.now().subtract(const Duration(days: 40)),
+    periodEnd: DateTime.now().subtract(const Duration(days: 10)),
+    gross: 1200000,
+    commission: 120000,
+    net: 1080000,
+    status: 'pending',
+  ),
+];

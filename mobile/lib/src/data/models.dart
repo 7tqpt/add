@@ -922,3 +922,71 @@ class MySub {
     endsAt: DateTime.parse(m['ends_at'] as String),
   );
 }
+
+/// فاتورةُ حجز — تُصدرها القاعدة عند التأكيد.
+class Invoice {
+  const Invoice({
+    required this.id,
+    required this.number,
+    required this.bookingId,
+    required this.subtotal,
+    required this.commission,
+    required this.total,
+    required this.status,
+    required this.issuedAt,
+  });
+
+  final String id;
+  final String number;
+  final String bookingId;
+  final num subtotal;
+  final num commission;
+  final num total;
+  final String status;
+  final DateTime issuedAt;
+
+  factory Invoice.fromMap(Map<String, dynamic> m) => Invoice(
+    id: m['id'] as String,
+    number: (m['number'] ?? '') as String,
+    bookingId: (m['booking_id'] ?? '') as String,
+    subtotal: (m['subtotal'] ?? 0) as num,
+    commission: (m['commission'] ?? 0) as num,
+    total: (m['total'] ?? 0) as num,
+    status: (m['status'] ?? 'issued') as String,
+    issuedAt: DateTime.parse(m['issued_at'] as String),
+  );
+}
+
+/// تسويةُ مستحقّات — ما تدين به المنصّة لمقدّم الخدمة عن فترة.
+class Settlement {
+  const Settlement({
+    required this.id,
+    required this.reference,
+    required this.periodStart,
+    required this.periodEnd,
+    required this.gross,
+    required this.commission,
+    required this.net,
+    required this.status,
+  });
+
+  final String id;
+  final String reference;
+  final DateTime periodStart;
+  final DateTime periodEnd;
+  final num gross;
+  final num commission;
+  final num net;
+  final String status;
+
+  factory Settlement.fromMap(Map<String, dynamic> m) => Settlement(
+    id: m['id'] as String,
+    reference: (m['reference'] ?? '') as String,
+    periodStart: DateTime.parse(m['period_start'] as String),
+    periodEnd: DateTime.parse(m['period_end'] as String),
+    gross: (m['gross_amount'] ?? 0) as num,
+    commission: (m['commission_amount'] ?? 0) as num,
+    net: (m['net_amount'] ?? 0) as num,
+    status: (m['status'] ?? 'pending') as String,
+  );
+}
