@@ -71,7 +71,10 @@ class Rating extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(Icons.star_rounded, size: size + 4, color: AppColors.warning),
+        // ذهبٌ لا كهرمانُ التحذير: نجمةٌ بلون «انتبه» تجعل التقييمَ العاليَ
+        // يُقرأ إنذاراً. وهو `gold` المقيس (‎٤٫٦٨:١‎) لا ذهبُ الشعار الفاتح
+        // الذي لا يُقرأ على أبيض.
+        Icon(Icons.star_rounded, size: size + 4, color: AppColors.gold),
         const SizedBox(width: 2),
         Muted(count == null ? '$value' : '$value ($count)', size: size),
       ],
@@ -321,22 +324,27 @@ IconData categoryIcon(String slug) => switch (slug) {
 /// لونٌ لكل قسمٍ لا لونٌ واحد: صفٌّ من اثنتي عشرة بطاقةٍ بلونٍ واحد يُقرأ
 /// كتلةً تُبحث بالقراءة، والصبغةُ تجعل كلَّ بطاقةٍ تُعرف قبل أن يُقرأ اسمها.
 ///
-/// والاثنتا عشرة مقيسةٌ على أرضية البطاقة (‏`#fbfcfe`‏): أدناها ‎٤٫٨٦:١‎
-/// وأعلاها ‎٨٫٧٨:١‎ — فلا واحدةَ منها زينةٌ لا تُقرأ. وقياسٌ لا ذوق، لأن
-/// «يبدو واضحاً» على شاشةِ من يكتب غيرُه في شمسِ من يستعمل.
+/// **وعائلةٌ دافئة لا قوسُ قزح:** كانت الاثنتا عشرة أزرقَ وبنفسجيّاً
+/// وفيروزيّاً، فتُقرأ فوق الكريم كأنها من تطبيقٍ آخر لُصقت هنا. فنُقلت كلُّها
+/// إلى جيرانِ النبيذيّ — طَفلٌ وصدأٌ وزيتونٌ وخُزاميّ — فتبقى كلُّ بطاقةٍ
+/// تُعرف قبل أن يُقرأ اسمها، ويبقى الصفُّ كلُّه من عائلةٍ واحدة.
+///
+/// والاثنتا عشرة مقيسةٌ على أرضية البطاقة: أدناها ‎٥٫٥٥:١‎ وأعلاها ‎١٠٫٧٦:١‎
+/// — فلا واحدةَ منها زينةٌ لا تُقرأ. وقياسٌ لا ذوق، لأن «يبدو واضحاً» على
+/// شاشةِ من يكتب غيرُه في شمسِ من يستعمل.
 Color categoryTone(String slug) => switch (slug) {
-  'halls' => const Color(0xFF1D4ED8),
-  'catering' => const Color(0xFFB45309),
-  'artists' => const Color(0xFF7C3AED),
-  'sound' => const Color(0xFF0E7490),
-  'photography' => const Color(0xFFBE185D),
-  'support' => const Color(0xFF0369A1),
-  'cars' => const Color(0xFF3F3F91),
-  'attire' => const Color(0xFF9D174D),
-  'planners' => const Color(0xFF15803D),
-  'beauty' => const Color(0xFFA21CAF),
-  'decor' => const Color(0xFFC2410C),
-  'printing' => const Color(0xFF4D7C0F),
+  'halls' => AppColors.accent,
+  'catering' => const Color(0xFFA3521A),
+  'artists' => const Color(0xFF6B2E8F),
+  'sound' => const Color(0xFF14615F),
+  'photography' => const Color(0xFFB01C5B),
+  'support' => const Color(0xFF1F5D8C),
+  'cars' => const Color(0xFF4A3F86),
+  'attire' => const Color(0xFF93174A),
+  'planners' => const Color(0xFF2F6B33),
+  'beauty' => const Color(0xFF8E2270),
+  'decor' => const Color(0xFFB23C12),
+  'printing' => const Color(0xFF5F6B12),
   _ => AppColors.ink2,
 };
 

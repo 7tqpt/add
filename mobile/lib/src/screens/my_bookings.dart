@@ -224,8 +224,15 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                     style: const TextStyle(fontSize: 14, color: AppColors.ink2),
                   ),
                   const SizedBox(height: Space.sm),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  // لفٌّ لا صفّ: مبلغان بالريال اليمني — سبعةُ أرقامٍ لكلٍّ —
+                  // تجاوزا عرض الجوال بخمسين بكسلاً. والقصُّ بالنقاط هنا
+                  // **أسوأ من النزول سطراً**: «الإجمالي ١٢٠٠…» رقمٌ مبتور
+                  // يُقرأ على أنه المبلغ. فينزل الثاني سطراً حين لا يتّسعان،
+                  // ويبقيان في سطرٍ واحدٍ متباعدين حين يتّسعان.
+                  Wrap(
+                    alignment: WrapAlignment.spaceBetween,
+                    spacing: Space.md,
+                    runSpacing: Space.xs,
                     children: [
                       Text(
                         'الإجمالي ${formatMoney(b.totalPrice)}',

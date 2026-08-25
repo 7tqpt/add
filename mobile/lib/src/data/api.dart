@@ -486,6 +486,30 @@ class Api {
     return rows.map((r) => r['service_id'] as String).toSet();
   }
 
+  /// المفضّلة صفوفاً لا معرّفات.
+  ///
+  /// **وقد تعود أقصرَ من عدد المعرّفات، وهذا صواب:** `v_services` تُخفي
+  /// الخدمةَ المعطَّلة وخدمةَ من لم يُوثَّق. فمن حفظ قاعةً ثم أُوقفت لا يجدها.
+  /// ويُعاد `missing` ليقول ذلك في الشاشة — وإلّا نقص العددُ بلا تفسيرٍ
+  /// فظنّ المستخدم أن حفظه ضاع.
+  static Future<({List<ServiceItem> items, int missing})> favouriteServices() async {
+    final ids = await myFavourites();
+    if (ids.isEmpty) return (items: <ServiceItem>[], missing: 0);
+
+    if (!isSupabaseConfigured) {
+      final items = demoServices.where((s) => ids.contains(s.id)).toList();
+      return demoDelay((items: items, missing: ids.length - items.length));
+    }
+
+    final rows = await db
+        .from('v_services')
+        .select()
+        .inFilter('id', ids.toList())
+        .order('provider_rating', ascending: false);
+    final items = rows.map(ServiceItem.fromMap).toList();
+    return (items: items, missing: ids.length - items.length);
+  }
+
   static Future<void> toggleFavourite(String serviceId) async {
     if (!isSupabaseConfigured) {
       demoToggleFavourite(serviceId);
@@ -528,6 +552,60 @@ class Api {
     } else {
       await db.from('wedding_plans').update(values).eq('id', id);
     }
+  }
+
+  // ----- مهامّ الخطّة -----
+
+  /// تقدّمُ خطّةٍ بعينها.
+  ///
+  /// **قراءةٌ ثانيةٌ لا توسيعُ `v_plan_summary`:** تلك يُعيد `apply.sql`
+  /// إنشاءها، وطريقةٌ تعتمد عليها تجعل ذلك الإسقاط يفشل. والصفُّ صغيرٌ —
+  /// أربعةُ أعداد.
+  static Future<PlanProgress> planProgress(String planId) async {
+    if (!isSupabaseConfigured) return demoDelay(demoPlanProgress(planId));
+    final row = await db
+        .from('v_plan_progress')
+        .select()
+        .eq('plan_id', planId)
+        .maybeSingle();
+    // **وقاعدةٌ أقدمُ من التطبيق لا تُسقط الشاشة:** من لم يشغّل
+    // `plan_tasks.sql` بعدُ يرى الخطّة بلا قائمةٍ لا شاشةَ خطأ.
+    return row == null ? PlanProgress.empty : PlanProgress.fromMap(row);
+  }
+
+  static Future<List<PlanTask>> planTasks(String planId) async {
+    if (!isSupabaseConfigured) return demoDelay(demoPlanTasks);
+    final rows = await db
+        .from('plan_tasks')
+        .select()
+        .eq('plan_id', planId)
+        .order('sort_order', ascending: true)
+        .order('created_at', ascending: true);
+    return rows.map(PlanTask.fromMap).toList();
+  }
+
+  static Future<void> togglePlanTask(String taskId) async {
+    if (!isSupabaseConfigured) {
+      demoTogglePlanTask(taskId);
+      return;
+    }
+    await db.rpc('api_toggle_plan_task', params: {'p_task_id': taskId});
+  }
+
+  static Future<void> addPlanTask(String planId, String title) async {
+    if (!isSupabaseConfigured) {
+      demoAddPlanTask(planId, title);
+      return;
+    }
+    await db.rpc('api_add_plan_task', params: {'p_plan_id': planId, 'p_title': title});
+  }
+
+  static Future<void> deletePlanTask(String taskId) async {
+    if (!isSupabaseConfigured) {
+      demoDeletePlanTask(taskId);
+      return;
+    }
+    await db.rpc('api_delete_plan_task', params: {'p_task_id': taskId});
   }
 
   // ----- خدمات مقدّم الخدمة -----
@@ -768,6 +846,27 @@ class Api {
         .eq('service_id', serviceId)
         .order('kind', ascending: true)
         .order('sort_order', ascending: true);
+    return rows.map(ServiceMedia.fromMap).toList();
+  }
+
+  /// صورُ المزوّد كلِّها — من خدماته جميعاً في صفحةٍ واحدة.
+  ///
+  /// **ولماذا صورٌ فقط:** تبويب «الصور» في ملفّ المزوّد معرضٌ يُمرَّر بالإبهام،
+  /// ومقاطعُ الفيديو والصوت لا تُمرَّر — لكلٍّ منها مشغّلٌ ومكانُه صفحةُ
+  /// الخدمة نفسها. وعشرون مقطعاً في شبكةٍ واحدة تُنزَّل كلُّها على شبكة
+  /// جوالٍ يمنية.
+  ///
+  /// والسياسةُ نفسها تحرسها: `service_media` تتبع خدمتَها في القراءة، فخدمةٌ
+  /// معطَّلة لا تظهر صورُها هنا ولو كان صاحبها موثّقاً.
+  static Future<List<ServiceMedia>> providerGallery(String providerId) async {
+    if (!isSupabaseConfigured) return demoDelay(demoProviderGallery(providerId));
+    final rows = await db
+        .from('service_media')
+        .select('id, kind, path, title, duration_seconds, size_bytes, sort_order')
+        .eq('provider_id', providerId)
+        .eq('kind', 'image')
+        .order('sort_order', ascending: true)
+        .limit(40);
     return rows.map(ServiceMedia.fromMap).toList();
   }
 

@@ -24,6 +24,7 @@ class HomeScreen extends StatefulWidget {
     required this.session,
     required this.onGoTo,
     required this.onCategory,
+    required this.onSearch,
   });
 
   final Session session;
@@ -41,6 +42,14 @@ class HomeScreen extends StatefulWidget {
   /// الأقسام كلُّها تناديها، فيضغط المستخدم «القاعات» فيجد كلَّ شيءٍ أمامه
   /// وكأن ضغطته لم تقع.
   final void Function(ServiceCategory category) onCategory;
+
+  /// البحثُ من الرئيسية.
+  ///
+  /// **ولماذا حقلٌ هنا والبحثُ في «استكشف»:** من فتح التطبيق يريد قاعةً
+  /// يكتب «قاعة» في أوّل ما يراه. ولو لم يجد حقلاً في الرئيسية لَلَزِمه أن
+  /// يعرف أن «استكشف» هي بابُ البحث — وهو لا يعرف. فالحقل هنا مدخل،
+  /// والشاشةُ هناك هي التي تبحث فعلاً: حقلان يبحثان بشيفرتين يفترقان.
+  final void Function(String term) onSearch;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -103,6 +112,11 @@ class _HomeScreenState extends State<HomeScreen> {
           child: ListView(
             padding: EdgeInsets.only(top: glassHeaderTop(context), bottom: glassNavSpace),
             children: [
+              _pad(_Greeting(
+                session: widget.session,
+                onSearch: widget.onSearch,
+              )),
+              const SizedBox(height: Space.md),
               _HeroCards(
                 data: data,
                 onPlan: () => widget.onGoTo(3),
@@ -229,15 +243,16 @@ class _HeroCardsState extends State<_HeroCards> {
   Widget _planCard() {
     final p = widget.data.plan;
     final has = p != null && p.weddingDate.isNotEmpty;
-    final days = has ? _daysUntil(p.weddingDate) : null;
+    final days = has ? daysUntil(p.weddingDate) : null;
     final paid = has && p.totalCost > 0 ? (p.paidAmount / p.totalCost).clamp(0.0, 1.0).toDouble() : null;
 
     return _HeroCard(
-      // أزرقٌ من لون العلامة إلى أغمقَ منه: البطاقة سطحٌ لا لطخة.
-      colors: const [Color(0xFF3B6FE8), Color(0xFF14349B)],
+      // نبيذيٌّ من لون العلامة إلى أغمقَ منه: البطاقة سطحٌ لا لطخة.
+      // والأبيضُ على أفتح طرفيه ‎٨٫٠٨:١‎.
+      colors: const [AppColors.accentLift, AppColors.accentDeep],
       icon: Icons.favorite_rounded,
       title: 'خطة العرس',
-      headline: has ? _countdownLabel(days) : 'ابدأ خطة عرسك',
+      headline: has ? countdownLabel(days) : 'ابدأ خطة عرسك',
       subtitle: has
           ? [formatDate(p.weddingDate), if (p.governorate.isNotEmpty) p.governorate].join(' · ')
           : 'التاريخ والميزانية وعدد الضيوف في مكانٍ واحد',
@@ -258,15 +273,15 @@ class _HeroCardsState extends State<_HeroCards> {
     final pending = widget.data.countOf(BookingStatus.pendingProvider);
 
     return _HeroCard(
-      // ورديٌّ داكن: لونٌ ثانٍ يفصل البطاقتين بلمحةٍ قبل قراءة العنوان، وهو
-      // مقيسٌ كالأوّل — الأبيض عليه ‎٨٫٥٥:١‎.
-      colors: const [Color(0xFFD6407A), Color(0xFF8C1246)],
+      // طَفليٌّ محروق: لونٌ ثانٍ يفصل البطاقتين بلمحةٍ قبل قراءة العنوان،
+      // وهو من عائلة الكريم والذهب لا غريبٌ عنها — والأبيض عليه ‎٥٫٥٦:١‎.
+      colors: const [Color(0xFFA3521A), Color(0xFF6B3208)],
       icon: Icons.event_available_rounded,
       title: 'حجوزاتي',
       headline: list.isEmpty ? 'لا حجوزات قادمة' : formatCount(list.length, bookingForms),
       subtitle: next == null
           ? 'تصفّح الخدمات واحجز أوّل خدمة'
-          : 'أقربها ${_whenLabel(_daysUntil(next.eventDate))} · ${next.providerName}',
+          : 'أقربها ${_whenLabel(daysUntil(next.eventDate))} · ${next.providerName}',
       footer: list.isEmpty
           ? 'اضغط لعرض حجوزاتك'
           : [
@@ -276,28 +291,6 @@ class _HeroCardsState extends State<_HeroCards> {
       onTap: widget.onBookings,
     );
   }
-}
-
-/// الفرق بالأيام التقويمية لا بالساعات.
-///
-/// `DateTime.difference` يحسب بالساعات ثم يقسم، فعرسٌ غداً ظهراً يخرج «صفر
-/// يوم» إن نُظر إليه صباحاً. والمستخدم يعدّ الأيام لا الساعات.
-int? _daysUntil(String iso) {
-  final date = DateTime.tryParse(iso);
-  if (date == null) return null;
-  final now = DateTime.now();
-  return DateTime(date.year, date.month, date.day)
-      .difference(DateTime(now.year, now.month, now.day))
-      .inDays;
-}
-
-/// «بقي ٧ أيام» — والعدد يُصرَّف، فلا يُكتب «بقي 3 يوماً».
-String _countdownLabel(int? days) {
-  if (days == null) return '—';
-  if (days > 1) return 'بقي ${formatCount(days, dayForms)}';
-  if (days == 1) return 'غداً بإذن الله';
-  if (days == 0) return 'اليوم — مبارك!';
-  return 'مضى ${formatCount(-days, dayForms)}';
 }
 
 String _whenLabel(int? days) {
@@ -604,6 +597,74 @@ class _Categories extends StatelessWidget {
                 onTap: () => onCategory(c),
               ),
           ],
+        ),
+      ],
+    );
+  }
+}
+
+// ── الترحيب والبحث ──────────────────────────────────────────────────────────
+//
+// **حقلُ بحثٍ في أوّل ما يُرى.** من فتح التطبيق يريد قاعةً يكتب «قاعة» —
+// ولو لم يجد حقلاً هنا لَلَزِمه أن يعرف أن «استكشف» هي بابُ البحث، وهو لا
+// يعرف. والحقلُ **مدخلٌ لا باحث**: يحمل ما كُتب إلى شاشة الاستكشاف فتبحث
+// هي. وحقلان يبحثان بشيفرتين يفترقان عند أوّل مرشِّحٍ يُضاف.
+class _Greeting extends StatefulWidget {
+  const _Greeting({required this.session, required this.onSearch});
+  final Session session;
+  final void Function(String term) onSearch;
+
+  @override
+  State<_Greeting> createState() => _GreetingState();
+}
+
+class _GreetingState extends State<_Greeting> {
+  final _term = TextEditingController();
+
+  @override
+  void dispose() {
+    _term.dispose();
+    super.dispose();
+  }
+
+  void _go() {
+    final term = _term.text.trim();
+    if (term.isEmpty) return;
+    widget.onSearch(term);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const Text(
+          'مرحباً بك في فرحتي',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+            color: AppColors.ink,
+            fontFamilyFallback: arabicFallback,
+          ),
+        ),
+        const SizedBox(height: 2),
+        const Muted('كل ما تحتاجه لحفل زفافٍ مثالي، في مكانٍ واحد', size: 13),
+        const SizedBox(height: Space.md),
+        TextField(
+          controller: _term,
+          textInputAction: TextInputAction.search,
+          onSubmitted: (_) => _go(),
+          decoration: InputDecoration(
+            hintText: 'ابحث عن خدمة أو مقدّم خدمة',
+            prefixIcon: const Icon(Icons.search, size: 20, color: AppColors.muted),
+            // زرٌّ صريحٌ إلى جانب مفتاح البحث في لوحة المفاتيح: من يكتب
+            // بلوحةٍ لا مفتاحَ بحثٍ فيها كان يقف عند الحقل.
+            suffixIcon: IconButton(
+              onPressed: _go,
+              tooltip: 'ابحث',
+              icon: const Icon(Icons.arrow_back, size: 20),
+            ),
+          ),
         ),
       ],
     );

@@ -6,6 +6,7 @@ import '../data/api.dart';
 import '../data/models.dart';
 import '../data/supabase.dart';
 import '../ui/kit.dart';
+import '../ui/media.dart';
 import '../ui/service_card.dart';
 import 'chat.dart';
 import 'service_detail.dart';
@@ -43,6 +44,7 @@ class _PublicProviderScreenState extends State<PublicProviderScreen> {
   late Future<PublicProvider?> _future;
   late Future<List<ServiceItem>> _services;
   late Future<List<Review>> _reviews;
+  late Future<List<ServiceMedia>> _gallery;
   bool _busy = false;
 
   @override
@@ -57,6 +59,7 @@ class _PublicProviderScreenState extends State<PublicProviderScreen> {
     _future = Api.provider(widget.providerId);
     _services = Api.providerServices(widget.providerId);
     _reviews = Api.providerReviews(widget.providerId);
+    _gallery = Api.providerGallery(widget.providerId);
   }
 
   void _reload() {
@@ -113,58 +116,61 @@ class _PublicProviderScreenState extends State<PublicProviderScreen> {
             );
           }
 
-          return ListView(
-            // الحشوة على الأبناء لا على القائمة: الغلاف يمتدّ من حافةٍ إلى
-            // حافة، وحشوةُ القائمة كانت تحبسه في الوسط فيصير بطاقةً ملوّنة.
-            padding: EdgeInsets.zero,
-            children: [
-              _Head(provider: p),
-              _pad(
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const SizedBox(height: Space.lg),
-                    FilledButton.icon(
-                      onPressed: _busy ? null : () => _message(p),
-                      icon: const Icon(Icons.forum_outlined, size: 19),
-                      label: Text('راسل ${p.businessName}'),
-                    ),
-                    if (p.bio.isNotEmpty) ...[
-                      const SizedBox(height: Space.lg),
-                      AppCard(
-                        children: [
-                          const SectionTitle('عن المزوّد'),
-                          const SizedBox(height: Space.sm),
-                          Text(p.bio, style: const TextStyle(height: 1.9, fontSize: 14)),
-                          if (p.categories.isNotEmpty) ...[
-                            const SizedBox(height: Space.md),
-                            Wrap(
-                              spacing: Space.xs,
-                              runSpacing: Space.xs,
-                              children: [for (final c in p.categories) _Tag(c)],
-                            ),
-                          ],
-                          // مناطقُ التغطية تُذكر إن زادت على محافظته: «يخدم
-                          // تعز» لمن هو في تعز خبرٌ لا يفيد، وذكرُها لمن هو في
-                          // إبّ هو الفرق بين أن يحجز ولا يحجز.
-                          if (_alsoServes(p).isNotEmpty) ...[
-                            const SizedBox(height: Space.sm),
-                            Muted('يخدم أيضاً: ${_alsoServes(p).join(' · ')}', size: 11),
-                          ],
-                        ],
+          // أربعةُ تبويبات لا صفحةٌ واحدة طويلة.
+          //
+          // **والسبب أن الزائر يأتي بسؤالٍ واحد:** «كم؟» أو «كيف يبدو
+          // المكان؟» أو «ماذا قال من جرّبه؟». والصفحةُ الطويلة تُلزمه أن يمرّ
+          // على الثلاثة ليجد واحداً — ومعرضُ الصور وحده قد يكون أربعين صورة
+          // بينه وبين التقييمات.
+          return DefaultTabController(
+            length: 4,
+            child: NestedScrollView(
+              // الرأسُ يزحف مع التمرير والتبويباتُ تثبت: لو ثبت الرأسُ كلُّه
+              // لبقي ثلثُ الشاشة غلافاً في كل تبويب.
+              headerSliverBuilder: (context, _) => [
+                SliverToBoxAdapter(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _Head(provider: p),
+                      _pad(
+                        Padding(
+                          padding: const EdgeInsets.only(top: Space.lg, bottom: Space.md),
+                          child: FilledButton.icon(
+                            onPressed: _busy ? null : () => _message(p),
+                            icon: const Icon(Icons.forum_outlined, size: 19),
+                            label: Text('راسل ${p.businessName}'),
+                          ),
+                        ),
                       ),
                     ],
-                    const SizedBox(height: Space.lg),
-                    const SectionTitle('الخدمات المعروضة'),
-                    const SizedBox(height: Space.sm),
-                    _Services(future: _services, onRetry: _reload),
-                    const SizedBox(height: Space.lg),
-                    _Reviews(future: _reviews, total: p.reviewsCount),
-                    const SizedBox(height: Space.xl),
-                  ],
+                  ),
                 ),
+                // `SliverAppBar` لا `SliverPersistentHeader`: الثاني داخل
+                // `NestedScrollView` يحسب ارتفاعه بالشريط العلوي فوقه فيخرج
+                // `layoutExtent` أكبر من `paintExtent` ببكسلين — فيرمي
+                // الرسمُ عند أوّل إطار. و`primary: false` تُلغي حسابَ شريط
+                // الحالة الذي هو أصلُ البكسلين.
+                const SliverAppBar(
+                  pinned: true,
+                  primary: false,
+                  automaticallyImplyLeading: false,
+                  toolbarHeight: 0,
+                  backgroundColor: AppColors.page,
+                  surfaceTintColor: Colors.transparent,
+                  elevation: 0,
+                  bottom: _ProviderTabs(),
+                ),
+              ],
+              body: TabBarView(
+                children: [
+                  _About(provider: p, alsoServes: _alsoServes(p)),
+                  _TabList(children: [_Services(future: _services, onRetry: _reload)]),
+                  _Gallery(future: _gallery),
+                  _TabList(children: [_Reviews(future: _reviews, total: p.reviewsCount)]),
+                ],
               ),
-            ],
+            ),
           );
         },
       ),
@@ -206,7 +212,7 @@ class _Head extends StatelessWidget {
               gradient: LinearGradient(
                 begin: Alignment.topRight,
                 end: Alignment.bottomLeft,
-                colors: [Color(0xFF3B6FE8), Color(0xFF14349B)],
+                colors: [AppColors.accentLift, AppColors.accentDeep],
               ),
             ),
             child: const _CoverBlobs(),
@@ -497,6 +503,138 @@ class _Reviews extends StatelessWidget {
               const SizedBox(height: Space.sm),
             ],
           ],
+        );
+      },
+    );
+  }
+}
+
+/// شريطُ التبويبات مثبّتاً تحت الرأس.
+class _ProviderTabs extends StatelessWidget implements PreferredSizeWidget {
+  const _ProviderTabs();
+
+  // ارتفاعٌ أوسع من الافتراضي: حروف العربية تنزل تحت السطر فتُقصّ في الضيّق.
+  @override
+  Size get preferredSize => const Size.fromHeight(50);
+
+  @override
+  Widget build(BuildContext context) => Container(
+    // أرضيّةٌ صريحة: الشريط يثبت والمحتوى يمرّ تحته، وبلا أرضيّةٍ يُقرأ
+    // النصّان فوق بعضهما.
+    color: AppColors.page,
+    child: const TabBar(
+      labelColor: AppColors.accent,
+      unselectedLabelColor: AppColors.muted,
+      indicatorColor: AppColors.accent,
+      indicatorSize: TabBarIndicatorSize.tab,
+      labelStyle: TextStyle(
+        fontSize: 13,
+        fontWeight: FontWeight.w600,
+        fontFamilyFallback: arabicFallback,
+      ),
+      unselectedLabelStyle: TextStyle(
+        fontSize: 13,
+        fontFamilyFallback: arabicFallback,
+      ),
+      tabs: [
+        Tab(text: 'النبذة'),
+        Tab(text: 'الخدمات'),
+        Tab(text: 'الصور'),
+        Tab(text: 'التقييمات'),
+      ],
+    ),
+  );
+}
+
+/// قائمةٌ داخل تبويب — بحشوةٍ واحدة لا تتكرّر في أربعة مواضع.
+class _TabList extends StatelessWidget {
+  const _TabList({required this.children});
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) => ListView(
+    padding: const EdgeInsets.fromLTRB(Space.lg, Space.lg, Space.lg, Space.xl),
+    children: children,
+  );
+}
+
+class _About extends StatelessWidget {
+  const _About({required this.provider, required this.alsoServes});
+  final PublicProvider provider;
+  final List<String> alsoServes;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = provider;
+    return _TabList(
+      children: [
+        if (p.bio.isEmpty)
+          const EmptyBlock(
+            title: 'لا نبذة بعد',
+            description: 'لم يكتب مقدّم الخدمة تعريفاً بعد. تصفّح خدماته أو راسله.',
+          )
+        else
+          AppCard(
+            children: [
+              const SectionTitle('عن المزوّد'),
+              const SizedBox(height: Space.sm),
+              Text(p.bio, style: const TextStyle(height: 1.9, fontSize: 14)),
+              if (p.categories.isNotEmpty) ...[
+                const SizedBox(height: Space.md),
+                Wrap(
+                  spacing: Space.xs,
+                  runSpacing: Space.xs,
+                  children: [for (final c in p.categories) _Tag(c)],
+                ),
+              ],
+              // مناطقُ التغطية تُذكر إن زادت على محافظته: «يخدم تعز» لمن هو
+              // في تعز خبرٌ لا يفيد، وذكرُها لمن هو في إبّ هو الفرق بين أن
+              // يحجز ولا يحجز.
+              if (alsoServes.isNotEmpty) ...[
+                const SizedBox(height: Space.sm),
+                Muted('يخدم أيضاً: ${alsoServes.join(' · ')}', size: 11),
+              ],
+            ],
+          ),
+      ],
+    );
+  }
+}
+
+/// معرضُ صور المزوّد — من خدماته كلِّها.
+class _Gallery extends StatelessWidget {
+  const _Gallery({required this.future});
+  final Future<List<ServiceMedia>> future;
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<List<ServiceMedia>>(
+      future: future,
+      builder: (context, snap) {
+        if (snap.connectionState != ConnectionState.done) return const LoadingBlock();
+        final items = snap.data ?? const <ServiceMedia>[];
+        if (items.isEmpty) {
+          return const _TabList(
+            children: [
+              EmptyBlock(
+                title: 'لا صور بعد',
+                description: 'لم يرفع مقدّم الخدمة صوراً لخدماته بعد.',
+              ),
+            ],
+          );
+        }
+        return GridView.builder(
+          padding: const EdgeInsets.fromLTRB(Space.lg, Space.lg, Space.lg, Space.xl),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            mainAxisSpacing: Space.sm,
+            crossAxisSpacing: Space.sm,
+          ),
+          itemCount: items.length,
+          itemBuilder: (context, i) => ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: MediaThumb(url: Api.mediaUrl(items[i].path)),
+          ),
         );
       },
     );

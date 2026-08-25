@@ -11,8 +11,11 @@
          Flutter UI initializes, as well as behind your Flutter UI while its
          running.
 
-         This Theme is only used starting with V2 of Flutter's Android embedding. -->
+         This Theme is only used starting with V2 of Flutter's Android embedding.
+
+         وهي كريمُ العلامة لا `?android:colorBackground` حتى في الوضع الليلي:
+         التطبيق فاتحٌ وحده، فأسودُ النظام خلفه يومض سوداً قبل أوّل إطار. -->
     <style name="NormalTheme" parent="@android:style/Theme.Black.NoTitleBar">
-        <item name="android:windowBackground">?android:colorBackground</item>
+        <item name="android:windowBackground">@color/brand_page</item>
     </style>
 </resources>

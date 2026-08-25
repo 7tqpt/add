@@ -67,6 +67,7 @@ String formatCount(int count, ({String one, String two, String few, String many}
 }
 
 const dayForms = (one: 'يوم', two: 'يومين', few: 'أيام', many: 'يوماً');
+const taskForms = (one: 'مهمّةٌ واحدة', two: 'مهمّتان', few: 'مهامّ', many: 'مهمّة');
 const hourForms = (one: 'ساعة', two: 'ساعتين', few: 'ساعات', many: 'ساعة');
 const minuteForms = (one: 'دقيقة', two: 'دقيقتين', few: 'دقائق', many: 'دقيقة');
 const guestForms = (one: 'ضيف واحد', two: 'ضيفان', few: 'ضيوف', many: 'ضيفاً');
@@ -125,3 +126,28 @@ String formatDay(DateTime d) => '${d.day} ${_month.format(d)} ${d.year}';
 
 /// «مايو 2027» — رأس شبكة الشهر.
 String formatMonth(DateTime d) => '${_month.format(d)} ${d.year}';
+
+/// الفرق بالأيام التقويمية لا بالساعات.
+///
+/// `DateTime.difference` يحسب بالساعات ثم يقسم، فعرسٌ غداً ظهراً يخرج «صفر
+/// يوم» إن نُظر إليه صباحاً. والمستخدم يعدّ الأيام لا الساعات.
+///
+/// وهنا لا في شاشة: العدُّ التنازلي يظهر في الرئيسية وفي منظِّم الحفل معاً،
+/// ونسخةٌ ثانيةٌ منه تفترق عن أصلها عند أوّل تصحيح.
+int? daysUntil(String iso) {
+  final date = DateTime.tryParse(iso);
+  if (date == null) return null;
+  final now = DateTime.now();
+  return DateTime(date.year, date.month, date.day)
+      .difference(DateTime(now.year, now.month, now.day))
+      .inDays;
+}
+
+/// «بقي ٧ أيام» — والعدد يُصرَّف، فلا يُكتب «بقي 3 يوماً».
+String countdownLabel(int? days) {
+  if (days == null) return '—';
+  if (days > 1) return 'بقي ${formatCount(days, dayForms)}';
+  if (days == 1) return 'غداً بإذن الله';
+  if (days == 0) return 'اليوم — مبارك!';
+  return 'مضى ${formatCount(-days, dayForms)}';
+}

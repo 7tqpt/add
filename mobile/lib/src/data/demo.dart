@@ -384,6 +384,70 @@ List<WeddingPlan> demoPlans = [
   ),
 ];
 
+/// مهامّ العرض — قائمةٌ مختصرة تكفي لتُرى الشاشة وتُجرَّب.
+///
+/// وثلاثٌ منها مشطوبة عمداً: شاشةٌ بتقدّمٍ صفرٍ لا تُري شكل الشريط ولا
+/// النسبة، فيمرّ عطبٌ في حسابهما بلا أن يُرى.
+List<PlanTask> demoPlanTasks = [
+  const PlanTask(id: 'tk1', title: 'حجز القاعة ومعاينتها', done: true, dueDate: '', sortOrder: 10),
+  const PlanTask(id: 'tk2', title: 'الاتفاق على المهر وتسليمه', done: true, dueDate: '', sortOrder: 20),
+  const PlanTask(id: 'tk3', title: 'عقد القران وتوثيقه', done: true, dueDate: '', sortOrder: 30),
+  const PlanTask(id: 'tk4', title: 'حجز المصوّر والفيديو', done: false, dueDate: '', sortOrder: 40),
+  const PlanTask(id: 'tk5', title: 'فستان العروس وتفصيله', done: false, dueDate: '', sortOrder: 50),
+  const PlanTask(id: 'tk6', title: 'طباعة بطاقات الدعوة', done: false, dueDate: '', sortOrder: 60),
+  const PlanTask(id: 'tk7', title: 'حجز سيارة الزفّة', done: false, dueDate: '', sortOrder: 70),
+  const PlanTask(id: 'tk8', title: 'الحلويات والكيك', done: false, dueDate: '', sortOrder: 80),
+];
+
+int _taskSeq = 0;
+
+PlanProgress demoPlanProgress(String planId) {
+  final done = demoPlanTasks.where((t) => t.done).length;
+  return PlanProgress(
+    tasksTotal: demoPlanTasks.length,
+    tasksDone: done,
+    percent: demoPlanTasks.isEmpty ? 0 : (100 * done / demoPlanTasks.length).round(),
+    upcomingBookings: demoBookings
+        .where((b) => b.status == BookingStatus.confirmed ||
+                      b.status == BookingStatus.pendingProvider)
+        .length,
+  );
+}
+
+void demoTogglePlanTask(String taskId) {
+  demoPlanTasks = demoPlanTasks
+      .map((t) => t.id != taskId
+          ? t
+          : PlanTask(
+              id: t.id,
+              title: t.title,
+              done: !t.done,
+              dueDate: t.dueDate,
+              sortOrder: t.sortOrder,
+            ))
+      .toList();
+}
+
+void demoAddPlanTask(String planId, String title) {
+  final next = demoPlanTasks.isEmpty
+      ? 10
+      : demoPlanTasks.map((t) => t.sortOrder).reduce((a, b) => a > b ? a : b) + 10;
+  demoPlanTasks = [
+    ...demoPlanTasks,
+    PlanTask(
+      id: 'tk-new${++_taskSeq}',
+      title: title.trim(),
+      done: false,
+      dueDate: '',
+      sortOrder: next,
+    ),
+  ];
+}
+
+void demoDeletePlanTask(String taskId) {
+  demoPlanTasks = demoPlanTasks.where((t) => t.id != taskId).toList();
+}
+
 List<SupportTicket> demoTickets = [
   SupportTicket(
     id: 't1',
@@ -802,6 +866,21 @@ Map<String, List<ServiceMedia>> demoMedia = {
     ),
   ],
 };
+
+/// معرضُ العرض: صورُ خدمات المزوّد كلِّها.
+///
+/// وبيانات العرض تربط الوسائط بالخدمة لا بالمزوّد، فيُجمع عبر خدماته.
+List<ServiceMedia> demoProviderGallery(String providerId) {
+  final ids = demoServices
+      .where((s) => s.providerId == providerId)
+      .map((s) => s.id)
+      .toSet();
+  return [
+    for (final entry in demoMedia.entries)
+      if (ids.contains(entry.key))
+        ...entry.value.where((m) => m.kind == MediaKind.image),
+  ];
+}
 
 List<ServiceMedia> demoMediaOf(String serviceId) =>
     List<ServiceMedia>.from(demoMedia[serviceId] ?? const []);

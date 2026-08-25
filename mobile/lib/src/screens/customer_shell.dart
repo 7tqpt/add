@@ -44,12 +44,23 @@ class _CustomerShellState extends State<CustomerShell> {
   /// تعرف أن التبويب سيُفتح الآن وعلى أيّ شيء.
   String? _category;
 
+  /// نصُّ بحثٍ قادمٌ من الرئيسية إلى تبويب الاستكشاف.
+  String? _search;
+
   void _goTo(int i) => setState(() {
     _index = i;
     // التنقّل من الشريط السفلي — أو من زرّ «الكل» في الرئيسية — يفتح
     // الاستكشاف بلا مرشِّح. ولولا المسحُ هنا لبقي قسمُ ضغطةٍ سابقة عالقاً،
     // فيضغط «استكشف» ويجد قائمةً مقصوصةً بلا سبب.
     _category = null;
+    _search = null;
+  });
+
+  /// البحثُ من الرئيسية: يفتح الاستكشاف على النصّ لا على شاشةٍ فارغة.
+  void _openSearch(String term) => setState(() {
+    _search = term;
+    _category = null;
+    _index = 2;
   });
 
   /// فتحُ الاستكشاف مُرشَّحاً على قسمٍ بعينه.
@@ -138,9 +149,14 @@ class _CustomerShellState extends State<CustomerShell> {
     // عليه الإبهام. وحسابي آخراً: أقلُّها فتحاً وأبعدُها عن الوسط.
     final titles = ['الرئيسية', 'حجوزاتي', 'استكشف', 'خطة العرس', 'حسابي'];
     final pages = [
-      HomeScreen(session: widget.session, onGoTo: _goTo, onCategory: _openCategory),
+      HomeScreen(
+        session: widget.session,
+        onGoTo: _goTo,
+        onCategory: _openCategory,
+        onSearch: _openSearch,
+      ),
       MyBookingsScreen(session: widget.session),
-      ExploreScreen(categoryId: _category),
+      ExploreScreen(categoryId: _category, search: _search),
       PlanScreen(session: widget.session),
       AccountScreen(session: widget.session),
     ];
@@ -190,10 +206,13 @@ class _CustomerShellState extends State<CustomerShell> {
             activeIcon: Icons.calendar_today,
           ),
           GlassNavItem(label: 'استكشف', icon: Icons.search_outlined, activeIcon: Icons.search),
+          // دفترٌ لا قلب: القلب صار للمفضّلة — يُضغط على الخدمة فتُحفظ،
+          // وتُفتح من «حسابي». ورمزٌ واحد لمعنيين يجعل المستخدم يضغط
+          // «خطة العرس» يبحث عمّا حفظه.
           GlassNavItem(
             label: 'خطة العرس',
-            icon: Icons.favorite_outline,
-            activeIcon: Icons.favorite,
+            icon: Icons.event_note_outlined,
+            activeIcon: Icons.event_note,
           ),
           GlassNavItem(label: 'حسابي', icon: Icons.person_outline, activeIcon: Icons.person),
         ],
