@@ -1261,3 +1261,64 @@ PaymentRow demoSubmitPayment({
 }
 
 void demoResetPayments() => demoPayments = [];
+
+// ----- التقويم -----
+//
+// وضعُ العرض يحاكي القاعدة لا الشاشة: يومٌ «محجوز — …» لا يُفتح، ويومٌ بعذرٍ
+// يُفتح. ولو حاكى الشاشةَ وحدها لمرّ الاختبارُ على منطقٍ لا وجود له على الجهاز.
+List<DayMark> demoDays = [
+  DayMark(
+    day: DateTime.now().add(const Duration(days: 12)),
+    blocked: true,
+    note: 'محجوز — BK-2026-0001',
+  ),
+  DayMark(
+    day: DateTime.now().add(const Duration(days: 20)),
+    blocked: true,
+    note: 'صيانة',
+  ),
+];
+
+bool _sameDay(DateTime a, DateTime b) =>
+    a.year == b.year && a.month == b.month && a.day == b.day;
+
+List<DayMark> demoMyDays(DateTime from, DateTime to) => demoDays
+    .where((d) => !d.day.isBefore(from) && !d.day.isAfter(to))
+    .toList()
+  ..sort((a, b) => a.day.compareTo(b.day));
+
+DayMark? demoSetAvailability(DateTime day, bool blocked, String note) {
+  final held = demoDays.where((d) => _sameDay(d.day, day)).firstOrNull;
+  if (held != null && held.byBooking) {
+    if (blocked) return held;
+    throw 'هذا اليوم محجوز (${held.note}) — ألغِ الحجز أوّلاً';
+  }
+  demoDays.removeWhere((d) => _sameDay(d.day, day));
+  if (!blocked) return null;
+  final mark = DayMark(
+    day: day,
+    blocked: true,
+    note: note.trim().isEmpty ? 'غير متاح' : note.trim(),
+  );
+  demoDays.add(mark);
+  return mark;
+}
+
+Set<DateTime> demoBlockedDays(String providerId, DateTime from, DateTime to) =>
+    demoMyDays(from, to)
+        .where((d) => d.blocked)
+        .map((d) => DateTime(d.day.year, d.day.month, d.day.day))
+        .toSet();
+
+void demoResetDays() => demoDays = [
+      DayMark(
+        day: DateTime.now().add(const Duration(days: 12)),
+        blocked: true,
+        note: 'محجوز — BK-2026-0001',
+      ),
+      DayMark(
+        day: DateTime.now().add(const Duration(days: 20)),
+        blocked: true,
+        note: 'صيانة',
+      ),
+    ];

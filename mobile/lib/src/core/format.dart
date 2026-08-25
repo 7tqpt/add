@@ -119,3 +119,9 @@ String formatRelative(String iso) {
   if (days < 30) return '$prefix ${formatCount(days, dayForms)}';
   return formatDate(iso);
 }
+
+/// «20 مايو 2027» من `DateTime` لا من نصّ — التقويم يعمل على تواريخ لا سلاسل.
+String formatDay(DateTime d) => '${d.day} ${_month.format(d)} ${d.year}';
+
+/// «مايو 2027» — رأس شبكة الشهر.
+String formatMonth(DateTime d) => '${_month.format(d)} ${d.year}';

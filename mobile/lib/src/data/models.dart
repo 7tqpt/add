@@ -842,3 +842,25 @@ class PaymentSettings {
     note: (m['pay_note'] ?? '') as String,
   );
 }
+
+/// يومٌ في تقويم مقدّم الخدمة.
+///
+/// و«من أغلقه» ليس تفصيلاً: يومٌ أغلقته القاعدة بحجزٍ مؤكّد لا يفتحه صاحبه —
+/// ولو فُتح لأمكن أن يقع عرسان في ليلة. ويومٌ أغلقه بعذرٍ يفتحه متى شاء.
+class DayMark {
+  const DayMark({required this.day, required this.blocked, required this.note});
+
+  final DateTime day;
+  final bool blocked;
+  final String note;
+
+  /// أغلقته القاعدة بحجز، لا صاحبُه بعذر. والعلامة في نصّ الملاحظة نفسه —
+  /// تكتبها `api_respond_to_booking` ويقرؤها الحارس في `api_set_availability`.
+  bool get byBooking => note.startsWith('محجوز');
+
+  factory DayMark.fromMap(Map<String, dynamic> m) => DayMark(
+    day: DateTime.parse(m['day'] as String),
+    blocked: (m['is_blocked'] ?? true) as bool,
+    note: (m['note'] ?? '') as String,
+  );
+}

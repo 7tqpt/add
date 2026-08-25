@@ -1143,4 +1143,50 @@ class Api {
       'body': body,
     });
   }
+
+  // ----- التقويم -----
+
+  /// `yyyy-MM-dd` — القاعدة تحفظ يوماً لا لحظة، وإرسال طابع زمنٍ كامل يجعل
+  /// يومَ المستخدم يتزحزح بفارق المنطقة الزمنية: عرسٌ يوم الخميس يُغلق يوم
+  /// الأربعاء.
+  static String _dayOf(DateTime d) =>
+      '${d.year.toString().padLeft(4, '0')}-'
+      '${d.month.toString().padLeft(2, '0')}-'
+      '${d.day.toString().padLeft(2, '0')}';
+
+  /// تقويمي أنا — بملاحظاته.
+  static Future<List<DayMark>> myDays(DateTime from, DateTime to) async {
+    if (!isSupabaseConfigured) return demoDelay(demoMyDays(from, to));
+    final rows = await db.rpc('api_my_days',
+        params: {'p_from': _dayOf(from), 'p_to': _dayOf(to)}) as List<dynamic>;
+    return rows.map((r) => DayMark.fromMap(Map<String, dynamic>.from(r as Map))).toList();
+  }
+
+  /// أغلق يوماً أو افتحه. تُعيد `null` حين يُفتح — إذ لم يبقَ صفّ.
+  static Future<DayMark?> setAvailability(DateTime day, bool blocked,
+      {String note = ''}) async {
+    if (!isSupabaseConfigured) return demoSetAvailability(day, blocked, note);
+    final row = await db.rpc('api_set_availability', params: {
+      'p_day': _dayOf(day),
+      'p_blocked': blocked,
+      'p_note': note,
+    });
+    if (row == null) return null;
+    return DayMark.fromMap(Map<String, dynamic>.from(row as Map));
+  }
+
+  /// أيامُ مزوّدٍ المشغولة — تواريخُ بلا ملاحظات، فما يخصّ حجوزات غيره ليس
+  /// من شأن من يريد أن يحجز.
+  static Future<Set<DateTime>> blockedDays(
+      String providerId, DateTime from, DateTime to) async {
+    if (!isSupabaseConfigured) {
+      return demoDelay(demoBlockedDays(providerId, from, to));
+    }
+    final rows = await db.rpc('api_blocked_days', params: {
+      'p_provider_id': providerId,
+      'p_from': _dayOf(from),
+      'p_to': _dayOf(to),
+    }) as List<dynamic>;
+    return rows.map((r) => DateTime.parse(r as String)).toSet();
+  }
 }
