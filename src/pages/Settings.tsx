@@ -246,6 +246,26 @@ export function SettingsPage() {
             )}
           </Field>
 
+          <Field
+            label="سعر يوم الظهور المميز"
+            hint="ما يدفعه مقدّم الخدمة عن اليوم الواحد في رئيسية التطبيق. صفر = البيع مغلق."
+          >
+            {(id) => (
+              <Input
+                id={id}
+                type="number"
+                min={0}
+                dir="ltr"
+                className="tnum text-start"
+                disabled={!payReady}
+                value={String(form.promo_featured_daily)}
+                onChange={(event) =>
+                  patch({ promo_featured_daily: Number(event.target.value) })
+                }
+              />
+            )}
+          </Field>
+
           <Field label="ملاحظة تظهر مع الأرقام" hint="مثل: اكتب رقم الحجز في خانة الملاحظة عند التحويل.">
             {(id) => (
               <Textarea

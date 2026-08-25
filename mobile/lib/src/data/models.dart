@@ -825,12 +825,16 @@ class PaymentSettings {
     required this.kuraimi,
     required this.bank,
     required this.note,
+    this.promoDaily = 0,
   });
 
   final String jawali;
   final String kuraimi;
   final String bank;
   final String note;
+
+  /// سعرُ يومٍ من الظهور المميز. صفرٌ يعني أن البيع لم يُفتح، فيُخفى الشراء.
+  final num promoDaily;
 
   /// هل ضبط المسؤول وسيلةً واحدة على الأقل.
   bool get any => jawali.isNotEmpty || kuraimi.isNotEmpty || bank.isNotEmpty;
@@ -840,5 +844,182 @@ class PaymentSettings {
     kuraimi: (m['pay_kuraimi'] ?? '') as String,
     bank: (m['pay_bank'] ?? '') as String,
     note: (m['pay_note'] ?? '') as String,
+    promoDaily: (m['promo_featured_daily'] ?? 0) as num,
+  );
+}
+
+/// يومٌ في تقويم مقدّم الخدمة.
+///
+/// و«من أغلقه» ليس تفصيلاً: يومٌ أغلقته القاعدة بحجزٍ مؤكّد لا يفتحه صاحبه —
+/// ولو فُتح لأمكن أن يقع عرسان في ليلة. ويومٌ أغلقه بعذرٍ يفتحه متى شاء.
+class DayMark {
+  const DayMark({required this.day, required this.blocked, required this.note});
+
+  final DateTime day;
+  final bool blocked;
+  final String note;
+
+  /// أغلقته القاعدة بحجز، لا صاحبُه بعذر. والعلامة في نصّ الملاحظة نفسه —
+  /// تكتبها `api_respond_to_booking` ويقرؤها الحارس في `api_set_availability`.
+  bool get byBooking => note.startsWith('محجوز');
+
+  factory DayMark.fromMap(Map<String, dynamic> m) => DayMark(
+    day: DateTime.parse(m['day'] as String),
+    blocked: (m['is_blocked'] ?? true) as bool,
+    note: (m['note'] ?? '') as String,
+  );
+}
+
+/// باقةٌ معروضة على مقدّم الخدمة.
+class SubPlan {
+  const SubPlan({
+    required this.id,
+    required this.name,
+    required this.description,
+    required this.price,
+    required this.days,
+    required this.perks,
+  });
+
+  final String id;
+  final String name;
+  final String description;
+  final num price;
+  final int days;
+  final List<String> perks;
+
+  bool get free => price == 0;
+
+  factory SubPlan.fromMap(Map<String, dynamic> m) => SubPlan(
+    id: m['id'] as String,
+    name: (m['name'] ?? '') as String,
+    description: (m['description'] ?? '') as String,
+    price: (m['price'] ?? 0) as num,
+    days: (m['duration_days'] ?? 30) as int,
+    perks: ((m['perks'] ?? const []) as List).map((e) => e.toString()).toList(),
+  );
+}
+
+/// اشتراكي أنا — حالتُه ومدّته.
+class MySub {
+  const MySub({
+    required this.id,
+    required this.planName,
+    required this.amount,
+    required this.status,
+    required this.endsAt,
+  });
+
+  final String id;
+  final String planName;
+  final num amount;
+  final String status;
+  final DateTime endsAt;
+
+  bool get pending => status == 'pending';
+  bool get active => status == 'active';
+
+  factory MySub.fromMap(Map<String, dynamic> m) => MySub(
+    id: m['id'] as String,
+    planName: (m['plan_name'] ?? '') as String,
+    amount: (m['amount'] ?? 0) as num,
+    status: (m['status'] ?? 'pending') as String,
+    endsAt: DateTime.parse(m['ends_at'] as String),
+  );
+}
+
+/// فاتورةُ حجز — تُصدرها القاعدة عند التأكيد.
+class Invoice {
+  const Invoice({
+    required this.id,
+    required this.number,
+    required this.bookingId,
+    required this.subtotal,
+    required this.commission,
+    required this.total,
+    required this.status,
+    required this.issuedAt,
+  });
+
+  final String id;
+  final String number;
+  final String bookingId;
+  final num subtotal;
+  final num commission;
+  final num total;
+  final String status;
+  final DateTime issuedAt;
+
+  factory Invoice.fromMap(Map<String, dynamic> m) => Invoice(
+    id: m['id'] as String,
+    number: (m['number'] ?? '') as String,
+    bookingId: (m['booking_id'] ?? '') as String,
+    subtotal: (m['subtotal'] ?? 0) as num,
+    commission: (m['commission'] ?? 0) as num,
+    total: (m['total'] ?? 0) as num,
+    status: (m['status'] ?? 'issued') as String,
+    issuedAt: DateTime.parse(m['issued_at'] as String),
+  );
+}
+
+/// تسويةُ مستحقّات — ما تدين به المنصّة لمقدّم الخدمة عن فترة.
+class Settlement {
+  const Settlement({
+    required this.id,
+    required this.reference,
+    required this.periodStart,
+    required this.periodEnd,
+    required this.gross,
+    required this.commission,
+    required this.net,
+    required this.status,
+  });
+
+  final String id;
+  final String reference;
+  final DateTime periodStart;
+  final DateTime periodEnd;
+  final num gross;
+  final num commission;
+  final num net;
+  final String status;
+
+  factory Settlement.fromMap(Map<String, dynamic> m) => Settlement(
+    id: m['id'] as String,
+    reference: (m['reference'] ?? '') as String,
+    periodStart: DateTime.parse(m['period_start'] as String),
+    periodEnd: DateTime.parse(m['period_end'] as String),
+    gross: (m['gross_amount'] ?? 0) as num,
+    commission: (m['commission_amount'] ?? 0) as num,
+    net: (m['net_amount'] ?? 0) as num,
+    status: (m['status'] ?? 'pending') as String,
+  );
+}
+
+/// إعلانٌ قائمٌ في الرئيسية — بطاقةٌ في الشريط.
+class PromoSlot {
+  const PromoSlot({
+    required this.id,
+    required this.providerId,
+    required this.providerName,
+    required this.logoPath,
+    required this.governorate,
+    required this.rating,
+  });
+
+  final String id;
+  final String providerId;
+  final String providerName;
+  final String logoPath;
+  final String governorate;
+  final num rating;
+
+  factory PromoSlot.fromMap(Map<String, dynamic> m) => PromoSlot(
+    id: m['id'] as String,
+    providerId: (m['provider_id'] ?? '') as String,
+    providerName: (m['provider_name'] ?? '') as String,
+    logoPath: (m['logo_path'] ?? '') as String,
+    governorate: (m['governorate'] ?? '') as String,
+    rating: (m['rating'] ?? 0) as num,
   );
 }

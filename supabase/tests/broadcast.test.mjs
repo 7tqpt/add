@@ -156,7 +156,7 @@ ok('الموقوف لا يصله شيء',
 // عميلٌ عاديّ — لا صفَّ له في `admins` — يُنادي الدالّة مباشرةً كما يستطيع أي
 // حاملِ جلسة. والحارس في الدالّة لا في الشاشة.
 const cuid = '22222222-2222-2222-2222-222222222222'
-const customer = await one(`select id from public.app_users where status <> 'suspended' limit 1`)
+const customer = await one(`select id from public.app_users where status <> 'suspended' order by email limit 1`)
 await db.exec(`
   insert into auth.users (id, email) values ('${cuid}', 'c@sdd.company')
     on conflict (id) do nothing;

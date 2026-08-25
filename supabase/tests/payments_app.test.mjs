@@ -47,7 +47,7 @@ const rows = async (q, p) => (await db.query(q, p)).rows
 
 // ── تجهيز: عميلٌ بحساب مصادقة، وحجزٌ له ──────────────────────────────────────
 const uid = '22222222-2222-2222-2222-222222222222'
-const [customer] = await rows(`select id from public.app_users limit 1`)
+const [customer] = await rows(`select id from public.app_users order by email limit 1`)
 await db.exec(`
   insert into auth.users (id, email) values ('${uid}', 'c@sdd.company')
     on conflict (id) do nothing;
@@ -58,14 +58,14 @@ const [booking] = await rows(`
      set user_id = $1, status = 'confirmed', confirmed_at = now(),
          cancelled_at = null, total_price = 800000,
          deposit_amount = 240000, paid_amount = 0, refunded_amount = 0
-   where id = (select id from public.bookings limit 1)
+   where id = (select id from public.bookings order by reference limit 1)
   returning *`, [customer.id])
 
 // حجزُ غيره يُجلب **قبل** تبديل الدور: سياسةُ الصفوف تُخفي حجوزات الآخرين عن
 // العميل، فاستعلامٌ عنها بعد التبديل يعود فارغاً — ويسقط الاختبار على غياب
 // الصفّ لا على غياب الحراسة.
 const [other] = await rows(
-  `select id from public.bookings where id <> $1 limit 1`, [booking.id])
+  `select id from public.bookings where id <> $1 order by reference limit 1`, [booking.id])
 
 await db.exec(`set role authenticated`)
 await db.exec(`select set_config('test.uid', '${uid}', false)`)

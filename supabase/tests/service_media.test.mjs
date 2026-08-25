@@ -58,7 +58,7 @@ const mustFail = async (label, fn, expect) => {
 }
 
 // ── تجهيز: مزوّدان لكلٍّ خدمة ────────────────────────────────────────────────
-const { rows: cats } = await db.query(`select id from public.service_categories limit 1`)
+const { rows: cats } = await db.query(`select id from public.service_categories order by sort_order limit 1`)
 const categoryId = cats[0].id
 
 const makeProvider = async (email, status = 'verified') => {

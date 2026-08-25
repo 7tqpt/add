@@ -57,11 +57,11 @@ async function canUpdate(role, sql, params) {
 }
 
 const ids = {}
-ids.category = (await db.query(`select id from public.service_categories limit 1`)).rows[0].id
-ids.provider = (await db.query(`select id from public.service_providers limit 1`)).rows[0].id
+ids.category = (await db.query(`select id from public.service_categories order by sort_order limit 1`)).rows[0].id
+ids.provider = (await db.query(`select id from public.service_providers order by id limit 1`)).rows[0].id
 ids.payment = (await db.query(`select id from public.payments limit 1`)).rows[0].id
 ids.review = (await db.query(`select id from public.reviews limit 1`)).rows[0].id
-ids.booking = (await db.query(`select id from public.bookings limit 1`)).rows[0].id
+ids.booking = (await db.query(`select id from public.bookings order by reference limit 1`)).rows[0].id
 
 // ---------------------------------------------------------------------------
 // المواصفة: [المجال، هل يكتب؟] لكل دور

@@ -9,6 +9,7 @@ import '../data/models.dart';
 import 'chat.dart';
 import 'conversations.dart';
 import 'notifications.dart';
+import 'availability.dart';
 import 'requests.dart';
 import 'services.dart';
 import 'provider_profile.dart';
@@ -98,9 +99,10 @@ class _ProviderShellState extends State<ProviderShell> {
 
   @override
   Widget build(BuildContext context) {
-    final titles = ['الطلبات', 'خدماتي', 'ملفي'];
+    final titles = ['الطلبات', 'تقويمي', 'خدماتي', 'ملفي'];
     final pages = [
       RequestsScreen(session: widget.session),
+      AvailabilityScreen(session: widget.session),
       ServicesScreen(session: widget.session),
       ProviderProfileScreen(session: widget.session),
     ];
@@ -140,6 +142,7 @@ class _ProviderShellState extends State<ProviderShell> {
         onDestinationSelected: (i) => setState(() => _index = i),
         destinations: const [
           NavigationDestination(icon: Icon(Icons.inbox_outlined), label: 'الطلبات'),
+          NavigationDestination(icon: Icon(Icons.event_note_outlined), label: 'تقويمي'),
           NavigationDestination(icon: Icon(Icons.sell_outlined), label: 'خدماتي'),
           NavigationDestination(icon: Icon(Icons.storefront_outlined), label: 'ملفي'),
         ],

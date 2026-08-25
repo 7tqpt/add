@@ -21,7 +21,13 @@ let lastLoaded: AppSettings | null = null
  * حقلُ الدفع وحده — يفشل الحفظ كلّه بـ 42703، فلا يُحفظ وضعُ الصيانة ولا
  * العمولة. فتُقرأ الأعمدة الموجودة فعلاً، ويُبنى عليها الإرسال.
  */
-const PAY_FIELDS = ['pay_jawali', 'pay_kuraimi', 'pay_bank', 'pay_note'] as const
+const PAY_FIELDS = [
+  'pay_jawali',
+  'pay_kuraimi',
+  'pay_bank',
+  'pay_note',
+  'promo_featured_daily',
+] as const
 
 let payFieldsPresent = true
 
@@ -34,7 +40,9 @@ export function hasPaymentFields(): boolean {
 function normalise(row: Record<string, unknown>): AppSettings {
   payFieldsPresent = PAY_FIELDS.every((key) => key in row)
   const filled: Record<string, unknown> = { ...row }
-  for (const key of PAY_FIELDS) filled[key] ??= ''
+  // نصٌّ للأرقام وصفرٌ للسعر: حقلٌ مضبوطٌ بـ`undefined` يصير غير مضبوط، فيصرخ
+  // React ويفقد الحقل ما يُكتب فيه.
+  for (const key of PAY_FIELDS) filled[key] ??= key === 'promo_featured_daily' ? 0 : ''
   return filled as unknown as AppSettings
 }
 

@@ -184,7 +184,7 @@ ok('ولا يرى المحادثة في قائمته', outsiderList[0].n === 0)
 // ── ٤ب. صاحب القاعة يبدأ محادثةً على حجزٍ له ────────────────────────────────
 const { rows: svc } = await db.query(
   `insert into public.provider_services (provider_id, category_id, title, price)
-   values ($1, (select id from public.service_categories limit 1), 'باقة', 100000)
+   values ($1, (select id from public.service_categories order by sort_order limit 1), 'باقة', 100000)
    returning id`, [providerId])
 const { rows: bk } = await db.query(
   `insert into public.bookings

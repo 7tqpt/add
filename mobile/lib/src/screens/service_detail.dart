@@ -86,15 +86,49 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
     }
   }
 
-  Future<void> _pickDate() async {
+  /// أيامُ المزوّد المشغولة — تُقرأ مرّةً وتُخبَّأ.
+  ///
+  /// **ولماذا قبل الاختيار لا بعده:** من يختار تاريخاً ثم يُردّ بـ«غير متاح»
+  /// يعيد الكرّة تخميناً، وقد يترك المنصّة بعد الثالثة. والحارس في القاعدة
+  /// يبقى على حاله — هذا تسهيلٌ في الشاشة لا استغناءٌ عنه.
+  Set<DateTime> _busyDays = const {};
+  bool _daysLoaded = false;
+
+  Future<void> _loadBusyDays(String providerId) async {
+    if (_daysLoaded) return;
+    _daysLoaded = true;
+    final now = DateTime.now();
+    try {
+      final days = await Api.blockedDays(
+          providerId, now, now.add(const Duration(days: 730)));
+      if (mounted) setState(() => _busyDays = days);
+    } catch (_) {
+      // تعذّرت القراءة: يبقى التقويم مفتوحاً والقاعدة ترفض ما لا يصحّ.
+      // ميزةٌ تنقص لا شاشةٌ تسقط.
+    }
+  }
+
+  Future<void> _pickDate(String providerId) async {
+    await _loadBusyDays(providerId);
+    if (!mounted) return;
     final now = DateTime.now();
     final picked = await showDatePicker(
       context: context,
       firstDate: now,
       lastDate: now.add(const Duration(days: 730)),
-      initialDate: _date ?? now.add(const Duration(days: 30)),
+      initialDate: _firstFreeFrom(_date ?? now.add(const Duration(days: 30))),
+      selectableDayPredicate: (d) => !_busyDays.contains(DateTime(d.year, d.month, d.day)),
     );
     if (picked != null) setState(() => _date = picked);
+  }
+
+  /// أوّلُ يومٍ متاحٍ من التاريخ المقترح — `initialDate` مشغولاً يرمي الإطار.
+  DateTime _firstFreeFrom(DateTime start) {
+    var day = DateTime(start.year, start.month, start.day);
+    for (var i = 0; i < 60 && _busyDays.contains(day); i++) {
+      day = day.add(const Duration(days: 1));
+    }
+    return day;
   }
 
   Future<void> _book(ServiceItem item) async {
@@ -224,7 +258,7 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
                   // منتقي تاريخ لا حقل نصّي: كتابة «2026-09-15» بيدك على جوال
                   // مصدرُ خطأ لا داعي له.
                   OutlinedButton.icon(
-                    onPressed: _pickDate,
+                    onPressed: () => _pickDate(item.providerId),
                     icon: const Icon(Icons.calendar_today_outlined, size: 20),
                     label: Text(
                       _date == null ? 'اختر تاريخ العرس' : formatDate(_date!.toIso8601String()),

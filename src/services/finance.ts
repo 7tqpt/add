@@ -316,6 +316,53 @@ export async function setSettlementStatus(
   })
 }
 
+
+/**
+ * يحتسب تسويات شهرٍ ماضٍ من الحجوزات المنفَّذة المقبوضة.
+ *
+ * **والشهر السابق لا فترةٌ يكتبها المستخدم:** حقلا تاريخٍ يفتحان باب فتراتٍ
+ * متداخلة، وحجزٌ في التداخل يُحتسب مرّتين — والقاعدة تمنع ازدواجه بفهرس، لكن
+ * الأسهل ألّا يُطلب أصلاً. ومن أراد فترةً أخرى ناداها من محرّر SQL.
+ *
+ * يُعيد عدد التسويات التي أُنشئت.
+ */
+export async function buildLastMonthSettlements(): Promise<number> {
+  const now = new Date()
+  const from = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+  const to = new Date(now.getFullYear(), now.getMonth(), 0)
+  const iso = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+
+  if (!isSupabaseConfigured) {
+    await delay(null, 420)
+    return 0
+  }
+
+  const { data, error } = await requireSupabase().rpc('api_admin_build_settlements', {
+    p_from: iso(from),
+    p_to: iso(to),
+  })
+  if (error) {
+    if (error.code === 'PGRST202') {
+      throw new Error(
+        'الدالة api_admin_build_settlements غير موجودة في قاعدتك — شغّل ' +
+          'supabase/settlements.sql في محرّر SQL ثم أعد تحميل الصفحة.',
+      )
+    }
+    throw error
+  }
+
+  const made = (data as number) ?? 0
+  await recordAudit({
+    action: 'settlement.build',
+    entity: 'settlement',
+    entityId: '',
+    entityLabel: `${iso(from)} — ${iso(to)}`,
+    details: { created: made },
+  })
+  return made
+}
+
 export const SETTLEMENT_STATUS_LABEL: Record<SettlementStatus, string> = {
   pending: 'بانتظار المراجعة',
   approved: 'معتمدة',

@@ -79,12 +79,21 @@ class Api {
     return rows.map(ServiceCategory.fromMap).toList();
   }
 
-  static Future<List<ServiceItem>> services({String? search, String? categoryId}) async {
+  /// و`governorate` **اسمُ محافظةٍ لا معرّفُها**: `v_services` تُعيد اسمها
+  /// (`provider_governorate`) لأنها معدّةٌ للعرض، و`governorates` جدولٌ
+  /// أسماؤه هي التي تُطابَق. ومن رشّح بالمعرّف هنا لم يجد شيئاً وظنّ أن لا
+  /// خدمة في المحافظة.
+  static Future<List<ServiceItem>> services({
+    String? search,
+    String? categoryId,
+    String? governorate,
+  }) async {
     if (!isSupabaseConfigured) {
       final term = (search ?? '').trim().toLowerCase();
       return demoDelay(
         demoServices.where((s) {
           if (categoryId != null && s.categoryId != categoryId) return false;
+          if (governorate != null && s.providerGovernorate != governorate) return false;
           if (term.isEmpty) return true;
           return s.title.toLowerCase().contains(term) ||
               s.providerName.toLowerCase().contains(term);
@@ -94,6 +103,7 @@ class Api {
 
     var query = db.from('v_services').select();
     if (categoryId != null) query = query.eq('category_id', categoryId);
+    if (governorate != null) query = query.eq('provider_governorate', governorate);
     final term = (search ?? '').trim();
     if (term.isNotEmpty) {
       final safe = term.replaceAll(RegExp(r'[,()]'), ' ');
@@ -139,12 +149,17 @@ class Api {
   ///
   /// والترشيح بالاسم لا بالمعرّف: `v_providers` تُعيد أسماء الأقسام لا
   /// معرّفاتها — وهي معرّفةٌ للعرض. و`contains` تقابل `@>` في Postgres.
-  static Future<List<PublicProvider>> providers({String? search, String? categoryName}) async {
+  static Future<List<PublicProvider>> providers({
+    String? search,
+    String? categoryName,
+    String? governorate,
+  }) async {
     if (!isSupabaseConfigured) {
       final term = (search ?? '').trim().toLowerCase();
       return demoDelay(
         demoProviders.where((p) {
           if (categoryName != null && !p.categories.contains(categoryName)) return false;
+          if (governorate != null && p.governorate != governorate) return false;
           if (term.isEmpty) return true;
           return p.businessName.toLowerCase().contains(term) ||
               p.bio.toLowerCase().contains(term);
@@ -153,6 +168,7 @@ class Api {
     }
     var query = db.from('v_providers').select();
     if (categoryName != null) query = query.contains('categories', [categoryName]);
+    if (governorate != null) query = query.eq('governorate', governorate);
     final term = (search ?? '').trim();
     if (term.isNotEmpty) {
       query = query.ilike('business_name', '%${term.replaceAll(RegExp(r'[,()]'), ' ')}%');
@@ -1017,13 +1033,15 @@ class Api {
     // وقاعدةٌ لم يُطبَّق عليها `payments_app.sql` تنكر الأعمدة الأربعة، فتُقرأ
     // على أنها «لم تُضبط وسائلُ التحويل بعد» — وهو الصدق: لا رقم مُعلَناً.
     // أما رميُ الخطأ فيجعل شاشة الدفع حمراء، وهي لا تُصلَح من التطبيق أصلاً.
+    Future<Map<String, dynamic>?> read(String columns) =>
+        db.from('app_settings').select(columns).eq('id', 1).maybeSingle();
+
+    const base = 'pay_jawali, pay_kuraimi, pay_bank, pay_note';
     final row = await whenColumnMissing<Map<String, dynamic>?>(
-      () => db
-          .from('app_settings')
-          .select('pay_jawali, pay_kuraimi, pay_bank, pay_note')
-          .eq('id', 1)
-          .maybeSingle(),
-      () async => null,
+      // سعرُ الإعلان أحدثُ من أرقام التحويل، فقد تنقصه قاعدةٌ فيها الأرقام.
+      // وقراءتُه في النداء نفسه لا في ثانٍ: الشاشة تنتظر ما تنتظره.
+      () => read('$base, promo_featured_daily'),
+      () => whenColumnMissing(() => read(base), () async => null),
     );
     return PaymentSettings.fromMap(row ?? const {});
   }
@@ -1141,6 +1159,142 @@ class Api {
       'author': asProvider ? 'provider' : 'customer',
       'author_name': authorName,
       'body': body,
+    });
+  }
+
+  // ----- التقويم -----
+
+  /// `yyyy-MM-dd` — القاعدة تحفظ يوماً لا لحظة، وإرسال طابع زمنٍ كامل يجعل
+  /// يومَ المستخدم يتزحزح بفارق المنطقة الزمنية: عرسٌ يوم الخميس يُغلق يوم
+  /// الأربعاء.
+  static String _dayOf(DateTime d) =>
+      '${d.year.toString().padLeft(4, '0')}-'
+      '${d.month.toString().padLeft(2, '0')}-'
+      '${d.day.toString().padLeft(2, '0')}';
+
+  /// تقويمي أنا — بملاحظاته.
+  static Future<List<DayMark>> myDays(DateTime from, DateTime to) async {
+    if (!isSupabaseConfigured) return demoDelay(demoMyDays(from, to));
+    final rows = await db.rpc('api_my_days',
+        params: {'p_from': _dayOf(from), 'p_to': _dayOf(to)}) as List<dynamic>;
+    return rows.map((r) => DayMark.fromMap(Map<String, dynamic>.from(r as Map))).toList();
+  }
+
+  /// أغلق يوماً أو افتحه. تُعيد `null` حين يُفتح — إذ لم يبقَ صفّ.
+  static Future<DayMark?> setAvailability(DateTime day, bool blocked,
+      {String note = ''}) async {
+    if (!isSupabaseConfigured) return demoSetAvailability(day, blocked, note);
+    final row = await db.rpc('api_set_availability', params: {
+      'p_day': _dayOf(day),
+      'p_blocked': blocked,
+      'p_note': note,
+    });
+    if (row == null) return null;
+    return DayMark.fromMap(Map<String, dynamic>.from(row as Map));
+  }
+
+  /// أيامُ مزوّدٍ المشغولة — تواريخُ بلا ملاحظات، فما يخصّ حجوزات غيره ليس
+  /// من شأن من يريد أن يحجز.
+  static Future<Set<DateTime>> blockedDays(
+      String providerId, DateTime from, DateTime to) async {
+    if (!isSupabaseConfigured) {
+      return demoDelay(demoBlockedDays(providerId, from, to));
+    }
+    final rows = await db.rpc('api_blocked_days', params: {
+      'p_provider_id': providerId,
+      'p_from': _dayOf(from),
+      'p_to': _dayOf(to),
+    }) as List<dynamic>;
+    return rows.map((r) => DateTime.parse(r as String)).toSet();
+  }
+
+  // ----- الاشتراكات -----
+
+  /// الباقات المتاحة. سياسةُ `plans_public_read` تُخفي الموقوفة، فلا شرط هنا.
+  static Future<List<SubPlan>> plans() async {
+    if (!isSupabaseConfigured) return demoDelay(demoSubPlans);
+    final rows = await db
+        .from('subscription_plans')
+        .select('id, name, description, price, duration_days, perks')
+        .order('price', ascending: true);
+    return rows.map(SubPlan.fromMap).toList();
+  }
+
+  /// اشتراكي — أو `null` إن لم يكن لي اشتراكٌ قائمٌ ولا معلّق.
+  static Future<MySub?> mySubscription() async {
+    if (!isSupabaseConfigured) return demoDelay(demoMySub);
+    final row = await db.rpc('api_my_subscription');
+    if (row == null) return null;
+    return MySub.fromMap(Map<String, dynamic>.from(row as Map));
+  }
+
+  /// يطلب باقة. المجّانية تُفعَّل فوراً، وما له سعرٌ ينتظر تأكيد الحوالة.
+  static Future<MySub> subscribe({
+    required String planId,
+    required String method,
+    String senderRef = '',
+  }) async {
+    if (!isSupabaseConfigured) return demoSubscribe(planId, method, senderRef);
+    final row = await db.rpc('api_subscribe', params: {
+      'p_plan_id': planId,
+      'p_method': method,
+      'p_sender_ref': senderRef,
+    });
+    return MySub.fromMap(Map<String, dynamic>.from(row as Map));
+  }
+
+  // ----- الفواتير والمستحقّات -----
+  //
+  // قراءةٌ مباشرة بلا دالّة: `invoices_parties_read` تحصر الفواتير في طرفَي
+  // الحجز، و`settlements_owner_read` تحصر التسويات في صاحبها. فما يُقرأ هنا
+  // هو ما سمحت به القاعدة لا ما اختار التطبيق أن يعرضه.
+
+  static Future<List<Invoice>> myInvoices() async {
+    if (!isSupabaseConfigured) return demoDelay(demoInvoices);
+    final rows = await db
+        .from('invoices')
+        .select('id, number, booking_id, subtotal, commission, total, status, issued_at')
+        .order('issued_at', ascending: false)
+        .limit(60);
+    return rows.map(Invoice.fromMap).toList();
+  }
+
+  static Future<List<Settlement>> mySettlements() async {
+    if (!isSupabaseConfigured) return demoDelay(demoSettlements);
+    final rows = await db
+        .from('settlements')
+        .select('id, reference, period_start, period_end, gross_amount, '
+            'commission_amount, net_amount, status')
+        .order('period_end', ascending: false)
+        .limit(40);
+    return rows.map(Settlement.fromMap).toList();
+  }
+
+  // ----- الإعلانات -----
+
+  /// الإعلاناتُ القائمة — شريطُ الرئيسية.
+  static Future<List<PromoSlot>> activePromotions() async {
+    if (!isSupabaseConfigured) return demoDelay(demoPromos);
+    final rows = await db.rpc('api_active_promotions') as List<dynamic>;
+    return rows
+        .map((r) => PromoSlot.fromMap(Map<String, dynamic>.from(r as Map)))
+        .toList();
+  }
+
+  /// يطلب مقدّمُ الخدمة ظهوراً مميزاً لمدّة. لا يظهر حتى تُؤكَّد حوالته.
+  static Future<void> requestPromotion({
+    required int days,
+    required String method,
+    String senderRef = '',
+  }) async {
+    if (!isSupabaseConfigured) {
+      demoRequestPromotion(days);
+      return;
+    }
+    await db.rpc('api_request_promotion', params: {
+      'p_days': days,
+      'p_method': method,
+      'p_sender_ref': senderRef,
     });
   }
 }

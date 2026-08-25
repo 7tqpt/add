@@ -7,6 +7,7 @@ import '../data/api.dart';
 import '../data/models.dart';
 import '../data/supabase.dart';
 import '../ui/kit.dart';
+import 'provider_public.dart';
 import 'service_detail.dart';
 
 /// الشاشة الأولى.
@@ -63,11 +64,15 @@ class _HomeScreenState extends State<HomeScreen> {
           ? Future.value(<Booking>[])
           : Api.myBookings(widget.session.appUserId!),
       Api.categories(),
+      // والإعلانات معها: نداءٌ رابعٌ في الحزمة نفسها لا خامسٌ بعدها. وفشلُه
+      // لا يُسقط الرئيسية — شريطٌ ينقص لا شاشةٌ حمراء.
+      Api.activePromotions().catchError((_) => <PromoSlot>[]),
     ]);
     return _HomeData(
       plans: results[0] as List<WeddingPlan>,
       bookings: results[1] as List<Booking>,
       categories: results[2] as List<ServiceCategory>,
+      promos: results[3] as List<PromoSlot>,
     );
   }
 
@@ -110,6 +115,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 onCategory: widget.onCategory,
               )),
               const SizedBox(height: Space.md),
+              if (data.promos.isNotEmpty) ...[
+                _pad(_Promoted(promos: data.promos)),
+                const SizedBox(height: Space.md),
+              ],
               _pad(_Suggested(onExplore: () => widget.onGoTo(2))),
               const SizedBox(height: Space.lg),
             ],
@@ -124,10 +133,16 @@ class _HomeScreenState extends State<HomeScreen> {
 }
 
 class _HomeData {
-  _HomeData({required this.plans, required this.bookings, required this.categories});
+  _HomeData({
+    required this.plans,
+    required this.bookings,
+    required this.categories,
+    this.promos = const [],
+  });
   final List<WeddingPlan> plans;
   final List<Booking> bookings;
   final List<ServiceCategory> categories;
+  final List<PromoSlot> promos;
 
   WeddingPlan? get plan => plans.isEmpty ? null : plans.first;
 
@@ -666,6 +681,86 @@ class _SuggestedState extends State<_Suggested> {
           ],
         );
       },
+    );
+  }
+}
+
+/// شريطُ المزوّدين المميَّزين — ما تبيعه المنصّة في «الإعلانات».
+///
+/// **ومكتوبٌ عليه «إعلان» صراحةً.** ترتيبٌ مدفوعٌ يُعرض كأنه اختيارُ المنصّة
+/// يخدع من يقرؤه، ومن اكتشفه لاحقاً لم يعد يثق بترتيبٍ آخر فيها.
+class _Promoted extends StatelessWidget {
+  const _Promoted({required this.promos});
+
+  final List<PromoSlot> promos;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            const Expanded(child: SectionTitle('مزوّدون مميّزون')),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: AppColors.muted.withValues(alpha: Tint.chip),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: const Text(
+                'إعلان',
+                style: TextStyle(fontSize: 10, color: AppColors.muted),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: Space.sm),
+        SizedBox(
+          height: 116,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: promos.length,
+            separatorBuilder: (context, index) => const SizedBox(width: Space.sm),
+            itemBuilder: (context, i) {
+              final promo = promos[i];
+              return SizedBox(
+                width: 148,
+                child: AppCard(
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => PublicProviderScreen(providerId: promo.providerId, name: promo.providerName),
+                    ),
+                  ),
+                  children: [
+                    Row(
+                      children: [
+                        ProviderAvatar(
+                          name: promo.providerName,
+                          imageUrl: Api.avatarUrl(promo.logoPath),
+                          size: 32,
+                        ),
+                        const SizedBox(width: Space.sm),
+                        Expanded(
+                          child: Text(
+                            promo.providerName,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                                fontSize: 12, fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: Space.xs),
+                    Muted(promo.governorate, size: 11),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 }

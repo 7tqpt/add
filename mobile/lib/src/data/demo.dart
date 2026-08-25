@@ -1226,6 +1226,7 @@ const demoPaymentSettings = PaymentSettings(
   kuraimi: '1234567890',
   bank: 'بنك التضامن — 0011223344',
   note: 'اكتب رقم الحجز في خانة الملاحظة عند التحويل.',
+  promoDaily: 2000,
 );
 
 List<PaymentRow> demoPayments = [];
@@ -1261,3 +1262,165 @@ PaymentRow demoSubmitPayment({
 }
 
 void demoResetPayments() => demoPayments = [];
+
+// ----- التقويم -----
+//
+// وضعُ العرض يحاكي القاعدة لا الشاشة: يومٌ «محجوز — …» لا يُفتح، ويومٌ بعذرٍ
+// يُفتح. ولو حاكى الشاشةَ وحدها لمرّ الاختبارُ على منطقٍ لا وجود له على الجهاز.
+List<DayMark> demoDays = [
+  DayMark(
+    day: DateTime.now().add(const Duration(days: 12)),
+    blocked: true,
+    note: 'محجوز — BK-2026-0001',
+  ),
+  DayMark(
+    day: DateTime.now().add(const Duration(days: 20)),
+    blocked: true,
+    note: 'صيانة',
+  ),
+];
+
+bool _sameDay(DateTime a, DateTime b) =>
+    a.year == b.year && a.month == b.month && a.day == b.day;
+
+List<DayMark> demoMyDays(DateTime from, DateTime to) => demoDays
+    .where((d) => !d.day.isBefore(from) && !d.day.isAfter(to))
+    .toList()
+  ..sort((a, b) => a.day.compareTo(b.day));
+
+DayMark? demoSetAvailability(DateTime day, bool blocked, String note) {
+  final held = demoDays.where((d) => _sameDay(d.day, day)).firstOrNull;
+  if (held != null && held.byBooking) {
+    if (blocked) return held;
+    throw 'هذا اليوم محجوز (${held.note}) — ألغِ الحجز أوّلاً';
+  }
+  demoDays.removeWhere((d) => _sameDay(d.day, day));
+  if (!blocked) return null;
+  final mark = DayMark(
+    day: day,
+    blocked: true,
+    note: note.trim().isEmpty ? 'غير متاح' : note.trim(),
+  );
+  demoDays.add(mark);
+  return mark;
+}
+
+Set<DateTime> demoBlockedDays(String providerId, DateTime from, DateTime to) =>
+    demoMyDays(from, to)
+        .where((d) => d.blocked)
+        .map((d) => DateTime(d.day.year, d.day.month, d.day.day))
+        .toSet();
+
+void demoResetDays() => demoDays = [
+      DayMark(
+        day: DateTime.now().add(const Duration(days: 12)),
+        blocked: true,
+        note: 'محجوز — BK-2026-0001',
+      ),
+      DayMark(
+        day: DateTime.now().add(const Duration(days: 20)),
+        blocked: true,
+        note: 'صيانة',
+      ),
+    ];
+
+// ----- الاشتراكات -----
+
+const demoSubPlans = [
+  SubPlan(
+    id: 'plan-free',
+    name: 'الباقة الأساسية',
+    description: 'ظهور عادي وحتى ٥ خدمات معروضة.',
+    price: 0,
+    days: 30,
+    perks: ['حتى 5 خدمات', 'ملف تعريفي أساسي'],
+  ),
+  SubPlan(
+    id: 'plan-silver',
+    name: 'الباقة الفضية',
+    description: 'خدمات غير محدودة وأولوية في نتائج البحث.',
+    price: 15000,
+    days: 30,
+    perks: ['خدمات غير محدودة', 'أولوية في البحث', 'شارة نشط'],
+  ),
+  SubPlan(
+    id: 'plan-gold',
+    name: 'الباقة الذهبية',
+    description: 'ظهور مميز في الصفحة الرئيسية وتقارير أداء شهرية.',
+    price: 40000,
+    days: 30,
+    perks: ['كل مزايا الفضية', 'ظهور مميز في الرئيسية', 'تقارير أداء'],
+  ),
+];
+
+MySub? demoMySub;
+
+MySub demoSubscribe(String planId, String method, String senderRef) {
+  final plan = demoSubPlans.firstWhere((p) => p.id == planId);
+  if (demoMySub != null && demoMySub!.pending) {
+    throw 'لك طلبُ اشتراكٍ قيد التأكيد';
+  }
+  final sub = MySub(
+    id: 'sub-${DateTime.now().millisecondsSinceEpoch}',
+    planName: plan.name,
+    amount: plan.price,
+    // المجّانية تُفعَّل فوراً، وما له سعرٌ ينتظر تأكيد الحوالة — كما في القاعدة.
+    status: plan.free ? 'active' : 'pending',
+    endsAt: DateTime.now().add(Duration(days: plan.days)),
+  );
+  demoMySub = sub;
+  return sub;
+}
+
+void demoResetSubscription() => demoMySub = null;
+
+// ----- الفواتير والمستحقّات -----
+
+final demoInvoices = [
+  Invoice(
+    id: 'inv-1',
+    number: 'INV-2026-A1B2C3D4',
+    bookingId: 'b1',
+    subtotal: 800000,
+    commission: 80000,
+    total: 800000,
+    status: 'issued',
+    issuedAt: DateTime.now().subtract(const Duration(days: 6)),
+  ),
+];
+
+final demoSettlements = [
+  Settlement(
+    id: 'stl-1',
+    reference: 'STL-202608-9F3A21',
+    periodStart: DateTime.now().subtract(const Duration(days: 40)),
+    periodEnd: DateTime.now().subtract(const Duration(days: 10)),
+    gross: 1200000,
+    commission: 120000,
+    net: 1080000,
+    status: 'pending',
+  ),
+];
+
+// ----- الإعلانات -----
+
+const demoPromos = [
+  PromoSlot(
+    id: 'promo-1',
+    providerId: 'p1',
+    providerName: 'قاعة التاج الملكي',
+    logoPath: '',
+    governorate: 'أمانة العاصمة',
+    rating: 4.8,
+  ),
+];
+
+/// وضعُ العرض يحاكي القاعدة: الطلب يقع معلّقاً ولا يظهر في الشريط.
+bool demoPromoPending = false;
+
+void demoRequestPromotion(int days) {
+  if (demoPromoPending) throw 'لك طلبُ إعلانٍ قيد التأكيد';
+  demoPromoPending = true;
+}
+
+void demoResetPromo() => demoPromoPending = false;

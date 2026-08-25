@@ -68,11 +68,11 @@ if (bucket.length !== 1 || bucket[0].public !== true) throw new Error('سلّة 
 // البذرة لا تربط مزوّديها بحساباتِ مصادقة (‏`user_id` فارغ‏) — فيُربط واحدٌ
 // هنا، إذ الحارس والسياسة كلاهما يمرّ بـ`auth.uid()`.
 const [provider] = await rows(`
-  select id from public.service_providers where status = 'verified' limit 1`)
+  select id from public.service_providers where status = 'verified' order by id limit 1`)
 if (!provider) throw new Error('البذرة بلا مزوّدٍ موثّق')
 
 const authUid = '11111111-1111-1111-1111-111111111111'
-const [appUser] = await rows(`select id from public.app_users limit 1`)
+const [appUser] = await rows(`select id from public.app_users order by email limit 1`)
 await db.exec(`
   insert into auth.users (id, email) values ('${authUid}', 'p@sdd.company')
     on conflict (id) do nothing;

@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { BadgeCheck, Banknote, PauseCircle, Search } from 'lucide-react'
+import { BadgeCheck, Banknote, Calculator, PauseCircle, Search } from 'lucide-react'
 import { Badge, type Tone } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { ExportButton } from '@/components/ui/ExportButton'
-import { EmptyState, ErrorState, LoadingBlock, Toast } from '@/components/ui/Feedback'
+import { EmptyState, ErrorState, LoadingBlock, Spinner, Toast } from '@/components/ui/Feedback'
 import { Input, Select } from '@/components/ui/Field'
 import { Pagination } from '@/components/ui/Pagination'
 import { useAuth } from '@/context/AuthContext'
@@ -15,7 +15,12 @@ import { useDebounced } from '@/hooks/useDebounced'
 import { cn } from '@/lib/cn'
 import { formatDate, formatMoney, formatNumber } from '@/lib/format'
 import type { Settlement, SettlementStatus } from '@/lib/types'
-import { SETTLEMENT_STATUS_LABEL, listSettlements, setSettlementStatus } from '@/services/finance'
+import {
+  SETTLEMENT_STATUS_LABEL,
+  buildLastMonthSettlements,
+  listSettlements,
+  setSettlementStatus,
+} from '@/services/finance'
 import { errorText } from '@/services/base'
 
 const PAGE_SIZE = 10
@@ -42,6 +47,30 @@ export function SettlementsPage() {
   const [page, setPage] = useState(0)
   const [toast, setToast] = useState<string | null>(null)
   const [pending, setPending] = useState<{ row: Settlement; next: SettlementStatus } | null>(null)
+  const [asking, setAsking] = useState(false)
+  const [building, setBuilding] = useState(false)
+  const [buildError, setBuildError] = useState<string | null>(null)
+
+  async function build() {
+    setBuilding(true)
+    setBuildError(null)
+    try {
+      const made = await buildLastMonthSettlements()
+      setAsking(false)
+      // العدد لا «تمّ»: صفرٌ يعني أن لا حجز منفَّذاً مقبوضاً بلا تسوية، وهو
+      // خبرٌ مختلفٌ تماماً عن نجاحٍ صامت.
+      setToast(
+        made === 0
+          ? 'لا حجوزات منفَّذة بلا تسوية في الشهر الماضي.'
+          : `أُنشئت ${made} تسوية.`,
+      )
+      reload()
+    } catch (cause) {
+      setBuildError(errorText(cause, 'تعذّر الاحتساب.'))
+    } finally {
+      setBuilding(false)
+    }
+  }
   const [busy, setBusy] = useState(false)
 
   const debouncedSearch = useDebounced(search)
@@ -157,12 +186,20 @@ export function SettlementsPage() {
           </Select>
         </div>
 
-        <ExportButton
-          filenamePrefix="تقرير-مستحقات-الشركاء"
-          build={buildExport}
-          disabled={!data || data.total === 0}
-          onError={setToast}
-        />
+        <div className="flex items-center gap-1">
+          <ExportButton
+            filenamePrefix="تقرير-مستحقات-الشركاء"
+            build={buildExport}
+            disabled={!data || data.total === 0}
+            onError={setToast}
+          />
+          {canWrite ? (
+            <Button size="sm" variant="ghost" disabled={building} onClick={() => setAsking(true)}>
+              {building ? <Spinner /> : <Calculator size={14} aria-hidden />}
+              احتسب الشهر الماضي
+            </Button>
+          ) : null}
+        </div>
       </div>
 
       <Card className={cn('overflow-hidden', refetching && 'is-refetching')}>
@@ -299,6 +336,21 @@ export function SettlementsPage() {
           </>
         ) : null}
       </Card>
+
+      <ConfirmDialog
+        open={asking}
+        title="احتساب تسويات الشهر الماضي؟"
+        message={
+          'تُنشأ تسويةٌ لكل مقدّم خدمة له حجوزات منفَّذة **قُبضت مبالغها** في ' +
+          'الشهر الماضي ولم تدخل تسويةً قبلها. والمحتسَب هو المقبوض لا السعر: ' +
+          'المنصّة لا تسلّم ما لم تقبضه. وحجزٌ دخل تسويةً لا يدخل ثانية.'
+        }
+        confirmLabel="احتسب"
+        busy={building}
+        error={buildError}
+        onConfirm={build}
+        onCancel={() => setAsking(false)}
+      />
 
       <ConfirmDialog
         open={pending !== null}

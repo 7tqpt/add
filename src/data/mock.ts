@@ -1021,6 +1021,7 @@ export const mockSettings: AppSettings = {
   pay_kuraimi: '1234567890',
   pay_bank: 'بنك التضامن — 0011223344',
   pay_note: 'اكتب رقم الحجز في خانة الملاحظة عند التحويل.',
+  promo_featured_daily: 2000,
 }
 
 export const mockAdmins: AdminAccount[] = [
