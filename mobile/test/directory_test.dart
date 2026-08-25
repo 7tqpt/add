@@ -114,4 +114,30 @@ void main() {
 
     expect(find.byType(VerifiedMark, skipOffstage: false), findsOneWidget);
   });
+
+  testWidgets('والمحافظة تُرشِّح فعلاً — لا شريحةً تُلوَّن وحدها', (tester) async {
+    // **وهذا ما ينكسر بصمت:** شريحةٌ تُضغط فتتلوّن ولا تُغيّر النتائج. من ضغطها
+    // يظنّ أن لا خدمة في محافظته، وهي معروضةٌ أمامه من محافظةٍ أخرى.
+    _phone(tester);
+    await _openExplore(tester);
+
+    // بيانات العرض فيها خدماتٌ في أمانة العاصمة وأخرى في عدن.
+    final before = tester.widgetList<ServiceListCard>(find.byType(ServiceListCard)).length;
+    expect(before, greaterThan(1));
+
+    await tester.tap(find.descendant(
+      of: find.byType(PickChip),
+      matching: find.text('عدن'),
+    ));
+    await _settle(tester);
+
+    final cards = tester.widgetList<ServiceListCard>(find.byType(ServiceListCard)).toList();
+    expect(cards, isNotEmpty);
+    expect(cards.length, lessThan(before));
+    expect(
+      cards.every((c) => c.item.providerGovernorate == 'عدن'),
+      isTrue,
+      reason: 'بقيت خدمةٌ من محافظةٍ أخرى بعد الترشيح',
+    );
+  });
 }

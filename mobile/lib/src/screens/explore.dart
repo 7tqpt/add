@@ -42,6 +42,15 @@ class _ExploreScreenState extends State<ExploreScreen> {
   /// اسمُ القسم المختار — دليلُ المزوّدين يُرشَّح به لا بالمعرّف.
   String? _categoryName;
 
+  /// المحافظة المختارة — **اسمُها لا معرّفُها**: الطريقتان تُعيدان الاسم
+  /// (`provider_governorate` و`governorate`) لأنهما معدّتان للعرض.
+  ///
+  /// **ولماذا مرشِّحٌ أصلاً:** عرسٌ في تعزّ لا تنفعه قاعةٌ في صنعاء مهما
+  /// حسُنت. ومن يقلّب عشرين نتيجةً ليكتشف أنها كلّها في محافظةٍ أخرى يتعلّم
+  /// ألّا يبحث هنا.
+  String? _governorate;
+  late Future<List<Governorate>> _governorates;
+
   /// صفُّ الأقسام — يُمسك ليُمرَّر إلى القسم المفتوح عليه.
   final _catsScroll = ScrollController();
 
@@ -49,6 +58,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
   void initState() {
     super.initState();
     _categories = Api.categories();
+    _governorates = Api.governorates();
     _reload();
     _loadFavourites();
     _revealCategory();
@@ -110,9 +120,17 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
   void _reload() {
     setState(() {
-      _services = Api.services(search: _applied, categoryId: _categoryId);
+      _services = Api.services(
+        search: _applied,
+        categoryId: _categoryId,
+        governorate: _governorate,
+      );
       if (_asProviders) {
-        _providers = Api.providers(search: _applied, categoryName: _categoryName);
+        _providers = Api.providers(
+          search: _applied,
+          categoryName: _categoryName,
+          governorate: _governorate,
+        );
       }
     });
   }
@@ -193,6 +211,44 @@ class _ExploreScreenState extends State<ExploreScreen> {
             ),
           ),
         ),
+        // المحافظات شرائحُ في صفٍّ يُمرَّر: اثنتان وعشرون محافظةً في قائمةٍ
+        // منسدلة تعني ضغطتين ونافذةً تغطّي النتائج، وفي صفٍّ تعني ضغطةً واحدة.
+        SizedBox(
+          height: 40,
+          child: FutureBuilder<List<Governorate>>(
+            future: _governorates,
+            builder: (context, snap) {
+              final list = snap.data ?? const <Governorate>[];
+              if (list.isEmpty) return const SizedBox.shrink();
+              return ListView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: Space.lg),
+                children: [
+                  PickChip(
+                    label: 'كل المحافظات',
+                    active: _governorate == null,
+                    onTap: () {
+                      _governorate = null;
+                      _reload();
+                    },
+                  ),
+                  for (final g in list) ...[
+                    const SizedBox(width: Space.sm),
+                    PickChip(
+                      label: g.name,
+                      active: _governorate == g.name,
+                      onTap: () {
+                        _governorate = g.name;
+                        _reload();
+                      },
+                    ),
+                  ],
+                ],
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: Space.sm),
         // التبديل بين ما يُعرض: خدماتٌ أم مزوّدون.
         Padding(
           padding: const EdgeInsets.fromLTRB(Space.lg, 0, Space.lg, Space.sm),

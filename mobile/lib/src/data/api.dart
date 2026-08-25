@@ -79,12 +79,21 @@ class Api {
     return rows.map(ServiceCategory.fromMap).toList();
   }
 
-  static Future<List<ServiceItem>> services({String? search, String? categoryId}) async {
+  /// و`governorate` **اسمُ محافظةٍ لا معرّفُها**: `v_services` تُعيد اسمها
+  /// (`provider_governorate`) لأنها معدّةٌ للعرض، و`governorates` جدولٌ
+  /// أسماؤه هي التي تُطابَق. ومن رشّح بالمعرّف هنا لم يجد شيئاً وظنّ أن لا
+  /// خدمة في المحافظة.
+  static Future<List<ServiceItem>> services({
+    String? search,
+    String? categoryId,
+    String? governorate,
+  }) async {
     if (!isSupabaseConfigured) {
       final term = (search ?? '').trim().toLowerCase();
       return demoDelay(
         demoServices.where((s) {
           if (categoryId != null && s.categoryId != categoryId) return false;
+          if (governorate != null && s.providerGovernorate != governorate) return false;
           if (term.isEmpty) return true;
           return s.title.toLowerCase().contains(term) ||
               s.providerName.toLowerCase().contains(term);
@@ -94,6 +103,7 @@ class Api {
 
     var query = db.from('v_services').select();
     if (categoryId != null) query = query.eq('category_id', categoryId);
+    if (governorate != null) query = query.eq('provider_governorate', governorate);
     final term = (search ?? '').trim();
     if (term.isNotEmpty) {
       final safe = term.replaceAll(RegExp(r'[,()]'), ' ');
@@ -139,12 +149,17 @@ class Api {
   ///
   /// والترشيح بالاسم لا بالمعرّف: `v_providers` تُعيد أسماء الأقسام لا
   /// معرّفاتها — وهي معرّفةٌ للعرض. و`contains` تقابل `@>` في Postgres.
-  static Future<List<PublicProvider>> providers({String? search, String? categoryName}) async {
+  static Future<List<PublicProvider>> providers({
+    String? search,
+    String? categoryName,
+    String? governorate,
+  }) async {
     if (!isSupabaseConfigured) {
       final term = (search ?? '').trim().toLowerCase();
       return demoDelay(
         demoProviders.where((p) {
           if (categoryName != null && !p.categories.contains(categoryName)) return false;
+          if (governorate != null && p.governorate != governorate) return false;
           if (term.isEmpty) return true;
           return p.businessName.toLowerCase().contains(term) ||
               p.bio.toLowerCase().contains(term);
@@ -153,6 +168,7 @@ class Api {
     }
     var query = db.from('v_providers').select();
     if (categoryName != null) query = query.contains('categories', [categoryName]);
+    if (governorate != null) query = query.eq('governorate', governorate);
     final term = (search ?? '').trim();
     if (term.isNotEmpty) {
       query = query.ilike('business_name', '%${term.replaceAll(RegExp(r'[,()]'), ' ')}%');

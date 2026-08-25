@@ -63,6 +63,54 @@ void main() {
       );
     }
   });
+
+  // ــــــــــــــــــــــــــــــــــــــــــــــــــــــــــــــــــــــــــــ
+  // حارسٌ ثانٍ من الجنس نفسه: مرشِّحٌ يُستقبل ولا يُستعمل.
+  //
+  // **ولماذا يلزم حارسُ مصدر:** اختبارات الواجهة تجري في وضع العرض، فتقيس
+  // الفرعَ الذي يرشّح في الذاكرة وحده. ولو نُسي `.eq` في فرع Supabase لمرّت
+  // كلُّها وهي خضراء، ثم يضغط المستخدم «عدن» فتُعرض له خدماتُ صنعاء. جرّبتُه:
+  // نزعتُ السطر فمرّ الاختبار كما هو.
+  test('كلُّ مرشِّحٍ تستقبله الدالّة يُستعمل في فرع Supabase أيضاً', () {
+    final source = _code(File('lib/src/data/api.dart').readAsStringSync());
+
+    for (final name in ['services', 'providers']) {
+      final start = source.indexOf('Future<List<');
+      expect(start, isNonNegative);
+      final body = _bodyOf(source, name);
+      expect(body, isNotNull, reason: 'لم أجد الدالّة $name');
+
+      // ما بعد `if (!isSupabaseConfigured)` هو فرعُ القاعدة.
+      final split = body!.indexOf('db.from(');
+      expect(split, isNonNegative, reason: '$name بلا استعلام قاعدة');
+      final remote = body.substring(split);
+
+      expect(remote.contains('governorate'), isTrue,
+          reason: 'المحافظة تُستقبل في $name ولا تُستعمل في استعلام القاعدة');
+    }
+  });
+}
+
+/// جسدُ دالّةٍ باسمها — من أوّل `{` بعد الاسم إلى ما يوازنه.
+String? _bodyOf(String source, String name) {
+  final at = source.indexOf('> $name(');
+  if (at < 0) return null;
+  // من `async {` لا من أوّل `{`: الأولى قوسُ **المعامِلات المسمّاة**
+  // (`services({`)، فمن بدأ منها استخرج قائمة المعامِلات لا الجسد — ووجدها
+  // بلا `db.from` فظنّ الدالّة بلا استعلام. وقع بي هذا.
+  final async = source.indexOf('async', at);
+  if (async < 0) return null;
+  final open = source.indexOf('{', async);
+  if (open < 0) return null;
+  var depth = 0;
+  for (var i = open; i < source.length; i++) {
+    if (source[i] == '{') depth++;
+    if (source[i] == '}') {
+      depth--;
+      if (depth == 0) return source.substring(open, i);
+    }
+  }
+  return null;
 }
 
 /// الشيفرة بلا أسطر التعليق.
