@@ -25,6 +25,79 @@ class AppCard extends StatelessWidget {
   }
 }
 
+/// البطاقةُ النبيذيّة — الوجهُ الكبير للعلامة داخل الشاشات.
+///
+/// **وواحدةٌ في موضعين لا نسختان.** بطاقةُ العدّ في «خطة العرس» وبطاقةُ الحجز
+/// في «حجوزاتي» تُبنيان من هذه: تدرّجٌ واحدٌ ونصفُ قطرٍ واحدٌ وحشوةٌ واحدة.
+/// ونسختان متطابقتان تفترقان بمرور الوقت — يُعدَّل التدرّج في إحداهما فتبقى
+/// الأخرى، فتصير الشاشتان من تطبيقين.
+///
+/// والتدرّج من أعلى اليمين إلى أسفل اليسار: العربيّةُ تُقرأ من اليمين، فيبدأ
+/// الفاتحُ حيث تقع العين أوّلاً.
+class HeroCard extends StatelessWidget {
+  const HeroCard({super.key, required this.children, this.onTap});
+  final List<Widget> children;
+  final VoidCallback? onTap;
+
+  static final BorderRadius radius = BorderRadius.circular(20);
+
+  @override
+  Widget build(BuildContext context) {
+    final card = Container(
+      padding: const EdgeInsets.all(Space.lg),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topRight,
+          end: Alignment.bottomLeft,
+          colors: [AppColors.accentLift, AppColors.accentDeep],
+        ),
+        borderRadius: BorderRadius.all(Radius.circular(20)),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: children),
+    );
+    if (onTap == null) return card;
+    return InkWell(onTap: onTap, borderRadius: radius, child: card);
+  }
+}
+
+/// الحبرُ والأزرار **على أرضيةٍ نبيذيّة**.
+///
+/// **وليست ترفاً.** زرُّ التطبيق المملوء نبيذيٌّ لأنه يقع على فاتح، فوضعُه
+/// كما هو داخل بطاقةٍ نبيذيّة يجعله يذوب فيها فلا يُرى أصلاً. وحبرُ «عندي
+/// مشكلة» رماديٌّ باهتٌ على الفاتح، وهو على النبيذيّ غيرُ مقروء.
+///
+/// وكلُّ لونٍ هنا مقيسٌ في `kit_test` كبقيّة ألوان المنصّة.
+class OnAccent {
+  /// الحبرُ الأوّل على النبيذيّ.
+  static const ink = Color(0xFFFFFFFF);
+
+  /// السطرُ الثانوي — تاريخٌ أو اسمُ مزوّد.
+  static const inkSoft = Color(0xFFEBDCE1);
+
+  /// الرقمُ المميَّز والحبرُ الخفيف على الأزرار الشفّافة.
+  static const gold = AppColors.goldOnAccent;
+
+  /// زرٌّ مملوء: **ذهبيٌّ بحبرٍ نبيذيّ** لا نبيذيٌّ على نبيذيّ.
+  static ButtonStyle get filled => FilledButton.styleFrom(
+    backgroundColor: AppColors.goldOnAccent,
+    foregroundColor: AppColors.accentDeep,
+    // والمعطَّل يبقى مرئيّاً: زرٌّ يختفي أثناء الانتظار يُقرأ عطباً لا انشغالاً.
+    disabledBackgroundColor: const Color(0x55D9B45C),
+    disabledForegroundColor: const Color(0x99FFFFFF),
+  );
+
+  static ButtonStyle get outlined => OutlinedButton.styleFrom(
+    foregroundColor: ink,
+    side: const BorderSide(color: Color(0x8CFFFFFF)),
+    disabledForegroundColor: const Color(0x80FFFFFF),
+  );
+
+  static ButtonStyle get text => TextButton.styleFrom(
+    foregroundColor: gold,
+    disabledForegroundColor: const Color(0x80FFFFFF),
+  );
+}
+
 class SectionTitle extends StatelessWidget {
   const SectionTitle(this.text, {super.key});
   final String text;

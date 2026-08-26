@@ -138,4 +138,57 @@ void main() {
       expect(find.textContaining('أكمل المبلغ'), findsWidgets);
     }
   });
+
+  // ==========================================================================
+  //  بطاقةُ الحجز هي بطاقةُ «خطة العرس» نفسها
+  // ==========================================================================
+
+  testWidgets('بطاقةُ الحجز نبيذيّةٌ كبطاقة «خطة العرس» لا بيضاء', (tester) async {
+    // **والقياسُ على `HeroCard` نفسها لا على لونٍ منسوخ:** الشاشتان تبنيان
+    // منها، فلو نُسخ التدرّج في إحداهما لَمرّ اختبارٌ يسأل عن اللون وحده
+    // بينما البطاقتان افترقتا فعلاً.
+    _phone(tester);
+    await tester.pumpWidget(_wrap(Scaffold(body: MyBookingsScreen(session: _session()))));
+    await _settle(tester);
+
+    expect(find.byType(HeroCard), findsWidgets);
+  });
+
+  testWidgets('والمبلغُ رقمٌ كبيرٌ في صدرها، ومعه ما بقي', (tester) async {
+    // ترتيبُ بطاقة الخطة نفسه: رقمٌ كبير ثمّ وصفُه بالذهبيّ. وبطاقةُ الخطة
+    // تجيب «كم بقي من الأيام؟»، وهذه تجيب «بكم؟» — وهو أوّلُ ما يُبحث عنه.
+    _phone(tester);
+    await tester.pumpWidget(_wrap(Scaffold(body: MyBookingsScreen(session: _session()))));
+    await _settle(tester);
+
+    final big = tester.widgetList<Text>(find.byType(Text)).where(
+      (t) => (t.style?.fontSize ?? 0) >= 28 && (t.data ?? '').contains(RegExp(r'[0-9٠-٩]')),
+    );
+    expect(big, isNotEmpty, reason: 'لا رقمَ كبيراً في صدر البطاقة');
+
+    // وحالةُ الدفع مذكورةٌ نصّاً: «لم يُدفع بعد» أو «باقٍ …» أو «مدفوع بالكامل».
+    expect(
+      find.textContaining(RegExp('لم يُدفع بعد|باقٍ|مدفوع بالكامل')),
+      findsWidgets,
+    );
+  });
+
+  testWidgets('وزرُّ الدفع ذهبيٌّ لا نبيذيٌّ يذوب في البطاقة', (tester) async {
+    // **زرٌّ بلون أرضيّته زرٌّ غيرُ موجود.** نبيذيُّ الأزرار هو نبيذيُّ
+    // البطاقة، فلولا قلبُه ذهباً لاختفى «ادفع العربون» تماماً.
+    _phone(tester);
+    await tester.pumpWidget(_wrap(Scaffold(body: MyBookingsScreen(session: _session()))));
+    await _settle(tester);
+
+    final pay = find.ancestor(
+      of: find.textContaining('ادفع العربون'),
+      matching: find.byType(FilledButton),
+    );
+    expect(pay, findsWidgets);
+
+    final style = tester.widgetList<FilledButton>(pay).first.style;
+    final bg = style?.backgroundColor?.resolve(const <WidgetState>{});
+    expect(bg, AppColors.goldOnAccent,
+        reason: 'زرُّ الدفع يجب أن يكون ذهبيّاً على البطاقة النبيذيّة');
+  });
 }
