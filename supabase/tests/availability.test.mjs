@@ -159,6 +159,24 @@ try {
 ok('ومن ليس مزوّداً يُردّ', /لمقدّمي الخدمة/.test(raised ?? ''))
 await db.exec(`reset role`)
 
+// ── فتحُ يومٍ لا صفَّ له: `null` لا صفٌّ من الأصفار ──────────────────────────
+//
+// **وهذا عطبٌ رآه صاحبُ المنصّة على جواله:** ضغطتان متتاليتان على «افتحه» —
+// أو يومٌ حرّره إلغاءُ حجزٍ بين فتح الشاشة والضغط — والحذفُ لا يطابق شيئاً.
+// و`returning * into row` حينئذٍ يترك `row` بحقولٍ كلُّها فارغة، و`return row`
+// عليها يُخرج كائناً `{"day": null, …}` **لا `null`**. فيقرأ التطبيق `day`
+// ويحوّله نصّاً فيسقط:
+//
+//     type 'Null' is not a subtype of type 'String' in type cast
+//
+// رسالةٌ إنجليزيةٌ في وجه صاحب القاعة مكان تقويمه.
+await db.exec(`select set_config('test.uid', '${puid}', false)`)
+await db.exec(`set role authenticated`)
+const empty = await one(
+  `select public.api_set_availability(current_date + 40, false) as ص`)
+ok('فتحُ يومٍ لا صفَّ له يُعيد فراغاً لا صفّاً من الأصفار', empty.ص === null)
+await db.exec(`reset role`)
+
 await db.close()
 console.log(fail === 0 ? '\nكل اختبارات availability.sql نجحت.' : `\n${fail} فشل.`)
 process.exit(fail === 0 ? 0 : 1)

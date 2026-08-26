@@ -280,18 +280,25 @@ class _Cell extends StatelessWidget {
   Widget build(BuildContext context) {
     final booked = mark?.byBooking ?? false;
     final closed = mark != null && !booked;
-    final background = booked
-        ? AppColors.accent.withValues(alpha: Tint.disc)
+    // ثلاثةُ ألوانٍ لثلاث حالات — والفرق بينها مالٌ لا زينة:
+    //
+    //   أخضرُ «متاح»  — يومٌ يقبل حجزاً
+    //   أزرقُ «محجوز» — أغلقته القاعدة بحجزٍ مؤكّد، ولا يُفتح إلا بإلغائه
+    //   أحمرُ «أغلقتَه» — أغلقه صاحبُه بيده، ويفتحه متى شاء
+    //
+    // **والمتاح ملوَّنٌ الآن لا فارغ:** كان بإطارٍ رماديٍّ وحده، فيُقرأ
+    // «لا شيء هنا» بينما هو الحالة التي تجلب المال. والأخضر يقولها.
+    //
+    // وكلُّها مقيسة: أدناها رقمُ اليوم المتاح على صبغته عند ‎٤٫٨٦:١‎.
+    final tone = booked
+        ? AppColors.booked
         : closed
-            ? AppColors.critical.withValues(alpha: Tint.chip)
-            : Colors.transparent;
-    final ink = past
-        ? AppColors.muted
-        : booked
-            ? AppColors.accent
-            : closed
-                ? AppColors.critical
-                : AppColors.ink;
+            ? AppColors.critical
+            : AppColors.good;
+    final background = tone.withValues(
+      alpha: booked ? Tint.disc : Tint.chip,
+    );
+    final ink = past ? AppColors.muted : tone;
 
     return InkWell(
       onTap: onTap,
@@ -301,7 +308,7 @@ class _Cell extends StatelessWidget {
           color: background,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
-            color: mark == null ? AppColors.hairline : Colors.transparent,
+            color: mark == null ? tone.withValues(alpha: 0.35) : Colors.transparent,
           ),
         ),
         alignment: Alignment.center,
@@ -325,11 +332,11 @@ class _Legend extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        _Dot(color: AppColors.accent, label: 'محجوز'),
+        _Dot(color: AppColors.good, label: 'متاح'),
+        const SizedBox(width: 16),
+        _Dot(color: AppColors.booked, label: 'محجوز'),
         const SizedBox(width: 16),
         _Dot(color: AppColors.critical, label: 'أغلقتَه'),
-        const SizedBox(width: 16),
-        _Dot(color: AppColors.hairline, label: 'متاح'),
       ],
     );
   }
@@ -380,7 +387,7 @@ class _Closed extends StatelessWidget {
             contentPadding: EdgeInsets.zero,
             leading: Icon(
               mark.byBooking ? Icons.event_available_rounded : Icons.event_busy_rounded,
-              color: mark.byBooking ? AppColors.accent : AppColors.critical,
+              color: mark.byBooking ? AppColors.booked : AppColors.critical,
             ),
             title: Text(formatDay(mark.day), style: const TextStyle(fontSize: 13)),
             subtitle: Text(mark.note, style: const TextStyle(fontSize: 12)),

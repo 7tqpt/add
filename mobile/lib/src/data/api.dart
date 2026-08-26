@@ -1288,8 +1288,23 @@ class Api {
       'p_blocked': blocked,
       'p_note': note,
     });
+    return dayMarkOrNull(row);
+  }
+
+  /// صفُّ التقويم الراجع من `api_set_availability` — أو `null`.
+  ///
+  /// **وحارسٌ لِقاعدةٍ أقدمَ من التطبيق:** النسخةُ الأولى من الدالّة كانت
+  /// تُعيد صفّاً **حقولُه كلُّها فارغة** حين لا يُحذف شيء — لا `null`. فكان
+  /// التطبيق يقرأ `day` ويحوّله نصّاً فيسقط بـ«type 'Null' is not a subtype
+  /// of type 'String'»، ويرى صاحبُ القاعة رسالةً إنجليزيةً مكان تقويمه.
+  ///
+  /// أُصلح الأصلُ في `availability.sql`، وبقي هذا: من لم يُعِد تشغيل الملفّ
+  /// على قاعدته بعدُ يجد يومَه يُفتح ولا تسقط شاشتُه.
+  static DayMark? dayMarkOrNull(dynamic row) {
     if (row == null) return null;
-    return DayMark.fromMap(Map<String, dynamic>.from(row as Map));
+    final map = Map<String, dynamic>.from(row as Map);
+    if (map['day'] == null) return null;
+    return DayMark.fromMap(map);
   }
 
   /// أيامُ مزوّدٍ المشغولة — تواريخُ بلا ملاحظات، فما يخصّ حجوزات غيره ليس
