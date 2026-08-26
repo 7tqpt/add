@@ -75,9 +75,13 @@ delete from public.provider_availability a
 --  العمل. والملاحظة هي التي تفرّق: ما بدأ بـ«محجوز —» من صنع القاعدة لا من
 --  صنعه.
 -- ----------------------------------------------------------------------------
-create or replace function public.api_set_availability(
+-- **`setof` لا نوعاً مركّباً — وهذا هو الإصلاح الحقيقي.**
+--
+-- `drop` أوّلاً: لا يُبدَّل نوعُ الإرجاع بـ`create or replace`.
+drop function if exists public.api_set_availability(date, boolean, text);
+create function public.api_set_availability(
   p_day date, p_blocked boolean, p_note text default '')
-returns public.provider_availability
+returns setof public.provider_availability
 language plpgsql security definer set search_path = public as $$
 declare
   me uuid := public.current_provider();
@@ -99,7 +103,8 @@ begin
       -- مغلقٌ أصلاً بحجز؛ الطلب لا يغيّر شيئاً فيُعاد الصفّ كما هو.
       select * into row from public.provider_availability
        where provider_id = me and day = p_day;
-      return row;
+      return next row;
+      return;
     end if;
     raise exception 'هذا اليوم محجوز (%) — ألغِ الحجز أوّلاً', held;
   end if;
@@ -110,7 +115,8 @@ begin
     on conflict (provider_id, day) do update
       set is_blocked = true, note = excluded.note
     returning * into row;
-    return row;
+    return next row;
+    return;
   end if;
 
   delete from public.provider_availability
@@ -126,10 +132,16 @@ begin
   --
   -- ويقع هذا في أبسط حال: ضغطتان متتاليتان على «افتحه»، أو يومٌ حرّره
   -- إلغاءُ حجزٍ بين لحظة فتح الشاشة ولحظة الضغط.
+  --
+  -- **و`return null` لا يُصلحه — وهذا ما ظننتُه أوّل مرّة وكان خطأً.**
+  -- التمدّد يقع في `select * from f()` الذي يُنفّذه PostgREST، لا في
+  -- الدالّة: فـ`NULL` من نوعٍ مركّب يصير هناك صفّاً من الأصفار على كلّ حال.
+  -- والذي يُصلحه `setof`: صفرُ صفوفٍ يصل التطبيقَ `[]`. وكلاهما مقيسٌ على
+  -- Postgres حقيقيّ.
   if row.id is null then
-    return null;
+    return;
   end if;
-  return row;
+  return next row;
 end $$;
 
 comment on function public.api_set_availability(date, boolean, text) is

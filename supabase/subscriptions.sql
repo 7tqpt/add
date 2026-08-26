@@ -206,8 +206,24 @@ revoke execute on function public.expire_subscriptions() from public, authentica
 -- ----------------------------------------------------------------------------
 -- ٥. اشتراكي — للتطبيق
 -- ----------------------------------------------------------------------------
-create or replace function public.api_my_subscription()
-returns public.provider_subscriptions
+-- **`setof` لا `returns public.provider_subscriptions`، وهذا هو الإصلاح.**
+--
+-- دالّةٌ تُعيد نوعاً مركّباً تُعطي `NULL` حين لا تجد صفّاً — لكنّ PostgREST
+-- يقرؤها بـ`select * from f()`، و`NULL` المركّب يتمدّد هناك إلى **صفٍّ واحدٍ
+-- حقولُه كلُّها فارغة**. فكان يصل التطبيقَ `{"id":null,"plan_name":null,…}`
+-- لا `null`، فيمرّ حارسُ العدم ثمّ يسقط أوّلُ تحويلٍ إلى نصّ:
+-- «type 'Null' is not a subtype of type 'String' in type cast».
+--
+-- ورآه كلُّ مزوّدٍ فتح «اشتراكك» ولم يشترك بعد — أي كلُّ مزوّدٍ جديد.
+--
+-- و`return null` من plpgsql **لا يُغيّر شيئاً**: التمدّد يقع في `select *`
+-- لا في الدالّة. أمّا `setof` فتُعيد **صفراً من الصفوف**، فيصل `[]`.
+-- والأمران مقيسان على Postgres حقيقيّ.
+--
+-- `drop` أوّلاً: لا يُبدَّل نوعُ الإرجاع بـ`create or replace`.
+drop function if exists public.api_my_subscription();
+create function public.api_my_subscription()
+returns setof public.provider_subscriptions
 language sql stable security definer set search_path = public as $$
   select * from public.provider_subscriptions
    where provider_id = public.current_provider()
