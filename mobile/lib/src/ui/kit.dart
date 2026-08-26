@@ -98,6 +98,106 @@ class OnAccent {
   );
 }
 
+/// جسمُ ورقةٍ سفليّة: عنوانٌ ثمّ محتوى، فوق لوحة المفاتيح لا تحتها.
+///
+/// **و`viewInsets` ليست تجميلاً:** ورقةٌ فيها حقلُ كتابةٍ بلا هذه الحاشية
+/// تختفي تحت لوحة المفاتيح فور فتحها، فلا يرى صاحبُها ما يكتب.
+class SheetBody extends StatelessWidget {
+  const SheetBody({super.key, required this.title, required this.children});
+  final String title;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: EdgeInsets.only(
+      left: Space.lg,
+      right: Space.lg,
+      top: Space.lg,
+      bottom: MediaQuery.of(context).viewInsets.bottom + Space.lg,
+    ),
+    child: SingleChildScrollView(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+          const SizedBox(height: Space.md),
+          ...children,
+        ],
+      ),
+    ),
+  );
+}
+
+/// دوّارُ الانتظار داخل زرّ — بحجم النصّ الذي حلّ محلّه.
+class ButtonSpinner extends StatelessWidget {
+  const ButtonSpinner({super.key});
+  @override
+  Widget build(BuildContext context) => const SizedBox(
+    height: 18,
+    width: 18,
+    child: CircularProgressIndicator(strokeWidth: 2),
+  );
+}
+
+/// سطرُ توضيحٍ في أرضيّةٍ مصبوغة — لِما يجب أن يُقرأ قبل الفعل لا بعده.
+class InfoNote extends StatelessWidget {
+  const InfoNote(this.text, {super.key});
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(Space.md),
+    decoration: BoxDecoration(
+      color: AppColors.accent.withValues(alpha: Tint.chip),
+      borderRadius: BorderRadius.circular(12),
+    ),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Icon(Icons.info_outline, size: 18, color: AppColors.accent),
+        const SizedBox(width: Space.sm),
+        Expanded(
+          child: Text(
+            text,
+            style: const TextStyle(fontSize: 12.5, height: 1.7, color: AppColors.ink2),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+/// سؤالٌ قبل فعلٍ لا رجعةَ فيه.
+///
+/// **ونصُّ الزرّ يقول ما سيقع لا «موافق».** «موافق» تُضغط بلا قراءة، و«احذف
+/// حسابي» تُقرأ قبل أن تُضغط.
+Future<bool?> confirmDanger(
+  BuildContext context, {
+  required String title,
+  required String body,
+  required String confirm,
+}) => showDialog<bool>(
+  context: context,
+  builder: (dialogContext) => AlertDialog(
+    title: Text(title),
+    content: SingleChildScrollView(
+      child: Text(body, style: const TextStyle(height: 1.7)),
+    ),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.of(dialogContext).pop(false),
+        child: const Text('إلغاء'),
+      ),
+      FilledButton(
+        onPressed: () => Navigator.of(dialogContext).pop(true),
+        style: FilledButton.styleFrom(backgroundColor: AppColors.critical),
+        child: Text(confirm),
+      ),
+    ],
+  ),
+);
+
 class SectionTitle extends StatelessWidget {
   const SectionTitle(this.text, {super.key});
   final String text;

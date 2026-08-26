@@ -818,6 +818,179 @@ MyProfile _demoProfile = const MyProfile(
 
 MyProfile? demoProfile() => _demoProfile;
 
+// ── العناوين والمحافظ والإعدادات — في الذاكرة، للوضع التجريبي ───────────────
+List<SavedAddress> demoAddresses = [
+  const SavedAddress(
+    id: 'ad1',
+    label: 'بيت العرس',
+    details: 'حدة، خلف جامع الرحمة، عمارة رقم ٤',
+    governorate: 'أمانة العاصمة',
+    governorateId: null,
+    isDefault: true,
+  ),
+];
+
+List<SavedPaymentMethod> demoPaymentMethods = [
+  const SavedPaymentMethod(
+    id: 'pm1',
+    method: 'jawali',
+    accountRef: '770000000',
+    holderName: 'مستخدم تجريبي',
+    isDefault: true,
+  ),
+];
+
+UserSettings demoSettings = const UserSettings();
+
+void demoResetAccountExtras() {
+  demoAddresses = [
+    const SavedAddress(
+      id: 'ad1',
+      label: 'بيت العرس',
+      details: 'حدة، خلف جامع الرحمة، عمارة رقم ٤',
+      governorate: 'أمانة العاصمة',
+      governorateId: null,
+      isDefault: true,
+    ),
+  ];
+  demoPaymentMethods = [
+    const SavedPaymentMethod(
+      id: 'pm1',
+      method: 'jawali',
+      accountRef: '770000000',
+      holderName: 'مستخدم تجريبي',
+      isDefault: true,
+    ),
+  ];
+  demoSettings = const UserSettings();
+}
+
+/// **والافتراضيُّ واحدٌ هنا كما في القاعدة.** لو تُرك الوضعُ التجريبي يقبل
+/// اثنين لاختلف سلوكُ الشاشة بين تجربةٍ وإنتاج، وهو أسوأ من ألّا تُجرَّب.
+SavedAddress demoSaveAddress({
+  String? id,
+  required String label,
+  required String details,
+  String? governorateId,
+  String? governorate,
+  bool makeDefault = false,
+}) {
+  final first = demoAddresses.isEmpty;
+  final isDefault = makeDefault || first;
+  if (isDefault) {
+    demoAddresses = [
+      for (final a in demoAddresses)
+        if (a.isDefault && a.id != id)
+          SavedAddress(
+            id: a.id,
+            label: a.label,
+            details: a.details,
+            governorate: a.governorate,
+            governorateId: a.governorateId,
+            isDefault: false,
+          )
+        else
+          a,
+    ];
+  }
+  final row = SavedAddress(
+    id: id ?? 'ad${DateTime.now().microsecondsSinceEpoch}',
+    label: label,
+    details: details,
+    governorate: governorate ?? '',
+    governorateId: governorateId,
+    isDefault: isDefault,
+  );
+  final at = demoAddresses.indexWhere((a) => a.id == row.id);
+  if (at >= 0) {
+    demoAddresses[at] = row;
+  } else {
+    demoAddresses.insert(0, row);
+  }
+  return row;
+}
+
+bool demoDeleteAddress(String id) {
+  final before = demoAddresses.length;
+  demoAddresses.removeWhere((a) => a.id == id);
+  final gone = demoAddresses.length < before;
+  // ولا تبقى القائمةُ بلا افتراضيّ — كما في القاعدة.
+  if (gone && demoAddresses.isNotEmpty && !demoAddresses.any((a) => a.isDefault)) {
+    final a = demoAddresses.first;
+    demoAddresses[0] = SavedAddress(
+      id: a.id,
+      label: a.label,
+      details: a.details,
+      governorate: a.governorate,
+      governorateId: a.governorateId,
+      isDefault: true,
+    );
+  }
+  return gone;
+}
+
+SavedPaymentMethod demoSavePaymentMethod({
+  String? id,
+  required String method,
+  required String accountRef,
+  required String holderName,
+  bool makeDefault = false,
+}) {
+  final isDefault = makeDefault || demoPaymentMethods.isEmpty;
+  if (isDefault) {
+    demoPaymentMethods = [
+      for (final m in demoPaymentMethods)
+        if (m.isDefault && m.id != id)
+          SavedPaymentMethod(
+            id: m.id,
+            method: m.method,
+            accountRef: m.accountRef,
+            holderName: m.holderName,
+            isDefault: false,
+          )
+        else
+          m,
+    ];
+  }
+  final row = SavedPaymentMethod(
+    id: id ?? 'pm${DateTime.now().microsecondsSinceEpoch}',
+    method: method,
+    accountRef: accountRef,
+    holderName: holderName,
+    isDefault: isDefault,
+  );
+  final at = demoPaymentMethods.indexWhere((m) => m.id == row.id);
+  if (at >= 0) {
+    demoPaymentMethods[at] = row;
+  } else {
+    demoPaymentMethods.insert(0, row);
+  }
+  return row;
+}
+
+bool demoDeletePaymentMethod(String id) {
+  final before = demoPaymentMethods.length;
+  demoPaymentMethods.removeWhere((m) => m.id == id);
+  final gone = demoPaymentMethods.length < before;
+  if (gone && demoPaymentMethods.isNotEmpty &&
+      !demoPaymentMethods.any((m) => m.isDefault)) {
+    final m = demoPaymentMethods.first;
+    demoPaymentMethods[0] = SavedPaymentMethod(
+      id: m.id,
+      method: m.method,
+      accountRef: m.accountRef,
+      holderName: m.holderName,
+      isDefault: true,
+    );
+  }
+  return gone;
+}
+
+MyProfile demoSetWeddingRole(String role) {
+  _demoProfile = _demoProfile.copyWith(weddingRole: role);
+  return _demoProfile;
+}
+
 MyProfile demoUpdateProfile(String name, String? phone, String? govId, String? avatar) {
   _demoProfile = _demoProfile.copyWith(
     fullName: name,
