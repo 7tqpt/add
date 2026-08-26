@@ -1098,6 +1098,38 @@ void demoSendMessage(String conversationId, ChatSide sender, String body) {
   if (chatSideValue(sender) == chatSideValue(thread.mySide)) thread.readAt = now;
 }
 
+/// مرفقٌ في وضع العرض — بمسارٍ لا وجود له.
+///
+/// **والمسارُ وهميٌّ عمداً:** الوضع التجريبي بلا سلّة، فما يُقاس هنا أن
+/// الفقاعة تظهر بشكلها الصحيح — لا أن الملفّ يُفتح.
+void demoSendAttachment(
+  String conversationId,
+  ChatSide sender,
+  ChatAttachment kind, {
+  int seconds = 0,
+  String name = '',
+}) {
+  final thread = _threads.where((t) => t.id == conversationId).firstOrNull;
+  if (thread == null) return;
+  _chatSeq += 1;
+  final now = DateTime.now().toIso8601String();
+  thread.messages = [
+    ...thread.messages,
+    ChatMessage(
+      id: 'cm-new$_chatSeq',
+      sender: sender,
+      body: '',
+      createdAt: now,
+      attachment: kind,
+      attachmentPath: '$conversationId/demo-$_chatSeq',
+      attachmentSeconds: seconds,
+      attachmentName: name,
+      attachmentSize: 90000,
+    ),
+  ];
+  if (chatSideValue(sender) == chatSideValue(thread.mySide)) thread.readAt = now;
+}
+
 void demoMarkRead(String conversationId) {
   final thread = _threads.where((t) => t.id == conversationId).firstOrNull;
   if (thread != null) thread.readAt = DateTime.now().toIso8601String();

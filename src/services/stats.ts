@@ -1,5 +1,12 @@
 import { requireSupabase } from '@/lib/supabase'
-import type { Booking, DailyBreakdown, DashboardStats, MetricPoint, RangeDays } from '@/lib/types'
+import type {
+  Booking,
+  DailyBreakdown,
+  DashboardStats,
+  MetricPoint,
+  PlatformIncome,
+  RangeDays,
+} from '@/lib/types'
 import {
   mockActiveByDay,
   mockBookings,
@@ -32,6 +39,7 @@ interface Series {
   revenue: MetricPoint[]
   active: MetricPoint[]
   commission: MetricPoint[]
+  income: PlatformIncome
   categories: string[]
   governorates: string[]
   queue: Queue
@@ -69,6 +77,17 @@ function demoSeries(): Series {
       date: point.date,
       value: Math.round(point.value * 0.1),
     })),
+    // دخلُ العرض: العمولةُ المحصَّلة وحدها أقلُّ من المستحقّة، فيبقى الفرق
+    // ظاهراً في الوضع التجريبي كما هو في الحقيقة.
+    income: incomeFrom(
+      mockRevenueByDay.map((point) => ({
+        day: point.date,
+        commission: Math.round(point.value * 0.07),
+        subscriptions: point.date.endsWith('1') ? 50000 : 0,
+        promotions: point.date.endsWith('5') ? 14000 : 0,
+      })),
+      true,
+    ),
     categories: live.map((booking) => booking.category_name),
     governorates: live.map((booking) => booking.governorate),
     queue: {
@@ -111,6 +130,9 @@ function buildStats(range: RangeDays, series: Series): DashboardStats {
       value: sum(lastDays(commissionValues, range)),
       change: periodChange(commissionValues, range),
     },
+    // الدخلُ لا يُقصّ على المدّة هنا: هو مجموعٌ لمدّته وحدها أصلاً، ولا
+    // مقارنةَ له بمدّةٍ سابقة — رقمٌ يُقرأ لا اتجاهٌ يُتتبَّع.
+    income: series.income,
     bookingsByDay: lastDays(series.bookings, range),
     installsByDay: lastDays(series.installs, range),
     bookingsByCategory: [...tally(series.categories)]
@@ -122,6 +144,46 @@ function buildStats(range: RangeDays, series: Series): DashboardStats {
       .sort((a, b) => b.bookings - a.bookings)
       .slice(0, 5),
     ...series.queue,
+  }
+}
+
+/** صفُّ دخلٍ يوميّ كما تُعيده `api_admin_income`. */
+interface IncomeRow {
+  day: string
+  commission: number | string
+  subscriptions: number | string
+  promotions: number | string
+}
+
+/**
+ * يجمع صفوف الدخل اليومية في بطاقةٍ واحدة.
+ *
+ * واحدٌ للوضعين — الحقيقي والتجريبي — لأن حاسبين يفترقان: يُصحَّح الجمع في
+ * أحدهما ويبقى الخطأ في الآخر، ولا يظهر إلا لمن يملك قاعدةً حيّة.
+ */
+function incomeFrom(rows: IncomeRow[], available: boolean): PlatformIncome {
+  let commission = 0
+  let subscriptions = 0
+  let promotions = 0
+  const byDay: MetricPoint[] = []
+
+  for (const row of rows) {
+    const c = Number(row.commission)
+    const s = Number(row.subscriptions)
+    const p = Number(row.promotions)
+    commission += c
+    subscriptions += s
+    promotions += p
+    byDay.push({ date: row.day.slice(0, 10), value: c + s + p })
+  }
+
+  return {
+    commission,
+    subscriptions,
+    promotions,
+    total: commission + subscriptions + promotions,
+    byDay,
+    available,
   }
 }
 
@@ -137,7 +199,7 @@ async function fromSupabase(range: RangeDays): Promise<DashboardStats> {
   // Twice the range so each KPI can compare against the preceding window.
   const since = isoDaysAgo(range * 2)
 
-  const [metrics, bookings, queue] = await Promise.all([
+  const [metrics, bookings, queue, income] = await Promise.all([
     client
       .from('daily_metrics')
       .select('day, platform, installs, active_users')
@@ -148,6 +210,7 @@ async function fromSupabase(range: RangeDays): Promise<DashboardStats> {
       .select('created_at, status, total_price, commission_amount, category_name, governorate')
       .gte('created_at', since),
     loadQueue(),
+    loadIncome(range),
   ])
 
   if (metrics.error) throw metrics.error
@@ -192,10 +255,43 @@ async function fromSupabase(range: RangeDays): Promise<DashboardStats> {
     revenue: pointsFrom(revenueByDay),
     commission: pointsFrom(commissionByDay),
     active: pointsFrom(activeByDay),
+    income,
     categories: rows.map((row) => row.category_name),
     governorates: rows.map((row) => row.governorate),
     queue,
   })
+}
+
+/**
+ * دخلُ المنصّة من `api_admin_income`.
+ *
+ * **وغيابُ الدالّة ليس عطباً هنا:** اللوحة تُنشر من `main` والقاعدة تُحدَّث
+ * بيد صاحبها، فبينهما نافذةٌ تكون فيها الدالّة غائبة. وسقوطُ الشاشة كلِّها
+ * لأجل بطاقةٍ واحدة في تلك النافذة أسوأ من نقصها — فتُعاد `available: false`
+ * وتقول البطاقةُ ما ينقص.
+ *
+ * والرمز `42883` وحده يُبتلع (دالّةٌ غير معرّفة) و`42501` (صلاحية مرفوضة):
+ * وما عداهما يصعد، لأن حارساً واسعاً يبتلع «الشبكة مقطوعة» فيُظهر صفراً
+ * يُصدَّق.
+ */
+async function loadIncome(range: RangeDays): Promise<PlatformIncome> {
+  const empty: PlatformIncome = {
+    commission: 0,
+    subscriptions: 0,
+    promotions: 0,
+    total: 0,
+    byDay: [],
+    available: false,
+  }
+  const { data, error } = await requireSupabase().rpc('api_admin_income', {
+    p_from: isoDaysAgo(range).slice(0, 10),
+    p_to: new Date().toISOString().slice(0, 10),
+  })
+  if (error) {
+    if (error.code === '42883' || error.code === '42501') return empty
+    throw error
+  }
+  return incomeFrom((data ?? []) as IncomeRow[], true)
 }
 
 async function loadQueue(): Promise<Queue> {

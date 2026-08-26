@@ -44,6 +44,14 @@ class AppColors {
   static const gold = Color(0xFF9A6B18);
   static const goldOnAccent = Color(0xFFD9B45C);
 
+  /// أزرقُ «محجوز» في التقويم.
+  ///
+  /// **معنىً لا هويّة:** التقويم ثلاث حالاتٍ يجب أن تُفرَّق بلمحة — متاحٌ
+  /// أخضر، ومحجوزٌ أزرق، وما أغلقه صاحبُه أحمر. ونبيذيُّ العلامة لا يصلح
+  /// لواحدةٍ منها: هو لونُ كل زرٍّ في التطبيق، فلا يقول «محجوز» بل «هنا
+  /// شيء». وقِيس: ‎٦٫٧٠:١‎ على الأبيض، و‎٥٫٣٧:١‎ على صبغته.
+  static const booked = Color(0xFF1D4ED8);
+
   static const good = Color(0xFF0A7A35);
   static const warning = Color(0xFF976113);
   static const critical = Color(0xFFB3261E);

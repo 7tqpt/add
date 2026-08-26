@@ -645,6 +645,14 @@ export interface DashboardStats {
   bookings: Kpi
   revenue: Kpi
   commission: Kpi
+  /**
+   * دخلُ المنصّة الفعليّ — **نقديٌّ لا استحقاقيّ**.
+   *
+   * وهو غيرُ `commission` أعلاه: تلك عمولةُ حجوزاتٍ **أُنشئت** في المدّة سواءٌ
+   * وصل مالُها أم لم يصل، وهذه ما تأكّدت حوالتُه فعلاً — ومعها البابان
+   * الآخران: اشتراكاتُ المزوّدين وإعلاناتُهم.
+   */
+  income: PlatformIncome
   bookingsByDay: MetricPoint[]
   installsByDay: DailyBreakdown[]
   /** الحجوزات موزّعة على أقسام الخدمات. */
@@ -656,6 +664,24 @@ export interface DashboardStats {
   openDisputes: number
   pendingSettlements: number
   flaggedReviews: number
+}
+
+/** أبوابُ الدخل الثلاثة ومجموعها في المدّة المختارة. */
+export interface PlatformIncome {
+  commission: number
+  subscriptions: number
+  promotions: number
+  total: number
+  /** المجموع اليوميّ — للرسم. */
+  byDay: MetricPoint[]
+  /**
+   * هل تحمل القاعدة `api_admin_income` بعد؟
+   *
+   * **ولماذا تُعدّ:** اللوحة تُنشر من `main` والقاعدة تُحدَّث بيد صاحبها. فبين
+   * النشرتين نافذةٌ تكون فيها الدالّةُ غائبة — وفيها يجب أن تنقص بطاقةٌ لا
+   * أن تسقط الشاشة كلُّها بـ«لا وجود للدالّة».
+   */
+  available: boolean
 }
 
 export type RangeDays = 7 | 30 | 90

@@ -24,6 +24,16 @@ class Session extends ChangeNotifier {
   /// قراءته لعطبٍ في القاعدة لا يُساق إلى شيء بل يُقال له ما العطب.
   String? identityError;
 
+  /// الدورُ الذي اختاره القادمُ الجديد قبل أن يسجّل.
+  ///
+  /// **في الذاكرة لا في القاعدة، وهذا كافٍ:** ما بين الاختيار وإكمال الملفّ
+  /// تشغيلٌ واحد. ولو أُغلق التطبيق في منتصف الطريق عادت شاشةُ الإكمال تسأل
+  /// عن الدور بنفسها — فالميزة تنقص ولا تنكسر.
+  ///
+  /// وعروسٌ وعريسٌ كلاهما عميل: الفرقُ بينهما ليس في القاعدة، والذي يفترق
+  /// هو `provider` وحده — يُساق إلى إنشاء ملفّه فور إكمال بياناته.
+  String? signUpIntent;
+
   bool get signedIn => userId != null;
   bool get needsProfile => userId != null && appUserId == null;
   bool get hasProviderProfile => providerId != null;

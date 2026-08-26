@@ -1,13 +1,17 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../core/format.dart';
 import '../core/theme.dart';
 import '../data/api.dart';
 import '../data/models.dart';
 import '../data/supabase.dart';
+import '../core/voice.dart';
 import '../ui/kit.dart';
+import '../ui/media.dart';
+import 'chat_attach.dart';
 
 /// خيط المحادثة.
 ///
@@ -21,7 +25,19 @@ class ChatScreen extends StatefulWidget {
     required this.conversationId,
     required this.otherName,
     required this.mySide,
+    this.recorder,
+    this.picker,
   });
+
+  /// المُسجِّل — يُبدَّل بمزيّفٍ في الاختبار.
+  ///
+  /// **ولولا هذا لبقي أهمُّ ما في الشاشة بلا حارس:** الميكروفون لا يوجد في
+  /// الاختبار، فشاشةٌ تنادي الجهاز رأساً لا يُقاس فيها ما يقع حين يُرفض
+  /// الإذن ولا حين يفشل الرفع.
+  final VoiceRecorder? recorder;
+
+  /// منتقي المرفقات — يُبدَّل كذلك.
+  final AttachmentPicker? picker;
 
   final String conversationId;
 
@@ -42,6 +58,14 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _loading = true;
   bool _sending = false;
   String? _error;
+
+  late final VoiceRecorder _recorder = widget.recorder ?? DeviceVoiceRecorder();
+  late final AttachmentPicker _picker = widget.picker ?? const DeviceAttachmentPicker();
+
+  /// جارٍ التسجيل — والثواني تُعرض للمستخدم.
+  bool _recording = false;
+  int _recorded = 0;
+  Timer? _tick;
 
   @override
   void initState() {
@@ -116,9 +140,140 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   void dispose() {
     _live?.cancel();
+    _tick?.cancel();
+    _recorder.dispose();
     _input.dispose();
     _scroll.dispose();
     super.dispose();
+  }
+
+  /// يرفع مرفقاً ويُرسله، ويقول ما وقع إن فشل.
+  Future<void> _sendAttachment(PickedAttachment picked) async {
+    setState(() => _sending = true);
+    try {
+      await Api.sendChatAttachment(
+        conversationId: widget.conversationId,
+        sender: widget.mySide,
+        kind: picked.kind,
+        bytes: picked.bytes,
+        extension: picked.extension,
+        contentType: picked.contentType,
+        seconds: picked.seconds,
+        name: picked.name,
+      );
+      // بلا بثٍّ لا يعود شيءٌ من الخادم — كما في إرسال النصّ.
+      if (_live == null) {
+        final rows = await Api.conversationMessages(widget.conversationId);
+        if (mounted) setState(() => _messages = rows);
+      }
+      _toBottom();
+    } catch (e) {
+      if (mounted) showMessage(context, messageOf(e));
+    } finally {
+      if (mounted) setState(() => _sending = false);
+    }
+  }
+
+  Future<void> _pick(Future<PickedAttachment?> Function() choose) async {
+    try {
+      final picked = await choose();
+      if (picked == null || !mounted) return;
+      await _sendAttachment(picked);
+    } catch (e) {
+      if (mounted) showMessage(context, messageOf(e));
+    }
+  }
+
+  /// قائمةُ المرفقات — ورقةٌ سفلية بأربعة أبواب.
+  Future<void> _attach() async {
+    final choice = await showModalBottomSheet<String>(
+      context: context,
+      builder: (sheet) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (final (value, icon, label) in const [
+              ('gallery', Icons.photo_library_outlined, 'صورة من المعرض'),
+              ('camera', Icons.photo_camera_outlined, 'التقاط صورة'),
+              ('video', Icons.videocam_outlined, 'تصوير مقطع'),
+              ('file', Icons.attach_file, 'ملف PDF'),
+            ])
+              ListTile(
+                leading: Icon(icon, color: AppColors.accent),
+                title: Text(label),
+                onTap: () => Navigator.of(sheet).pop(value),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (choice == null) return;
+    switch (choice) {
+      case 'gallery':
+        await _pick(() => _picker.image(camera: false));
+      case 'camera':
+        await _pick(() => _picker.image(camera: true));
+      case 'video':
+        await _pick(_picker.video);
+      case 'file':
+        await _pick(_picker.document);
+    }
+  }
+
+  /// يبدأ التسجيل — بعد الإذن.
+  ///
+  /// **والإذنُ يُسأل عنه ويُقال حين يُرفض:** زرٌّ يُضغط فلا يقع شيءٌ ولا تظهر
+  /// رسالة يجعل المستخدم يظنّ التطبيق مكسوراً، وهو ممنوعٌ بإذنٍ يملك هو
+  /// منحه.
+  Future<void> _startRecording() async {
+    if (!await _recorder.hasPermission()) {
+      if (mounted) {
+        showMessage(context, 'لم يُسمح للتطبيق بالميكروفون. افتح إعدادات التطبيق واسمح به.');
+      }
+      return;
+    }
+    await _recorder.start();
+    if (!mounted) return;
+    setState(() {
+      _recording = true;
+      _recorded = 0;
+    });
+    _tick = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) return;
+      setState(() => _recorded = timer.tick);
+      // **إيقافٌ تلقائيٌّ عند الحدّ لا رفضٌ بعده:** من تكلّم ثلاث دقائق ثم
+      // قيل له «طويل» فقد كلامَه كلَّه.
+      if (timer.tick >= voiceMaxSeconds) _stopRecording();
+    });
+  }
+
+  Future<void> _stopRecording() async {
+    _tick?.cancel();
+    if (!_recording) return;
+    setState(() => _recording = false);
+    try {
+      final clip = await _recorder.stop();
+      if (clip == null) {
+        if (mounted) showMessage(context, 'التسجيل قصيرٌ جداً.');
+        return;
+      }
+      await _sendAttachment(PickedAttachment(
+        kind: ChatAttachment.audio,
+        bytes: clip.bytes,
+        extension: 'm4a',
+        contentType: 'audio/mp4',
+        seconds: clip.seconds,
+      ));
+    } catch (e) {
+      if (mounted) showMessage(context, messageOf(e));
+    }
+  }
+
+  Future<void> _cancelRecording() async {
+    _tick?.cancel();
+    if (!_recording) return;
+    setState(() => _recording = false);
+    await _recorder.cancel();
   }
 
   Future<void> _send() async {
@@ -154,7 +309,17 @@ class _ChatScreenState extends State<ChatScreen> {
       body: Column(
         children: [
           Expanded(child: _body()),
-          _Composer(controller: _input, busy: _sending, onSend: _send),
+          _Composer(
+            controller: _input,
+            busy: _sending,
+            onSend: _send,
+            onAttach: _attach,
+            onRecord: _startRecording,
+            onStop: _stopRecording,
+            onCancelRecording: _cancelRecording,
+            recording: _recording,
+            recorded: _recorded,
+          ),
         ],
       ),
     );
@@ -248,6 +413,8 @@ class _Bubble extends StatelessWidget {
           // ثلاثةُ أرباع العرض: فقاعةٌ بعرض الشاشة كاملاً تُلغي الفرق بين
           // الطرفين، فيصير الخيطُ صفحةَ نصٍّ لا حواراً.
           maxWidth: MediaQuery.of(context).size.width * 0.75,
+          // وصورةٌ في فقاعةٍ ضيّقةٍ لا تُرى: تُعطى أرضيّةً بحدٍّ أدنى.
+          minWidth: message.attachment == ChatAttachment.image ? 180 : 0,
         ),
         decoration: BoxDecoration(
           color: mine ? AppColors.accent : AppColors.surface,
@@ -257,15 +424,22 @@ class _Bubble extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              message.body,
-              style: TextStyle(
-                fontSize: 14,
-                height: 1.6,
-                color: mine ? AppColors.accentInk : AppColors.ink,
-                fontFamilyFallback: arabicFallback,
+            if (message.hasAttachment) ...[
+              _Attachment(message: message, mine: mine),
+              const SizedBox(height: Space.xs),
+            ],
+            // نصُّ رسالةٍ مرفَقة فارغ، فلا يُرسم سطرٌ خالٍ يزيد ارتفاع
+            // الفقاعة بلا شيء فيه.
+            if (message.body.isNotEmpty)
+              Text(
+                message.body,
+                style: TextStyle(
+                  fontSize: 14,
+                  height: 1.6,
+                  color: mine ? AppColors.accentInk : AppColors.ink,
+                  fontFamilyFallback: arabicFallback,
+                ),
               ),
-            ),
             const SizedBox(height: 2),
             Text(
               formatTimeOf(message.createdAt),
@@ -287,48 +461,280 @@ class _Bubble extends StatelessWidget {
 }
 
 class _Composer extends StatelessWidget {
-  const _Composer({required this.controller, required this.busy, required this.onSend});
+  const _Composer({
+    required this.controller,
+    required this.busy,
+    required this.onSend,
+    required this.onAttach,
+    required this.onRecord,
+    required this.onStop,
+    required this.onCancelRecording,
+    required this.recording,
+    required this.recorded,
+  });
+
   final TextEditingController controller;
   final bool busy;
   final VoidCallback onSend;
+  final VoidCallback onAttach;
+  final VoidCallback onRecord;
+  final VoidCallback onStop;
+  final VoidCallback onCancelRecording;
+  final bool recording;
+  final int recorded;
 
   @override
   Widget build(BuildContext context) {
     return SafeArea(
       top: false,
       child: Container(
-        padding: const EdgeInsets.fromLTRB(Space.md, Space.sm, Space.md, Space.sm),
+        padding: const EdgeInsets.fromLTRB(Space.sm, Space.sm, Space.sm, Space.sm),
         decoration: const BoxDecoration(
           color: AppColors.surface,
           border: Border(top: BorderSide(color: AppColors.hairline)),
         ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Expanded(
-              child: TextField(
-                controller: controller,
-                // يكبر بالنصّ إلى خمسة أسطر ثم يقف: حقلٌ بسطرٍ واحد يُخفي
-                // أوّلَ كلامٍ طويل، وحقلٌ بلا حدٍّ يبتلع الشاشة.
-                minLines: 1,
-                maxLines: 5,
-                textInputAction: TextInputAction.newline,
-                keyboardType: TextInputType.multiline,
-                decoration: const InputDecoration(
-                  hintText: 'اكتب رسالتك…',
-                  isDense: true,
-                ),
+        // أثناء التسجيل يختفي الحقلُ كلُّه ويحلّ محلّه شريطُ التسجيل: حقلُ
+        // كتابةٍ ظاهرٌ والميكروفون يعمل يدعو إلى الكتابة أثناء الكلام، ثم
+        // تضيع إحداهما.
+        child: recording
+            ? _RecordingBar(
+                seconds: recorded,
+                onStop: onStop,
+                onCancel: onCancelRecording,
+              )
+            : Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  IconButton(
+                    onPressed: busy ? null : onAttach,
+                    tooltip: 'أرفق',
+                    icon: const Icon(Icons.add_circle_outline, size: 24),
+                    color: AppColors.accent,
+                  ),
+                  Expanded(
+                    child: TextField(
+                      controller: controller,
+                      // يكبر بالنصّ إلى خمسة أسطر ثم يقف: حقلٌ بسطرٍ واحد
+                      // يُخفي أوّلَ كلامٍ طويل، وحقلٌ بلا حدٍّ يبتلع الشاشة.
+                      minLines: 1,
+                      maxLines: 5,
+                      textInputAction: TextInputAction.newline,
+                      keyboardType: TextInputType.multiline,
+                      decoration: const InputDecoration(
+                        hintText: 'اكتب رسالتك…',
+                        isDense: true,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: Space.xs),
+                  // ميكروفونٌ إلى جانب الإرسال لا بدلاً منه: تبديلُ الزرّ
+                  // بحسب امتلاء الحقل — كما تفعل تطبيقاتٌ أخرى — يجعل الزرّ
+                  // يتحرّك تحت الإبهام فيُضغط غيرُ المقصود.
+                  IconButton(
+                    onPressed: busy ? null : onRecord,
+                    tooltip: 'سجّل رسالة صوتية',
+                    icon: const Icon(Icons.mic_none_rounded, size: 24),
+                    color: AppColors.accent,
+                  ),
+                  IconButton.filled(
+                    onPressed: busy ? null : onSend,
+                    tooltip: 'أرسل',
+                    icon: const Icon(Icons.send_rounded, size: 20),
+                  ),
+                ],
               ),
-            ),
-            const SizedBox(width: Space.sm),
-            IconButton.filled(
-              onPressed: busy ? null : onSend,
-              tooltip: 'أرسل',
-              icon: const Icon(Icons.send_rounded, size: 20),
-            ),
-          ],
-        ),
       ),
     );
   }
 }
+
+/// شريطُ التسجيل — نقطةٌ حمراء وعدّادٌ ومخرجان.
+class _RecordingBar extends StatelessWidget {
+  const _RecordingBar({
+    required this.seconds,
+    required this.onStop,
+    required this.onCancel,
+  });
+
+  final int seconds;
+  final VoidCallback onStop;
+  final VoidCallback onCancel;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        // **إلغاءٌ قبل الإرسال:** من ضغط الميكروفون بالخطأ أو تكلّم فأخطأ
+        // يحتاج باباً يرمي به ما سجّل — وبلاه يُرسل ما لا يريد أو يُغلق
+        // الشاشة فيضيع.
+        IconButton(
+          onPressed: onCancel,
+          tooltip: 'ألغِ التسجيل',
+          icon: const Icon(Icons.delete_outline, size: 22),
+          color: AppColors.critical,
+        ),
+        Container(
+          width: 10,
+          height: 10,
+          decoration: const BoxDecoration(
+            color: AppColors.critical,
+            shape: BoxShape.circle,
+          ),
+        ),
+        const SizedBox(width: Space.sm),
+        Expanded(
+          child: Text(
+            'يسجّل… ${formatClock(Duration(seconds: seconds))}',
+            style: const TextStyle(
+              fontSize: 14,
+              color: AppColors.ink,
+              fontFamilyFallback: arabicFallback,
+            ),
+          ),
+        ),
+        IconButton.filled(
+          onPressed: onStop,
+          tooltip: 'أرسل التسجيل',
+          icon: const Icon(Icons.send_rounded, size: 20),
+        ),
+      ],
+    );
+  }
+}
+
+/// المرفقُ داخل الفقاعة — لكلِّ نوعٍ شكلُه.
+///
+/// **والرابطُ يُوقَّع عند العرض:** السلّة خاصّة، فلا رابط علنيّ لها. ويُطلب
+/// التوقيعُ مرّةً لكل فقاعة وتُحفظ نتيجتُه في `_future` — لا في كل إعادة
+/// رسمٍ للشاشة، وإلّا صار كلُّ تمريرٍ بالإبهام نداءً على الشبكة.
+class _Attachment extends StatefulWidget {
+  const _Attachment({required this.message, required this.mine});
+  final ChatMessage message;
+  final bool mine;
+
+  @override
+  State<_Attachment> createState() => _AttachmentState();
+}
+
+class _AttachmentState extends State<_Attachment> {
+  late final Future<String?> _url = Api.chatMediaUrl(widget.message.attachmentPath);
+
+  Future<void> _open(String url) async {
+    final ok = await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+    if (!ok && mounted) showMessage(context, 'لم يُفتح الملف — لا قارئ PDF على الجهاز.');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final m = widget.message;
+    return FutureBuilder<String?>(
+      future: _url,
+      builder: (context, snap) {
+        final url = snap.data;
+        final loading = snap.connectionState != ConnectionState.done;
+
+        switch (m.attachment!) {
+          case ChatAttachment.image:
+            return ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: AspectRatio(
+                aspectRatio: 4 / 3,
+                child: loading
+                    ? Container(color: AppColors.surface2)
+                    : MediaThumb(url: url),
+              ),
+            );
+
+          case ChatAttachment.video:
+            return ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: SizedBox(
+                width: 220,
+                child: url == null
+                    ? Container(height: 124, color: AppColors.surface2)
+                    : VideoBox(url: url, seconds: m.attachmentSeconds),
+              ),
+            );
+
+          case ChatAttachment.audio:
+            // **ورابطٌ لم يصل لا يعني فقاعةً فارغة.** التوقيع نداءٌ على
+            // الشبكة قد يتأخّر أو يفشل، وصندوقٌ فارغٌ في الخيط لا يقول إن
+            // هناك رسالةً أصلاً — فيظنّ المستقبِل أن المرسِل أرسل فراغاً.
+            // فتُعرض المدّة دائماً، ويُضاف المشغّل حين يصل الرابط.
+            return SizedBox(
+              width: 220,
+              child: url == null
+                  ? Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          loading ? Icons.mic_none_rounded : Icons.mic_off_outlined,
+                          size: 20,
+                          color: widget.mine ? AppColors.accentInk : AppColors.muted,
+                        ),
+                        const SizedBox(width: Space.sm),
+                        Text(
+                          formatClock(Duration(seconds: m.attachmentSeconds)),
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: widget.mine ? AppColors.accentInk : AppColors.ink2,
+                          ),
+                        ),
+                      ],
+                    )
+                  : AudioBar(url: url, seconds: m.attachmentSeconds),
+            );
+
+          case ChatAttachment.file:
+            // اسمُ الملفّ وحجمُه ثم يُفتح: «مرفق» وحدها لا تقول أهو العقد أم
+            // قائمة الأسعار، ومن يفتح محادثةً بعد شهرٍ يبحث بالاسم.
+            return InkWell(
+              onTap: url == null ? null : () => _open(url),
+              borderRadius: BorderRadius.circular(10),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.picture_as_pdf_outlined,
+                    size: 26,
+                    color: widget.mine ? AppColors.accentInk : AppColors.critical,
+                  ),
+                  const SizedBox(width: Space.sm),
+                  Flexible(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          m.attachmentName.isEmpty ? 'ملف' : m.attachmentName,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: widget.mine ? AppColors.accentInk : AppColors.ink,
+                            fontFamilyFallback: arabicFallback,
+                          ),
+                        ),
+                        if (m.attachmentSize > 0)
+                          Text(
+                            formatBytes(m.attachmentSize),
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: widget.mine
+                                  ? AppColors.accentInk.withValues(alpha: chatStampAlpha)
+                                  : AppColors.muted,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+        }
+      },
+    );
+  }
+}
+

@@ -608,12 +608,35 @@ class Conversation {
   );
 }
 
+/// نوعُ مرفقٍ في المحادثة — كما يقيّده `message_attachment_kind`.
+enum ChatAttachment { image, audio, video, file }
+
+ChatAttachment? chatAttachmentFrom(String? raw) => switch (raw) {
+  'image' => ChatAttachment.image,
+  'audio' => ChatAttachment.audio,
+  'video' => ChatAttachment.video,
+  'file' => ChatAttachment.file,
+  _ => null,
+};
+
+String chatAttachmentValue(ChatAttachment kind) => switch (kind) {
+  ChatAttachment.image => 'image',
+  ChatAttachment.audio => 'audio',
+  ChatAttachment.video => 'video',
+  ChatAttachment.file => 'file',
+};
+
 class ChatMessage {
   const ChatMessage({
     required this.id,
     required this.sender,
     required this.body,
     required this.createdAt,
+    this.attachment,
+    this.attachmentPath = '',
+    this.attachmentSeconds = 0,
+    this.attachmentName = '',
+    this.attachmentSize = 0,
   });
 
   final String id;
@@ -621,11 +644,35 @@ class ChatMessage {
   final String body;
   final String createdAt;
 
+  /// نوعُ المرفق — و`null` لرسالةٍ نصّية.
+  final ChatAttachment? attachment;
+
+  /// المسارُ داخل سلّة `chat-media` — لا الرابط.
+  ///
+  /// **والسلّةُ خاصّة**، فالرابط يُوقَّع عند العرض وينتهي بعد ساعة. ولو خُزّن
+  /// رابطٌ جاهزٌ في الصفّ لانتهت صلاحيتُه وبقي يشير إلى لا شيء.
+  final String attachmentPath;
+
+  /// للمسموع والمرئيّ وحدهما — والقاعدة ترفض مدّةً على صورة.
+  final int attachmentSeconds;
+
+  /// اسمُ الملفّ كما سمّاه صاحبه: «العقد.pdf». ومن يفتح محادثةً بعد شهرٍ
+  /// يبحث بالاسم لا بالأيقونة.
+  final String attachmentName;
+  final int attachmentSize;
+
+  bool get hasAttachment => attachment != null;
+
   factory ChatMessage.fromMap(Map<String, dynamic> m) => ChatMessage(
     id: m['id'] as String,
     sender: chatSideFrom((m['sender'] ?? 'customer') as String),
     body: (m['body'] ?? '') as String,
     createdAt: (m['created_at'] ?? '') as String,
+    attachment: chatAttachmentFrom(m['attachment_kind'] as String?),
+    attachmentPath: (m['attachment_path'] ?? '') as String,
+    attachmentSeconds: ((m['attachment_seconds'] ?? 0) as num).toInt(),
+    attachmentName: (m['attachment_name'] ?? '') as String,
+    attachmentSize: ((m['attachment_size'] ?? 0) as num).toInt(),
   );
 }
 

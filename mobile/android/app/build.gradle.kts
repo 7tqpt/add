@@ -48,6 +48,22 @@ android {
             // TODO: Add your own signing config for the release build.
             // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
+
+            // R8 وتقليمُ الموارد.
+            //
+            // **ولماذا لم تكونا مفعّلتين:** قالب Flutter يخرج بهما مطفأتين،
+            // فتُشحن أصنافُ Firebase وخدمات Google والإضافات كلُّها كما هي —
+            // بما لا يُستدعى منها أبداً. وحزمةُ ARM64 كانت ٢٣٫٧ م.ب.
+            //
+            // وهذا يُقاس في البناء لا يُخمَّن هنا: سطرُ «الحزمة» في ملخّص
+            // التشغيل يقول الرقم بعد كل بناء، وحارسُ السقف يُسقط البناء إن
+            // عادت تسمن.
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
         }
     }
 }

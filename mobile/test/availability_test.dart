@@ -3,6 +3,8 @@
 // **وأهمّ ما هنا أن اليومين ليسا سواء.** يومٌ أغلقته القاعدة بحجزٍ مؤكّد لا
 // يفتحه صاحبه — ولو فُتح لأمكن أن يقع عرسان في ليلة. وشاشةٌ تعرض له زرّ «افتحه»
 // ثم يردّه الخادم أسوأ من شاشةٍ لا تعرضه.
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -103,5 +105,78 @@ void main() {
 
     final now = DateTime.now();
     expect(find.text(formatMonth(DateTime(now.year, now.month))), findsOneWidget);
+  });
+
+  testWidgets('ولكلِّ حالةٍ لونُها: متاحٌ أخضر ومحجوزٌ أزرق', (tester) async {
+    // **واللون هنا معنىً لا زينة:** صاحبُ القاعة يمرّ على الشهر بعينه لا
+    // بالقراءة — أخضرُ يقبل حجزاً، وأزرقُ محجوزٌ لا يُفتح إلا بإلغاء، وأحمرُ
+    // أغلقه هو ويفتحه متى شاء. ولونان متقاربان يجعلانه يعتذر عن حجزٍ ظنّه
+    // مشغولاً.
+    // يومان **في الشهر المعروض نفسه** لا «بعد ثلاثة أيام»: الشاشة تفتح على
+    // شهر اليوم، وإضافةُ ثلاثةٍ إلى يومٍ في آخر الشهر تُخرجهما من الشبكة —
+    // فيسقط الاختبار في أواخر كل شهرٍ ويمرّ في أوّله. وهذا أسوأ من ساقطٍ
+    // دائماً: يُنسب إلى الحظّ.
+    //
+    // واليومان الماضيان يصلحان هنا: الصبغة لا تتغيّر بمضيّ اليوم — يبهت
+    // الرقم وحده.
+    final now = DateTime.now();
+    demoDays = [
+      DayMark(day: DateTime(now.year, now.month, 2), blocked: true, note: 'محجوز — BK-9'),
+      DayMark(day: DateTime(now.year, now.month, 3), blocked: true, note: 'سفر'),
+    ];
+
+    await tester.pumpWidget(_wrap(AvailabilityScreen(session: _session())));
+    await _settle(tester);
+
+    // **الخلايا لا نقاطُ المفتاح.** أوّلُ صياغةٍ لهذا التأكيد قرأت كلَّ
+    // `Container` في الشاشة، فمرّت وأنا أوحّد لوني «متاح» و«محجوز» عمداً:
+    // نقطةُ المفتاح كانت ما زالت زرقاء فأرضته. فيُقرأ الآن ما يُرسم في
+    // المربّعات نفسها — والصبغة تميّزها: النقاط مصمتة والخلايا مخفّفة.
+    final fills = tester
+        .widgetList<Container>(find.byType(Container))
+        .map((c) => c.decoration)
+        .whereType<BoxDecoration>()
+        .map((d) => d.color)
+        .whereType<Color>()
+        .where((c) => c.a > 0 && c.a < 1)
+        .toList();
+
+    bool tinted(Color tone, double alpha) => fills.any((c) =>
+        c.r == tone.r &&
+        c.g == tone.g &&
+        c.b == tone.b &&
+        (c.a - alpha).abs() < 0.001);
+
+    expect(tinted(AppColors.good, Tint.chip), isTrue, reason: 'لا يومَ متاحاً أخضر');
+    expect(tinted(AppColors.booked, Tint.disc), isTrue, reason: 'لا يومَ محجوزاً أزرق');
+    expect(tinted(AppColors.critical, Tint.chip), isTrue, reason: 'لا يومَ مغلقاً أحمر');
+  });
+
+  test('وألوانُ التقويم الثلاثة مقروءةٌ على صبغاتها', () {
+    // القياسُ لا الذوق: صبغةٌ ترتفع غداً فيصير رقمُ اليوم لا يُقرأ في الشمس،
+    // ولا يظهر ذلك في أي سجلّ.
+    double lin(double c) =>
+        c <= 0.03928 ? c / 12.92 : math.pow((c + 0.055) / 1.055, 2.4) as double;
+    double lum(Color c) => 0.2126 * lin(c.r) + 0.7152 * lin(c.g) + 0.0722 * lin(c.b);
+    const card = Color(0xFFFFFFFE);
+    Color over(Color fg, double a) => Color.from(
+      alpha: 1,
+      red: fg.r * a + card.r * (1 - a),
+      green: fg.g * a + card.g * (1 - a),
+      blue: fg.b * a + card.b * (1 - a),
+    );
+    double ratio(Color a, Color b) {
+      final x = lum(a), y = lum(b);
+      return (math.max(x, y) + 0.05) / (math.min(x, y) + 0.05);
+    }
+
+    for (final (name, tone, alpha) in [
+      ('متاح', AppColors.good, Tint.chip),
+      ('محجوز', AppColors.booked, Tint.disc),
+      ('أغلقتَه', AppColors.critical, Tint.chip),
+    ]) {
+      final r = ratio(tone, over(tone, alpha));
+      expect(r, greaterThanOrEqualTo(4.5), reason: '«$name» يعطي ${r.toStringAsFixed(2)}:1');
+    }
   });
 }

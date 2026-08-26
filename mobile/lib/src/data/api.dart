@@ -777,12 +777,28 @@ class Api {
 
   static Future<List<ChatMessage>> conversationMessages(String conversationId) async {
     if (!isSupabaseConfigured) return demoDelay(demoMessagesOf(conversationId));
-    final rows = await db
-        .from('conversation_messages')
-        .select('id, sender, body, created_at')
-        .eq('conversation_id', conversationId)
-        .order('created_at', ascending: true);
-    return rows.map(ChatMessage.fromMap).toList();
+    // القراءةُ الكاملة أوّلاً، فإن أنكرت القاعدةُ أعمدةَ المرفق قُرئ الخيطُ
+    // بدونها: من لم يشغّل `chat_media.sql` بعدُ يرى رسائله النصّية ولا تسقط
+    // شاشتُه.
+    return whenColumnMissing(
+      () async {
+        final rows = await db
+            .from('conversation_messages')
+            .select('id, sender, body, created_at, attachment_path, attachment_kind, '
+                    'attachment_seconds, attachment_name, attachment_size')
+            .eq('conversation_id', conversationId)
+            .order('created_at', ascending: true);
+        return rows.map(ChatMessage.fromMap).toList();
+      },
+      () async {
+        final rows = await db
+            .from('conversation_messages')
+            .select('id, sender, body, created_at')
+            .eq('conversation_id', conversationId)
+            .order('created_at', ascending: true);
+        return rows.map(ChatMessage.fromMap).toList();
+      },
+    );
   }
 
   /// بثٌّ حيٌّ لرسائل محادثة.
@@ -815,6 +831,64 @@ class Api {
       'sender': chatSideValue(sender),
       'body': body,
     });
+  }
+
+  /// يرفع المرفق ثم يُرسل الرسالة.
+  ///
+  /// **والترتيب مقصودٌ كما في وسائط الخدمة:** لو سُجّل الصفُّ أوّلاً وفشل
+  /// الرفع لبقيت في الخيط فقاعةٌ تشير إلى ملفٍ ليس هناك — يضغطها الطرف الآخر
+  /// فلا يجد شيئاً ولا يعرف لماذا. وإن فشل الصفُّ بعد نجاح الرفع حُذف الملفّ:
+  /// ملفٌّ لا يشير إليه صفٌّ لا يراه أحدٌ ولا يحذفه أحدٌ ويُحسب في الفاتورة
+  /// إلى الأبد.
+  ///
+  /// والمسار `<conversation_id>/<ختم>.<امتداد>` كما تشترط سياسةُ السلّة:
+  /// أوّلُ جزءٍ منه هو المحادثة، وعليه تُبنى الحراسة.
+  static Future<void> sendChatAttachment({
+    required String conversationId,
+    required ChatSide sender,
+    required ChatAttachment kind,
+    required Uint8List bytes,
+    required String extension,
+    String contentType = 'application/octet-stream',
+    int seconds = 0,
+    String name = '',
+  }) async {
+    if (!isSupabaseConfigured) {
+      demoSendAttachment(conversationId, sender, kind, seconds: seconds, name: name);
+      return;
+    }
+    final path = '$conversationId/${DateTime.now().millisecondsSinceEpoch}.$extension';
+    await db.storage.from('chat-media').uploadBinary(
+          path,
+          bytes,
+          fileOptions: FileOptions(contentType: contentType, upsert: false),
+        );
+    try {
+      await db.from('conversation_messages').insert({
+        'conversation_id': conversationId,
+        'sender': chatSideValue(sender),
+        'body': '',
+        'attachment_path': path,
+        'attachment_kind': chatAttachmentValue(kind),
+        // المدّةُ للمسموع والمرئيّ وحدهما — والقاعدة ترفض مدّةً على صورة.
+        'attachment_seconds':
+            kind == ChatAttachment.audio || kind == ChatAttachment.video ? seconds : null,
+        'attachment_name': name.isEmpty ? null : name,
+        'attachment_size': bytes.length,
+      });
+    } catch (e) {
+      await db.storage.from('chat-media').remove([path]);
+      rethrow;
+    }
+  }
+
+  /// رابطٌ موقَّعٌ للمرفق — ينتهي بعد ساعة.
+  ///
+  /// السلّة خاصّة فلا رابط علنيّ لها. والتوقيع عند العرض لا عند الحفظ: رابطٌ
+  /// مخزَّنٌ في الصفّ ينتهي ويبقى يشير إلى لا شيء.
+  static Future<String?> chatMediaUrl(String path) async {
+    if (path.isEmpty || !isSupabaseConfigured) return null;
+    return db.storage.from('chat-media').createSignedUrl(path, 3600);
   }
 
   /// يعلّم المحادثة مقروءةً عند المتصل وحده.
@@ -1288,8 +1362,23 @@ class Api {
       'p_blocked': blocked,
       'p_note': note,
     });
+    return dayMarkOrNull(row);
+  }
+
+  /// صفُّ التقويم الراجع من `api_set_availability` — أو `null`.
+  ///
+  /// **وحارسٌ لِقاعدةٍ أقدمَ من التطبيق:** النسخةُ الأولى من الدالّة كانت
+  /// تُعيد صفّاً **حقولُه كلُّها فارغة** حين لا يُحذف شيء — لا `null`. فكان
+  /// التطبيق يقرأ `day` ويحوّله نصّاً فيسقط بـ«type 'Null' is not a subtype
+  /// of type 'String'»، ويرى صاحبُ القاعة رسالةً إنجليزيةً مكان تقويمه.
+  ///
+  /// أُصلح الأصلُ في `availability.sql`، وبقي هذا: من لم يُعِد تشغيل الملفّ
+  /// على قاعدته بعدُ يجد يومَه يُفتح ولا تسقط شاشتُه.
+  static DayMark? dayMarkOrNull(dynamic row) {
     if (row == null) return null;
-    return DayMark.fromMap(Map<String, dynamic>.from(row as Map));
+    final map = Map<String, dynamic>.from(row as Map);
+    if (map['day'] == null) return null;
+    return DayMark.fromMap(map);
   }
 
   /// أيامُ مزوّدٍ المشغولة — تواريخُ بلا ملاحظات، فما يخصّ حجوزات غيره ليس

@@ -116,6 +116,19 @@ begin
   delete from public.provider_availability
    where provider_id = me and day = p_day
   returning * into row;
+
+  -- **صفٌّ من الأصفار ليس `null`.**
+  --
+  -- حذفٌ لم يطابق شيئاً يترك `row` بحقولٍ كلُّها فارغة، و`return row` عليها
+  -- يُخرج كائناً `{"id": null, "day": null, …}` لا `null`. فيقرأ التطبيق
+  -- `day` ويحوّله نصّاً فيسقط بـ«type 'Null' is not a subtype of type
+  -- 'String'» — رسالةٌ إنجليزيةٌ في وجه صاحب القاعة مكان تقويمه.
+  --
+  -- ويقع هذا في أبسط حال: ضغطتان متتاليتان على «افتحه»، أو يومٌ حرّره
+  -- إلغاءُ حجزٍ بين لحظة فتح الشاشة ولحظة الضغط.
+  if row.id is null then
+    return null;
+  end if;
   return row;
 end $$;
 
