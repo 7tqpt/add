@@ -39,6 +39,25 @@ void _phone(WidgetTester tester) {
 
 Session _guest() => Session()..loading = false;
 
+/// جلسةٌ تُقلب إلى «مسجَّل» في منتصف الاختبار — كما يقع عند نجاح الدخول.
+class _LiveSession extends Session {
+  void becomeSignedOut() {
+    userId = null;
+    appUserId = null;
+    providerId = null;
+    loading = false;
+    notifyListeners();
+  }
+
+  void becomeSignedIn() {
+    userId = 'u1';
+    email = 'c@sdd.company';
+    appUserId = 'a1';
+    loading = false;
+    notifyListeners();
+  }
+}
+
 Session _signedIn() => Session()
   ..userId = 'u1'
   ..email = 'c@sdd.company'
@@ -126,5 +145,61 @@ void main() {
 
     expect(find.byType(WelcomeScreen), findsNothing);
     expect(find.text('ابدأ رحلتك'), findsNothing);
+  });
+
+  testWidgets('ونجاحُ الدخول يُخرج من شاشة الدخول لا يتركه فيها', (tester) async {
+    // **وهذا ما ينكسر بصمت.** `RootScreen` تبدّل ما تعرضه حين تُفتح الجلسة،
+    // لكنّ شاشة الدخول **مكدَّسةٌ فوقها** — دخلها المستخدم من «ابدأ رحلتك»
+    // ثمّ «اختر نوع الحساب». فتُبدَّل الشاشةُ تحتها وتبقى هي في وجهه: يكتب
+    // بريده وكلمته، وينجح الدخول فعلاً، ولا يقع شيء أمامه.
+    _phone(tester);
+    final session = _LiveSession()..loading = false;
+    await tester.pumpWidget(_wrap(RootScreen(session: session)));
+    await _settle(tester);
+
+    await tester.tap(find.text('ابدأ رحلتك'));
+    await _settle(tester);
+    await tester.tap(find.text('أنا عروس'));
+    await _settle(tester);
+    expect(find.byType(AuthScreen), findsOneWidget);
+
+    // نجح الدخول.
+    session.becomeSignedIn();
+    for (var i = 0; i < 5; i++) {
+      await tester.pump(const Duration(milliseconds: 400));
+    }
+
+    expect(find.byType(AuthScreen), findsNothing,
+        reason: 'بقيت شاشةُ الدخول فوق التطبيق بعد نجاح الدخول');
+  });
+
+  testWidgets('والخروجُ يطوي ما فوقه كذلك', (tester) async {
+    // نفسُ العطب مقلوباً: من ضغط «خروج» وهو في شاشةٍ مكدَّسة كانت تبقى أمامه
+    // وحسابُه قد أُغلق تحتها — يتصفّح تطبيقاً لم يعد له فيه حساب.
+    _phone(tester);
+    final session = _LiveSession()
+      ..userId = 'u1'
+      ..email = 'c@sdd.company'
+      ..appUserId = 'a1'
+      ..loading = false;
+    await tester.pumpWidget(_wrap(RootScreen(session: session)));
+    await _settle(tester);
+
+    // شاشةٌ مكدَّسةٌ فوق التطبيق — أيّةُ شاشةٍ تفي بالغرض.
+    final nav = tester.state<NavigatorState>(find.byType(Navigator));
+    nav.push(MaterialPageRoute(
+      builder: (_) => const Scaffold(body: Text('شاشةٌ مكدَّسة')),
+    ));
+    await _settle(tester);
+    expect(find.text('شاشةٌ مكدَّسة'), findsOneWidget);
+
+    session.becomeSignedOut();
+    for (var i = 0; i < 5; i++) {
+      await tester.pump(const Duration(milliseconds: 400));
+    }
+
+    expect(find.text('شاشةٌ مكدَّسة'), findsNothing,
+        reason: 'بقيت شاشةٌ من التطبيق فوق شاشة الترحيب بعد الخروج');
+    expect(find.byType(WelcomeScreen), findsOneWidget);
   });
 }
