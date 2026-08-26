@@ -12,12 +12,66 @@ import 'provider_shell.dart';
 ///
 /// الترتيب مقصود — من لا جلسة له لا معنى لسؤاله عن دوره، ومن لا ملف له لا
 /// يستطيع الحجز ولو كان مسجَّل الدخول.
-class RootScreen extends StatelessWidget {
+class RootScreen extends StatefulWidget {
   const RootScreen({super.key, required this.session});
   final Session session;
 
   @override
+  State<RootScreen> createState() => _RootScreenState();
+}
+
+class _RootScreenState extends State<RootScreen> {
+  /// حالُ الجلسة في آخر مرّةٍ نُظر فيها — يُقارَن بها لالتقاط **التبدّل**.
+  ///
+  /// **وتُملأ في `initState` لا بـ`late`.** الأخيرةُ تؤجّل الحساب إلى أوّل
+  /// قراءة، وأوّلُ قراءةٍ تقع **داخل** المستمع — أي بعد أن تكون الجلسة قد
+  /// فُتحت. فتُقرأ «مفتوحة» وتُقارَن بـ«مفتوحة» فلا يُرى تبدّلٌ أصلاً،
+  /// ويبقى العطبُ كما هو. كُتبت `late` أوّلاً فسقط الاختبار، فبانت.
+  bool _signedIn = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _signedIn = widget.session.signedIn;
+    widget.session.addListener(_onSessionChanged);
+  }
+
+  @override
+  void dispose() {
+    widget.session.removeListener(_onSessionChanged);
+    super.dispose();
+  }
+
+  /// **تُطوى الشاشاتُ المكدّسة حين تتبدّل الجلسة.**
+  ///
+  /// هذه البوّابة تبدّل ما تعرضه بحسب الجلسة، لكنّها تبدّله **تحت** ما كُدِّس
+  /// فوقها. وشاشةُ الدخول مكدَّسةٌ فوقها منذ صارت البدايةُ «ابدأ رحلتك» ثم
+  /// «اختر نوع الحساب»: فكان المستخدم يكتب بريده وكلمته، **وينجح دخوله
+  /// فعلاً**، ثمّ تبقى شاشة الدخول في وجهه ولا يقع شيء أمامه — والتطبيق
+  /// مفتوحٌ خلفها لا يراه.
+  ///
+  /// والخروجُ مثلُه: من ضغط «خروج» وهو في شاشةٍ مكدَّسة كانت تبقى أمامه
+  /// وحسابُه قد أُغلق تحتها.
+  ///
+  /// وطيُّها هنا لا في شاشة الدخول: الطريق إليها ثلاثةٌ اليوم وقد تصير
+  /// أربعةً غداً، وحارسٌ في كلٍّ منها يُنسى واحدُه. وهذه تلتقط التبدّل نفسه
+  /// أيّاً كان مصدره.
+  void _onSessionChanged() {
+    final now = widget.session.signedIn;
+    if (now == _signedIn) return;
+    _signedIn = now;
+
+    // بعد الإطار لا داخله: الملاحة أثناء البناء ممنوعة.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final nav = Navigator.of(context);
+      if (nav.canPop()) nav.popUntil((route) => route.isFirst);
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final session = widget.session;
     return ListenableBuilder(
       listenable: session,
       builder: (context, _) {
