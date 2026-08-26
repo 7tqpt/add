@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../core/session.dart';
 import '../data/supabase.dart';
 import '../ui/kit.dart';
-import 'auth.dart';
+import 'welcome.dart';
 import 'onboarding.dart';
 import 'customer_shell.dart';
 import 'provider_shell.dart';
@@ -24,7 +24,10 @@ class RootScreen extends StatelessWidget {
         if (session.loading) {
           return const Scaffold(body: LoadingBlock(label: 'جارٍ التحقق…'));
         }
-        if (!session.signedIn) return AuthScreen(session: session);
+        // شاشةُ الترحيب لمن لا جلسة له وحده — ومن سجّل مرّةً يفتح التطبيق
+        // على شاشته مباشرةً. وشاشةُ ترحيبٍ تسبق كلَّ فتحةٍ عائقٌ يوميٌّ لا
+        // مقدّمة.
+        if (!session.signedIn) return WelcomeScreen(session: session);
         // قبل شاشة الإكمال: من تعذّرت قراءة هويته لعطبٍ في القاعدة ليس
         // «مستخدماً بلا ملف»، وسَوقُه إلى الإكمال يُخفي السبب ويُفشل الحفظ.
         if (session.identityError != null) {

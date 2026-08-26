@@ -6,8 +6,14 @@ import '../data/supabase.dart';
 import '../ui/kit.dart';
 
 class AuthScreen extends StatefulWidget {
-  const AuthScreen({super.key, required this.session});
+  const AuthScreen({super.key, required this.session, this.startOnSignUp = false});
   final Session session;
+
+  /// تُفتح على «إنشاء حساب» لا على «دخول».
+  ///
+  /// من جاء من شاشة الاختيار اختار دورَه للتوّ — فهو مستخدمٌ جديد بلا شكّ،
+  /// وفتحُ شاشة الدخول في وجهه يجعله يبحث عن الزرّ الذي يقلبها.
+  final bool startOnSignUp;
   @override
   State<AuthScreen> createState() => _AuthScreenState();
 }
@@ -17,7 +23,7 @@ class _AuthScreenState extends State<AuthScreen> {
   final _password = TextEditingController();
   final _code = TextEditingController();
   final _newPassword = TextEditingController();
-  bool _signUp = false;
+  late bool _signUp = widget.startOnSignUp;
   bool _busy = false;
   String? _error;
   String? _note;

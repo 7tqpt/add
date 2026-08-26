@@ -35,7 +35,15 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   final _name = TextEditingController();
   final _phone = TextEditingController();
   String? _governorate;
-  _Who? _who;
+
+  // ما اختاره قبل التسجيل يُحترم فلا يُسأل مرّتين. وإن فُقد — أُغلق التطبيق
+  // في منتصف الطريق — عادت الشاشة تسأل بنفسها: الميزة تنقص ولا تنكسر.
+  late _Who? _who = switch (widget.session.signUpIntent) {
+    'bride' => _Who.bride,
+    'groom' => _Who.groom,
+    'provider' => _Who.provider,
+    _ => null,
+  };
   late Future<List<Governorate>> _future;
   bool _busy = false;
   String? _error;
