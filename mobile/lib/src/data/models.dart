@@ -516,6 +516,50 @@ class ProviderDocument {
   );
 }
 
+/// ملخّصُ الحجوزات: كم، وأقربُها، وكم مؤكّدٌ وكم ينتظر.
+///
+/// **وواحدٌ في موضعين لا نسختان.** يُعرض في الرئيسية وفي أعلى «حجوزاتي»، ولو
+/// حُسب في كلٍّ على حدة لاختلف العددان يوماً — تُستبعد الملغاة في إحداهما
+/// وتبقى في الأخرى — فيقرأ العميل «٣ حجوزات» في الرئيسية ثمّ يعدّ اثنين في
+/// الشاشة، فلا يثق بالرقمين معاً.
+class BookingsSummary {
+  const BookingsSummary({
+    required this.upcoming,
+    required this.confirmed,
+    required this.pending,
+  });
+
+  /// القادمةُ مرتّبةً بالأقرب.
+  final List<Booking> upcoming;
+  final int confirmed;
+  final int pending;
+
+  Booking? get next => upcoming.isEmpty ? null : upcoming.first;
+  int get count => upcoming.length;
+
+  /// **والماضي يُستبعد:** «حجزك القادم» عن عرسٍ انقضى الشهر الماضي خبرٌ خاطئ
+  /// لا خبرٌ قديم. وكذلك الملغى والمرفوض — عدُّهما في «٣ حجوزات» يَعِد بما لا
+  /// وجود له.
+  factory BookingsSummary.of(List<Booking> all) {
+    final today = DateTime.now().toIso8601String().substring(0, 10);
+    final rows =
+        all
+            .where(
+              (b) =>
+                  b.eventDate.compareTo(today) >= 0 &&
+                  b.status != BookingStatus.cancelled &&
+                  b.status != BookingStatus.rejected,
+            )
+            .toList()
+          ..sort((a, b) => a.eventDate.compareTo(b.eventDate));
+    return BookingsSummary(
+      upcoming: rows,
+      confirmed: rows.where((b) => b.status == BookingStatus.confirmed).length,
+      pending: rows.where((b) => b.status == BookingStatus.pendingProvider).length,
+    );
+  }
+}
+
 /// ملفّي الشخصيّ كما تعيده `api_my_profile`.
 ///
 /// نموذجٌ مستقلٌّ عن `AppUser` الذي تقرؤه اللوحة: هذا ما يملك المستخدم تعديله

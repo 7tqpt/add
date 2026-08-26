@@ -183,131 +183,104 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
             description: 'ابدأ من «استكشف» واختر أول خدمة لعرسك.',
           );
         }
+        // **ملخّصٌ قبل التفاصيل.** من فتح «حجوزاتي» وعنده ستّةُ حجوزاتٍ يقرأ
+        // بطاقةً بطاقةً ليعرف كم بقي وأيُّها أقرب. وهي البطاقةُ نفسها التي في
+        // الرئيسية — يعرفها قبل أن يقرأها.
+        final summary = BookingsSummary.of(rows);
+
         return RefreshIndicator(
           onRefresh: () async => _reload(),
           child: ListView.separated(
             padding: EdgeInsets.fromLTRB(
               Space.lg, glassHeaderTop(context), Space.lg, glassNavSpace),
-            itemCount: rows.length,
+            // زائدٌ واحد: الملخّصُ في الصدر ثمّ الحجوزات.
+            itemCount: rows.length + 1,
             separatorBuilder: (_, _) => const SizedBox(height: Space.md),
             itemBuilder: (context, i) {
-              final b = rows[i];
-              // **نفسُ بطاقة «خطة العرس»** — `HeroCard` عينُها، وترتيبُها
-              // عينُه: عنوانٌ وشارةٌ في صفّ، ثم الرقمُ الكبير ثم وصفُه
-              // بالذهبيّ، ثم السطرُ الثانوي، وأيقونةٌ كبيرةٌ إلى اليسار.
-              //
-              // **والرقمُ الكبير هو المبلغ لا التاريخ:** بطاقةُ الخطة تجيب
-              // «كم بقي؟» فرقمُها الأيام، وبطاقةُ الحجز تجيب «بكم؟» — وهو
-              // أوّلُ ما تبحث عنه العين في حجز.
-              return HeroCard(
+              if (i == 0) {
+                return BigHeroCard(
+                  // طَفليٌّ محروق — لونُ «حجوزاتي» في الرئيسية نفسه.
+                  colors: const [Color(0xFFA3521A), Color(0xFF6B3208)],
+                  icon: Icons.event_available_rounded,
+                  title: 'حجوزاتي',
+                  headline: summary.count == 0
+                      ? 'لا حجوزات قادمة'
+                      : formatCount(summary.count, bookingForms),
+                  subtitle: summary.next == null
+                      ? 'حجوزاتك السابقة محفوظة أدناه'
+                      : 'أقربها ${formatDate(summary.next!.eventDate)}'
+                            ' · ${summary.next!.providerName}',
+                  footer: summary.count == 0
+                      ? 'ابدأ من «استكشف» واحجز خدمتك القادمة'
+                      : [
+                          if (summary.confirmed > 0) 'مؤكّد ${summary.confirmed}',
+                          if (summary.pending > 0) 'بانتظار المزوّد ${summary.pending}',
+                        ].join(' · '),
+                  // **ولا ضغطةَ لها هنا:** هي في الشاشة التي تشير إليها،
+                  // وبطاقةٌ تفتح ما هو مفتوحٌ أصلاً تُعلّم المستخدم أنّ ضغطها
+                  // لا يفعل شيئاً.
+                  onTap: null,
+                );
+              }
+              final b = rows[i - 1];
+              return AppCard(
                 children: [
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    b.serviceTitle,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w600,
-                                      color: OnAccent.ink,
-                                      fontFamilyFallback: arabicFallback,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: Space.sm),
-                                // **والشارةُ بيضاءُ الحدّ لا بلون الحالة:**
-                                // أخضرُ «مؤكَّد» وكهرمانُ «بانتظار» قِيسا على
-                                // الفاتح، وعلى النبيذيّ ينزلان تحت العتبة.
-                                // والحالةُ مكتوبةٌ نصّاً على كل حال، فلا
-                                // يضيع معناها بضياع لونها.
-                                StatusBadge(
-                                  bookingStatusLabel(b.status),
-                                  color: OnAccent.ink,
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: Space.xs),
-                            Text(
-                              b.providerName,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontSize: 12.5,
-                                color: OnAccent.inkSoft,
-                                fontFamilyFallback: arabicFallback,
-                              ),
-                            ),
-                            const SizedBox(height: Space.md),
-                            // **ويُصغَّر عند الطول لا يُقصّ:** مبلغٌ بسبعة
-                            // أرقامٍ بالريال اليمني يتجاوز العرض، و«١٢٠٠…»
-                            // رقمٌ مبتورٌ يُقرأ على أنه المبلغ.
-                            FittedBox(
-                              fit: BoxFit.scaleDown,
-                              alignment: AlignmentDirectional.centerStart,
-                              child: Text(
-                                formatMoney(b.totalPrice),
-                                maxLines: 1,
-                                style: const TextStyle(
-                                  fontSize: 32,
-                                  height: 1.15,
-                                  fontWeight: FontWeight.w700,
-                                  color: OnAccent.ink,
-                                  fontFamilyFallback: arabicFallback,
-                                ),
-                              ),
-                            ),
-                            Text(
-                              b.paidAmount <= 0
-                                  ? 'لم يُدفع بعد'
-                                  : b.paidAmount >= b.totalPrice
-                                      ? 'مدفوع بالكامل'
-                                      : 'باقٍ ${formatMoney(b.totalPrice - b.paidAmount)}',
-                              style: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                color: OnAccent.gold,
-                                fontFamilyFallback: arabicFallback,
-                              ),
-                            ),
-                            const SizedBox(height: Space.sm),
-                            Text(
-                              b.eventTime == null
-                                  ? formatDate(b.eventDate)
-                                  : '${formatDate(b.eventDate)} · ${formatTime(b.eventTime)}',
-                              style: const TextStyle(
-                                fontSize: 12.5,
-                                color: OnAccent.inkSoft,
-                                fontFamilyFallback: arabicFallback,
-                              ),
-                            ),
-                          ],
+                        child: Text(
+                          b.serviceTitle,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.ink,
+                          ),
                         ),
                       ),
-                      const SizedBox(width: Space.md),
-                      Icon(
-                        Icons.event_available_rounded,
-                        size: 56,
-                        color: AppColors.goldOnAccent.withValues(alpha: 0.65),
+                      const SizedBox(width: Space.sm),
+                      StatusBadge(
+                        bookingStatusLabel(b.status),
+                        color: bookingStatusColor(b.status),
                       ),
                     ],
                   ),
+                  const SizedBox(height: Space.xs),
+                  Muted(b.providerName),
                   const SizedBox(height: Space.sm),
+                  Text(
+                    b.eventTime == null
+                        ? formatDate(b.eventDate)
+                        : '${formatDate(b.eventDate)} · ${formatTime(b.eventTime)}',
+                    style: const TextStyle(fontSize: 14, color: AppColors.ink2),
+                  ),
+                  const SizedBox(height: Space.sm),
+                  // لفٌّ لا صفّ: مبلغان بالريال اليمني — سبعةُ أرقامٍ لكلٍّ —
+                  // تجاوزا عرض الجوال بخمسين بكسلاً. والقصُّ بالنقاط هنا
+                  // **أسوأ من النزول سطراً**: «الإجمالي ١٢٠٠…» رقمٌ مبتور
+                  // يُقرأ على أنه المبلغ. فينزل الثاني سطراً حين لا يتّسعان،
+                  // ويبقيان في سطرٍ واحدٍ متباعدين حين يتّسعان.
+                  Wrap(
+                    alignment: WrapAlignment.spaceBetween,
+                    spacing: Space.md,
+                    runSpacing: Space.xs,
+                    children: [
+                      Text(
+                        'الإجمالي ${formatMoney(b.totalPrice)}',
+                        style: const TextStyle(fontSize: 13, color: AppColors.ink),
+                      ),
+                      Muted(
+                        b.paidAmount > 0 ? 'مدفوع ${formatMoney(b.paidAmount)}' : 'لم يُدفع بعد',
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: Space.xs),
                   Align(
                     alignment: AlignmentDirectional.centerEnd,
                     child: Text(
                       b.reference,
                       textDirection: TextDirection.ltr,
-                      style: const TextStyle(fontSize: 11, color: OnAccent.inkSoft),
+                      style: const TextStyle(fontSize: 11, color: AppColors.muted),
                     ),
                   ),
                   // الدفع أوّل ما يُعرض بعد الأرقام: الحجز لا يصير حجزاً
@@ -321,7 +294,6 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                     const SizedBox(height: Space.md),
                     FilledButton.icon(
                       onPressed: _busyId == null ? () => _pay(b) : null,
-                      style: OnAccent.filled,
                       icon: const Icon(Icons.account_balance_wallet_outlined, size: 19),
                       label: Text(
                         b.paidAmount < b.depositAmount
@@ -337,7 +309,6 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                     const SizedBox(height: Space.md),
                     OutlinedButton(
                       onPressed: _busyId == null ? () => _cancel(b) : null,
-                      style: OnAccent.outlined,
                       child: const Text('إلغاء الحجز'),
                     ),
                   ],
@@ -345,7 +316,6 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                     const SizedBox(height: Space.md),
                     FilledButton.icon(
                       onPressed: _busyId == null ? () => _review(b) : null,
-                      style: OnAccent.filled,
                       icon: const Icon(Icons.star_rounded, size: 20),
                       label: const Text('قيّم الخدمة'),
                     ),
@@ -365,13 +335,10 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                             : Icons.report_gmailerrorred_outlined,
                         size: 19,
                       ),
-                      // **والباهتُ لا يبقى باهتاً على النبيذيّ:** رماديُّ
-                      // `muted` قِيس على الفاتح، وعليه هنا لا يُقرأ. فالمفتوحُ
-                      // نزاعُه ذهبيٌّ يُنتبه إليه، وما دونه أبيضُ خافت.
                       style: TextButton.styleFrom(
                         foregroundColor: _disputes.containsKey(b.id)
-                            ? OnAccent.gold
-                            : OnAccent.inkSoft,
+                            ? AppColors.accent
+                            : AppColors.muted,
                       ),
                       label: Text(
                         _disputes.containsKey(b.id) ? 'متابعة النزاع' : 'عندي مشكلة في هذا الحجز',
