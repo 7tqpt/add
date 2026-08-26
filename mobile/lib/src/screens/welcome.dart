@@ -93,7 +93,7 @@ class WelcomeScreen extends StatelessWidget {
                 const Spacer(),
                 // زرٌّ ذهبيٌّ بحبرٍ نبيذيّ — لا نبيذيٌّ على نبيذيّ فيختفي.
                 // والأبيضُ على الذهب لا يُقرأ (‎١٫٦٦:١‎)، والنبيذيُّ عليه
-                // ‎٦٫٤٥:١‎.
+                // ‎٨٫٢٨:١‎.
                 FilledButton(
                   style: FilledButton.styleFrom(
                     backgroundColor: AppColors.goldOnAccent,

@@ -279,18 +279,11 @@ class _CountdownCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final passed = days != null && days! < 0;
-    return Container(
-      padding: const EdgeInsets.all(Space.lg),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topRight,
-          end: Alignment.bottomLeft,
-          colors: [AppColors.accentLift, AppColors.accentDeep],
-        ),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        children: [
+    // الشكلُ من `HeroCard` — وهي نفسها التي تحمل بطاقةَ الحجز في «حجوزاتي».
+    return HeroCard(
+      children: [
+        Row(
+          children: [
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -350,14 +343,15 @@ class _CountdownCard extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(width: Space.md),
-          Icon(
-            Icons.favorite_rounded,
-            size: 56,
-            color: AppColors.goldOnAccent.withValues(alpha: 0.65),
-          ),
-        ],
-      ),
+            const SizedBox(width: Space.md),
+            Icon(
+              Icons.favorite_rounded,
+              size: 56,
+              color: AppColors.goldOnAccent.withValues(alpha: 0.65),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }
