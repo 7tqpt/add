@@ -5,6 +5,7 @@ import '../core/theme.dart';
 import '../ui/kit.dart';
 import '../data/api.dart';
 import '../data/models.dart';
+import 'account_extras.dart';
 import 'become_provider.dart';
 import 'disputes.dart';
 import 'favourites.dart';
@@ -178,6 +179,21 @@ class _AccountScreenState extends State<AccountScreen> {
               label: 'المفضّلة',
               onTap: () => _push(context, 'المفضّلة', const FavouritesScreen()),
             ),
+            // **صارت أبواباً تفتح، لا صفوفاً في لوحةِ تصميم.**
+            _MenuRow(
+              icon: Icons.location_on_outlined,
+              label: 'العناوين',
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const AddressesScreen()),
+              ),
+            ),
+            _MenuRow(
+              icon: Icons.credit_card_outlined,
+              label: 'طرق الدفع',
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const PaymentMethodsScreen()),
+              ),
+            ),
             // مقدّمُ الخدمة: بابٌ واحدٌ بوجهين — من له ملفٌّ يبدّل الوضع، ومن
             // لا ملفَّ له يطلبه. ولا يُعرض البابان معاً فيحتار أيَّهما له.
             _MenuRow(
@@ -197,6 +213,13 @@ class _AccountScreenState extends State<AccountScreen> {
 
             const _MenuGap(),
 
+            _MenuRow(
+              icon: Icons.settings_outlined,
+              label: 'الإعدادات',
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => SettingsScreen(session: session)),
+              ),
+            ),
             _MenuRow(
               icon: Icons.support_agent_outlined,
               label: 'الدعم',
@@ -353,10 +376,10 @@ class _IdentityHeader extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: Space.sm),
-                // **شارةٌ تقول ما هو مخزونٌ فعلاً.** لوحةُ التصميم تكتب
-                // «عريس»، والتطبيق لا يحفظ عروساً من عريس: يُسأل عنه في
-                // «اختر نوع الحساب» ثمّ يُستعمل لسَوق مقدّم الخدمة إلى ملفّه
-                // ويُنسى. فكتابةُ «عريس» هنا اختلاقٌ لا عرض.
+                // **وصارت تقول «عروس» و«عريس» لأنّهما يُحفظان الآن.** كانت
+                // تقول «عميل» لهما جميعاً لأن الاختيار كان يُسأل عنه في «اختر
+                // نوع الحساب» ثمّ يُنسى — يُحفظ في ذاكرة التشغيل لا في
+                // القاعدة. فصار عموداً في `app_users` يُكتب عند إكمال الملفّ.
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
                   decoration: BoxDecoration(
@@ -364,7 +387,7 @@ class _IdentityHeader extends StatelessWidget {
                     borderRadius: BorderRadius.circular(999),
                   ),
                   child: Text(
-                    provider ? 'مقدّم خدمة' : 'عميل',
+                    weddingRoleLabel(profile?.weddingRole ?? '', provider: provider),
                     style: const TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,

@@ -529,6 +529,7 @@ class MyProfile {
     required this.governorate,
     required this.governorateId,
     required this.avatarPath,
+    this.weddingRole = '',
   });
 
   final String id;
@@ -539,6 +540,12 @@ class MyProfile {
   final String? governorateId;
   final String avatarPath;
 
+  /// `bride` أو `groom` — أو فراغٌ لمن لا عرسَ له.
+  ///
+  /// **والفراغُ حالٌ صحيحة لا نقص:** من سجّل قبل هذا العمود، ومن جاء ليبيع
+  /// لا ليعرس.
+  final String weddingRole;
+
   factory MyProfile.fromMap(Map<String, dynamic> m) => MyProfile(
     id: (m['id'] ?? '') as String,
     fullName: (m['full_name'] ?? '') as String,
@@ -547,9 +554,15 @@ class MyProfile {
     governorate: (m['governorate'] ?? '') as String,
     governorateId: m['governorate_id'] as String?,
     avatarPath: (m['avatar_path'] ?? '') as String,
+    weddingRole: (m['wedding_role'] ?? '') as String,
   );
 
-  MyProfile copyWith({String? fullName, String? phone, String? avatarPath}) => MyProfile(
+  MyProfile copyWith({
+    String? fullName,
+    String? phone,
+    String? avatarPath,
+    String? weddingRole,
+  }) => MyProfile(
     id: id,
     fullName: fullName ?? this.fullName,
     email: email,
@@ -557,6 +570,83 @@ class MyProfile {
     governorate: governorate,
     governorateId: governorateId,
     avatarPath: avatarPath ?? this.avatarPath,
+    weddingRole: weddingRole ?? this.weddingRole,
+  );
+}
+
+/// اسمُ الدور كما يُعرض. والفراغُ يقع على صفة الحساب لا على «بلا دور».
+String weddingRoleLabel(String role, {required bool provider}) => switch (role) {
+  'bride' => 'عروس',
+  'groom' => 'عريس',
+  _ => provider ? 'مقدّم خدمة' : 'عميل',
+};
+
+/// عنوانٌ محفوظ — يملأ به نموذجُ الحجز بدل أن يُكتب في كل مرّة.
+class SavedAddress {
+  const SavedAddress({
+    required this.id,
+    required this.label,
+    required this.details,
+    required this.governorate,
+    required this.governorateId,
+    required this.isDefault,
+  });
+
+  final String id;
+  final String label;
+  final String details;
+  final String governorate;
+  final String? governorateId;
+  final bool isDefault;
+
+  /// ما يُكتب في `bookings.address`: الاسمُ وحدَه لا يكفي من يبحث عن البيت.
+  String get forBooking =>
+      [if (governorate.isNotEmpty) governorate, details].join(' — ');
+
+  factory SavedAddress.fromMap(Map<String, dynamic> m) => SavedAddress(
+    id: (m['id'] ?? '') as String,
+    label: (m['label'] ?? '') as String,
+    details: (m['details'] ?? '') as String,
+    governorate: (m['governorate'] ?? '') as String,
+    governorateId: m['governorate_id'] as String?,
+    isDefault: (m['is_default'] ?? false) as bool,
+  );
+}
+
+/// محفظةٌ يُحوّل منها المستخدم — لا بطاقةٌ ولا رقمٌ سرّيّ.
+class SavedPaymentMethod {
+  const SavedPaymentMethod({
+    required this.id,
+    required this.method,
+    required this.accountRef,
+    required this.holderName,
+    required this.isDefault,
+  });
+
+  final String id;
+  final String method;
+  final String accountRef;
+  final String holderName;
+  final bool isDefault;
+
+  factory SavedPaymentMethod.fromMap(Map<String, dynamic> m) => SavedPaymentMethod(
+    id: (m['id'] ?? '') as String,
+    method: (m['method'] ?? 'jawali') as String,
+    accountRef: (m['account_ref'] ?? '') as String,
+    holderName: (m['holder_name'] ?? '') as String,
+    isDefault: (m['is_default'] ?? false) as bool,
+  );
+}
+
+/// إعداداتُ المستخدم.
+class UserSettings {
+  const UserSettings({this.push = true, this.promos = true});
+  final bool push;
+  final bool promos;
+
+  factory UserSettings.fromMap(Map<String, dynamic> m) => UserSettings(
+    push: (m['push_enabled'] ?? true) as bool,
+    promos: (m['promos_enabled'] ?? true) as bool,
   );
 }
 

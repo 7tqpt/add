@@ -1056,6 +1056,134 @@ class Api {
     return MyProfile.fromMap(row);
   }
 
+  // ── الدور، والعناوين، وطرقُ الدفع، والإعدادات ─────────────────────────────
+
+  /// عروسٌ أو عريس — أو فراغٌ لمن لا عرسَ له.
+  static Future<void> setWeddingRole(String role) async {
+    if (!isSupabaseConfigured) {
+      demoSetWeddingRole(role);
+      return;
+    }
+    await db.rpc('api_set_wedding_role', params: {'p_role': role});
+  }
+
+  static Future<List<SavedAddress>> myAddresses() async {
+    if (!isSupabaseConfigured) return demoDelay(List.of(demoAddresses));
+    final rows = await db.rpc('api_my_addresses') as List<dynamic>;
+    return rows
+        .map((r) => SavedAddress.fromMap(Map<String, dynamic>.from(r as Map)))
+        .toList();
+  }
+
+  static Future<void> saveAddress({
+    String? id,
+    required String label,
+    required String details,
+    String? governorateId,
+    String? governorateName,
+    bool makeDefault = false,
+  }) async {
+    if (!isSupabaseConfigured) {
+      demoSaveAddress(
+        id: id,
+        label: label,
+        details: details,
+        governorateId: governorateId,
+        governorate: governorateName,
+        makeDefault: makeDefault,
+      );
+      return;
+    }
+    await db.rpc('api_save_address', params: {
+      'p_id': id,
+      'p_label': label,
+      'p_details': details,
+      'p_governorate_id': governorateId,
+      'p_default': makeDefault,
+    });
+  }
+
+  static Future<void> deleteAddress(String id) async {
+    if (!isSupabaseConfigured) {
+      demoDeleteAddress(id);
+      return;
+    }
+    await db.rpc('api_delete_address', params: {'p_id': id});
+  }
+
+  static Future<List<SavedPaymentMethod>> myPaymentMethods() async {
+    if (!isSupabaseConfigured) return demoDelay(List.of(demoPaymentMethods));
+    final rows = await db.rpc('api_my_payment_methods') as List<dynamic>;
+    return rows
+        .map((r) => SavedPaymentMethod.fromMap(Map<String, dynamic>.from(r as Map)))
+        .toList();
+  }
+
+  static Future<void> savePaymentMethod({
+    String? id,
+    required String method,
+    required String accountRef,
+    required String holderName,
+    bool makeDefault = false,
+  }) async {
+    if (!isSupabaseConfigured) {
+      demoSavePaymentMethod(
+        id: id,
+        method: method,
+        accountRef: accountRef,
+        holderName: holderName,
+        makeDefault: makeDefault,
+      );
+      return;
+    }
+    await db.rpc('api_save_payment_method', params: {
+      'p_id': id,
+      'p_method': method,
+      'p_account_ref': accountRef,
+      'p_holder_name': holderName,
+      'p_default': makeDefault,
+    });
+  }
+
+  static Future<void> deletePaymentMethod(String id) async {
+    if (!isSupabaseConfigured) {
+      demoDeletePaymentMethod(id);
+      return;
+    }
+    await db.rpc('api_delete_payment_method', params: {'p_id': id});
+  }
+
+  static Future<UserSettings> mySettings() async {
+    if (!isSupabaseConfigured) return demoDelay(demoSettings);
+    // **ولا صفَّ لمن لم يعدّل شيئاً بعد** — والغيابُ يعني الحالَ الافتراضية
+    // لا عطباً، فيُقرأ كذلك بدل أن تسقط الشاشة.
+    final row = rowOrNull(await db.rpc('api_my_settings'), key: 'user_id');
+    return row == null ? const UserSettings() : UserSettings.fromMap(row);
+  }
+
+  static Future<UserSettings> saveSettings({bool? push, bool? promos}) async {
+    if (!isSupabaseConfigured) {
+      demoSettings = UserSettings(
+        push: push ?? demoSettings.push,
+        promos: promos ?? demoSettings.promos,
+      );
+      return demoSettings;
+    }
+    final row = rowOrNull(
+      await db.rpc('api_save_settings', params: {'p_push': push, 'p_promos': promos}),
+      key: 'user_id',
+    );
+    return row == null ? const UserSettings() : UserSettings.fromMap(row);
+  }
+
+  /// يحذف الحساب — **ولا رجعةَ فيه**.
+  ///
+  /// والقاعدةُ تردّه إن كان على صاحبه حجزٌ قائم، والرسالةُ تصل كما هي.
+  static Future<void> deleteMyAccount() async {
+    if (!isSupabaseConfigured) return;
+    await db.rpc('api_delete_my_account');
+  }
+
   /// يحفظ ما عُدّل. وما لم يُمرَّر لا يُمسّ — فمن غيّر اسمه لا يُفرَّغ جواله.
   static Future<MyProfile> updateProfile({
     required String fullName,

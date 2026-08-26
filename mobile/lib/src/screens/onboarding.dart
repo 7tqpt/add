@@ -77,6 +77,25 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         governorate: _governorate!,
         platform: Theme.of(context).platform == TargetPlatform.iOS ? 'ios' : 'android',
       );
+
+      // **والدورُ يُحفظ هنا لا يُنسى.** كان اختيارُ «عروس» أو «عريس» يعيش في
+      // ذاكرة التشغيل وحدها ويُستعمل لسَوق مقدّم الخدمة إلى ملفّه، ثمّ يذهب —
+      // فيجد صاحبُه شارته في «حسابي» تقول «عميل».
+      //
+      // **وفشلُه لا يُسقط التسجيل:** الملفُّ حُفظ فعلاً، وشاشةٌ حمراء بعده
+      // تجعل صاحبَها يظنّ أنّ اسمه وجواله ضاعا فيكتبهما ثانيةً. والدورُ شارةٌ
+      // تُصحَّح لاحقاً.
+      final role = switch (_who) {
+        _Who.bride => 'bride',
+        _Who.groom => 'groom',
+        _ => '',
+      };
+      if (role.isNotEmpty) {
+        try {
+          await Api.setWeddingRole(role);
+        } catch (_) {}
+      }
+
       // **الترتيب هنا ليس تفصيلاً:** لو نُوديت `refreshIdentity` أوّلاً
       // لاستبدلت الجذرُ هذه الشاشةَ بالقشرة في الحال، فتموت قبل أن تدفع
       // مقدّمَ الخدمة إلى ملفّه. فيُفتح الملفُّ فوقها ثم تُحدَّث الهويّة.
