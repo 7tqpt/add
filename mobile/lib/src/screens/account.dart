@@ -12,53 +12,89 @@ import 'edit_profile.dart';
 import 'money.dart';
 import 'support.dart';
 
-/// بطاقةُ قسمٍ في صفحة الحساب.
+/// صفٌّ في قائمة الحساب.
 ///
-/// الأقسام الثلاثة بنيةٌ واحدة: قرصٌ ملوّن بأيقونته، وعنوان، وسطرُ شرح، ثم
-/// الإجراء. وكانت البطاقات تتفاوت — واحدةٌ بقرصٍ واثنتان بلا — فتُقرأ الصفحة
-/// قائمةً مبعثرة لا صفّاً منظّماً. والتفاوت هنا لا يحمل معنىً، فالتوحيد لا
-/// يُضيّع شيئاً.
-class _SectionCard extends StatelessWidget {
-  const _SectionCard({
+/// **قائمةٌ لا بطاقاتٌ متتابعة، وهذا هو الفرق.** كانت الصفحةُ ستَّ بطاقاتٍ في
+/// كلٍّ منها عنوانٌ وسطرا شرحٍ وزرّ — فيصير البابُ الواحد أربعةَ أسطر، وستّةُ
+/// أبوابٍ شاشتين ونصفاً من التمرير. وما يُبحث عنه هنا **اسمُ الباب** لا
+/// شرحُه: من فتح «حسابي» يعرف ما يريد، ويريد أن يصل إليه بضغطة.
+class _MenuRow extends StatelessWidget {
+  const _MenuRow({
     required this.icon,
-    required this.tone,
-    required this.title,
-    required this.body,
-    required this.action,
+    required this.label,
+    required this.onTap,
+    this.tone,
+    this.last = false,
   });
 
   final IconData icon;
-  final Color tone;
-  final String title;
-  final String body;
-  final Widget action;
+  final String label;
+  final VoidCallback onTap;
+
+  /// لونٌ يخصّ الصفّ — للخروج وحده. وما عداه بلون العلامة.
+  final Color? tone;
+
+  /// آخرُ صفٍّ في مجموعته فلا خطَّ تحته.
+  final bool last;
 
   @override
   Widget build(BuildContext context) {
-    return AppCard(
-      children: [
-        Row(
+    final colour = tone ?? AppColors.accent;
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: Space.lg, vertical: 14),
+        decoration: BoxDecoration(
+          border: last
+              ? null
+              : const Border(bottom: BorderSide(color: AppColors.hairline)),
+        ),
+        child: Row(
           children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: tone.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(icon, color: tone, size: 22),
-            ),
+            Icon(icon, size: 22, color: colour),
             const SizedBox(width: Space.md),
-            Expanded(child: SectionTitle(title)),
+            Expanded(
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontSize: 14.5,
+                  fontWeight: FontWeight.w600,
+                  color: tone ?? AppColors.ink,
+                  fontFamilyFallback: arabicFallback,
+                ),
+              ),
+            ),
+            // سهمٌ لا أيقونةٌ ثانية: الصفُّ يُفتح، والسهمُ يقول ذلك.
+            Icon(Icons.chevron_left, size: 20, color: AppColors.muted),
           ],
         ),
-        const SizedBox(height: Space.md),
-        Text(body, style: const TextStyle(height: 1.7, color: AppColors.ink2)),
-        const SizedBox(height: Space.md),
-        action,
-      ],
+      ),
     );
   }
+}
+
+/// الورقةُ الفاتحة التي تحمل الصفوف — بحوافّ عليا مستديرة تحت الرأس النبيذيّ.
+class _MenuSheet extends StatelessWidget {
+  const _MenuSheet({required this.children});
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    decoration: const BoxDecoration(
+      color: AppColors.surface,
+      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+    ),
+    clipBehavior: Clip.antiAlias,
+    child: Column(children: children),
+  );
+}
+
+/// فاصلٌ بين مجموعتين من الصفوف.
+class _MenuGap extends StatelessWidget {
+  const _MenuGap();
+  @override
+  Widget build(BuildContext context) =>
+      Container(height: Space.sm, color: AppColors.page);
 }
 
 class AccountScreen extends StatefulWidget {
@@ -104,246 +140,117 @@ class _AccountScreenState extends State<AccountScreen> {
     final session = widget.session;
     final provider = session.hasProviderProfile;
     final profile = _profile;
-    final name = profile?.fullName.trim() ?? '';
 
     return ListView(
-      padding: EdgeInsets.fromLTRB(
-        Space.lg, glassHeaderTop(context), Space.lg, glassNavSpace),
+      padding: EdgeInsets.only(bottom: glassNavSpace),
       children: [
-        // ── الهويّة ────────────────────────────────────────────────────────
-        // بطاقةٌ تقول من أنت قبل ما تستطيع فعله. وكانت سطراً واحداً باهتاً
-        // («حسابي» ثم البريد)، وهي أوّل ما تقع عليه العين في الصفحة.
-        AppCard(
+        // ── الرأسُ النبيذيّ ────────────────────────────────────────────────
+        // من رسمك: صورةٌ بطوقٍ ذهبيّ، والاسمُ والجوال، وشارةُ الدور ذهبيّة.
+        //
+        // ويمتدّ إلى حافّتَي الشاشة ويبدأ من أعلاها — فيمرّ تحت الشريط
+        // الزجاجي بدل أن يقف تحته بحاشيةٍ بيضاء تقطع النبيذيّ نصفين.
+        _IdentityHeader(
+          profile: profile,
+          session: session,
+          avatarVersion: _avatarVersion,
+          provider: provider,
+        ),
+
+        // ── الأبواب ────────────────────────────────────────────────────────
+        _MenuSheet(
           children: [
-            Row(
-              children: [
-                _AccountAvatar(
-                  profile: profile,
-                  fallbackEmail: session.email,
-                  version: _avatarVersion,
-                ),
-                const SizedBox(width: Space.lg),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // الاسم عنواناً إن وُجد، والبريد تحته. وإن لم يُقرأ
-                      // الملفُّ بعد فالبريد عنوانٌ وحده — لا يُكرَّر سطرين،
-                      // وقد كان يُكرَّر فعلاً في أوّل نسخة.
-                      if (name.isNotEmpty) ...[
-                        Text(
-                          name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.ink,
-                            fontFamilyFallback: arabicFallback,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                      ],
-                      // البريد لاتينيٌّ دائماً، والصفحة عربية: بلا اتجاهٍ
-                      // صريح تتقدّم النقطةُ والامتدادُ إلى غير موضعهما.
-                      Text(
-                        session.email,
-                        textDirection: TextDirection.ltr,
-                        textAlign: TextAlign.left,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: name.isEmpty ? 15 : 12,
-                          fontWeight: name.isEmpty ? FontWeight.w600 : FontWeight.normal,
-                          color: name.isEmpty ? AppColors.ink : AppColors.muted,
-                          fontFamilyFallback: arabicFallback,
-                        ),
+            _MenuRow(
+              icon: Icons.person_outline_rounded,
+              label: 'الملف الشخصي',
+              onTap: () => _openProfile(context),
+            ),
+            _MenuRow(
+              icon: Icons.receipt_long_outlined,
+              label: 'فواتيري',
+              onTap: () => _push(
+                context,
+                'فواتيري',
+                InvoicesScreen(session: session),
+              ),
+            ),
+            _MenuRow(
+              icon: Icons.favorite_border_rounded,
+              label: 'المفضّلة',
+              onTap: () => _push(context, 'المفضّلة', const FavouritesScreen()),
+            ),
+            // مقدّمُ الخدمة: بابٌ واحدٌ بوجهين — من له ملفٌّ يبدّل الوضع، ومن
+            // لا ملفَّ له يطلبه. ولا يُعرض البابان معاً فيحتار أيَّهما له.
+            _MenuRow(
+              icon: provider
+                  ? Icons.storefront_outlined
+                  : Icons.add_business_outlined,
+              label: provider ? 'التبديل إلى وضع مقدّم الخدمة' : 'أريد تقديم خدمة',
+              onTap: provider
+                  ? () => session.switchTo(provider: true)
+                  : () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => BecomeProviderScreen(session: session),
                       ),
-                      if (profile != null && profile.phone.trim().isNotEmpty) ...[
-                        const SizedBox(height: 2),
-                        Text(
-                          profile.phone,
-                          textDirection: TextDirection.ltr,
-                          textAlign: TextAlign.left,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: AppColors.muted,
-                            fontFamilyFallback: arabicFallback,
-                          ),
-                        ),
-                      ],
-                      const SizedBox(height: Space.sm),
-                      StatusBadge(
-                        provider ? 'عميل ومقدّم خدمة' : 'عميل',
-                        color: provider ? AppColors.good : AppColors.muted,
-                      ),
-                    ],
-                  ),
-                ),
-                // سهمٌ يقول إن البطاقة تُفتح: بطاقةٌ تستجيب للضغط بلا علامةٍ
-                // ظاهرة لا يعرف أحدٌ أنها تُضغط.
-                const Icon(Icons.chevron_left, size: 20, color: AppColors.muted),
-              ],
+                    ),
+              last: true,
+            ),
+
+            const _MenuGap(),
+
+            _MenuRow(
+              icon: Icons.support_agent_outlined,
+              label: 'الدعم',
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => SupportScreen(session: session)),
+              ),
+            ),
+            _MenuRow(
+              icon: Icons.gavel_rounded,
+              label: 'النزاعات',
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => DisputesScreen(session: session)),
+              ),
+            ),
+            // الخروجُ بصبغة التحذير وآخرَ القائمة: هو الإجراء الوحيد هنا
+            // الذي يُخرجك، فيُعرَف قبل أن يُضغط. ويُسأل عنه لأن ضغطةً بالخطأ
+            // تُخرج المستخدم ثم تطلب منه بريده وكلمته.
+            _MenuRow(
+              icon: Icons.logout_rounded,
+              label: 'تسجيل الخروج',
+              tone: AppColors.critical,
+              onTap: () => _confirmSignOut(context),
+              last: true,
             ),
           ],
-          onTap: () async {
-            final saved = await Navigator.of(context).push<bool>(
-              MaterialPageRoute(builder: (_) => EditProfileScreen(session: session)),
-            );
-            if (saved == true) {
-              // الختم يتغيّر فيُجبر التطبيق على جلب الصورة الجديدة بدل
-              // القديمة التي في ذاكرته.
-              if (mounted) setState(() => _avatarVersion++);
-              await _load();
-              if (context.mounted) showMessage(context, 'حُفظت بياناتك.');
-            }
-          },
         ),
 
-        const SizedBox(height: Space.md),
-
-        // ── مقدّم الخدمة ───────────────────────────────────────────────────
-        // مقدَّمٌ على الدعم عمداً: هذا طريقُ من يريد أن يكسب من المنصة،
-        // والدعم بابٌ يُطرق عند العطل لا كل يوم.
-        //
-        // وكل من يسجّل يبدأ عميلاً — والمنصة تُباع للعملاء أوّلاً. ومن أراد
-        // أن يبيع خدمةً طلبها من هنا، فيصير له ملفٌّ قيد المراجعة.
-        _SectionCard(
-          icon: provider ? Icons.storefront : Icons.add_business_outlined,
-          tone: provider ? AppColors.good : AppColors.accent,
-          title: 'مقدّم خدمة',
-          body: provider
-              ? 'لديك ملف مقدّم خدمة. بدّل الوضع لإدارة خدماتك وطلباتك وحجوزاتك.'
-              : 'عندك قاعة أو خدمة تقدّمها للأعراس؟ قدّم طلبك، وبعد مراجعة الإدارة '
-                    'تبدأ باستقبال الحجوزات.',
-          action: provider
-              ? FilledButton.icon(
-                  onPressed: () => session.switchTo(provider: true),
-                  icon: const Icon(Icons.swap_horiz, size: 20),
-                  label: const Text('التبديل إلى وضع مقدّم الخدمة'),
-                )
-              : OutlinedButton.icon(
-                  onPressed: () => Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => BecomeProviderScreen(session: session),
-                    ),
-                  ),
-                  icon: const Icon(Icons.add_business_outlined, size: 20),
-                  label: const Text('أريد تقديم خدمة'),
-                ),
-        ),
-
-        const SizedBox(height: Space.md),
-
-        // ── الفواتير ───────────────────────────────────────────────────────
-        // إيصالٌ مكتوبٌ بأرقامه: من دفع ثلاثمئة ألفٍ ولا ورقة عنده يسأل عنها
-        // في أوّل خلاف، ومن وجدها لا يسأل.
-        _SectionCard(
-          icon: Icons.receipt_long_rounded,
-          tone: AppColors.good,
-          title: 'فواتيري',
-          body: 'تصدر الفاتورة حين يؤكّد مقدّم الخدمة حجزك، وتبقى هنا.',
-          action: OutlinedButton.icon(
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => Scaffold(
-                  appBar: AppBar(title: const Text('فواتيري')),
-                  body: InvoicesScreen(session: session),
-                ),
-              ),
-            ),
-            icon: const Icon(Icons.receipt_long_rounded, size: 20),
-            label: const Text('عرض الفواتير'),
-          ),
-        ),
-
-        const SizedBox(height: Space.md),
-
-        // ── المفضّلة ───────────────────────────────────────────────────────
-        // بابُ ما حُفظ. والقلب في الاستكشاف كان يحفظ فعلاً ولا مكان يعرض ما
-        // حُفظ — فمن حفظ ستّ قاعاتٍ ليقارن بينها كان يبحث عنها من جديد.
-        _SectionCard(
-          icon: Icons.favorite_rounded,
-          tone: AppColors.accent,
-          title: 'المفضّلة',
-          body: 'الخدمات التي حفظتها بالقلب — تُفتح هنا لتقارن بينها قبل أن تحجز.',
-          action: OutlinedButton.icon(
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => Scaffold(
-                  appBar: AppBar(title: const Text('المفضّلة')),
-                  body: const FavouritesScreen(),
-                ),
-              ),
-            ),
-            icon: const Icon(Icons.favorite_rounded, size: 20),
-            label: const Text('عرض المفضّلة'),
-          ),
-        ),
-
-        const SizedBox(height: Space.md),
-
-        // ── الدعم ──────────────────────────────────────────────────────────
-        _SectionCard(
-          icon: Icons.support_agent,
-          tone: AppColors.accent,
-          title: 'الدعم',
-          body: 'واجهتك مشكلة أو عندك سؤال؟ افتح تذكرة وتصلك ردود الإدارة هنا.',
-          action: OutlinedButton.icon(
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => SupportScreen(session: session)),
-            ),
-            icon: const Icon(Icons.support_agent, size: 20),
-            label: const Text('تذاكر الدعم'),
-          ),
-        ),
-
-        const SizedBox(height: Space.md),
-
-        // ── النزاعات ───────────────────────────────────────────────────────
-        // بطاقةٌ مستقلّة عن الدعم: النزاع خصومةٌ على حجزٍ بعينه لها مالٌ قد
-        // يُعاد، والتذكرة سؤالٌ عن المنصّة. وخلطُهما يدفن الأوّل في الثاني.
-        _SectionCard(
-          icon: Icons.gavel_rounded,
-          tone: AppColors.warning,
-          title: 'النزاعات',
-          body: 'اختلفت مع مقدّم خدمة على حجز؟ افتح نزاعاً من بطاقة الحجز، وتابعه هنا.',
-          action: OutlinedButton.icon(
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => DisputesScreen(session: session)),
-            ),
-            icon: const Icon(Icons.gavel_rounded, size: 20),
-            label: const Text('نزاعاتي'),
-          ),
-        ),
-
-        const SizedBox(height: Space.md),
-
-        // ── الخروج ─────────────────────────────────────────────────────────
-        // بطاقةٌ كالبقية لا زرٌّ عائمٌ في آخر الصفحة، وبصبغة التحذير: هو
-        // الإجراء الوحيد هنا الذي يُخرجك، فيُعرَف قبل أن يُضغط. ويُسأل عنه
-        // لأن ضغطةً واحدة بالخطأ تُخرج المستخدم ثم تطلب منه بريده وكلمته.
-        _SectionCard(
-          icon: Icons.logout,
-          tone: AppColors.critical,
-          title: 'تسجيل الخروج',
-          body: 'ستحتاج إلى بريدك وكلمة مرورك للدخول مرّةً أخرى.',
-          action: OutlinedButton.icon(
-            onPressed: () => _confirmSignOut(context),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: AppColors.critical,
-              side: const BorderSide(color: AppColors.critical),
-            ),
-            icon: const Icon(Icons.logout, size: 20),
-            label: const Text('تسجيل الخروج'),
-          ),
-        ),
-
-        const SizedBox(height: Space.xl),
+        const SizedBox(height: Space.lg),
         const Center(child: Muted('الإصدار 1.0.0', size: 11)),
         const SizedBox(height: Space.lg),
       ],
     );
+  }
+
+  /// يفتح شاشةً لها شريطُ عنوانٍ خاصّ بها.
+  void _push(BuildContext context, String title, Widget body) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => Scaffold(appBar: AppBar(title: Text(title)), body: body),
+      ),
+    );
+  }
+
+  Future<void> _openProfile(BuildContext context) async {
+    final saved = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(builder: (_) => EditProfileScreen(session: widget.session)),
+    );
+    if (saved == true) {
+      // الختم يتغيّر فيُجبر التطبيق على جلب الصورة الجديدة بدل القديمة التي
+      // في ذاكرته.
+      if (mounted) setState(() => _avatarVersion++);
+      await _load();
+      if (context.mounted) showMessage(context, 'حُفظت بياناتك.');
+    }
   }
 
   Future<void> _confirmSignOut(BuildContext context) async {
@@ -373,6 +280,122 @@ class _AccountScreenState extends State<AccountScreen> {
 
 }
 
+/// الرأسُ النبيذيّ: من أنت، قبل ما تستطيع فعله.
+///
+/// والاسمُ في جهة البداية والصورةُ بعده — كما في لوحة التصميم. والطوقُ الذهبيّ
+/// حول الصورة ليس زينةً وحده: صورةٌ داكنةٌ على نبيذيٍّ داكنٍ تذوب فيه بلا
+/// حدٍّ يفصلها.
+class _IdentityHeader extends StatelessWidget {
+  const _IdentityHeader({
+    required this.profile,
+    required this.session,
+    required this.avatarVersion,
+    required this.provider,
+  });
+
+  final MyProfile? profile;
+  final Session session;
+  final int avatarVersion;
+  final bool provider;
+
+  @override
+  Widget build(BuildContext context) {
+    final name = profile?.fullName.trim() ?? '';
+    final phone = profile?.phone.trim() ?? '';
+
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.fromLTRB(
+        Space.lg, glassHeaderTop(context), Space.lg, Space.xl),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topRight,
+          end: Alignment.bottomLeft,
+          colors: [AppColors.accentLift, AppColors.accentDeep],
+        ),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name.isEmpty ? session.email : name,
+                  // **والاتجاهُ يتبع ما يُعرض لا الصفحة.** قبل وصول الملفّ
+                  // يقع البريدُ في مكان الاسم، وهو لاتينيٌّ دائماً: بلا
+                  // `ltr` تتقدّم النقطةُ والامتدادُ إلى غير موضعهما فيُقرأ
+                  // مقلوباً. والاسمُ العربيّ يتبع الصفحة فلا يُقسر.
+                  textDirection: name.isEmpty ? TextDirection.ltr : null,
+                  textAlign: name.isEmpty ? TextAlign.left : null,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 19,
+                    fontWeight: FontWeight.w700,
+                    color: OnAccent.ink,
+                    fontFamilyFallback: arabicFallback,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                // الجوالُ إن وُجد وإلّا البريد: سطرٌ واحدٌ لا سطران، ولا
+                // يُكرَّر البريدُ عنواناً وسطراً تحته.
+                Text(
+                  phone.isNotEmpty ? phone : (name.isEmpty ? '' : session.email),
+                  textDirection: TextDirection.ltr,
+                  textAlign: TextAlign.left,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: OnAccent.inkSoft,
+                    fontFamilyFallback: arabicFallback,
+                  ),
+                ),
+                const SizedBox(height: Space.sm),
+                // **شارةٌ تقول ما هو مخزونٌ فعلاً.** لوحةُ التصميم تكتب
+                // «عريس»، والتطبيق لا يحفظ عروساً من عريس: يُسأل عنه في
+                // «اختر نوع الحساب» ثمّ يُستعمل لسَوق مقدّم الخدمة إلى ملفّه
+                // ويُنسى. فكتابةُ «عريس» هنا اختلاقٌ لا عرض.
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: AppColors.goldOnAccent,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    provider ? 'مقدّم خدمة' : 'عميل',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.accentDeep,
+                      fontFamilyFallback: arabicFallback,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: Space.lg),
+          Container(
+            padding: const EdgeInsets.all(3),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: AppColors.goldOnAccent, width: 2),
+            ),
+            child: _AccountAvatar(
+              profile: profile,
+              fallbackEmail: session.email,
+              version: avatarVersion,
+              size: 64,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 /// قرص الصورة في بطاقة الهويّة.
 ///
 /// الصورة إن وُجدت، وإلا فالحرف الأوّل. ولا مربّعَ مكسور إن سقطت الشبكة:
@@ -382,28 +405,35 @@ class _AccountAvatar extends StatelessWidget {
     required this.profile,
     required this.fallbackEmail,
     required this.version,
+    this.size = 56,
   });
 
   final MyProfile? profile;
   final String fallbackEmail;
   final int version;
+  final double size;
 
   @override
   Widget build(BuildContext context) {
     final path = profile?.avatarPath ?? '';
     final url = path.isEmpty ? null : Api.avatarUrl(path, version: version);
     return Container(
-      width: 56,
-      height: 56,
+      width: size,
+      height: size,
       alignment: Alignment.center,
       clipBehavior: Clip.antiAlias,
-      decoration: const BoxDecoration(color: AppColors.accent, shape: BoxShape.circle),
+      // **قرصٌ أعمقُ من النبيذيّ داخل الرأس النبيذيّ.** لولا ذلك لَذاب حرفُ
+      // من لا صورةَ له في أرضيّته فلم يُرَ منه شيء.
+      decoration: const BoxDecoration(
+        color: AppColors.accentDeep,
+        shape: BoxShape.circle,
+      ),
       child: url == null
           ? _letter()
           : Image.network(
               url,
-              width: 56,
-              height: 56,
+              width: size,
+              height: size,
               fit: BoxFit.cover,
               errorBuilder: (_, _, _) => _letter(),
             ),
@@ -418,8 +448,8 @@ class _AccountAvatar extends StatelessWidget {
       source.isEmpty ? '؟' : source.characters.first.toUpperCase(),
       // النمط كاملٌ مكتوبٌ باليد، فيُذكر الخطّ صراحةً: النمط الكامل يحلّ محلّ
       // الموروث ولا يرث احتياط الثيمة.
-      style: const TextStyle(
-        fontSize: 24,
+      style: TextStyle(
+        fontSize: size * 0.42,
         fontWeight: FontWeight.w600,
         color: AppColors.accentInk,
         fontFamilyFallback: arabicFallback,

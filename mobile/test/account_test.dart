@@ -14,7 +14,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:aras/src/core/session.dart';
 import 'package:aras/src/core/theme.dart';
 import 'package:aras/src/screens/account.dart';
-import 'package:aras/src/ui/kit.dart';
 
 Session _session({required bool provider, String mail = 'ayman@sdd.company'}) => Session()
   ..userId = 'u1'
@@ -23,7 +22,18 @@ Session _session({required bool provider, String mail = 'ayman@sdd.company'}) =>
   ..providerId = provider ? 'p1' : null
   ..loading = false;
 
-Widget _wrap(Session session) => MaterialApp(
+/// يعدّ ما يُفتح من شاشاتٍ ونوافذ.
+class _PushCounter extends NavigatorObserver {
+  int count = 0;
+  @override
+  void didPush(Route<dynamic> route, Route<dynamic>? previous) {
+    count++;
+    super.didPush(route, previous);
+  }
+}
+
+Widget _wrap(Session session, {NavigatorObserver? observer}) => MaterialApp(
+  navigatorObservers: [?observer],
   theme: buildTheme(),
   locale: const Locale('ar'),
   supportedLocales: const [Locale('ar')],
@@ -45,12 +55,16 @@ void main() {
     expect(find.text('عميل'), findsOneWidget);
   });
 
-  testWidgets('البريد يُرسم من اليسار داخل صفحةٍ عربية', (tester) async {
-    // `ltr` صريحاً: بدونه تتقدّم النقطةُ والامتدادُ إلى غير موضعهما في سياقٍ
-    // عربيّ، فيُقرأ البريد مقلوباً.
+  testWidgets('والجوالُ يُرسم من اليسار داخل صفحةٍ عربية', (tester) async {
+    // `ltr` صريحاً: بدونه تتقدّم علامةُ الزائد والأرقام إلى غير موضعها في
+    // سياقٍ عربيّ، فيُقرأ الرقم مقلوباً. وكذلك البريد قبل وصول الملفّ.
     await tester.pumpWidget(_wrap(_session(provider: false)));
     final mail = tester.widget<Text>(find.text('ayman@sdd.company'));
     expect(mail.textDirection, TextDirection.ltr);
+
+    await tester.pumpAndSettle();
+    final phone = tester.widget<Text>(find.text('770000000'));
+    expect(phone.textDirection, TextDirection.ltr);
   });
 
   testWidgets('من لا ملف له يُدعى إلى تقديم خدمة لا إلى التبديل', (tester) async {
@@ -63,18 +77,74 @@ void main() {
     await tester.pumpWidget(_wrap(_session(provider: true)));
     expect(find.text('التبديل إلى وضع مقدّم الخدمة'), findsOneWidget);
     expect(find.text('أريد تقديم خدمة'), findsNothing);
-    expect(find.text('عميل ومقدّم خدمة'), findsOneWidget);
+    expect(find.text('مقدّم خدمة'), findsOneWidget);
   });
 
-  testWidgets('الأقسام الخمسة بطاقات', (tester) async {
+  testWidgets('والأبوابُ كلُّها معروضة، وكلُّ بابٍ يفتح على شيء', (tester) async {
+    // **وهذا ما يُقاس هنا:** صفٌّ لا يفتح على شيءٍ أسوأ من صفٍّ غائب — يضغطه
+    // المستخدم فيتعلّم أن التطبيق مكسور. فلا يُكتب هنا بابٌ إلا وله شاشة.
     await tester.pumpWidget(_wrap(_session(provider: false)));
     await tester.pumpAndSettle();
-    // الهويّة، ومقدّم الخدمة، والدعم، والنزاعات، والخروج.
+
+    for (final door in [
+      'الملف الشخصي',
+      'فواتيري',
+      'المفضّلة',
+      'أريد تقديم خدمة',
+      'الدعم',
+      'النزاعات',
+      'تسجيل الخروج',
+    ]) {
+      expect(find.text(door, skipOffstage: false), findsOneWidget, reason: door);
+    }
+
+  });
+
+  testWidgets('وكلُّ بابٍ يُضغط فيفتح فعلاً', (tester) async {
+    // **يُضغط كلُّ ما في القائمة لا قائمةٌ أكتبها أنا.**
     //
-    // وكانت أربعاً قبل أن تُفصَل النزاعات عن الدعم: النزاع خصومةٌ على حجزٍ
-    // بعينه لها مالٌ قد يُعاد، والتذكرة سؤالٌ عن المنصّة — وخلطُهما يدفن
-    // الأوّل في الثاني.
-    expect(find.byType(AppCard, skipOffstage: false), findsNWidgets(5));
+    // وهذا الاختبار أُعيدت كتابته مرّتين، وكلتاهما بعد أن أُدخل بابٌ فارغٌ
+    // عمداً فمرّ من تحته:
+    //
+    //   ١) سأل «أله `onTap`؟» — و`onTap: () {}` تُجيب «نعم» وهي لا تفعل شيئاً.
+    //   ٢) ضغط قائمةً مكتوبةً بالأسماء — والبابُ الفارغ ليس فيها فلم يُضغط.
+    //
+    // فصار يعدّ صفوف القائمة كما هي على الشاشة، ويضغطها واحداً واحداً،
+    // وينتظر أن **تُفتح شاشةٌ أو نافذة** عند كلٍّ منها.
+    final pushes = _PushCounter();
+    await tester.pumpWidget(_wrap(_session(provider: false), observer: pushes));
+    await tester.pumpAndSettle();
+
+    Finder rows() => find.descendant(
+      of: find.byType(AccountScreen),
+      matching: find.byType(InkWell),
+      skipOffstage: false,
+    );
+
+    final total = tester.widgetList<InkWell>(rows()).length;
+    expect(total, greaterThanOrEqualTo(7), reason: 'نقصت أبوابُ الحساب');
+
+    for (var i = 0; i < total; i++) {
+      final row = rows().at(i);
+      await tester.scrollUntilVisible(row, 200,
+          scrollable: find.byType(Scrollable).first);
+      await tester.pumpAndSettle();
+
+      final before = pushes.count;
+      await tester.tap(row, warnIfMissed: false);
+      // ضخّاتٌ معدودةٌ لا `pumpAndSettle`: بعضُ الشاشات تُحمّل بمؤقّتٍ دائم.
+      for (var n = 0; n < 4; n++) {
+        await tester.pump(const Duration(milliseconds: 200));
+      }
+      expect(pushes.count, greaterThan(before),
+          reason: 'الصفُّ رقم ${i + 1} يُضغط ولا يفتح شيئاً');
+
+      final nav = tester.state<NavigatorState>(find.byType(Navigator).first);
+      if (nav.canPop()) nav.pop();
+      for (var n = 0; n < 4; n++) {
+        await tester.pump(const Duration(milliseconds: 200));
+      }
+    }
   });
 
   testWidgets('الخروج يُسأل عنه ولا يقع بضغطةٍ واحدة', (tester) async {
@@ -85,7 +155,7 @@ void main() {
     // الرؤية قبل النقر — وإلا وقع النقر في الفراغ وسقط الاختبار بلا عيبٍ في
     // الشاشة.
     await tester.pumpAndSettle();
-    final button = find.widgetWithText(OutlinedButton, 'تسجيل الخروج');
+    final button = find.text('تسجيل الخروج');
     await tester.scrollUntilVisible(button, 240, scrollable: find.byType(Scrollable).first);
     await tester.pumpAndSettle();
     await tester.tap(button);
