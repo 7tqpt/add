@@ -34,7 +34,7 @@ import {
   formatMoneyCompact,
   formatNumber,
 } from '@/lib/format'
-import type { DashboardStats, RangeDays } from '@/lib/types'
+import type { DashboardStats, PlatformIncome, RangeDays } from '@/lib/types'
 import { getDashboardStats } from '@/services/stats'
 
 const RANGES: { value: RangeDays; label: string }[] = [
@@ -176,6 +176,8 @@ export function DashboardPage() {
         <PaymentsFeed />
       </div>
 
+      <IncomeCard income={data.income} />
+
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
         <div className="xl:col-span-2">
           <ConflictCalendar />
@@ -300,3 +302,70 @@ export function DashboardPage() {
     </div>
   )
 }
+
+/**
+ * دخلُ المنصّة — ثلاثةُ أبوابٍ في رقمٍ واحد.
+ *
+ * **ولماذا بطاقةٌ مستقلّة عن «عمولة المنصة» أعلاه:** تلك عمولةٌ على حجوزاتٍ
+ * **أُنشئت** في المدّة سواءٌ وصل مالُها أم لا، وهذه ما دخل الخزنة فعلاً.
+ * وجمعُهما في رقمٍ واحد يخلط استحقاقاً بنقد، ويجعل الفرق بينهما — وهو أهمّ
+ * ما في الصفحة لمن يخطّط إنفاقاً — غيرَ مرئيّ.
+ *
+ * وقد بُني بابان للدخل — الاشتراك والإعلان — ولم يكن في اللوحة مكانٌ
+ * يعرضهما، فكان صاحبُ المنصّة يرى ثلثَ دخله ويظنّه كلَّه.
+ */
+function IncomeCard({ income }: { income: PlatformIncome }) {
+  const streams: { label: string; value: number; tone: Tone }[] = [
+    { label: 'عمولة محصَّلة', value: income.commission, tone: 'navy' },
+    { label: 'اشتراكات المزوّدين', value: income.subscriptions, tone: 'emerald' },
+    { label: 'إعلانات', value: income.promotions, tone: 'violet' },
+  ]
+
+  return (
+    <Card>
+      <CardHeader
+        title="دخل المنصّة"
+        subtitle="ما وصل الخزنة فعلاً في المدّة — لا ما استُحقّ"
+      />
+      <CardBody>
+        {!income.available ? (
+          /* قاعدةٌ أقدمُ من اللوحة: تنقص بطاقةٌ ولا تسقط صفحة. */
+          <p className="text-sm text-muted">
+            شغّل <code className="font-mono text-xs">income.sql</code> في محرّر SQL
+            ليظهر دخل المنصّة هنا.
+          </p>
+        ) : (
+          <div className="flex flex-col gap-4">
+            <div>
+              <p className="text-sm text-muted">المجموع</p>
+              <p
+                className="text-2xl font-semibold text-ink tabular-nums"
+                title={formatMoney(income.total)}
+              >
+                {formatMoneyCompact(income.total)}
+              </p>
+            </div>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+              {streams.map((stream) => (
+                <div key={stream.label} className="rounded-lg bg-surface-2 px-3 py-2.5">
+                  <span
+                    style={toneChip(stream.tone)}
+                    className="mb-1.5 inline-block h-1.5 w-6 rounded-full"
+                  />
+                  <p className="text-xs text-muted">{stream.label}</p>
+                  <p
+                    className="text-sm font-semibold text-ink tabular-nums"
+                    title={formatMoney(stream.value)}
+                  >
+                    {formatMoneyCompact(stream.value)}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </CardBody>
+    </Card>
+  )
+}
+
