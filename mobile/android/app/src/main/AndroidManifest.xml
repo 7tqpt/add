@@ -10,6 +10,12 @@
          على أجهزة السنوات الثلاث الأخيرة — بلا خطأ في أي سجلّ. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
 
+    <!-- الرسالة الصوتية في المحادثة. والإذن يُطلب وقت التشغيل كذلك، فالسطر
+         هنا شرطٌ لظهور الطلب لا بديلٌ عنه: بدونه يعود `hasPermission` بـ
+         `false` أبداً، فيضغط المستخدم زرّ التسجيل ولا يقع شيء ولا تظهر له
+         رسالةٌ تقول لماذا. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
+
     <application
         android:label="@string/app_name"
         android:name="${applicationName}"
