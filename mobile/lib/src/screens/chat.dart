@@ -64,8 +64,13 @@ class _ChatScreenState extends State<ChatScreen> {
 
   /// جارٍ التسجيل — والثواني تُعرض للمستخدم.
   bool _recording = false;
+
+  /// بين ضغطة الميكروفون وبدء التسجيل: الإذن يُطلب والمنصّة تُهيّئ.
+  bool _starting = false;
+
   int _recorded = 0;
   Timer? _tick;
+  StreamSubscription<Object>? _failure;
 
   @override
   void initState() {
@@ -141,6 +146,7 @@ class _ChatScreenState extends State<ChatScreen> {
   void dispose() {
     _live?.cancel();
     _tick?.cancel();
+    _failure?.cancel();
     _recorder.dispose();
     _input.dispose();
     _scroll.dispose();
@@ -226,18 +232,45 @@ class _ChatScreenState extends State<ChatScreen> {
   /// رسالة يجعل المستخدم يظنّ التطبيق مكسوراً، وهو ممنوعٌ بإذنٍ يملك هو
   /// منحه.
   Future<void> _startRecording() async {
-    if (!await _recorder.hasPermission()) {
-      if (mounted) {
-        showMessage(context, 'لم يُسمح للتطبيق بالميكروفون. افتح إعدادات التطبيق واسمح به.');
+    // **ولا نداءان معاً.** طلبُ الإذن في أندرويد يحفظ ردَّ نداءٍ **واحد**،
+    // فنداءٌ ثانٍ قبل أن يُجاب الأوّل يمحوه — ويبقى الأوّل معلّقاً إلى الأبد.
+    // ونقرتان سريعتان على الميكروفون تكفيان لذلك.
+    if (_starting || _recording) return;
+    setState(() => _starting = true);
+
+    try {
+      if (!await _recorder.hasPermission()) {
+        if (mounted) {
+          showMessage(context, 'لم يُسمح للتطبيق بالميكروفون. افتح إعدادات التطبيق واسمح به.');
+        }
+        return;
       }
+      await _recorder.start();
+    } catch (e) {
+      // **ولا تُدخَل حالةُ التسجيل إن لم يبدأ.** كانت `start` بلا حارس، فإن
+      // رمت خرج الاستدعاء صامتاً: لا رسالة، ولا عدّاد، وزرٌّ يُضغط فلا يقع
+      // شيء — وهو ما يُقرأ «التطبيق يعلّق».
+      if (mounted) showMessage(context, messageOf(e));
       return;
+    } finally {
+      if (mounted) setState(() => _starting = false);
     }
-    await _recorder.start();
+
     if (!mounted) return;
     setState(() {
       _recording = true;
       _recorded = 0;
     });
+
+    // عطبٌ يقع **بعد** البدء لا يصل من `start` — فهي عادت بنجاح. وبلا هذا
+    // يبقى العدّاد يعدّ على مُسجِّلٍ ميّت ولا مخرج من الشريط.
+    _failure = _recorder.failures.listen((e) {
+      if (!mounted || !_recording) return;
+      _tick?.cancel();
+      setState(() => _recording = false);
+      showMessage(context, messageOf(e));
+    });
+
     _tick = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (!mounted) return;
       setState(() => _recorded = timer.tick);
@@ -250,7 +283,10 @@ class _ChatScreenState extends State<ChatScreen> {
   Future<void> _stopRecording() async {
     _tick?.cancel();
     if (!_recording) return;
+    // الخروجُ من حالة التسجيل **قبل** انتظار المنصّة: لو انتظرنا ردَّها ثم
+    // خرجنا لبقي الشريط معلّقاً طوال الانتظار بزرٍّ لا يستجيب.
     setState(() => _recording = false);
+    _dropFailureWatch();
     try {
       final clip = await _recorder.stop();
       if (clip == null) {
@@ -273,7 +309,23 @@ class _ChatScreenState extends State<ChatScreen> {
     _tick?.cancel();
     if (!_recording) return;
     setState(() => _recording = false);
+    _dropFailureWatch();
     await _recorder.cancel();
+  }
+
+  /// يفكّ الإنصات — **بلا `await`، وهذا مقصودٌ لا إهمال.**
+  ///
+  /// `cancel()` على اشتراكِ مجرًى إذاعيّ يُعيد `Future` لا تكتمل في المنطقة
+  /// المزيّفة للاختبار، ولا تكتمل إلّا بعد دورة حدثٍ على الجهاز. فانتظارُها
+  /// هنا كان يحبس «أوقف» و«ألغِ» قبل أن تصلا المُسجِّل أصلاً — أي **التجمّدُ
+  /// نفسه الذي جئتُ أُصلحه، أعدتُ إدخاله داخل إصلاحه**. كشفه اختبارٌ سقط، لا
+  /// قراءة.
+  ///
+  /// وفكُّ الاشتراك يقع فور النداء؛ إنما الـ`Future` إقرارٌ متأخّر لا شرط.
+  void _dropFailureWatch() {
+    final sub = _failure;
+    _failure = null;
+    unawaited(sub?.cancel() ?? Future<void>.value());
   }
 
   Future<void> _send() async {
@@ -311,7 +363,9 @@ class _ChatScreenState extends State<ChatScreen> {
           Expanded(child: _body()),
           _Composer(
             controller: _input,
-            busy: _sending,
+            // والميكروفونُ يُطفأ وهو يُهيَّأ: ضغطةٌ ثانية عليه تمحو ردَّ
+            // نداء الإذن الأوّل فيبقى معلّقاً.
+            busy: _sending || _starting,
             onSend: _send,
             onAttach: _attach,
             onRecord: _startRecording,

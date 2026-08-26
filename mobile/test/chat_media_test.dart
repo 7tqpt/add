@@ -4,6 +4,7 @@
 // الاختبار. وشاشةٌ تناديهما رأساً لا تُختبر إلا على جهاز، فيبقى أهمُّ ما فيها
 // بلا حارس: ماذا يقع حين **يُرفض إذن الميكروفون**، وماذا يقع حين **يفشل
 // الرفع**، وهل تصل مدّةُ التسجيل إلى القاعدة أصلاً.
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -42,26 +43,68 @@ void _phone(WidgetTester tester) {
   addTearDown(tester.view.reset);
 }
 
+/// الزرّ نفسه لا غلافُ التلميح: `byTooltip` تجد `Tooltip`، وحالةُ التعطيل
+/// (`onPressed == null`) على `IconButton` فوقه.
+Finder _button(String tooltip) =>
+    find.ancestor(of: find.byTooltip(tooltip), matching: find.byType(IconButton));
+
 /// مُسجِّلٌ مزيّف: يقول ما يُطلب منه أن يقول.
 class FakeRecorder implements VoiceRecorder {
-  FakeRecorder({this.permitted = true, this.clip});
+  FakeRecorder({
+    this.permitted = true,
+    this.clip,
+    this.startError,
+    this.startGate,
+    this.stopError,
+  });
 
   final bool permitted;
   final VoiceClip? clip;
 
+  /// يجعل `start` ترمي — كما ترمي المنصّة حين يكون الميكروفون مشغولاً.
+  final String? startError;
+
+  /// يحبس `start` حتى يُفتح: به تُقاس اللحظةُ بين الضغطة والبدء.
+  final Completer<void>? startGate;
+
+  final String? stopError;
+
+  final _failures = StreamController<Object>.broadcast();
+
   bool started = false;
   bool cancelled = false;
 
+  /// كم مرّةً دخلت `start` فعلاً — به يُقاس أن نقرتين لا تُنتجان نداءين.
+  int startCalls = 0;
+
+  /// عطبٌ يقع بعد أن يكون التسجيل قد بدأ — كموت خيط التسجيل في أندرويد.
+  void failMidway(String message) => _failures.add(VoiceFailure(message));
+
+  @override
+  Stream<Object> get failures => _failures.stream;
+
   @override
   Future<bool> hasPermission() async => permitted;
+
   @override
-  Future<void> start() async => started = true;
+  Future<void> start() async {
+    startCalls++;
+    if (startError != null) throw VoiceFailure(startError!);
+    if (startGate != null) await startGate!.future;
+    started = true;
+  }
+
   @override
-  Future<VoiceClip?> stop() async => clip;
+  Future<VoiceClip?> stop() async {
+    if (stopError != null) throw VoiceFailure(stopError!);
+    return clip;
+  }
+
   @override
   Future<void> cancel() async => cancelled = true;
+
   @override
-  Future<void> dispose() async {}
+  Future<void> dispose() async => _failures.close();
 }
 
 class FakePicker implements AttachmentPicker {
@@ -243,5 +286,100 @@ void main() {
     expect(find.textContaining('قصير'), findsOneWidget);
     expect(find.byType(AudioBar), findsNothing);
     expect(find.byIcon(Icons.mic_off_outlined), findsNothing);
+  });
+
+  // ==========================================================================
+  //  التجمّد: ثلاثةُ أبوابٍ كان يدخل منها
+  // ==========================================================================
+
+  testWidgets('وبدايةٌ فاشلة تُقال ولا تُدخِل الشاشةَ في تسجيلٍ لم يبدأ', (tester) async {
+    // **هذا هو العطب الذي رآه المستخدم.** كانت `start` بلا حارس: فإن رمت
+    // المنصّةُ خرج الاستدعاء صامتاً — لا رسالة، ولا عدّاد، وزرٌّ يُضغط فلا
+    // يقع شيء. وأسوأ منه أن تُقلب الشاشة إلى شريط تسجيلٍ على مُسجِّلٍ لم
+    // يبدأ، فلا يخرج منه إلا بإلغاء.
+    _phone(tester);
+    final recorder = FakeRecorder(startError: 'الميكروفون مشغول بتطبيقٍ آخر.');
+    await tester.pumpWidget(_wrap(_chat(recorder: recorder)));
+    await _settle(tester);
+
+    await tester.tap(find.byTooltip('سجّل رسالة صوتية'));
+    await _settle(tester);
+
+    expect(find.text('الميكروفون مشغول بتطبيقٍ آخر.'), findsOneWidget);
+    // لا شريطَ تسجيل، والحقلُ باقٍ — أي أن الشاشة ما زالت تعمل.
+    expect(find.byTooltip('أرسل التسجيل'), findsNothing);
+    expect(find.byType(TextField), findsOneWidget);
+    // ويُعاد الضغطُ عليه: زرٌّ عُطِّل ولم يُعَد تشغيله سجنٌ آخر.
+    expect(tester.widget<IconButton>(_button('سجّل رسالة صوتية')).onPressed, isNotNull);
+  });
+
+  testWidgets('وعطبٌ بعد البدء يُخرج الشاشة من التسجيل ولا يتركها تعدّ', (tester) async {
+    // خيطُ التسجيل في أندرويد يموت عند أوّل إطارٍ إن تعذّر فتحُ ملفّ الخرج،
+    // و`start` تكون قد عادت بنجاح — فلا يصل العطبُ منها. وبلا الإنصات إلى
+    // مجرى الأعطاب يبقى العدّاد يعدّ على مُسجِّلٍ ميّت، ثم لا تعود «أوقف»
+    // أبداً. وهو التجمّد بعينه.
+    _phone(tester);
+    final recorder = FakeRecorder(
+      clip: VoiceClip(bytes: Uint8List.fromList([1]), seconds: 3),
+    );
+    await tester.pumpWidget(_wrap(_chat(recorder: recorder)));
+    await _settle(tester);
+
+    await tester.tap(find.byTooltip('سجّل رسالة صوتية'));
+    await tester.pump();
+    expect(find.byTooltip('أرسل التسجيل'), findsOneWidget);
+
+    recorder.failMidway('توقّف التسجيل.');
+    await _settle(tester);
+
+    expect(find.text('توقّف التسجيل.'), findsOneWidget);
+    expect(find.byTooltip('أرسل التسجيل'), findsNothing);
+    expect(find.byType(TextField), findsOneWidget);
+  });
+
+  testWidgets('والميكروفون يُطفأ بين الضغطة والبدء فلا يُنقَر نقرتين', (tester) async {
+    // طلبُ الإذن في أندرويد يحفظ ردَّ نداءٍ **واحد**: فنداءٌ ثانٍ قبل أن
+    // يُجاب الأوّل يمحوه، ويبقى الأوّل معلّقاً إلى الأبد. ونقرتان سريعتان
+    // على الميكروفون تكفيان.
+    _phone(tester);
+    final gate = Completer<void>();
+    final recorder = FakeRecorder(
+      startGate: gate,
+      clip: VoiceClip(bytes: Uint8List.fromList([1]), seconds: 4),
+    );
+    await tester.pumpWidget(_wrap(_chat(recorder: recorder)));
+    await _settle(tester);
+
+    await tester.tap(find.byTooltip('سجّل رسالة صوتية'));
+    await tester.pump();
+
+    expect(
+      tester.widget<IconButton>(_button('سجّل رسالة صوتية')).onPressed,
+      isNull,
+      reason: 'الميكروفون يجب أن يكون مُطفأً وهو يُهيَّأ',
+    );
+    // ولو نُقر ثانيةً — بزرٍّ مُطفأ أو بغيره — فنداءٌ واحدٌ لا نداءان.
+    await tester.tap(_button('سجّل رسالة صوتية'), warnIfMissed: false);
+    await tester.pump();
+    expect(recorder.startCalls, 1);
+
+    gate.complete();
+    await _settle(tester);
+    expect(find.byTooltip('أرسل التسجيل'), findsOneWidget);
+  });
+
+  testWidgets('وفشلُ الإيقاف يُقال ولا يُبقي الشريط معلّقاً', (tester) async {
+    _phone(tester);
+    final recorder = FakeRecorder(stopError: 'تعذّر إنهاء التسجيل. جرّب مرّةً أخرى.');
+    await tester.pumpWidget(_wrap(_chat(recorder: recorder)));
+    await _settle(tester);
+
+    await tester.tap(find.byTooltip('سجّل رسالة صوتية'));
+    await tester.pump();
+    await tester.tap(find.byTooltip('أرسل التسجيل'));
+    await _settle(tester);
+
+    expect(find.textContaining('تعذّر إنهاء التسجيل'), findsOneWidget);
+    expect(find.byType(TextField), findsOneWidget);
   });
 }
