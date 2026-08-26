@@ -1048,9 +1048,12 @@ class Api {
   /// ملفّي كما هو في القاعدة.
   static Future<MyProfile?> myProfile() async {
     if (!isSupabaseConfigured) return demoProfile();
-    final row = await db.rpc('api_my_profile');
+    // **ونفسُ الفخّ هنا، وهو أخطر:** من لا صفَّ له في `app_users` — أي من
+    // سجّل للتوّ — كان يصله صفُّ أصفارٍ فتسقط عليه شاشة «أكمل ملفك»، وهي
+    // أوّلُ ما يراه في التطبيق.
+    final row = rowOrNull(await db.rpc('api_my_profile'));
     if (row == null) return null;
-    return MyProfile.fromMap(Map<String, dynamic>.from(row as Map));
+    return MyProfile.fromMap(row);
   }
 
   /// يحفظ ما عُدّل. وما لم يُمرَّر لا يُمسّ — فمن غيّر اسمه لا يُفرَّغ جواله.
@@ -1365,20 +1368,38 @@ class Api {
     return dayMarkOrNull(row);
   }
 
+  /// صفٌّ راجعٌ من دالّةٍ تُعيد **صفَّ جدولٍ واحد** — أو `null` إن لم تجد شيئاً.
+  ///
+  /// **وصفُّ الأصفار ليس `null`، وهذا هو الفخّ كلُّه.** دالّةٌ مكتوبةٌ
+  /// `returns public.<جدول>` تُعيد `NULL` حين لا تجد صفّاً، لكنّ PostgREST
+  /// يقرؤها بـ`select * from f()` — و`NULL` من نوعٍ مركّب يتمدّد هناك إلى
+  /// **صفٍّ واحدٍ حقولُه كلُّها فارغة**، فيصل التطبيقَ `{"id":null,…}` لا
+  /// `null`. فيمرّ حارسُ العدم، ثم يسقط أوّلُ `as String` بـ
+  /// «type 'Null' is not a subtype of type 'String' in type cast».
+  ///
+  /// وقد ظهر مرّتين: في التقويم أوّلاً، ثمّ في «اشتراكك» عند كلّ مزوّدٍ لم
+  /// يشترك بعد — أي كلّ مزوّدٍ جديد. وهو مقيسٌ على Postgres حقيقيّ لا
+  /// مستنتَجٌ من قراءة، و`return null` من plpgsql **لا يُغيّره** — وهو ما
+  /// ظننتُه أوّل مرّة فكان خطأً.
+  ///
+  /// والعلاجُ في القاعدة `returns setof`: عندها يصل `[]`. فلذلك تقبل هذه
+  /// الشكلين معاً — قائمةً وخريطة — فلا يهمّ أيُّهما وصل، ولا متى يُشغَّل
+  /// ملفُّ SQL على القاعدة.
+  static Map<String, dynamic>? rowOrNull(Object? value, {String key = 'id'}) {
+    if (value == null) return null;
+    if (value is List) {
+      return value.isEmpty ? null : rowOrNull(value.first, key: key);
+    }
+    if (value is! Map) return null;
+    final row = Map<String, dynamic>.from(value);
+    // المفتاحُ هو الدليل: صفٌّ حقيقيٌّ لا يكون مفتاحه فارغاً أبداً.
+    return row[key] == null ? null : row;
+  }
+
   /// صفُّ التقويم الراجع من `api_set_availability` — أو `null`.
-  ///
-  /// **وحارسٌ لِقاعدةٍ أقدمَ من التطبيق:** النسخةُ الأولى من الدالّة كانت
-  /// تُعيد صفّاً **حقولُه كلُّها فارغة** حين لا يُحذف شيء — لا `null`. فكان
-  /// التطبيق يقرأ `day` ويحوّله نصّاً فيسقط بـ«type 'Null' is not a subtype
-  /// of type 'String'»، ويرى صاحبُ القاعة رسالةً إنجليزيةً مكان تقويمه.
-  ///
-  /// أُصلح الأصلُ في `availability.sql`، وبقي هذا: من لم يُعِد تشغيل الملفّ
-  /// على قاعدته بعدُ يجد يومَه يُفتح ولا تسقط شاشتُه.
   static DayMark? dayMarkOrNull(dynamic row) {
-    if (row == null) return null;
-    final map = Map<String, dynamic>.from(row as Map);
-    if (map['day'] == null) return null;
-    return DayMark.fromMap(map);
+    final map = rowOrNull(row, key: 'day');
+    return map == null ? null : DayMark.fromMap(map);
   }
 
   /// أيامُ مزوّدٍ المشغولة — تواريخُ بلا ملاحظات، فما يخصّ حجوزات غيره ليس
@@ -1411,9 +1432,9 @@ class Api {
   /// اشتراكي — أو `null` إن لم يكن لي اشتراكٌ قائمٌ ولا معلّق.
   static Future<MySub?> mySubscription() async {
     if (!isSupabaseConfigured) return demoDelay(demoMySub);
-    final row = await db.rpc('api_my_subscription');
+    final row = rowOrNull(await db.rpc('api_my_subscription'));
     if (row == null) return null;
-    return MySub.fromMap(Map<String, dynamic>.from(row as Map));
+    return MySub.fromMap(row);
   }
 
   /// يطلب باقة. المجّانية تُفعَّل فوراً، وما له سعرٌ ينتظر تأكيد الحوالة.

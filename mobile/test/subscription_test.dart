@@ -9,6 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:aras/src/core/session.dart';
 import 'package:aras/src/core/theme.dart';
+import 'package:aras/src/data/api.dart';
 import 'package:aras/src/data/demo.dart';
 import 'package:aras/src/screens/subscription.dart';
 import 'package:aras/src/ui/kit.dart';
@@ -136,5 +137,56 @@ void main() {
     await _settle(tester);
 
     expect(demoPromoPending, isTrue);
+  });
+
+  // ==========================================================================
+  //  صفُّ الأصفار: العطبُ الذي أسقط «اشتراكك» عند كلّ مزوّدٍ جديد
+  // ==========================================================================
+  //
+  // دالّةٌ في القاعدة مكتوبةٌ `returns public.<جدول>` تُعيد `NULL` حين لا تجد
+  // صفّاً — لكنّ PostgREST يقرؤها بـ`select * from f()`، و`NULL` من نوعٍ
+  // مركّب يتمدّد هناك إلى **صفٍّ واحدٍ حقولُه كلُّها فارغة**. فيصل التطبيقَ
+  // هذا بالضبط، لا `null`، فيمرّ حارسُ العدم ثمّ يسقط أوّلُ تحويلٍ إلى نصّ.
+  //
+  // والشكلُ أدناه نسخةٌ حرفيّةٌ عمّا رصده القياس على Postgres حقيقيّ في
+  // `supabase/tests/subscriptions.test.mjs`.
+  group('صفُّ الأصفار يُقرأ عدماً', () {
+    test('خريطةُ أصفارٍ تُقرأ عدماً لا صفّاً', () {
+      expect(
+        Api.rowOrNull(const {
+          'id': null,
+          'plan_name': null,
+          'amount': null,
+          'status': null,
+          'ends_at': null,
+        }),
+        isNull,
+      );
+    });
+
+    test('وصفٌّ حقيقيٌّ يمرّ — وإلّا لم يحرس الحارسُ شيئاً', () {
+      final row = Api.rowOrNull(const {'id': 'sub-1', 'plan_name': 'الفضية'});
+      expect(row, isNotNull);
+      expect(row!['plan_name'], 'الفضية');
+    });
+
+    test('وقائمةٌ فارغةٌ عدم — وهو ما تُعيده `setof` بعد إصلاح القاعدة', () {
+      expect(Api.rowOrNull(const []), isNull);
+    });
+
+    test('وقائمةٌ فيها صفٌّ تُقرأ صفّاً: الشكلان يعملان معاً', () {
+      // فلا يهمّ أيُّهما وصل، ولا متى يُشغَّل ملفُّ SQL على القاعدة.
+      final row = Api.rowOrNull(const [
+        {'id': 'sub-1', 'plan_name': 'الذهبية'},
+      ]);
+      expect(row?['plan_name'], 'الذهبية');
+    });
+
+    test('و`null` عدمٌ كما كان', () => expect(Api.rowOrNull(null), isNull));
+
+    test('والمفتاحُ يُسمّى حين لا يكون `id` — كالتقويم', () {
+      expect(Api.rowOrNull(const {'day': null, 'note': null}, key: 'day'), isNull);
+      expect(Api.rowOrNull(const {'day': '2026-09-01'}, key: 'day'), isNotNull);
+    });
   });
 }

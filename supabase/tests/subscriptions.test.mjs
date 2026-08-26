@@ -165,6 +165,48 @@ try {
 ok('ومن ليس مزوّداً يُردّ', /لمقدّمي الخدمة/.test(raised ?? ''))
 await db.exec(`reset role`)
 
+// ── ٧. «اشتراكك» لمن لم يشترك بعد ───────────────────────────────────────────
+//
+// **وهذا هو العطب الذي رآه المستخدم على جواله.** كانت الدالّة تُرجع نوعاً
+// مركّباً، فتُعيد `NULL` لمن لا اشتراك له — لكنّ PostgREST يقرؤها بـ
+// `select * from f()`، و`NULL` المركّب يتمدّد هناك إلى صفٍّ حقولُه كلُّها
+// فارغة. فيصل التطبيقَ `{"id":null,"plan_name":null,…}` لا `null`، فيمرّ
+// حارسُ العدم ثمّ يسقط أوّلُ تحويلٍ إلى نصّ:
+//
+//     type 'Null' is not a subtype of type 'String' in type cast
+//
+// ورآه **كلُّ مزوّدٍ جديد** فتح «اشتراكك» — إذ لا اشتراك لأحدٍ في أوّله.
+//
+// ويُقاس عددُ الصفوف لا فراغُ الحقل: الحقلُ فارغٌ في الحالين، فحارسٌ يسأل
+// عنه لا يعضّ.
+const nuid = '99999999-9999-9999-9999-999999999999'
+await db.exec(`
+  insert into auth.users (id, email) values ('${nuid}', 'newpro@sdd.company')
+    on conflict (id) do nothing;`)
+await db.exec(`
+  insert into public.app_users (auth_user_id, full_name, email)
+  values ('${nuid}', 'مزوّدٌ جديد', 'newpro@sdd.company')
+    on conflict (auth_user_id) do nothing;`)
+await db.exec(`
+  insert into public.service_providers (user_id, full_name, business_name, email)
+  select u.id, 'مزوّدٌ جديد', 'قاعةٌ لم تشترك', 'newpro@sdd.company'
+    from public.app_users u where u.auth_user_id = '${nuid}'`)
+await db.exec(`select set_config('test.uid', '${nuid}', false)`)
+await db.exec(`set role authenticated`)
+const noSub = await one(`select count(*)::int as عدد
+  from (select * from public.api_my_subscription()) q`)
+ok('ومن لم يشترك بعد يُعيد صفرَ صفوفٍ لا صفّاً من الأصفار', noSub.عدد === 0,
+   `${noSub.عدد} — والصفّ الواحد هنا يعني سقوط شاشة «اشتراكك»`)
+await db.exec(`reset role`)
+
+// وصاحبُ الاشتراك ما زال يقرأ اشتراكه: حارسٌ يمنع الكلَّ لا يحرس شيئاً.
+await db.exec(`select set_config('test.uid', '${puid}', false)`)
+await db.exec(`set role authenticated`)
+const hasSub = await one(`select count(*)::int as عدد
+  from (select * from public.api_my_subscription()) q`)
+ok('وصاحبُ الاشتراك يقرأ اشتراكه', hasSub.عدد === 1, `${hasSub.عدد}`)
+await db.exec(`reset role`)
+
 await db.close()
 console.log(fail === 0 ? '\nكل اختبارات subscriptions.sql نجحت.' : `\n${fail} فشل.`)
 process.exit(fail === 0 ? 0 : 1)

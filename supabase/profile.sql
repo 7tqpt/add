@@ -134,8 +134,15 @@ grant execute on function public.api_update_profile(text, text, uuid, text) to a
 -- ----------------------------------------------------------------------------
 -- ٤. قراءة ملفي
 -- ----------------------------------------------------------------------------
-create or replace function public.api_my_profile()
-returns public.app_users
+-- **`setof` لا نوعاً مركّباً — للسبب المشروح في `subscriptions.sql`:**
+-- `NULL` المركّب يتمدّد في `select * from f()` إلى صفٍّ من الأصفار، فيصل
+-- التطبيقَ `{"id":null,…}` لا `null`. ومن لا ملفَّ له — أي من سجّل للتوّ —
+-- كانت تسقط عليه شاشةُ «أكمل ملفك»، وهي أوّلُ ما يراه في التطبيق.
+--
+-- `drop` أوّلاً: لا يُبدَّل نوعُ الإرجاع بـ`create or replace`.
+drop function if exists public.api_my_profile();
+create function public.api_my_profile()
+returns setof public.app_users
 language sql stable security definer set search_path = public as $$
   select * from public.app_users where auth_user_id = auth.uid()
 $$;

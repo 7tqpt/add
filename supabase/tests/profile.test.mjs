@@ -72,12 +72,23 @@ ok('وحدّها ٢ ميجابايت', Number(bucket.rows[0]?.file_size_limit) =
 console.log('\n=== القراءة ===')
 const mine = await as(UID, `select full_name, email from public.api_my_profile()`)
 ok('أقرأ ملفي', mine.rows[0]?.full_name === 'أيمن', mine.rows[0]?.email)
-// الدالة تُرجع صفّاً مركّباً واحداً لا مجموعة، فإن لم تجد شيئاً أعادت `NULL`
-// — و`count(*)` على ذلك يساوي ١ لا ٠، وهي أوّل نسخةٍ من هذا الاختبار كتبتُها
-// خطأً. فيُسأل عن فراغ الصفّ نفسه، وهو ما يصل العميلَ `null`.
+// **وعددُ الصفوف هو المقياس، لا فراغُ الحقل.**
+//
+// كانت الدالّة تُرجع نوعاً مركّباً واحداً، فإن لم تجد شيئاً أعادت `NULL` —
+// و`count(*)` على ذلك يساوي ١ لا ٠. ولاحظتُ ذلك حين كتبتُ هذا الاختبار
+// أوّلَ مرّة، ثمّ **تحايلتُ عليه** فسألتُ عن فراغ الحقل بدل عدد الصفوف.
+// وكان ذلك خطأً: الحقلُ فارغٌ في الحالين، فمرّ الحارس والعطبُ تحته.
+//
+// والذي يصل التطبيقَ هو ما ينتجه `select * from f()` — أي صفٌّ من الأصفار
+// `{"id":null,…}`، فيسقط أوّلُ تحويلٍ إلى نصّ. فصارت الدالّة `setof`،
+// ويُقاس عددُ الصفوف نفسه.
 const none = await as('22222222-2222-2222-2222-222222222222',
-  `select (select id from public.api_my_profile()) as id`)
-ok('ومن لا ملفَّ له يقرأ فراغاً', none.rows[0].id === null, `${none.rows[0].id}`)
+  `select count(*)::int as عدد from (select * from public.api_my_profile()) q`)
+ok('ومن لا ملفَّ له يُعيد صفرَ صفوفٍ كما يقرؤه PostgREST',
+   none.rows[0].عدد === 0, `${none.rows[0].عدد}`)
+const some = await as(UID,
+  `select count(*)::int as عدد from (select * from public.api_my_profile()) q`)
+ok('ومن له ملفٌّ يُعيد صفَّه', some.rows[0].عدد === 1, `${some.rows[0].عدد}`)
 
 console.log('\n=== التعديل ===')
 const gov = await db.query(`select id, name from public.governorates order by sort_order limit 1`)

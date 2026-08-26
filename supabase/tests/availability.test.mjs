@@ -172,9 +172,27 @@ await db.exec(`reset role`)
 // رسالةٌ إنجليزيةٌ في وجه صاحب القاعة مكان تقويمه.
 await db.exec(`select set_config('test.uid', '${puid}', false)`)
 await db.exec(`set role authenticated`)
-const empty = await one(
-  `select public.api_set_availability(current_date + 40, false) as ص`)
-ok('فتحُ يومٍ لا صفَّ له يُعيد فراغاً لا صفّاً من الأصفار', empty.ص === null)
+
+// **ويُقاس كما يقرؤه PostgREST لا كما تقرؤه SQL — وهذا هو بيت القصيد.**
+//
+// الاختبارُ الأوّل هنا كان `select f() as ص` ويتأكّد أنها `null`. وهي كانت
+// `null` **والعطبُ قائم**، فمرّ الحارس ومرّ معه العطب إلى جوال المستخدم.
+//
+// فالتطبيق لا ينادي الدالّة هكذا: PostgREST ينفّذ `select * from f()`،
+// و`NULL` من نوعٍ مركّب يتمدّد هناك إلى **صفٍّ واحدٍ حقولُه كلُّها فارغة**.
+// فما يجب أن يُقاس هو عددُ الصفوف: صفرٌ يعني `[]`، وواحدٌ يعني
+// `{"day":null,…}` — أي السقوط.
+const shape = await one(
+  `select count(*)::int as عدد from (
+     select * from public.api_set_availability(current_date + 40, false)) q`)
+ok('فتحُ يومٍ لا صفَّ له يُعيد صفرَ صفوفٍ كما يقرؤه PostgREST', shape.عدد === 0)
+
+// وصفٌّ حقيقيٌّ ما زال يصل: حارسٌ يمنع الفراغ دائماً لا يحرس شيئاً.
+await db.query(`select public.api_set_availability(current_date + 41, true, 'سفر')`)
+const real = await one(
+  `select count(*)::int as عدد from (
+     select * from public.api_set_availability(current_date + 41, false)) q`)
+ok('وإغلاقٌ قائمٌ يُفتح فيعود صفُّه', real.عدد === 1)
 await db.exec(`reset role`)
 
 await db.close()
