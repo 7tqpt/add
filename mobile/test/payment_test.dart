@@ -9,6 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:aras/src/core/format.dart';
 import 'package:aras/src/core/session.dart';
 import 'package:aras/src/core/theme.dart';
+import 'package:aras/src/data/api.dart';
 import 'package:aras/src/data/demo.dart';
 import 'package:aras/src/data/models.dart';
 import 'package:aras/src/screens/my_bookings.dart';
@@ -140,42 +141,32 @@ void main() {
   });
 
   // ==========================================================================
-  //  بطاقةُ الحجز هي بطاقةُ «خطة العرس» نفسها
+  //  ملخّصٌ في الصدر، وبطاقاتٌ بيضاء تحته
   // ==========================================================================
 
-  testWidgets('بطاقةُ الحجز نبيذيّةٌ كبطاقة «خطة العرس» لا بيضاء', (tester) async {
-    // **والقياسُ على `HeroCard` نفسها لا على لونٍ منسوخ:** الشاشتان تبنيان
-    // منها، فلو نُسخ التدرّج في إحداهما لَمرّ اختبارٌ يسأل عن اللون وحده
-    // بينما البطاقتان افترقتا فعلاً.
+  testWidgets('«حجوزاتي» تفتح على ملخّصٍ قبل التفاصيل', (tester) async {
+    // **من عنده ستّةُ حجوزاتٍ كان يقرأ بطاقةً بطاقةً** ليعرف كم بقي وأيُّها
+    // أقرب. وهي البطاقةُ نفسها التي في الرئيسية — يعرفها قبل أن يقرأها.
     _phone(tester);
     await tester.pumpWidget(_wrap(Scaffold(body: MyBookingsScreen(session: _session()))));
     await _settle(tester);
 
-    expect(find.byType(HeroCard), findsWidgets);
+    expect(find.byType(BigHeroCard), findsOneWidget);
+    expect(find.text('حجوزاتي'), findsOneWidget);
   });
 
-  testWidgets('والمبلغُ رقمٌ كبيرٌ في صدرها، ومعه ما بقي', (tester) async {
-    // ترتيبُ بطاقة الخطة نفسه: رقمٌ كبير ثمّ وصفُه بالذهبيّ. وبطاقةُ الخطة
-    // تجيب «كم بقي من الأيام؟»، وهذه تجيب «بكم؟» — وهو أوّلُ ما يُبحث عنه.
+  testWidgets('وبطاقاتُ الحجز بيضاءُ كما كانت لا نبيذيّة', (tester) async {
+    // رجعت إلى شكلها الأوّل بطلبٍ صريح. والملخّصُ وحده هو الملوَّن.
     _phone(tester);
     await tester.pumpWidget(_wrap(Scaffold(body: MyBookingsScreen(session: _session()))));
     await _settle(tester);
 
-    final big = tester.widgetList<Text>(find.byType(Text)).where(
-      (t) => (t.style?.fontSize ?? 0) >= 28 && (t.data ?? '').contains(RegExp(r'[0-9٠-٩]')),
-    );
-    expect(big, isNotEmpty, reason: 'لا رقمَ كبيراً في صدر البطاقة');
-
-    // وحالةُ الدفع مذكورةٌ نصّاً: «لم يُدفع بعد» أو «باقٍ …» أو «مدفوع بالكامل».
-    expect(
-      find.textContaining(RegExp('لم يُدفع بعد|باقٍ|مدفوع بالكامل')),
-      findsWidgets,
-    );
+    expect(find.byType(AppCard), findsWidgets);
+    // ولا بطاقةَ نبيذيّةٍ في القائمة — تلك لِـ«خطة العرس».
+    expect(find.byType(HeroCard), findsNothing);
   });
 
-  testWidgets('وزرُّ الدفع ذهبيٌّ لا نبيذيٌّ يذوب في البطاقة', (tester) async {
-    // **زرٌّ بلون أرضيّته زرٌّ غيرُ موجود.** نبيذيُّ الأزرار هو نبيذيُّ
-    // البطاقة، فلولا قلبُه ذهباً لاختفى «ادفع العربون» تماماً.
+  testWidgets('وزرُّ الدفع نبيذيٌّ على الأبيض كما كان', (tester) async {
     _phone(tester);
     await tester.pumpWidget(_wrap(Scaffold(body: MyBookingsScreen(session: _session()))));
     await _settle(tester);
@@ -185,10 +176,32 @@ void main() {
       matching: find.byType(FilledButton),
     );
     expect(pay, findsWidgets);
+    // نمطُ الثيمة لا نمطٌ ذهبيٌّ مكتوبٌ باليد.
+    expect(tester.widgetList<FilledButton>(pay).first.style, isNull);
+  });
 
-    final style = tester.widgetList<FilledButton>(pay).first.style;
-    final bg = style?.backgroundColor?.resolve(const <WidgetState>{});
-    expect(bg, AppColors.goldOnAccent,
-        reason: 'زرُّ الدفع يجب أن يكون ذهبيّاً على البطاقة النبيذيّة');
+  // **`test` لا `testWidgets`:** الثانية تُزيّف المؤقّتات، و`demoDelay`
+  // تنتظر `Future.delayed` — فتُعلَّق إلى الأبد بلا ضخّ. وقد وقع هذا فعلاً
+  // فتجاوز التشغيل ستَّ دقائق قبل أن يُقطع.
+  test('وعددُ الملخّص هو عددُ الرئيسية نفسه', () async {
+    // **ولو حُسب في كلٍّ على حدة لاختلفا يوماً** — تُستبعد الملغاة في إحداهما
+    // وتبقى في الأخرى — فيقرأ العميل «٣ حجوزات» ثمّ يعدّ اثنين.
+    final all = await Api.myBookings('demo-user');
+    final s = BookingsSummary.of(all);
+
+    // الماضي والملغى والمرفوض خارج العدّ.
+    final today = DateTime.now().toIso8601String().substring(0, 10);
+    expect(
+      s.upcoming.every((b) =>
+          b.eventDate.compareTo(today) >= 0 &&
+          b.status != BookingStatus.cancelled &&
+          b.status != BookingStatus.rejected),
+      isTrue,
+    );
+    expect(s.confirmed + s.pending, lessThanOrEqualTo(s.count));
+    if (s.upcoming.length > 1) {
+      expect(s.next!.eventDate.compareTo(s.upcoming.last.eventDate) <= 0, isTrue,
+          reason: 'الأقربُ يجب أن يكون أوّلَ القائمة');
+    }
   });
 }

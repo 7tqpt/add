@@ -246,7 +246,7 @@ class _HeroCardsState extends State<_HeroCards> {
     final days = has ? daysUntil(p.weddingDate) : null;
     final paid = has && p.totalCost > 0 ? (p.paidAmount / p.totalCost).clamp(0.0, 1.0).toDouble() : null;
 
-    return _HeroCard(
+    return BigHeroCard(
       // نبيذيٌّ من لون العلامة إلى أغمقَ منه: البطاقة سطحٌ لا لطخة.
       // والأبيضُ على أفتح طرفيه ‎٨٫٠٨:١‎.
       colors: const [AppColors.accentLift, AppColors.accentDeep],
@@ -267,12 +267,13 @@ class _HeroCardsState extends State<_HeroCards> {
   }
 
   Widget _bookingsCard() {
-    final list = widget.data.upcoming;
-    final next = widget.data.next;
-    final confirmed = widget.data.countOf(BookingStatus.confirmed);
-    final pending = widget.data.countOf(BookingStatus.pendingProvider);
+    final s = BookingsSummary.of(widget.data.bookings);
+    final list = s.upcoming;
+    final next = s.next;
+    final confirmed = s.confirmed;
+    final pending = s.pending;
 
-    return _HeroCard(
+    return BigHeroCard(
       // طَفليٌّ محروق: لونٌ ثانٍ يفصل البطاقتين بلمحةٍ قبل قراءة العنوان،
       // وهو من عائلة الكريم والذهب لا غريبٌ عنها — والأبيض عليه ‎٥٫٥٦:١‎.
       colors: const [Color(0xFFA3521A), Color(0xFF6B3208)],
@@ -300,214 +301,6 @@ String _whenLabel(int? days) {
   return 'بعد ${formatCount(days, dayForms)}';
 }
 
-/// بطاقةٌ كبيرة بتدرّجٍ لونيّ.
-///
-/// **والنصّ أبيضُ مقيسٌ لا مفترَض**: التدرّج يفتحُ في أعلاه، فلو أُخذ اللون
-/// من أغمق طرفيه لبدا مقروءاً في القياس ومغسولاً على الجهاز. وقد قيس على
-/// الرسم نفسه: ‎٩٫٧٠:١‎ على الأزرق و‎٨٫٥٥:١‎ على الورديّ.
-class _HeroCard extends StatefulWidget {
-  const _HeroCard({
-    required this.colors,
-    required this.icon,
-    required this.title,
-    required this.headline,
-    required this.subtitle,
-    required this.footer,
-    required this.onTap,
-    this.progress,
-  });
-
-  final List<Color> colors;
-  final IconData icon;
-  final String title;
-  final String headline;
-  final String subtitle;
-  final String footer;
-
-  /// نسبة ما دُفع — تُترك فارغةً فيغيب الشريط ويرتفع النصّ مكانه.
-  final double? progress;
-  final VoidCallback onTap;
-
-  @override
-  State<_HeroCard> createState() => _HeroCardState();
-}
-
-class _HeroCardState extends State<_HeroCard> {
-  bool _down = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final radius = BorderRadius.circular(22);
-    return Listener(
-      onPointerDown: (_) => setState(() => _down = true),
-      onPointerUp: (_) => setState(() => _down = false),
-      onPointerCancel: (_) => setState(() => _down = false),
-      child: GestureDetector(
-        onTap: widget.onTap,
-        child: AnimatedScale(
-          scale: _down ? 0.97 : 1,
-          duration: const Duration(milliseconds: 130),
-          curve: Curves.easeOut,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 160),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topRight,
-                end: Alignment.bottomLeft,
-                colors: widget.colors,
-              ),
-              borderRadius: radius,
-              boxShadow: [
-                BoxShadow(
-                  color: widget.colors.last.withValues(alpha: _down ? 0.18 : 0.34),
-                  blurRadius: _down ? 10 : 22,
-                  offset: Offset(0, _down ? 3 : 10),
-                ),
-              ],
-            ),
-            child: ClipRRect(
-              borderRadius: radius,
-              child: Stack(
-                children: [
-                  // قرصان زجاجيّان في الزاوية: عمقٌ بلا صورة — والصورة تحتاج
-                  // شبكةً وتحميلاً وقد لا تصل.
-                  Positioned(
-                    top: -46,
-                    left: -30,
-                    child: _Blob(size: 150, alpha: 0.10),
-                  ),
-                  Positioned(
-                    bottom: -60,
-                    right: -24,
-                    child: _Blob(size: 130, alpha: 0.07),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.all(Space.lg),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Row(
-                          children: [
-                            Container(
-                              width: 38,
-                              height: 38,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: Colors.white.withValues(alpha: 0.20),
-                                border: Border.all(color: Colors.white.withValues(alpha: 0.28)),
-                              ),
-                              child: Icon(widget.icon, size: 20, color: Colors.white),
-                            ),
-                            const SizedBox(width: Space.sm),
-                            Expanded(
-                              child: Text(
-                                widget.title,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  fontSize: 13.5,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.white,
-                                  fontFamilyFallback: arabicFallback,
-                                ),
-                              ),
-                            ),
-                            // «forward» لا «back»: أيقونات الأسهم تنعكس مع
-                            // اتجاه النصّ (‏`matchTextDirection`‏)، فـ«back»
-                            // في العربية يشير يميناً — أي رجوعاً. وقد رُسم
-                            // فرُئي مقلوباً قبل أن يُبدَّل.
-                            Icon(
-                              Icons.arrow_forward_ios_rounded,
-                              size: 13,
-                              color: Colors.white.withValues(alpha: 0.75),
-                            ),
-                          ],
-                        ),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Text(
-                              widget.headline,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontSize: 24,
-                                height: 1.25,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.white,
-                                fontFamilyFallback: arabicFallback,
-                              ),
-                            ),
-                            const SizedBox(height: Space.xs),
-                            Text(
-                              widget.subtitle,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontSize: 12.5,
-                                color: Colors.white.withValues(alpha: 0.82),
-                                fontFamilyFallback: arabicFallback,
-                              ),
-                            ),
-                          ],
-                        ),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            if (widget.progress != null) ...[
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(999),
-                                child: LinearProgressIndicator(
-                                  value: widget.progress,
-                                  minHeight: 6,
-                                  backgroundColor: Colors.white.withValues(alpha: 0.26),
-                                  valueColor: const AlwaysStoppedAnimation(Colors.white),
-                                ),
-                              ),
-                              const SizedBox(height: Space.sm),
-                            ],
-                            Text(
-                              widget.footer,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w500,
-                                color: Colors.white.withValues(alpha: 0.92),
-                                fontFamilyFallback: arabicFallback,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _Blob extends StatelessWidget {
-  const _Blob({required this.size, required this.alpha});
-  final double size;
-  final double alpha;
-
-  @override
-  Widget build(BuildContext context) => Container(
-    width: size,
-    height: size,
-    decoration: BoxDecoration(
-      shape: BoxShape.circle,
-      color: Colors.white.withValues(alpha: alpha),
-    ),
-  );
-}
 
 /// نقاطٌ تحت البطاقات — كم بطاقةً هناك وأينَ أنت منها.
 class _Dots extends StatelessWidget {
