@@ -6,6 +6,7 @@ import '../data/api.dart';
 import '../data/models.dart';
 import '../data/supabase.dart';
 import '../ui/kit.dart';
+import 'account_extras.dart';
 import '../ui/media.dart';
 import 'chat.dart';
 import 'provider_public.dart';
@@ -27,6 +28,35 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
   bool _busy = false;
   String? _error;
 
+  /// يملأ العنوان من الافتراضيّ إن وُجد.
+  ///
+  /// **وفشلُه صامتٌ عمداً:** الحقلُ يبقى فارغاً كما كان، والمستخدم يكتب —
+  /// وشاشةُ خطأٍ عن دفترِ عناوينَ لم يُقرأ تمنعه من الحجز لأجل راحةٍ لم تصل.
+  Future<void> _fillDefaultAddress() async {
+    try {
+      final saved = await Api.myAddresses();
+      final def = saved.where((a) => a.isDefault).firstOrNull;
+      // ولا يُكتب فوق ما كتبه بيده إن كان قد بدأ.
+      if (def != null && mounted && _address.text.trim().isEmpty) {
+        setState(() => _address.text = def.forBooking);
+      }
+    } catch (_) {}
+  }
+
+  /// يفتح دفترَ العناوين ويأخذ ما اختير.
+  Future<void> _pickAddress() async {
+    final picked = await Navigator.of(context).push<SavedAddress>(
+      MaterialPageRoute(
+        builder: (routeContext) => AddressesScreen(
+          onPick: (a) => Navigator.of(routeContext).pop(a),
+        ),
+      ),
+    );
+    if (picked != null && mounted) {
+      setState(() => _address.text = picked.forBooking);
+    }
+  }
+
   /// خطط العرس المتاحة للربط. تُقرأ مرّةً عند الفتح.
   List<WeddingPlan> _plans = const [];
   String? _planId;
@@ -36,6 +66,7 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
     super.initState();
     _future = Api.service(widget.serviceId);
     _loadPlans();
+    _fillDefaultAddress();
   }
 
   Future<void> _loadPlans() async {
@@ -282,11 +313,22 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
                     decoration: const InputDecoration(labelText: 'عدد الضيوف'),
                   ),
                   const SizedBox(height: Space.md),
+                  // **العنوانُ يملأ نفسه من الدفتر.** كان يُكتب في كل حجز،
+                  // وعنوانُ بيت العرس واحدٌ لا يتغيّر: فمن حجز قاعةً ومصوّراً
+                  // وكوشةً كتبه ثلاثاً وأخطأ في إحداها.
+                  //
+                  // ويبقى الحقلُ **قابلاً للكتابة**: عنوانُ عرسٍ في قاعةٍ غير
+                  // عنوان بيت، فالدفترُ يختصر لا يحبس.
                   TextField(
                     controller: _address,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: 'عنوان المناسبة',
                       hintText: 'حي السنينة — صنعاء',
+                      suffixIcon: IconButton(
+                        tooltip: 'من عناويني',
+                        icon: const Icon(Icons.bookmark_border_rounded, size: 22),
+                        onPressed: _pickAddress,
+                      ),
                     ),
                   ),
                   const SizedBox(height: Space.md),

@@ -7,6 +7,7 @@ import '../data/api.dart';
 import '../data/models.dart';
 import '../data/supabase.dart';
 import '../ui/kit.dart';
+import 'account_extras.dart';
 
 /// دفعُ عربون الحجز أو باقيه.
 ///
@@ -51,6 +52,35 @@ class _PaymentScreenState extends State<PaymentScreen> {
     super.initState();
     _settings = Api.paymentSettings();
     _payments = Api.bookingPayments(widget.booking.id);
+    _fillDefaultWallet();
+  }
+
+  /// يملأ الرقم من المحفظة الافتراضية إن وُجدت.
+  ///
+  /// **وفشلُه صامتٌ عمداً:** الحقلُ اختياريٌّ أصلاً، وشاشةُ خطأٍ عن دفترِ
+  /// محافظَ لم يُقرأ تمنع صاحبها من الإبلاغ بحوالةٍ دفعها فعلاً.
+  Future<void> _fillDefaultWallet() async {
+    try {
+      final saved = await Api.myPaymentMethods();
+      final def = saved.where((m) => m.isDefault).firstOrNull;
+      if (def != null && mounted && _senderRef.text.trim().isEmpty) {
+        setState(() => _senderRef.text = def.accountRef);
+      }
+    } catch (_) {}
+  }
+
+  /// يفتح دفترَ المحافظ ويأخذ ما اختير.
+  Future<void> _pickWallet() async {
+    final picked = await Navigator.of(context).push<SavedPaymentMethod>(
+      MaterialPageRoute(
+        builder: (routeContext) => PaymentMethodsScreen(
+          onPick: (m) => Navigator.of(routeContext).pop(m),
+        ),
+      ),
+    );
+    if (picked != null && mounted) {
+      setState(() => _senderRef.text = picked.accountRef);
+    }
   }
 
   @override
@@ -137,13 +167,21 @@ class _PaymentScreenState extends State<PaymentScreen> {
                         style: TextStyle(height: 1.7, fontSize: 13),
                       ),
                       const SizedBox(height: Space.md),
+                      // **ويملأ نفسه من محافظك المحفوظة.** كان يُكتب مع كل
+                      // حوالة، ورقمُ المحفظة واحدٌ لا يتغيّر — ورقمٌ يُكتب
+                      // بالغلط يُبطئ مطابقة الحوالة أو يمنعها.
                       TextField(
                         controller: _senderRef,
                         keyboardType: TextInputType.text,
                         textDirection: TextDirection.ltr,
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           labelText: 'رقمك أو رقم عملية التحويل (اختياري)',
                           hintText: '77xxxxxxx',
+                          suffixIcon: IconButton(
+                            tooltip: 'من محافظي',
+                            icon: const Icon(Icons.wallet_outlined, size: 22),
+                            onPressed: _pickWallet,
+                          ),
                         ),
                       ),
                       if (_error != null) ...[

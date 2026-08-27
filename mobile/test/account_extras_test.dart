@@ -16,6 +16,7 @@ import 'package:aras/src/data/demo.dart';
 import 'package:aras/src/data/models.dart';
 import 'package:aras/src/screens/account.dart';
 import 'package:aras/src/screens/account_extras.dart';
+import 'package:aras/src/screens/payment.dart';
 
 Session _session({bool provider = false}) => Session()
   ..userId = 'u1'
@@ -232,5 +233,42 @@ void main() {
 
     expect(find.text('العربية'), findsOneWidget);
     expect(find.byType(DropdownButtonFormField<String>), findsNothing);
+  });
+
+  // ==========================================================================
+  //  الوصل: الدفترُ يملأ الحقل بدل أن يُكتب في كل مرّة
+  // ==========================================================================
+
+  testWidgets('ورقةُ الحوالة تملأ الرقم من المحفظة الافتراضية', (tester) async {
+    // **وهذا ما يجعل الدفتر نافعاً.** دفترٌ لا يملأ شيئاً قائمةٌ يزورها
+    // صاحبها مرّةً ثمّ ينساها، والرقمُ يبقى يُكتب مع كل حوالة — ورقمٌ يُكتب
+    // بالغلط يُبطئ مطابقة الحوالة أو يمنعها.
+    _phone(tester);
+    await tester.pumpWidget(_wrap(PaymentScreen(booking: demoBookings.first)));
+    await _settle(tester);
+
+    final field = tester.widget<TextField>(find.byType(TextField).first);
+    expect(field.controller?.text, demoPaymentMethods.first.accountRef);
+  });
+
+  testWidgets('وفيها بابٌ إلى المحافظ لمن أراد غيرَ الافتراضية', (tester) async {
+    _phone(tester);
+    await tester.pumpWidget(_wrap(PaymentScreen(booking: demoBookings.first)));
+    await _settle(tester);
+
+    expect(find.byTooltip('من محافظي'), findsOneWidget);
+  });
+
+  testWidgets('ودفترٌ فارغٌ لا يُسقط الشاشة ولا يمنع الإبلاغ', (tester) async {
+    // **فشلُ الراحة لا يمنع الفعل.** الحقلُ اختياريٌّ أصلاً، وشاشةُ خطأٍ عن
+    // دفترٍ لم يُقرأ تمنع صاحبها من الإبلاغ بحوالةٍ دفعها فعلاً.
+    _phone(tester);
+    demoPaymentMethods = [];
+    await tester.pumpWidget(_wrap(PaymentScreen(booking: demoBookings.first)));
+    await _settle(tester);
+
+    final field = tester.widget<TextField>(find.byType(TextField).first);
+    expect(field.controller?.text, isEmpty);
+    expect(find.text('حوّلتُ المبلغ — أبلغ الإدارة'), findsOneWidget);
   });
 }
