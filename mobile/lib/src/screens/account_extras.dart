@@ -6,11 +6,14 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../core/geo.dart';
+
 import '../core/session.dart';
 import '../core/theme.dart';
 import '../data/api.dart';
 import '../data/models.dart';
 import '../data/supabase.dart' show messageOf;
+import 'map_picker.dart';
 import '../ui/kit.dart';
 
 /// اسمُ وسيلة التحويل كما تُعرض.
@@ -174,6 +177,7 @@ class _AddressSheetState extends State<_AddressSheet> {
   late final _details = TextEditingController(text: widget.current?.details ?? '');
   late String? _govId = widget.current?.governorateId;
   late bool _default = widget.current?.isDefault ?? false;
+  late GeoPoint? _point = widget.current?.point;
   List<Governorate> _govs = const [];
   bool _busy = false;
   String? _error;
@@ -210,6 +214,7 @@ class _AddressSheetState extends State<_AddressSheet> {
         governorateId: _govId,
         governorateName: _govs.where((g) => g.id == _govId).firstOrNull?.name,
         makeDefault: _default,
+        point: _point,
       );
       if (mounted) Navigator.of(context).pop(true);
     } catch (e) {
@@ -252,6 +257,18 @@ class _AddressSheetState extends State<_AddressSheet> {
             hintText: 'المنطقة، والشارع، وعلامةٌ مميّزة',
           ),
         ),
+        const SizedBox(height: Space.md),
+
+        // ── الموقع على الخريطة ────────────────────────────────────────────
+        //
+        // **تحت النصّ لا فوقه، ولا يُغني عنه.** الإحداثيّاتُ تصلح للملاحة
+        // ولا تُقرأ: من فتح حجزَه ليتذكّر أين هو لا ينفعه رقمان.
+        LocationRow(
+          point: _point,
+          governorate: _govs.where((g) => g.id == _govId).firstOrNull?.name ?? '',
+          onChanged: (p) => setState(() => _point = p),
+        ),
+
         const SizedBox(height: Space.sm),
         SwitchListTile(
           value: _default,

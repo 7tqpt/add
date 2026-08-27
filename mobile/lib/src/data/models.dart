@@ -1,6 +1,8 @@
 // أنواع ما يقرؤه التطبيق — أضيق مما في القاعدة عمداً: لا عمولات ولا مستحقات
 // شركاء ولا سجل عمليات، فلا داعي لأن يعرف التطبيق شكلها.
 
+import '../core/geo.dart';
+
 class Governorate {
   const Governorate({required this.id, required this.name});
   final String id;
@@ -182,6 +184,7 @@ class Booking {
     required this.paidAmount,
     this.couponCode = '',
     this.discountAmount = 0,
+    this.point,
   });
 
   final String id;
@@ -205,6 +208,10 @@ class Booking {
   final String couponCode;
   final num discountAmount;
 
+  /// موقعُ المناسبة على الخريطة — وهو ما يُسلَّم إلى تطبيق الخرائط ليصل
+  /// مقدّمُ الخدمة إلى بيت العرس.
+  final GeoPoint? point;
+
   factory Booking.fromMap(Map<String, dynamic> m) => Booking(
     id: m['id'] as String,
     reference: (m['reference'] ?? '') as String,
@@ -221,6 +228,7 @@ class Booking {
     paidAmount: (m['paid_amount'] ?? 0) as num,
     couponCode: (m['coupon_code'] ?? '') as String,
     discountAmount: (m['discount_amount'] ?? 0) as num,
+    point: _pointOf(m),
   );
 }
 
@@ -668,6 +676,7 @@ class SavedAddress {
     required this.governorate,
     required this.governorateId,
     required this.isDefault,
+    this.point,
   });
 
   final String id;
@@ -676,6 +685,12 @@ class SavedAddress {
   final String governorate;
   final String? governorateId;
   final bool isDefault;
+
+  /// نقطةُ العنوان على الخريطة، أو `null` لمن لم يحدّد.
+  ///
+  /// **والنصُّ يبقى إلزاميّاً فوقها:** الإحداثيّاتُ تصلح للملاحة ولا تُقرأ،
+  /// ومن قرأ «١٥٫٣٥، ٤٤٫٢٠» لا يعرف أين هي.
+  final GeoPoint? point;
 
   /// ما يُكتب في `bookings.address`: الاسمُ وحدَه لا يكفي من يبحث عن البيت.
   String get forBooking =>
@@ -688,7 +703,20 @@ class SavedAddress {
     governorate: (m['governorate'] ?? '') as String,
     governorateId: m['governorate_id'] as String?,
     isDefault: (m['is_default'] ?? false) as bool,
+    point: _pointOf(m),
   );
+}
+
+/// نقطةٌ من صفٍّ في القاعدة — أو `null` إن نقص أحدُ العمودين.
+///
+/// **وإمّا الاثنان أو لا شيء:** خطُّ عرضٍ بلا طولٍ يُرسم في خليج غينيا.
+/// والقاعدةُ تمنع نصفَ نقطةٍ بقيدٍ، وهذا حارسٌ ثانٍ لصفوفٍ قديمةٍ سبقت القيد.
+GeoPoint? _pointOf(Map<String, dynamic> m) {
+  final lat = (m['latitude'] as num?)?.toDouble();
+  final lng = (m['longitude'] as num?)?.toDouble();
+  if (lat == null || lng == null) return null;
+  final point = GeoPoint(lat, lng);
+  return point.isValid ? point : null;
 }
 
 /// محفظةٌ يُحوّل منها المستخدم — لا بطاقةٌ ولا رقمٌ سرّيّ.

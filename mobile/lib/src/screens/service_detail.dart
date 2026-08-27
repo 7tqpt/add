@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 
 import '../core/format.dart';
+import '../core/geo.dart';
 import '../core/theme.dart';
 import '../data/api.dart';
 import '../data/models.dart';
 import '../data/supabase.dart';
 import '../ui/kit.dart';
 import 'account_extras.dart';
+import 'map_picker.dart';
 import '../ui/media.dart';
 import 'chat.dart';
 import 'provider_public.dart';
@@ -30,6 +32,9 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
   String? _error;
 
   /// الكودُ **بعد أن تحقّق منه الخادم** — لا ما في الحقل.
+  /// موقعُ المناسبة — يأتي مع العنوان من الدفتر، أو يُحدَّد هنا.
+  GeoPoint? _point;
+
   CouponCheck? _applied;
   bool _checking = false;
   String? _couponError;
@@ -44,7 +49,10 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
       final def = saved.where((a) => a.isDefault).firstOrNull;
       // ولا يُكتب فوق ما كتبه بيده إن كان قد بدأ.
       if (def != null && mounted && _address.text.trim().isEmpty) {
-        setState(() => _address.text = def.forBooking);
+        setState(() {
+          _address.text = def.forBooking;
+          _point = def.point;
+        });
       }
     } catch (_) {}
   }
@@ -59,7 +67,11 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
       ),
     );
     if (picked != null && mounted) {
-      setState(() => _address.text = picked.forBooking);
+      setState(() {
+        _address.text = picked.forBooking;
+        // **ونقطتُه معه:** من حفظ موقع بيته مرّةً لا يحدّده في كل حجز.
+        _point = picked.point;
+      });
     }
   }
 
@@ -222,6 +234,7 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
         notes: _notes.text.trim(),
         planId: _planId,
         couponCode: _applied?.code ?? '',
+        point: _point,
       );
       if (!mounted) return;
       showMessage(
@@ -365,6 +378,14 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
                         onPressed: _pickAddress,
                       ),
                     ),
+                  ),
+                  const SizedBox(height: Space.sm),
+                  // موقعُ العرس على الخريطة — يصل مقدّمَ الخدمة فيفتحه في
+                  // خرائط جهازه بدل أن يتّصل ليسأل عن الطريق.
+                  LocationRow(
+                    point: _point,
+                    governorate: '',
+                    onChanged: (p) => setState(() => _point = p),
                   ),
                   const SizedBox(height: Space.md),
                   if (_plans.isNotEmpty) ...[

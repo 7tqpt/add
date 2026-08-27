@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import 'package:supabase_flutter/supabase_flutter.dart' show FileOptions, PostgrestException;
 
+import '../core/geo.dart';
 import 'models.dart';
 import 'supabase.dart';
 import 'demo.dart';
@@ -407,10 +408,13 @@ class Api {
     /// ويُعاد فحصُه في الخادم لا يُصدَّق من هنا: بين شاشة التحقّق وضغطة
     /// التأكيد دقائقُ تنتهي فيها الحملة أو ينفد عددُها.
     String couponCode = '',
+
+    /// موقعُ المناسبة — يصل مقدّمَ الخدمة فيفتحه في خرائط جهازه.
+    GeoPoint? point,
   }) async {
     if (!isSupabaseConfigured) {
       return demoDelay(demoCreateBooking(
-          serviceId, eventDate, eventTime, guests, address, couponCode));
+          serviceId, eventDate, eventTime, guests, address, couponCode, point));
     }
     final result = await db.rpc(
       'api_create_booking',
@@ -424,6 +428,8 @@ class Api {
         'p_notes': notes,
         'p_pay_full': false,
         'p_coupon_code': couponCode,
+        'p_latitude': point?.lat,
+        'p_longitude': point?.lng,
       },
     );
     final map = result is List ? result.first : result;
@@ -1107,6 +1113,13 @@ class Api {
     String? governorateId,
     String? governorateName,
     bool makeDefault = false,
+
+    /// نقطةُ العنوان، أو `null` لِمن لم يحدّد — **ولمن أراد محوَ نقطته**.
+    ///
+    /// وتُرسَل دائماً لا حين تكون: القاعدةُ تكتب ما يصلها كما هو، فلو
+    /// أُسقط المعاملُ حين يكون فارغاً لَما استطاع من وضع نقطةً خطأً أن
+    /// يزيلها أبداً.
+    GeoPoint? point,
   }) async {
     if (!isSupabaseConfigured) {
       demoSaveAddress(
@@ -1116,6 +1129,7 @@ class Api {
         governorateId: governorateId,
         governorate: governorateName,
         makeDefault: makeDefault,
+        point: point,
       );
       return;
     }
@@ -1125,6 +1139,8 @@ class Api {
       'p_details': details,
       'p_governorate_id': governorateId,
       'p_default': makeDefault,
+      'p_latitude': point?.lat,
+      'p_longitude': point?.lng,
     });
   }
 

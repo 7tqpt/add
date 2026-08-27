@@ -14,7 +14,7 @@ import { BrandLockup } from '@/components/brand/Brand'
  * الرابطُ واحداً لا يحتاج استضافةً ثانية.
  */
 
-const UPDATED = '٢٧ أغسطس ٢٠٢٦'
+const UPDATED = '٢٨ أغسطس ٢٠٢٦'
 
 function LegalShell({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -93,7 +93,8 @@ export function PrivacyPage() {
             </>,
             <>
               <strong className="text-ink">عناوينك المحفوظة</strong> إن حفظتها لتوفّر كتابتها في كل
-              حجز.
+              حجز، <strong className="text-ink">ونقطةً على الخريطة</strong> إن اخترتَها بنفسك —
+              وهي اختيارية، وتصل مقدّمَ الخدمة الذي حجزتَ منه ليجد مكان المناسبة.
             </>,
             <>
               <strong className="text-ink">وسيلة استلامك للمبالغ المستردّة:</strong> نوعُ المحفظة
@@ -120,8 +121,10 @@ export function PrivacyPage() {
           ]}
         />
         <p>
-          <strong className="text-ink">ولا نطلب موقعك الجغرافي</strong>، ولا ندخل دفتر جهاتك، ولا
-          نقرأ رسائلك خارج التطبيق.
+          <strong className="text-ink">ولا نقرأ موقع جهازك.</strong> التطبيق لا يطلب إذن الموقع
+          أصلاً ولا يستطيع تحديد مكانك. والنقطةُ التي تُحفظ مع عنوانك أنت من يضعها بيدك على
+          الخريطة أو يلصق رابطها، ولك أن تحذفها متى شئت من «حسابي ← العناوين». ولا ندخل دفتر
+          جهاتك، ولا نقرأ رسائلك خارج التطبيق.
         </p>
       </Section>
 

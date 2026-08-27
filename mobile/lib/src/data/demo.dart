@@ -1,3 +1,4 @@
+import '../core/geo.dart';
 import 'models.dart';
 
 // بيانات تجريبية تعمل بلا خادم.
@@ -660,7 +661,7 @@ num _demoDiscount(
 }
 
 Booking demoCreateBooking(String serviceId, String date, String? time, int guests,
-    String address, [String couponCode = '']) {
+    String address, [String couponCode = '', GeoPoint? point]) {
   final service = demoServices.firstWhere((s) => s.id == serviceId);
   final key = couponCode.trim().toUpperCase();
   num discount = 0;
@@ -688,6 +689,7 @@ Booking demoCreateBooking(String serviceId, String date, String? time, int guest
     paidAmount: 0,
     couponCode: key.isEmpty ? '' : key,
     discountAmount: discount,
+    point: point,
   );
   demoBookings = [booking, ...demoBookings];
   return booking;
@@ -933,6 +935,7 @@ SavedAddress demoSaveAddress({
   String? governorateId,
   String? governorate,
   bool makeDefault = false,
+  GeoPoint? point,
 }) {
   final first = demoAddresses.isEmpty;
   final isDefault = makeDefault || first;
@@ -947,6 +950,7 @@ SavedAddress demoSaveAddress({
             governorate: a.governorate,
             governorateId: a.governorateId,
             isDefault: false,
+            point: a.point,
           )
         else
           a,
@@ -959,6 +963,7 @@ SavedAddress demoSaveAddress({
     governorate: governorate ?? '',
     governorateId: governorateId,
     isDefault: isDefault,
+    point: point,
   );
   final at = demoAddresses.indexWhere((a) => a.id == row.id);
   if (at >= 0) {
