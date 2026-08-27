@@ -74,6 +74,7 @@ dependencies:
   # نوعُ الإحداثيّة الذي تطلبه `flutter_map` في واجهتها؛ تجرّها هي أصلاً،
   # وذِكرُها هنا يجعل الاستيرادَ صريحاً ولا يزيد شيئاً في الحزمة.
   latlong2: ^0.10.1
+  pdfx: ^2.11.0
 dev_dependencies:
   flutter_test:
     sdk: flutter
