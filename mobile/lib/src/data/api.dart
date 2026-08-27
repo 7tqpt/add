@@ -401,9 +401,16 @@ class Api {
     /// الحجوزات» و«المدفوع» و«المتبقّي عليك» أصفاراً في شاشة الخطة مهما حجز.
     /// والبيانات التجريبية كانت تخفي ذلك لأن أرقامها مكتوبةٌ بخط اليد.
     String? planId,
+
+    /// كودُ خصمٍ **تحقّق منه العميل** قبل الضغط، أو فراغ.
+    ///
+    /// ويُعاد فحصُه في الخادم لا يُصدَّق من هنا: بين شاشة التحقّق وضغطة
+    /// التأكيد دقائقُ تنتهي فيها الحملة أو ينفد عددُها.
+    String couponCode = '',
   }) async {
     if (!isSupabaseConfigured) {
-      return demoDelay(demoCreateBooking(serviceId, eventDate, eventTime, guests, address));
+      return demoDelay(demoCreateBooking(
+          serviceId, eventDate, eventTime, guests, address, couponCode));
     }
     final result = await db.rpc(
       'api_create_booking',
@@ -416,10 +423,28 @@ class Api {
         'p_address': address,
         'p_notes': notes,
         'p_pay_full': false,
+        'p_coupon_code': couponCode,
       },
     );
     final map = result is List ? result.first : result;
     return Booking.fromMap(Map<String, dynamic>.from(map as Map));
+  }
+
+  /// يتحقّق من كودِ خصمٍ على خدمةٍ بعينها، أو يرمي برسالةٍ تُعرض كما هي.
+  ///
+  /// والقيمةُ العائدة **المبلغُ المطبَّق فعلاً** لا قيمةُ الكود — انظر
+  /// `CouponCheck`.
+  static Future<CouponCheck> checkCoupon(String code, String serviceId) async {
+    if (!isSupabaseConfigured) {
+      return demoDelay(demoCheckCoupon(code, serviceId));
+    }
+    final result = await db.rpc(
+      'api_check_coupon',
+      params: {'p_code': code, 'p_service_id': serviceId},
+    );
+    final row = rowOrNull(result, key: 'code');
+    if (row == null) throw 'هذا الكود غير صحيح';
+    return CouponCheck.fromMap(row);
   }
 
   static Future<void> respondToBooking(String id, bool accept, {String reason = ''}) async {

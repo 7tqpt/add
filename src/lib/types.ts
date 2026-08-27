@@ -473,6 +473,37 @@ export interface SubscriptionPlan {
   subscribers_count: number
 }
 
+export type CouponKind = 'percent' | 'fixed'
+
+/**
+ * كودُ خصمٍ يكتبه العميل عند الحجز.
+ *
+ * و`is_live` تأتي محسوبةً من `v_coupons` لا تُحسب هنا: «سارٍ» يعني الفعّال
+ * الذي بدأ ولم ينتهِ ولم ينفد عددُه — وأربعةُ شروطٍ مكرّرةٍ في اللوحة وفي
+ * التطبيق وفي تقريرٍ تفترق بمرور الوقت في تعريف «سارٍ» نفسه.
+ */
+export interface Coupon {
+  id: string
+  code: string
+  description: string
+  kind: CouponKind
+  value: number
+  max_discount: number
+  min_total: number
+  category_id: string | null
+  category_name: string | null
+  starts_at: string
+  ends_at: string | null
+  max_uses: number
+  max_uses_per_user: number
+  used_count: number
+  is_active: boolean
+  is_live: boolean
+  redemptions: number
+  total_discount: number
+  created_at: string
+}
+
 export type PromotionKind = 'featured' | 'banner' | 'category_top'
 
 export type PromotionStatus = 'scheduled' | 'active' | 'ended' | 'cancelled'

@@ -4,6 +4,7 @@
 // **وكلٌّ منها يخدم شاشةً قائمة لا يقف وحده:** العنوان يملأ حقلَ الحجز الذي
 // كان يُكتب في كل مرّة، والمحفظة تملأ حقلَ الحوالة الذي كان يُكتب مع كل دفعة.
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../core/session.dart';
 import '../core/theme.dart';
@@ -687,10 +688,77 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ],
                 ),
 
+                // ── القانونيّ ──────────────────────────────────────────
+                //
+                // **ورابطان داخل التطبيق لا في المتجر وحده.** «جوجل بلاي»
+                // يشترط سياسةَ خصوصيّةٍ في صفحة التطبيق **وداخله**، ومن يبحث
+                // عمّا يُجمع من بياناته يبحث عنه هنا لا في المتجر.
+                const SizedBox(height: Space.lg),
+                const SectionTitle('عن التطبيق'),
+                const SizedBox(height: Space.sm),
+                AppCard(
+                  children: [
+                    _LegalLink(
+                      icon: Icons.privacy_tip_outlined,
+                      label: 'سياسة الخصوصية',
+                      url: 'https://sdd.company/privacy',
+                    ),
+                    const Divider(height: 1, color: AppColors.hairline),
+                    _LegalLink(
+                      icon: Icons.description_outlined,
+                      label: 'شروط الاستخدام',
+                      url: 'https://sdd.company/terms',
+                    ),
+                  ],
+                ),
+
                 const SizedBox(height: Space.xl),
                 const Center(child: Muted('الإصدار 1.0.0', size: 11)),
               ],
             ),
+    );
+  }
+}
+
+
+/// رابطٌ يفتح صفحةً قانونيّةً في المتصفّح.
+///
+/// وخارج التطبيق لا داخله: الصفحةُ تُحدَّث بلا إصدارٍ جديد، ونسخةٌ مدفونةٌ في
+/// الشيفرة تتقادم ويبقى المستخدم يقرأ سياسةً بطلت.
+class _LegalLink extends StatelessWidget {
+  const _LegalLink({required this.icon, required this.label, required this.url});
+
+  final IconData icon;
+  final String label;
+  final String url;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      // العنوانُ في المفتاح ليُقاس: صفٌّ يُضغط ويفتح `sdd.company/privcy`
+      // يمرّ في كلّ حارسٍ يسأل عن النصّ، ويقع في وجه المراجِع صفحةَ «غير
+      // موجود» — وهو أسوأُ من ألّا يكون هناك رابط.
+      key: ValueKey(url),
+      onTap: () async {
+        final ok = await launchUrl(
+          Uri.parse(url),
+          mode: LaunchMode.externalApplication,
+        );
+        if (!ok && context.mounted) {
+          showMessage(context, 'تعذّر فتح الرابط — افتح $url في متصفّحك.');
+        }
+      },
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: Space.md),
+        child: Row(
+          children: [
+            Icon(icon, size: 20, color: AppColors.accent),
+            const SizedBox(width: Space.md),
+            Expanded(child: Text(label)),
+            const Icon(Icons.open_in_new, size: 16, color: AppColors.muted),
+          ],
+        ),
+      ),
     );
   }
 }

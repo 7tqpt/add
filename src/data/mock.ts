@@ -6,6 +6,7 @@ import type {
   Booking,
   BookingStatus,
   CancellationPolicy,
+  Coupon,
   DailyBreakdown,
   Dispute,
   DisputeMessage,
@@ -875,6 +876,39 @@ export const mockDisputeMessages: DisputeMessage[] = mockDisputes.flatMap((dispu
 // ---------------------------------------------------------------------------
 // الدخل
 // ---------------------------------------------------------------------------
+
+const iso = (days: number) =>
+  new Date(Date.now() + days * 86_400_000).toISOString()
+
+export const mockCoupons: Coupon[] = [
+  {
+    id: 'cp_eid', code: 'EID25', description: 'حملة العيد',
+    kind: 'percent', value: 25, max_discount: 30_000, min_total: 100_000,
+    category_id: null, category_name: null,
+    starts_at: iso(-6), ends_at: iso(18),
+    max_uses: 500, max_uses_per_user: 1, used_count: 37,
+    is_active: true, is_live: true, redemptions: 37, total_discount: 742_000,
+    created_at: iso(-7),
+  },
+  {
+    id: 'cp_launch', code: 'SDD5000', description: 'خصم الإطلاق',
+    kind: 'fixed', value: 5_000, max_discount: 0, min_total: 0,
+    category_id: null, category_name: null,
+    starts_at: iso(-60), ends_at: iso(-3),
+    max_uses: 0, max_uses_per_user: 1, used_count: 214,
+    is_active: true, is_live: false, redemptions: 214, total_discount: 1_070_000,
+    created_at: iso(-62),
+  },
+  {
+    id: 'cp_halls', code: 'HALL10', description: 'خصم القاعات',
+    kind: 'percent', value: 10, max_discount: 0, min_total: 200_000,
+    category_id: 'c1', category_name: 'القاعات والخيام',
+    starts_at: iso(-2), ends_at: null,
+    max_uses: 0, max_uses_per_user: 2, used_count: 5,
+    is_active: false, is_live: false, redemptions: 5, total_discount: 310_000,
+    created_at: iso(-2),
+  },
+]
 
 export const mockSubscriptionPlans: SubscriptionPlan[] = [
   {

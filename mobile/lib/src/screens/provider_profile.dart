@@ -54,6 +54,25 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen> {
     });
   }
 
+  /// يفتح شاشةً لها شريطُ عنوانٍ خاصّ بها — كما في «حسابي».
+  void _push(String title, Widget body) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => Scaffold(appBar: AppBar(title: Text(title)), body: body),
+      ),
+    );
+  }
+
+  Future<void> _confirmSignOut() async {
+    final yes = await confirmDanger(
+      context,
+      title: 'تسجيل الخروج؟',
+      body: 'ستحتاج إلى بريدك وكلمة مرورك للدخول مرّةً أخرى.',
+      confirm: 'خروج',
+    );
+    if (yes == true) widget.session.signOut();
+  }
+
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<ProviderProfile?>(
@@ -63,115 +82,146 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen> {
         if (snap.hasError) return ErrorBlock(message: messageOf(snap.error!));
         final p = snap.data;
 
-        return ListView(
-          padding: EdgeInsets.fromLTRB(
-            Space.lg, glassHeaderTop(context), Space.lg, Space.lg),
-          children: [
-            if (p != null) ...[
-              AppCard(
+        // **نفسُ ترتيب «حسابي»:** رأسٌ نبيذيٌّ ثمّ ورقةُ أبوابٍ صفّاً صفّاً.
+        //
+        // وكان ستَّ بطاقاتٍ في كلٍّ عنوانٌ وسطرا شرحٍ وزرّ — فيصير البابُ
+        // الواحد أربعةَ أسطر، ويقرأ صاحبُ القاعة شاشتين ليصل إلى «مستحقّاتي».
+        // وما يُبحث عنه هنا اسمُ الباب لا شرحُه.
+        if (p == null) {
+          return ListView(
+            padding: EdgeInsets.fromLTRB(
+              Space.lg, glassHeaderTop(context), Space.lg, glassNavSpace),
+            children: [
+              const AppCard(
                 children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // الشعارُ يُضغط فيُبدَّل: مكانُ تغيير الصورة هو الصورةُ
-                      // نفسها، لا زرٌّ في آخر الشاشة يُبحث عنه.
-                      _Logo(
-                        profile: p,
-                        authUserId: widget.session.userId,
-                        onDone: _reload,
-                      ),
-                      const SizedBox(width: Space.md),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Flexible(
-                                  child: SectionTitle(
-                                    p.businessName.isEmpty ? p.fullName : p.businessName,
-                                  ),
-                                ),
-                                // علامةُ التوثيق إلى جانب اسمه هو أيضاً: هي ما
-                                // يراه العميل، فيعرف صاحبُها ما ربحه بتوثيقه.
-                                if (p.status == 'verified') ...[
-                                  const SizedBox(width: 5),
-                                  const VerifiedMark(size: 17),
-                                ],
-                              ],
-                            ),
-                            const SizedBox(height: Space.xs),
-                            Muted(p.governorate),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: Space.sm),
-                      StatusBadge(
-                        providerStatusLabel(p.status),
-                        color: providerStatusColor(p.status),
-                      ),
-                    ],
-                  ),
-                  if (p.bio.isNotEmpty) ...[
-                    const SizedBox(height: Space.md),
-                    Text(p.bio, style: const TextStyle(height: 1.8)),
-                  ],
-                  const SizedBox(height: Space.md),
-                  // «كما يراك العميل» لا «تعديل»: صاحبُ القاعة يريد أن يرى
-                  // واجهته قبل أن يعدّلها، ومن رآها عرف ما ينقصها.
-                  OutlinedButton.icon(
-                    onPressed: () => Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => PublicProviderScreen(providerId: p.id, name: p.businessName),
-                      ),
-                    ),
-                    icon: const Icon(Icons.visibility_outlined, size: 20),
-                    label: const Text('ملفّي كما يراه العميل'),
-                  ),
-                  const SizedBox(height: Space.sm),
-                  OutlinedButton.icon(
-                    onPressed: () => _edit(p),
-                    icon: const Icon(Icons.edit_outlined, size: 20),
-                    label: const Text('تعديل الاسم والتعريف'),
-                  ),
-                  if (p.status == 'pending') ...[
-                    const SizedBox(height: Space.md),
-                    const Text(
-                      'طلبك قيد المراجعة. لن تستقبل حجوزات حتى تُقبل مستنداتك.',
-                      style: TextStyle(color: AppColors.warning, fontSize: 13, height: 1.7),
-                    ),
-                    // بلا مسؤولٍ يوثّق من اللوحة يقف المجرِّب هنا ولا يرى شاشة
-                    // الطلبات. الزرّ موسومٌ «تجريبي» ولا يظهر إطلاقاً حين تُمرَّر
-                    // مفاتيح مشروع حقيقي — التوثيق حينها قرار الإدارة وحدها.
-                    if (!isSupabaseConfigured) ...[
-                      const SizedBox(height: Space.sm),
-                      TextButton(
-                        onPressed: _approveInDemo,
-                        child: const Text('(تجريبي) محاكاة قبول الإدارة'),
-                      ),
-                    ],
-                  ],
-                  if (p.status == 'rejected' && p.rejectionReason.isNotEmpty) ...[
-                    const SizedBox(height: Space.md),
-                    Text(
-                      p.rejectionReason,
-                      style: const TextStyle(color: AppColors.critical, fontSize: 13, height: 1.7),
-                    ),
-                  ],
-                  // الزرّ في البطاقة نفسها لا في آخر الشاشة: الجملة التي تطلب
-                  // المستندات مكتوبةٌ فوقه مباشرة، فيقع الطريق حيث يُطلب.
-                  const SizedBox(height: Space.md),
-                  OutlinedButton.icon(
-                    onPressed: () => Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => DocumentsScreen(session: widget.session)),
-                    ),
-                    icon: const Icon(Icons.badge_outlined, size: 20),
-                    label: const Text('مستندات التوثيق'),
-                  ),
+                  SectionTitle('لا ملف مقدّم خدمة'),
+                  SizedBox(height: Space.sm),
+                  Text('لم تُقدّم طلباً بعد.'),
                 ],
               ),
               const SizedBox(height: Space.md),
-              AppCard(
+              OutlinedButton.icon(
+                onPressed: () => widget.session.switchTo(provider: false),
+                icon: const Icon(Icons.swap_horiz, size: 20),
+                label: const Text('العودة إلى وضع العميل'),
+              ),
+            ],
+          );
+        }
+
+        return ListView(
+          padding: EdgeInsets.only(bottom: glassNavSpace),
+          children: [
+            ProfileHeader(
+              // الشعارُ يُضغط فيُبدَّل: مكانُ تغيير الصورة هو الصورةُ نفسها،
+              // لا زرٌّ في آخر الشاشة يُبحث عنه.
+              avatar: _Logo(
+                profile: p,
+                authUserId: widget.session.userId,
+                onDone: _reload,
+                size: 64,
+              ),
+              title: p.businessName.isEmpty ? p.fullName : p.businessName,
+              // علامةُ التوثيق إلى جانب اسمه هو أيضاً: هي ما يراه العميل،
+              // فيعرف صاحبُها ما ربحه بتوثيقه.
+              titleTrailing:
+                  p.status == 'verified' ? const VerifiedMark(size: 17) : null,
+              subtitle: p.governorate,
+              badge: providerStatusLabel(p.status),
+              // **والحالُ العالقة تُقال في الرأس لا تُدفن في بطاقة.** من طلبه
+              // قيد المراجعة لا يستقبل حجزاً واحداً، وهو أوّلُ ما يجب أن يعرفه
+              // حين يفتح شاشته.
+              footer: switch (p.status) {
+                'pending' => const _HeaderNote(
+                  'طلبك قيد المراجعة — لن تستقبل حجوزات حتى تُقبل مستنداتك.',
+                ),
+                'rejected' when p.rejectionReason.isNotEmpty =>
+                  _HeaderNote(p.rejectionReason),
+                _ => null,
+              },
+            ),
+
+            MenuSheet(
+              children: [
+                // «كما يراك العميل» لا «تعديل»: صاحبُ القاعة يريد أن يرى
+                // واجهته قبل أن يعدّلها، ومن رآها عرف ما ينقصها.
+                MenuRow(
+                  icon: Icons.visibility_outlined,
+                  label: 'ملفّي كما يراه العميل',
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          PublicProviderScreen(providerId: p.id, name: p.businessName),
+                    ),
+                  ),
+                ),
+                MenuRow(
+                  icon: Icons.edit_outlined,
+                  label: 'تعديل الاسم والتعريف',
+                  onTap: () => _edit(p),
+                ),
+                MenuRow(
+                  icon: Icons.badge_outlined,
+                  label: 'مستندات التوثيق',
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => DocumentsScreen(session: widget.session),
+                    ),
+                  ),
+                  last: true,
+                ),
+
+                const MenuGap(),
+
+                MenuRow(
+                  icon: Icons.workspace_premium_outlined,
+                  label: 'الباقات والاشتراك',
+                  onTap: () => _push(
+                    'اشتراكك', SubscriptionScreen(session: widget.session)),
+                ),
+                MenuRow(
+                  icon: Icons.account_balance_wallet_outlined,
+                  label: 'مستحقّاتي',
+                  onTap: () => _push(
+                    'مستحقّاتي', EarningsScreen(session: widget.session)),
+                  last: true,
+                ),
+
+                const MenuGap(),
+
+                MenuRow(
+                  icon: Icons.support_agent_outlined,
+                  label: 'الدعم',
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => SupportScreen(session: widget.session),
+                    ),
+                  ),
+                ),
+                MenuRow(
+                  icon: Icons.swap_horiz,
+                  label: 'العودة إلى وضع العميل',
+                  onTap: () => widget.session.switchTo(provider: false),
+                ),
+                // **ويُسأل عن الخروج هنا كما يُسأل عنه في «حسابي».** كانت
+                // ضغطةٌ واحدةٌ بالخطأ تُخرج صاحبَ القاعة ثم تطلب منه بريده
+                // وكلمته — والسؤالُ أرخص من ذلك، والشاشتان تتبعان عادةً واحدة.
+                MenuRow(
+                  icon: Icons.logout_rounded,
+                  label: 'تسجيل الخروج',
+                  tone: AppColors.critical,
+                  onTap: () => _confirmSignOut(),
+                  last: true,
+                ),
+              ],
+            ),
+
+            // ── أرقامك ─────────────────────────────────────────────────────
+            // **تحت الأبواب لا فوقها:** الأرقام تُقرأ مرّةً في الأسبوع،
+            // والأبوابُ تُفتح كل يوم — وما يُفتح كل يوم يُقدَّم.
+            Padding(
+              padding: const EdgeInsets.fromLTRB(Space.lg, Space.lg, Space.lg, 0),
+              child: AppCard(
                 children: [
                   const SectionTitle('أرقامك'),
                   KeyValue('التقييم', p.rating > 0 ? '${p.rating}' : 'لا تقييم بعد'),
@@ -180,83 +230,20 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen> {
                   KeyValue('إجمالي الأرباح', formatMoney(p.totalEarnings)),
                 ],
               ),
-              const SizedBox(height: Space.md),
-              // الاشتراك في بطاقةٍ لا في تبويبٍ خامس: المزوّد يفتحه مرّةً في
-              // الشهر، وتبويبٌ دائمٌ لِما يُفتح مرّةً يضيّق ما يُفتح كل يوم.
-              AppCard(
-                children: [
-                  const SectionTitle('اشتراكك'),
-                  const SizedBox(height: Space.sm),
-                  const Text(
-                    'الباقة تحدّد ظهورك في نتائج البحث وعدد خدماتك.',
-                    style: TextStyle(height: 1.7),
-                  ),
-                  const SizedBox(height: Space.md),
-                  OutlinedButton.icon(
-                    onPressed: () => Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => Scaffold(
-                          appBar: AppBar(title: const Text('اشتراكك')),
-                          body: SubscriptionScreen(session: widget.session),
-                        ),
-                      ),
-                    ),
-                    icon: const Icon(Icons.workspace_premium_outlined, size: 20),
-                    label: const Text('الباقات والاشتراك'),
-                  ),
-                  const SizedBox(height: Space.sm),
-                  OutlinedButton.icon(
-                    onPressed: () => Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => Scaffold(
-                          appBar: AppBar(title: const Text('مستحقّاتي')),
-                          body: EarningsScreen(session: widget.session),
-                        ),
-                      ),
-                    ),
-                    icon: const Icon(Icons.account_balance_wallet_outlined, size: 20),
-                    label: const Text('مستحقّاتي'),
-                  ),
-                ],
-              ),
-            ] else
-              const AppCard(
-                children: [
-                  SectionTitle('لا ملف مقدّم خدمة'),
-                  SizedBox(height: Space.sm),
-                  Text('لم تُقدّم طلباً بعد.'),
-                ],
-              ),
-            const SizedBox(height: Space.md),
-            AppCard(
-              children: [
-                const SectionTitle('الدعم'),
-                const SizedBox(height: Space.sm),
-                const Text(
-                  'مشكلة في المستندات أو الحجوزات؟ افتح تذكرة وتصلك ردود الإدارة.',
-                  style: TextStyle(height: 1.7),
+            ),
+
+            // بلا مسؤولٍ يوثّق من اللوحة يقف المجرِّب هنا ولا يرى شاشة
+            // الطلبات. الزرّ موسومٌ «تجريبي» ولا يظهر إطلاقاً حين تُمرَّر
+            // مفاتيح مشروع حقيقي — التوثيق حينها قرار الإدارة وحدها.
+            if (p.status == 'pending' && !isSupabaseConfigured)
+              Center(
+                child: TextButton(
+                  onPressed: _approveInDemo,
+                  child: const Text('(تجريبي) محاكاة قبول الإدارة'),
                 ),
-                const SizedBox(height: Space.md),
-                OutlinedButton.icon(
-                  onPressed: () => Navigator.of(
-                    context,
-                  ).push(MaterialPageRoute(builder: (_) => SupportScreen(session: widget.session))),
-                  icon: const Icon(Icons.support_agent, size: 20),
-                  label: const Text('تذاكر الدعم'),
-                ),
-              ],
-            ),
-            const SizedBox(height: Space.md),
-            OutlinedButton.icon(
-              onPressed: () => widget.session.switchTo(provider: false),
-              icon: const Icon(Icons.swap_horiz, size: 20),
-              label: const Text('العودة إلى وضع العميل'),
-            ),
-            const SizedBox(height: Space.sm),
-            TextButton(
-              onPressed: () => widget.session.signOut(),
-              child: const Text('تسجيل الخروج'),
-            ),
+              ),
+
+            const SizedBox(height: Space.lg),
           ],
         );
       },
@@ -264,10 +251,53 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen> {
   }
 }
 
+/// سطرُ حالٍ داخل الرأس النبيذيّ.
+///
+/// **وحبرُه أبيضُ لا كهرمانيٌّ ولا أحمر:** لونا التحذير والخطر قِيسا على
+/// أرضيةٍ فاتحة، وعلى النبيذيّ ينزلان تحت العتبة. والأرضيةُ الشفّافة تفصله
+/// عمّا حوله، والنصُّ يقول ما يقوله اللون.
+class _HeaderNote extends StatelessWidget {
+  const _HeaderNote(this.text);
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(Space.md),
+    decoration: BoxDecoration(
+      color: Colors.white.withValues(alpha: 0.14),
+      borderRadius: BorderRadius.circular(12),
+    ),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Icon(Icons.info_outline, size: 18, color: AppColors.goldOnAccent),
+        const SizedBox(width: Space.sm),
+        Expanded(
+          child: Text(
+            text,
+            style: const TextStyle(
+              fontSize: 12.5,
+              height: 1.7,
+              color: OnAccent.ink,
+              fontFamilyFallback: arabicFallback,
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
 /// شعارُ المزوّد في شاشته — يُضغط فيُبدَّل.
 class _Logo extends StatefulWidget {
-  const _Logo({required this.profile, required this.authUserId, required this.onDone});
+  const _Logo({
+    required this.profile,
+    required this.authUserId,
+    required this.onDone,
+    this.size = 62,
+  });
   final ProviderProfile profile;
+  final double size;
 
   /// معرّفُ حساب المصادقة — هو اسمُ المجلّد في السلّة، وسياستُها تحصر الكتابة
   /// فيه. فبلا هذا يرفض التخزينُ الرفعَ ولا يقول التطبيق لماذا.
@@ -352,7 +382,7 @@ class _LogoState extends State<_Logo> {
                 ? widget.profile.fullName
                 : widget.profile.businessName,
             imageUrl: Api.avatarUrl(widget.profile.logoPath),
-            size: 62,
+            size: widget.size,
           ),
           // شارةُ الكاميرا: بلا علامةٍ ظاهرة لا يعرف أحدٌ أن القرص يُضغط،
           // فيبقى الشعار فارغاً وصاحبُه يظنّ أن التطبيق لا يقبل صورة.
@@ -366,7 +396,7 @@ class _LogoState extends State<_Logo> {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: AppColors.accent,
-                border: Border.all(color: AppColors.surface, width: 2),
+                border: Border.all(color: AppColors.accentDeep, width: 2),
               ),
               child: _busy
                   ? const SizedBox(

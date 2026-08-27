@@ -13,90 +13,6 @@ import 'edit_profile.dart';
 import 'money.dart';
 import 'support.dart';
 
-/// صفٌّ في قائمة الحساب.
-///
-/// **قائمةٌ لا بطاقاتٌ متتابعة، وهذا هو الفرق.** كانت الصفحةُ ستَّ بطاقاتٍ في
-/// كلٍّ منها عنوانٌ وسطرا شرحٍ وزرّ — فيصير البابُ الواحد أربعةَ أسطر، وستّةُ
-/// أبوابٍ شاشتين ونصفاً من التمرير. وما يُبحث عنه هنا **اسمُ الباب** لا
-/// شرحُه: من فتح «حسابي» يعرف ما يريد، ويريد أن يصل إليه بضغطة.
-class _MenuRow extends StatelessWidget {
-  const _MenuRow({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-    this.tone,
-    this.last = false,
-  });
-
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-
-  /// لونٌ يخصّ الصفّ — للخروج وحده. وما عداه بلون العلامة.
-  final Color? tone;
-
-  /// آخرُ صفٍّ في مجموعته فلا خطَّ تحته.
-  final bool last;
-
-  @override
-  Widget build(BuildContext context) {
-    final colour = tone ?? AppColors.accent;
-    return InkWell(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: Space.lg, vertical: 14),
-        decoration: BoxDecoration(
-          border: last
-              ? null
-              : const Border(bottom: BorderSide(color: AppColors.hairline)),
-        ),
-        child: Row(
-          children: [
-            Icon(icon, size: 22, color: colour),
-            const SizedBox(width: Space.md),
-            Expanded(
-              child: Text(
-                label,
-                style: TextStyle(
-                  fontSize: 14.5,
-                  fontWeight: FontWeight.w600,
-                  color: tone ?? AppColors.ink,
-                  fontFamilyFallback: arabicFallback,
-                ),
-              ),
-            ),
-            // سهمٌ لا أيقونةٌ ثانية: الصفُّ يُفتح، والسهمُ يقول ذلك.
-            Icon(Icons.chevron_left, size: 20, color: AppColors.muted),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// الورقةُ الفاتحة التي تحمل الصفوف — بحوافّ عليا مستديرة تحت الرأس النبيذيّ.
-class _MenuSheet extends StatelessWidget {
-  const _MenuSheet({required this.children});
-  final List<Widget> children;
-
-  @override
-  Widget build(BuildContext context) => Container(
-    decoration: const BoxDecoration(
-      color: AppColors.surface,
-      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-    ),
-    clipBehavior: Clip.antiAlias,
-    child: Column(children: children),
-  );
-}
-
-/// فاصلٌ بين مجموعتين من الصفوف.
-class _MenuGap extends StatelessWidget {
-  const _MenuGap();
-  @override
-  Widget build(BuildContext context) =>
-      Container(height: Space.sm, color: AppColors.page);
-}
 
 class AccountScreen extends StatefulWidget {
   const AccountScreen({super.key, required this.session});
@@ -150,22 +66,37 @@ class _AccountScreenState extends State<AccountScreen> {
         //
         // ويمتدّ إلى حافّتَي الشاشة ويبدأ من أعلاها — فيمرّ تحت الشريط
         // الزجاجي بدل أن يقف تحته بحاشيةٍ بيضاء تقطع النبيذيّ نصفين.
-        _IdentityHeader(
-          profile: profile,
-          session: session,
-          avatarVersion: _avatarVersion,
-          provider: provider,
+        ProfileHeader(
+          avatar: _AccountAvatar(
+            profile: profile,
+            fallbackEmail: session.email,
+            version: _avatarVersion,
+            size: 64,
+          ),
+          title: (profile?.fullName.trim().isNotEmpty ?? false)
+              ? profile!.fullName.trim()
+              : session.email,
+          subtitle: (profile?.phone.trim().isNotEmpty ?? false)
+              ? profile!.phone.trim()
+              : ((profile?.fullName.trim().isNotEmpty ?? false) ? session.email : ''),
+          // **والاتجاهُ يتبع ما يُعرض لا الصفحة.** قبل وصول الملفّ يقع البريدُ
+          // في مكان الاسم، وهو لاتينيٌّ دائماً — وبلا `ltr` تتقدّم نقطتُه
+          // وامتدادُه إلى غير موضعهما فيُقرأ مقلوباً. كشفه اختبارٌ سقط حين
+          // أُخرج الرأسُ إلى الكِت وأُسقط عنه الاتجاه.
+          titleLtr: !(profile?.fullName.trim().isNotEmpty ?? false),
+          subtitleLtr: true,
+          badge: weddingRoleLabel(profile?.weddingRole ?? '', provider: provider),
         ),
 
         // ── الأبواب ────────────────────────────────────────────────────────
-        _MenuSheet(
+        MenuSheet(
           children: [
-            _MenuRow(
+            MenuRow(
               icon: Icons.person_outline_rounded,
               label: 'الملف الشخصي',
               onTap: () => _openProfile(context),
             ),
-            _MenuRow(
+            MenuRow(
               icon: Icons.receipt_long_outlined,
               label: 'فواتيري',
               onTap: () => _push(
@@ -174,20 +105,20 @@ class _AccountScreenState extends State<AccountScreen> {
                 InvoicesScreen(session: session),
               ),
             ),
-            _MenuRow(
+            MenuRow(
               icon: Icons.favorite_border_rounded,
               label: 'المفضّلة',
               onTap: () => _push(context, 'المفضّلة', const FavouritesScreen()),
             ),
             // **صارت أبواباً تفتح، لا صفوفاً في لوحةِ تصميم.**
-            _MenuRow(
+            MenuRow(
               icon: Icons.location_on_outlined,
               label: 'العناوين',
               onTap: () => Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const AddressesScreen()),
               ),
             ),
-            _MenuRow(
+            MenuRow(
               icon: Icons.credit_card_outlined,
               label: 'طرق الدفع',
               onTap: () => Navigator.of(context).push(
@@ -196,7 +127,7 @@ class _AccountScreenState extends State<AccountScreen> {
             ),
             // مقدّمُ الخدمة: بابٌ واحدٌ بوجهين — من له ملفٌّ يبدّل الوضع، ومن
             // لا ملفَّ له يطلبه. ولا يُعرض البابان معاً فيحتار أيَّهما له.
-            _MenuRow(
+            MenuRow(
               icon: provider
                   ? Icons.storefront_outlined
                   : Icons.add_business_outlined,
@@ -211,23 +142,23 @@ class _AccountScreenState extends State<AccountScreen> {
               last: true,
             ),
 
-            const _MenuGap(),
+            const MenuGap(),
 
-            _MenuRow(
+            MenuRow(
               icon: Icons.settings_outlined,
               label: 'الإعدادات',
               onTap: () => Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => SettingsScreen(session: session)),
               ),
             ),
-            _MenuRow(
+            MenuRow(
               icon: Icons.support_agent_outlined,
               label: 'الدعم',
               onTap: () => Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => SupportScreen(session: session)),
               ),
             ),
-            _MenuRow(
+            MenuRow(
               icon: Icons.gavel_rounded,
               label: 'النزاعات',
               onTap: () => Navigator.of(context).push(
@@ -237,7 +168,7 @@ class _AccountScreenState extends State<AccountScreen> {
             // الخروجُ بصبغة التحذير وآخرَ القائمة: هو الإجراء الوحيد هنا
             // الذي يُخرجك، فيُعرَف قبل أن يُضغط. ويُسأل عنه لأن ضغطةً بالخطأ
             // تُخرج المستخدم ثم تطلب منه بريده وكلمته.
-            _MenuRow(
+            MenuRow(
               icon: Icons.logout_rounded,
               label: 'تسجيل الخروج',
               tone: AppColors.critical,
@@ -301,122 +232,6 @@ class _AccountScreenState extends State<AccountScreen> {
     if (yes == true) widget.session.signOut();
   }
 
-}
-
-/// الرأسُ النبيذيّ: من أنت، قبل ما تستطيع فعله.
-///
-/// والاسمُ في جهة البداية والصورةُ بعده — كما في لوحة التصميم. والطوقُ الذهبيّ
-/// حول الصورة ليس زينةً وحده: صورةٌ داكنةٌ على نبيذيٍّ داكنٍ تذوب فيه بلا
-/// حدٍّ يفصلها.
-class _IdentityHeader extends StatelessWidget {
-  const _IdentityHeader({
-    required this.profile,
-    required this.session,
-    required this.avatarVersion,
-    required this.provider,
-  });
-
-  final MyProfile? profile;
-  final Session session;
-  final int avatarVersion;
-  final bool provider;
-
-  @override
-  Widget build(BuildContext context) {
-    final name = profile?.fullName.trim() ?? '';
-    final phone = profile?.phone.trim() ?? '';
-
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.fromLTRB(
-        Space.lg, glassHeaderTop(context), Space.lg, Space.xl),
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topRight,
-          end: Alignment.bottomLeft,
-          colors: [AppColors.accentLift, AppColors.accentDeep],
-        ),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  name.isEmpty ? session.email : name,
-                  // **والاتجاهُ يتبع ما يُعرض لا الصفحة.** قبل وصول الملفّ
-                  // يقع البريدُ في مكان الاسم، وهو لاتينيٌّ دائماً: بلا
-                  // `ltr` تتقدّم النقطةُ والامتدادُ إلى غير موضعهما فيُقرأ
-                  // مقلوباً. والاسمُ العربيّ يتبع الصفحة فلا يُقسر.
-                  textDirection: name.isEmpty ? TextDirection.ltr : null,
-                  textAlign: name.isEmpty ? TextAlign.left : null,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 19,
-                    fontWeight: FontWeight.w700,
-                    color: OnAccent.ink,
-                    fontFamilyFallback: arabicFallback,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                // الجوالُ إن وُجد وإلّا البريد: سطرٌ واحدٌ لا سطران، ولا
-                // يُكرَّر البريدُ عنواناً وسطراً تحته.
-                Text(
-                  phone.isNotEmpty ? phone : (name.isEmpty ? '' : session.email),
-                  textDirection: TextDirection.ltr,
-                  textAlign: TextAlign.left,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: OnAccent.inkSoft,
-                    fontFamilyFallback: arabicFallback,
-                  ),
-                ),
-                const SizedBox(height: Space.sm),
-                // **وصارت تقول «عروس» و«عريس» لأنّهما يُحفظان الآن.** كانت
-                // تقول «عميل» لهما جميعاً لأن الاختيار كان يُسأل عنه في «اختر
-                // نوع الحساب» ثمّ يُنسى — يُحفظ في ذاكرة التشغيل لا في
-                // القاعدة. فصار عموداً في `app_users` يُكتب عند إكمال الملفّ.
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: AppColors.goldOnAccent,
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: Text(
-                    weddingRoleLabel(profile?.weddingRole ?? '', provider: provider),
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.accentDeep,
-                      fontFamilyFallback: arabicFallback,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: Space.lg),
-          Container(
-            padding: const EdgeInsets.all(3),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(color: AppColors.goldOnAccent, width: 2),
-            ),
-            child: _AccountAvatar(
-              profile: profile,
-              fallbackEmail: session.email,
-              version: avatarVersion,
-              size: 64,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 /// قرص الصورة في بطاقة الهويّة.

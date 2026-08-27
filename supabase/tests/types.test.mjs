@@ -10,7 +10,8 @@ await db.exec(`
   create or replace function auth.uid() returns uuid language sql stable as $$
     select nullif(current_setting('test.uid', true), '')::uuid $$;
   create role authenticated; create role anon; create role service_role;`)
-for (const f of ['install.sql', 'seed.sql', 'apply.sql', 'support.sql', 'roles.sql', 'invitations.sql']) {
+for (const f of ['install.sql', 'seed.sql', 'apply.sql', 'support.sql', 'roles.sql',
+                 'invitations.sql', 'coupons.sql']) {
   await db.exec(readFileSync(`../${f}`, 'utf8'))
 }
 
@@ -34,6 +35,7 @@ const MAP = {
   Governorate: 'governorates', AppVersion: 'app_versions', AuditEntry: 'audit_log',
   AdminAccount: 'admins',
   SupportTicket: 'v_admin_tickets', SupportMessage: 'support_messages',
+  Coupon: 'v_coupons',
 }
 
 const src = readFileSync('../../src/lib/types.ts', 'utf8')
