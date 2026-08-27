@@ -17,6 +17,7 @@ import { NotificationsPage } from '@/pages/Notifications'
 import { PaymentsPage } from '@/pages/Payments'
 import { PlanDetailPage } from '@/pages/PlanDetail'
 import { PlansPage } from '@/pages/Plans'
+import { CouponsPage } from '@/pages/Coupons'
 import { PromotionsPage } from '@/pages/Promotions'
 import { ProviderDetailPage } from '@/pages/ProviderDetail'
 import { ProvidersPage } from '@/pages/Providers'
@@ -72,6 +73,7 @@ export function App() {
           <Route path="/payments" element={<PaymentsPage />} />
           <Route path="/settlements" element={<SettlementsPage />} />
           <Route path="/promotions" element={<PromotionsPage />} />
+          <Route path="/coupons" element={<CouponsPage />} />
 
           <Route path="/support" element={<SupportPage />} />
           <Route path="/support/:id" element={<SupportTicketPage />} />

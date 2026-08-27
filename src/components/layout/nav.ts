@@ -14,6 +14,7 @@ import {
   ScrollText,
   Scale,
   Settings,
+  Ticket,
   Smartphone,
   Star,
   Users,
@@ -71,6 +72,9 @@ export const NAV_GROUPS: NavGroup[] = [
       { to: '/payments', label: 'عمليات الدفع', icon: CreditCard, area: 'finance', tone: 'emerald' },
       { to: '/settlements', label: 'مستحقات الشركاء', icon: Banknote, area: 'finance', tone: 'emerald' },
       { to: '/promotions', label: 'الاشتراكات والإعلانات', icon: Megaphone, area: 'finance', tone: 'emerald' },
+      // مع المالية لا مع التسويق: الكوبون **مصروف** يُخصم من عمولة المنصّة،
+      // فمن يملك قرار المال يملك قرار الحملة.
+      { to: '/coupons', label: 'أكواد الخصم', icon: Ticket, area: 'finance', tone: 'emerald' },
     ],
   },
   {
