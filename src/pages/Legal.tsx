@@ -202,8 +202,8 @@ export function PrivacyPage() {
       <Section title="٨) للتواصل">
         <p>
           لأي سؤالٍ عن خصوصيتك أو طلبٍ يخصّ بياناتك:{' '}
-          <a href="mailto:privacy@sdd.company" className="text-accent underline-offset-4 hover:underline">
-            privacy@sdd.company
+          <a href="mailto:info@sdd.company" className="text-accent underline-offset-4 hover:underline">
+            info@sdd.company
           </a>
         </p>
       </Section>

@@ -66,5 +66,25 @@ if (guarded) {
      guarded.includes('path="/settings"'))
 }
 
+// ── وعناوينُ البريد موجودةٌ فعلاً ──────────────────────────────────────────
+//
+// **ورابطٌ إلى بريدٍ لا وجود له أسوأُ من ألّا يكون هناك رابط:** يراه المراجِع
+// فيظنّ للمنصّة قناةَ تواصل، ويكتب إليها المستخدمُ في أمر بياناته فترتدّ
+// رسالتُه. وصندوقان فقط قائمان اليوم، فهذا يمنع دخولَ ثالثٍ لم يُنشأ.
+const legal = readFileSync(new URL('../../src/pages/Legal.tsx', import.meta.url), 'utf8')
+const MAILBOXES = ['info@sdd.company', 'support@sdd.company']
+
+const used = [...legal.matchAll(/mailto:([^"']+)/g)].map((m) => m[1])
+ok('في الصفحتين عنوانا بريد', used.length === 2)
+for (const address of used) {
+  ok(`و«${address}» صندوقٌ قائم`, MAILBOXES.includes(address))
+}
+// وكلُّ عنوانٍ يُذكر في النصّ هو عنوانٌ يُرسَل إليه — لا نصٌّ يخالف رابطَه.
+for (const address of MAILBOXES) {
+  if (!used.includes(address)) continue
+  ok(`و«${address}» مكتوبٌ كما هو في النصّ`,
+     legal.split(address).length - 1 >= 2)
+}
+
 console.log(fail === 0 ? '\nالصفحتان القانونيّتان عامّتان.' : `\n${fail} فشل.`)
 process.exit(fail === 0 ? 0 : 1)
