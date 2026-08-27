@@ -65,6 +65,7 @@
 | 25 | `chat_media.sql` | مرفقاتُ المحادثة: صورةٌ وصوتٌ وفيديو وملفّ، وسلّةٌ **خاصّة** — **بعد `chat.sql`** |
 | 26 | `profile_extras.sql` | دورُ صاحب الملفّ في العرس، ودفترُ العناوين، وطرقُ الدفع، والإعدادات، وحذفُ الحساب — **بعد `profile.sql`** |
 | 27 | `coupons.sql` | كودُ الخصم: يكتبه العميل عند الحجز، ويُخصم من عمولة المنصّة لا من مال المزوّد — **بعد `api.sql`** |
+| — | `verify_coupons.sql` | فحص الكوبونات: هل وصل `coupons.sql` كاملاً، وما حصادُ أكوادك |
 | — | `verify_push.sql` | فحص الإشعارات: ما يعمل وما ينقص، وما تفعله لكلٍّ |
 | — | `verify_all.sql` | تحقّق شامل بعد التنفيذ: يقارن الواقع بالمتوقَّع سطراً سطراً |
 
@@ -136,7 +137,8 @@
 | الدالة | ماذا تفعل |
 | --- | --- |
 | `api_register_profile(full_name, phone, governorate, platform)` | يربط حساب المصادقة بملف في المنصة. يُستدعى مرة بعد أول دخول |
-| `api_create_booking(service_id, event_date, event_time, plan_id, guests, address, notes, pay_full)` | ينشئ حجزاً ودفعة معلّقة. **الخادم** يحسب السعر والعربون والعمولة |
+| `api_create_booking(service_id, event_date, event_time, plan_id, guests, address, notes, pay_full, coupon_code)` | ينشئ حجزاً ودفعة معلّقة. **الخادم** يحسب السعر والعربون والعمولة، ويُعيد فحص الكوبون فلا يُصدَّق ما أرسله التطبيق |
+| `api_check_coupon(code, service_id)` | يتحقّق من كودِ خصمٍ على خدمةٍ بعينها، ويُرجع **المبلغ المطبَّق فعلاً** — والأكوادُ نفسها محجوبةٌ عن العملاء |
 | `api_cancel_booking(booking_id, reason)` | يلغي ويحسب المسترد من سلّم السياسة المنسوخ في الحجز |
 | `api_submit_review(booking_id, rating, comment)` | تقييم — بعد تنفيذ الحجز فقط |
 | `api_open_dispute(booking_id, subject, description, category)` | يفتح نزاعاً على حجز يخصّه |
