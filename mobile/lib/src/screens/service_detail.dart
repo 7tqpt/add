@@ -23,10 +23,16 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
   final _guests = TextEditingController(text: '300');
   final _address = TextEditingController();
   final _notes = TextEditingController();
+  final _coupon = TextEditingController();
   DateTime? _date;
   TimeOfDay _time = const TimeOfDay(hour: 20, minute: 0);
   bool _busy = false;
   String? _error;
+
+  /// الكودُ **بعد أن تحقّق منه الخادم** — لا ما في الحقل.
+  CouponCheck? _applied;
+  bool _checking = false;
+  String? _couponError;
 
   /// يملأ العنوان من الافتراضيّ إن وُجد.
   ///
@@ -89,6 +95,7 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
     _guests.dispose();
     _address.dispose();
     _notes.dispose();
+    _coupon.dispose();
     super.dispose();
   }
 
@@ -162,6 +169,29 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
     return day;
   }
 
+  /// يسأل الخادمَ عن الكود، ويعرض **ما سيُخصم فعلاً**.
+  Future<void> _checkCoupon(ServiceItem item) async {
+    final code = _coupon.text.trim();
+    if (code.isEmpty) return;
+    setState(() {
+      _checking = true;
+      _couponError = null;
+    });
+    try {
+      final found = await Api.checkCoupon(code, item.id);
+      if (mounted) setState(() => _applied = found);
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _applied = null;
+          _couponError = messageOf(e);
+        });
+      }
+    } finally {
+      if (mounted) setState(() => _checking = false);
+    }
+  }
+
   Future<void> _book(ServiceItem item) async {
     if (_date == null) {
       setState(() => _error = 'اختر تاريخ العرس.');
@@ -191,11 +221,16 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
         address: _address.text.trim(),
         notes: _notes.text.trim(),
         planId: _planId,
+        couponCode: _applied?.code ?? '',
       );
       if (!mounted) return;
       showMessage(
         context,
-        'رقم حجزك ${booking.reference} — العربون ${formatMoney(booking.depositAmount)}.',
+        booking.discountAmount > 0
+            ? 'رقم حجزك ${booking.reference} — خُصم '
+                '${formatMoney(booking.discountAmount)} بكود ${booking.couponCode}.'
+            : 'رقم حجزك ${booking.reference} — العربون '
+                '${formatMoney(booking.depositAmount)}.',
       );
       Navigator.of(context).pop();
     } catch (e) {
@@ -358,6 +393,73 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
                     ),
                     const SizedBox(height: Space.md),
                   ],
+                  // ── كود الخصم ─────────────────────────────────────────
+                  //
+                  // **ولا يُطبَّق كودٌ لم يتحقّق منه الخادم.** فلو أُرسل ما في
+                  // الحقل كما هو لَظهر الخطأ بعد ضغطة «تأكيد الحجز» — بعد أن
+                  // يكون العميل قد ملأ التاريخ والضيوف والعنوان.
+                  TextField(
+                    controller: _coupon,
+                    textCapitalization: TextCapitalization.characters,
+                    // **وأيُّ حرفٍ يُكتب يُسقط ما تحقّق قبله.** ومن تحقّق من
+                    // كودٍ ثم بدّله بقي الخصمُ القديم معروضاً على الشاشة
+                    // وأُرسل الكود القديم — وهذا كذبٌ على العميل في رقمٍ ماليّ.
+                    onChanged: (_) {
+                      if (_applied != null || _couponError != null) {
+                        setState(() {
+                          _applied = null;
+                          _couponError = null;
+                        });
+                      }
+                    },
+                    decoration: InputDecoration(
+                      labelText: 'كود الخصم (اختياري)',
+                      hintText: 'إن كان لديك كود',
+                      suffixIcon: _checking
+                          ? const Padding(
+                              padding: EdgeInsets.all(12),
+                              child: SizedBox(
+                                height: 18,
+                                width: 18,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              ),
+                            )
+                          : TextButton(
+                              onPressed: () => _checkCoupon(item),
+                              child: const Text('تحقّق'),
+                            ),
+                    ),
+                  ),
+                  if (_applied != null) ...[
+                    const SizedBox(height: Space.sm),
+                    // مفتاحٌ لا اسمُ نصّ: عنوانُ الحقل نفسه فيه كلمة «الخصم»،
+                    // فحارسٌ يبحث عن الكلمة يجدها ولو لم يُطبَّق كوبونٌ قطّ.
+                    Row(
+                      key: const ValueKey('coupon-applied'),
+                      children: [
+                        const Icon(Icons.check_circle_rounded,
+                            size: 18, color: AppColors.good),
+                        const SizedBox(width: Space.sm),
+                        Expanded(
+                          child: Text(
+                            'خصم ${formatMoney(_applied!.discount)}'
+                            '${_applied!.description.isEmpty ? '' : ' — ${_applied!.description}'}',
+                            style: const TextStyle(
+                                color: AppColors.good,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                  if (_couponError != null) ...[
+                    const SizedBox(height: Space.sm),
+                    Text(_couponError!,
+                        style: const TextStyle(
+                            color: AppColors.critical, fontSize: 13)),
+                  ],
+                  const SizedBox(height: Space.md),
                   TextField(
                     controller: _notes,
                     maxLines: 3,

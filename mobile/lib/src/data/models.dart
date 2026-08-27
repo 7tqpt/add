@@ -180,6 +180,8 @@ class Booking {
     required this.totalPrice,
     required this.depositAmount,
     required this.paidAmount,
+    this.couponCode = '',
+    this.discountAmount = 0,
   });
 
   final String id;
@@ -196,6 +198,13 @@ class Booking {
   final num depositAmount;
   final num paidAmount;
 
+  /// كودُ الخصم المستعمَل في هذا الحجز، ومبلغُه بالريال.
+  ///
+  /// ويُنسخان في الحجز نصّاً ورقماً كما تُنسخ سياسةُ الإلغاء: الكوبون قد
+  /// يُحذف بعد سنة، والحجزُ يبقى ويجب أن يقول ما جرى فيه.
+  final String couponCode;
+  final num discountAmount;
+
   factory Booking.fromMap(Map<String, dynamic> m) => Booking(
     id: m['id'] as String,
     reference: (m['reference'] ?? '') as String,
@@ -210,6 +219,31 @@ class Booking {
     totalPrice: (m['total_price'] ?? 0) as num,
     depositAmount: (m['deposit_amount'] ?? 0) as num,
     paidAmount: (m['paid_amount'] ?? 0) as num,
+    couponCode: (m['coupon_code'] ?? '') as String,
+    discountAmount: (m['discount_amount'] ?? 0) as num,
+  );
+}
+
+/// نتيجةُ التحقّق من كودِ خصمٍ قبل الحجز.
+///
+/// و`discount` هو **المبلغُ المطبَّق فعلاً** لا قيمةُ الكود: كودُ ٥٠٪ على
+/// منصّةٍ عمولتُها ١٠٪ يُقصّ عند العشرة، فيُعرض للعميل ما سيُخصم حقّاً قبل
+/// أن يؤكّد — لا رقمٌ يعِد بما لا يقع.
+class CouponCheck {
+  const CouponCheck({
+    required this.code,
+    required this.description,
+    required this.discount,
+  });
+
+  final String code;
+  final String description;
+  final num discount;
+
+  factory CouponCheck.fromMap(Map<String, dynamic> m) => CouponCheck(
+    code: (m['code'] ?? '') as String,
+    description: (m['description'] ?? '') as String,
+    discount: (m['discount'] ?? 0) as num,
   );
 }
 

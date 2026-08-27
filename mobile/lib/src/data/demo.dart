@@ -612,8 +612,65 @@ void demoApproveProvider() {
 
 int _seq = 500;
 
-Booking demoCreateBooking(String serviceId, String date, String? time, int guests, String address) {
+/// أكوادُ الخصم في وضع التجربة.
+///
+/// وهي هنا لأنّ التطبيق يعمل بلا مفاتيح Supabase — من فتحه ليجرّبه يجب أن
+/// يرى الكوبون يعمل، لا حقلاً يردّ «هذا الكود غير صحيح» دائماً.
+///
+/// و`demoCommissionPercent` هو سقفُ الخصم كما في القاعدة: المنصّة لا تُعطي
+/// ما لا تملك. والتجربةُ تحاكي القاعدة أو لا تُصدَّق.
+const double demoCommissionPercent = 10;
+
+const Map<String, ({String description, bool percent, num value, num cap})>
+    demoCoupons = {
+  'EID25': (description: 'حملة العيد', percent: true, value: 25, cap: 0),
+  'SDD5000': (description: 'خصم ٥٠٠٠ ريال', percent: false, value: 5000, cap: 0),
+};
+
+/// الأكوادُ المستعملة في هذه الجلسة — الكودُ مرّةً واحدة، كما في القاعدة.
+Set<String> demoUsedCoupons = <String>{};
+
+/// يُفرِّغ ما استُعمل من الأكواد. للاختبارات: كلُّ اختبارٍ يبدأ من صفحةٍ بيضاء.
+void demoResetCoupons() => demoUsedCoupons = <String>{};
+
+CouponCheck demoCheckCoupon(String code, String serviceId) {
+  final key = code.trim().toUpperCase();
+  final c = demoCoupons[key];
+  if (c == null) throw 'هذا الكود غير صحيح';
+  if (demoUsedCoupons.contains(key)) throw 'استعملتَ هذا الكود من قبل';
   final service = demoServices.firstWhere((s) => s.id == serviceId);
+  return CouponCheck(
+    code: key,
+    description: c.description,
+    discount: _demoDiscount(c, service.price),
+  );
+}
+
+num _demoDiscount(
+  ({String description, bool percent, num value, num cap}) c,
+  num price,
+) {
+  var d = c.percent ? (price * c.value / 100).round() : c.value;
+  if (c.percent && c.cap > 0) d = d < c.cap ? d : c.cap;
+  final commission = (price * demoCommissionPercent / 100).round();
+  // القصُّ عند العمولة — كما في `coupons.sql`.
+  if (d > commission) d = commission;
+  if (d > price) d = price;
+  return d;
+}
+
+Booking demoCreateBooking(String serviceId, String date, String? time, int guests,
+    String address, [String couponCode = '']) {
+  final service = demoServices.firstWhere((s) => s.id == serviceId);
+  final key = couponCode.trim().toUpperCase();
+  num discount = 0;
+  if (key.isNotEmpty) {
+    final c = demoCoupons[key];
+    if (c == null) throw 'هذا الكود غير صحيح';
+    if (demoUsedCoupons.contains(key)) throw 'استعملتَ هذا الكود من قبل';
+    discount = _demoDiscount(c, service.price);
+    demoUsedCoupons.add(key);
+  }
   _seq += 1;
   final booking = Booking(
     id: 'b$_seq',
@@ -629,6 +686,8 @@ Booking demoCreateBooking(String serviceId, String date, String? time, int guest
     totalPrice: service.price,
     depositAmount: (service.price * service.depositPercent / 100).round(),
     paidAmount: 0,
+    couponCode: key.isEmpty ? '' : key,
+    discountAmount: discount,
   );
   demoBookings = [booking, ...demoBookings];
   return booking;
