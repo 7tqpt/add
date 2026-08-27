@@ -414,6 +414,241 @@ class _Blob extends StatelessWidget {
   );
 }
 
+/// صفٌّ في قائمة ملفّ — «حسابي» وملفّ مقدّم الخدمة.
+///
+/// **قائمةٌ لا بطاقاتٌ متتابعة، وهذا هو الفرق.** كانت الصفحةُ ستَّ بطاقاتٍ في
+/// كلٍّ منها عنوانٌ وسطرا شرحٍ وزرّ — فيصير البابُ الواحد أربعةَ أسطر، وستّةُ
+/// أبوابٍ شاشتين ونصفاً من التمرير. وما يُبحث عنه هنا **اسمُ الباب** لا
+/// شرحُه: من فتح «حسابي» يعرف ما يريد، ويريد أن يصل إليه بضغطة.
+class MenuRow extends StatelessWidget {
+  const MenuRow({
+    super.key,
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.tone,
+    this.last = false,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  /// لونٌ يخصّ الصفّ — للخروج وحده. وما عداه بلون العلامة.
+  final Color? tone;
+
+  /// آخرُ صفٍّ في مجموعته فلا خطَّ تحته.
+  final bool last;
+
+  @override
+  Widget build(BuildContext context) {
+    final colour = tone ?? AppColors.accent;
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: Space.lg, vertical: 14),
+        decoration: BoxDecoration(
+          border: last
+              ? null
+              : const Border(bottom: BorderSide(color: AppColors.hairline)),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 22, color: colour),
+            const SizedBox(width: Space.md),
+            Expanded(
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontSize: 14.5,
+                  fontWeight: FontWeight.w600,
+                  color: tone ?? AppColors.ink,
+                  fontFamilyFallback: arabicFallback,
+                ),
+              ),
+            ),
+            // سهمٌ لا أيقونةٌ ثانية: الصفُّ يُفتح، والسهمُ يقول ذلك.
+            Icon(Icons.chevron_left, size: 20, color: AppColors.muted),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// الورقةُ الفاتحة التي تحمل الصفوف — بحوافّ عليا مستديرة تحت الرأس النبيذيّ.
+///
+/// **وواحدةٌ للشاشتين لا نسختان:** «حسابي» وملفُّ مقدّم الخدمة يبنيان منها،
+/// فنصفُ القطر والحشوة والخطُّ الفاصل تُعدَّل في موضعٍ واحد.
+class MenuSheet extends StatelessWidget {
+  const MenuSheet({super.key, required this.children});
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    decoration: const BoxDecoration(
+      color: AppColors.surface,
+      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+    ),
+    clipBehavior: Clip.antiAlias,
+    child: Column(children: children),
+  );
+}
+
+/// فاصلٌ بين مجموعتين من الصفوف.
+class MenuGap extends StatelessWidget {
+  const MenuGap({super.key});
+  @override
+  Widget build(BuildContext context) =>
+      Container(height: Space.sm, color: AppColors.page);
+}
+
+/// الرأسُ النبيذيّ في أعلى شاشة الملفّ — «حسابي» وملفّ مقدّم الخدمة.
+///
+/// **وواحدٌ للشاشتين لا نسختان.** الصورةُ بطوقٍ ذهبيّ، والاسمُ، وسطرٌ ثانويّ،
+/// وشارةٌ ذهبيّة. وما يفترق بين الشاشتين محتوىً لا شكل: العميلُ اسمُه وجوالُه
+/// ودورُه، والمزوّدُ اسمُ عمله ومحافظتُه وحالُ توثيقه.
+///
+/// ويمتدّ إلى حافّتَي الشاشة ويبدأ من أعلاها — فيمرّ تحت الشريط الزجاجي بدل
+/// أن يقف تحته بحاشيةٍ بيضاء تقطع النبيذيّ نصفين.
+class ProfileHeader extends StatelessWidget {
+  const ProfileHeader({
+    super.key,
+    required this.avatar,
+    required this.title,
+    required this.subtitle,
+    required this.badge,
+    this.titleTrailing,
+    this.titleLtr = false,
+    this.subtitleLtr = false,
+    this.footer,
+  });
+
+  final Widget avatar;
+  final String title;
+  final String subtitle;
+
+  /// نصُّ الشارة الذهبية — دورُ العميل أو حالُ توثيق المزوّد.
+  final String badge;
+
+  /// ما يلي الاسمَ مباشرةً — علامةُ التوثيق مثلاً.
+  final Widget? titleTrailing;
+
+  /// الاسمُ نفسه لاتينيّ — يقع البريدُ مكانه قبل أن يصل الملفّ.
+  final bool titleLtr;
+
+  /// السطرُ الثانوي لاتينيٌّ (جوالٌ أو بريد) فيُرسم من اليسار.
+  final bool subtitleLtr;
+
+  /// سطرٌ تحت الشارة — تحذيرٌ أو سببُ رفض.
+  final Widget? footer;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.fromLTRB(
+        Space.lg, glassHeaderTop(context), Space.lg, Space.xl),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topRight,
+          end: Alignment.bottomLeft,
+          colors: [AppColors.accentLift, AppColors.accentDeep],
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            title,
+                            textDirection: titleLtr ? TextDirection.ltr : null,
+                            textAlign: titleLtr ? TextAlign.left : null,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 19,
+                              fontWeight: FontWeight.w700,
+                              color: OnAccent.ink,
+                              fontFamilyFallback: arabicFallback,
+                            ),
+                          ),
+                        ),
+                        if (titleTrailing != null) ...[
+                          const SizedBox(width: 5),
+                          titleTrailing!,
+                        ],
+                      ],
+                    ),
+                    if (subtitle.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        subtitle,
+                        // **والاتجاهُ يتبع ما يُعرض لا الصفحة:** جوالٌ أو
+                        // بريدٌ لاتينيٌّ بلا `ltr` تتقدّم نقطتُه وامتدادُه إلى
+                        // غير موضعهما فيُقرأ مقلوباً.
+                        textDirection: subtitleLtr ? TextDirection.ltr : null,
+                        textAlign: subtitleLtr ? TextAlign.left : null,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: OnAccent.inkSoft,
+                          fontFamilyFallback: arabicFallback,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: Space.sm),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: AppColors.goldOnAccent,
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(
+                        badge,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.accentDeep,
+                          fontFamilyFallback: arabicFallback,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: Space.lg),
+              // **والطوقُ الذهبيُّ ليس زينةً وحده:** صورةٌ داكنةٌ على نبيذيٍّ
+              // داكنٍ تذوب فيه بلا حدٍّ يفصلها.
+              Container(
+                padding: const EdgeInsets.all(3),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: AppColors.goldOnAccent, width: 2),
+                ),
+                child: avatar,
+              ),
+            ],
+          ),
+          if (footer != null) ...[
+            const SizedBox(height: Space.md),
+            footer!,
+          ],
+        ],
+      ),
+    );
+  }
+}
+
 class SectionTitle extends StatelessWidget {
   const SectionTitle(this.text, {super.key});
   final String text;
