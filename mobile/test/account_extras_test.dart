@@ -203,6 +203,35 @@ void main() {
     expect(demoSettings.push, isTrue, reason: 'أُطفئت الدعاية فأُطفئ معها الحجز');
   });
 
+  testWidgets('**والرابطان القانونيّان داخل الإعدادات**', (tester) async {
+    // شرطُ متجر Google: سياسةُ الخصوصية في صفحة التطبيق **وداخله**. ومن يبحث
+    // عمّا يُجمع من بياناته يبحث عنه هنا لا في المتجر.
+    //
+    // ويُقاس الرابطُ نفسه لا وجودُ النصّ: عنوانٌ خطأ يعني صفحةَ «غير موجود»
+    // في وجه المراجِع، وهو أسوأُ من ألّا يكون هناك رابط.
+    _phone(tester);
+    await tester.pumpWidget(_wrap(SettingsScreen(session: _session())));
+    await _settle(tester);
+
+    for (final row in [
+      ('سياسة الخصوصية', 'https://sdd.company/privacy'),
+      ('شروط الاستخدام', 'https://sdd.company/terms'),
+    ]) {
+      final finder = find.text(row.$1, skipOffstage: false);
+      await tester.scrollUntilVisible(finder, 200,
+          scrollable: find.byType(Scrollable).first);
+      await tester.pumpAndSettle();
+      expect(finder, findsOneWidget, reason: row.$1);
+
+      // بمفتاحه لا بموضعه: المفتاحُ هو العنوان نفسه، فحرفٌ ناقصٌ فيه يُسقط
+      // هذا الحارس بدل أن يمرّ ويقع على المراجِع.
+      final tile = find.byKey(ValueKey(row.$2), skipOffstage: false);
+      expect(tile, findsOneWidget, reason: 'عنوانُ «${row.$1}» ليس ${row.$2}');
+      expect(tester.widget<InkWell>(tile).onTap, isNotNull,
+          reason: '«${row.$1}» صفٌّ لا يُضغط');
+    }
+  });
+
   testWidgets('وحذفُ الحساب يُسأل عنه ويُقال ما سيضيع', (tester) async {
     // **شرطُ متجر Google، ولا رجعةَ فيه.** فيُقال ما يُحذف وما يبقى قبل أن
     // يُضغط، لا بعده.

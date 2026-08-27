@@ -18,6 +18,7 @@ import { PaymentsPage } from '@/pages/Payments'
 import { PlanDetailPage } from '@/pages/PlanDetail'
 import { PlansPage } from '@/pages/Plans'
 import { CouponsPage } from '@/pages/Coupons'
+import { PrivacyPage, TermsPage } from '@/pages/Legal'
 import { PromotionsPage } from '@/pages/Promotions'
 import { ProviderDetailPage } from '@/pages/ProviderDetail'
 import { ProvidersPage } from '@/pages/Providers'
@@ -54,6 +55,11 @@ export function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      {/* **خارج `RequireAuth` عمداً.** «جوجل بلاي» يشترط رابطاً عامّاً لسياسة
+          الخصوصية يفتحه المراجِع بلا حساب — وصفحةٌ خلف تسجيل الدخول تُرَدّ
+          ويُرفض النشر. ومحروسٌ في `supabase/tests/legal_public.test.mjs`. */}
+      <Route path="/privacy" element={<PrivacyPage />} />
+      <Route path="/terms" element={<TermsPage />} />
       <Route element={<RequireAuth />}>
         {/* حارس المجال داخل التخطيط: القائمة تبقى ظاهرة فيعرف المستخدم أين هو. */}
         <Route element={<AreaGuard />}>
