@@ -16,6 +16,17 @@
          رسالةٌ تقول لماذا. -->
     <uses-permission android:name="android.permission.RECORD_AUDIO"/>
 
+    <!-- زرُّ «موقعي الحالي» في منتقي الخريطة، ولا شيءَ غيره: التطبيق لا يتتبّع
+         أحداً ولا يقرأ موقعاً في الخلفيّة. والإذنُ يُطلب وقت التشغيل بضغطة
+         صاحبه وهو واقفٌ في المكان يضع دبّوسه.
+
+         و`COARSE` إلى جانب `FINE` مقصودة: من رفض الدقيق يعطي التقريبيَّ أحياناً
+         (أندرويد ١٢ فما فوق يعرض الخيارين)، ودقّةُ حيٍّ تكفي لتحريك الخريطة
+         إلى بلده — ثمّ يضبط الدبّوس بإصبعه. ورفضُ كلِّ شيءٍ يُقال له نصّاً
+         ولا يترك زرّاً ميّتاً. -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+
     <application
         android:label="@string/app_name"
         android:name="${applicationName}"

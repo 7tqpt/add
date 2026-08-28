@@ -206,3 +206,47 @@ String distanceLabel(double km) {
   if (km < 10) return '${km.toStringAsFixed(1)} كم';
   return '${km.round()} كم';
 }
+
+/// نتيجةُ طلب الموقع الحاليّ: نقطةٌ، أو سببٌ يُقال لصاحبه.
+///
+/// **ولا `null` مجرَّدة.** زرٌّ يُضغط فلا يقع شيءٌ ولا تظهر رسالةٌ يجعل صاحبَه
+/// يضغط مرّاتٍ يظنّ التطبيق معلّقاً — وأسبابُ الفشل هنا أربعةٌ مختلفةٌ
+/// وعلاجُ كلٍّ منها غيرُ علاج الآخر: من أطفأ خدمةَ الموقع يشغّلها، ومن رفض
+/// الإذن نهائيّاً لا ينفعه طلبٌ ثانٍ بل الإعدادات.
+class LocationResult {
+  const LocationResult.found(this.point) : reason = null;
+  const LocationResult.failed(this.reason) : point = null;
+
+  final GeoPoint? point;
+  final LocationFailure? reason;
+
+  bool get ok => point != null;
+}
+
+enum LocationFailure {
+  /// خدمةُ الموقع مطفأةٌ في الجهاز كلِّه.
+  servicesOff,
+
+  /// رُفض الإذن هذه المرّة — ويُطلب ثانيةً.
+  denied,
+
+  /// رُفض نهائيّاً: لا يُعرض الطلبُ بعدها، والعلاجُ في إعدادات الجهاز.
+  deniedForever,
+
+  /// أُذن ولم يصل موقعٌ: داخلَ بناءٍ خرسانيّ، أو انتهت المهلة.
+  unavailable,
+}
+
+/// نصٌّ يقول ما جرى وما يُفعل — لا رمزُ خطأٍ ولا «حدث خطأ ما».
+String locationFailureText(LocationFailure f) => switch (f) {
+  LocationFailure.servicesOff =>
+    'خدمة الموقع مطفأة في جهازك. شغّلها ثمّ أعد المحاولة.',
+  LocationFailure.denied =>
+    'لم يُؤذن بقراءة موقعك. اضغط الزرّ ثانيةً واختر «السماح».',
+  LocationFailure.deniedForever =>
+    'الإذن مرفوضٌ نهائيّاً لهذا التطبيق. افتح إعدادات الجهاز ← التطبيقات ← '
+        'فرحتي ← الأذونات، وفعّل «الموقع».',
+  LocationFailure.unavailable =>
+    'تعذّر تحديد موقعك الآن. اخرج إلى مكانٍ مكشوفٍ وأعد المحاولة، أو حرّك '
+        'الخريطة بإصبعك.',
+};

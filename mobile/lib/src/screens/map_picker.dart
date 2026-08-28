@@ -14,6 +14,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../core/device_location.dart';
 import '../core/geo.dart';
 import '../core/theme.dart';
 import '../ui/kit.dart';
@@ -62,6 +63,9 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
 
   String? _pasteError;
 
+  /// أيُقرأ الموقعُ الآن؟ — الزرُّ يدور ولا يُضغط مرّتين.
+  bool _locating = false;
+
   @override
   void dispose() {
     _paste.dispose();
@@ -87,6 +91,29 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
       return;
     }
     _moveTo(found, zoom: 16);
+    FocusScope.of(context).unfocus();
+  }
+
+  /// «موقعي الحالي» — يقرأ موقعَ الجهاز وينقل الخريطةَ إليه.
+  ///
+  /// **وكلُّ فشلٍ يُقال نصّاً.** أربعةُ أسبابٍ مختلفةٍ لكلٍّ علاجُه، وزرٌّ
+  /// يُضغط فلا يقع شيءٌ ولا تظهر رسالةٌ يجعل صاحبَه يضغط مرّاتٍ يظنّ التطبيق
+  /// معلّقاً. وهذا ما يُفرّق زرَّ موقعٍ يعمل من زرٍّ موجود.
+  Future<void> _useMyLocation() async {
+    setState(() => _locating = true);
+    final result = await currentLocation();
+    if (!mounted) return;
+    setState(() => _locating = false);
+
+    final point = result.point;
+    if (point == null) {
+      showMessage(context, locationFailureText(result.reason!));
+      return;
+    }
+    // **وستَّ عشرةَ درجةَ تقريبٍ لا تسعَ عشرة.** دقّةُ `medium` عشراتُ
+    // أمتار، وتقريبٌ إلى أقصى الحدّ يُري صاحبَه دبّوساً على سطح جارِه
+    // فيظنّه خطأً — والصوابُ أن يُفتح على الحيّ ثمّ يضبطه بإصبعه.
+    _moveTo(point, zoom: 16);
     FocusScope.of(context).unfocus();
   }
 
@@ -169,6 +196,37 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
                   ),
                 ),
 
+                // ── «موقعي الحالي» ────────────────────────────────────
+                //
+                // **في أسفل الخريطة إلى اليسار** — حيث يضعه Google Maps وحيث
+                // تبحث عنه العين. ولو وُضع في الشريط العلويّ لَكان زرّاً
+                // ثالثاً بين «رجوع» و«أزل الموقع» لا يُقرأ أيُّها أيّ.
+                //
+                // ويرتفع عن الحافّة بما يكفي ألّا يغطّي نسبةَ حقّ OSM، وهي
+                // واجبةٌ في الرخصة لا زينة.
+                Positioned(
+                  left: Space.md,
+                  bottom: 34,
+                  child: FloatingActionButton.small(
+                    key: const ValueKey('my-location'),
+                    heroTag: 'my-location',
+                    onPressed: _locating ? null : _useMyLocation,
+                    backgroundColor: AppColors.surface,
+                    foregroundColor: AppColors.accent,
+                    tooltip: 'موقعي الحالي',
+                    child: _locating
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: AppColors.accent,
+                            ),
+                          )
+                        : const Icon(Icons.my_location, size: 20),
+                  ),
+                ),
+
                 if (!_placed)
                   Positioned(
                     top: Space.md,
@@ -220,30 +278,34 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
                   onSubmitted: (_) => _readPasted(),
                 ),
                 const SizedBox(height: Space.md),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        _placed ? _point.text : 'لم يُحدَّد موقعٌ بعد',
-                        textDirection: TextDirection.ltr,
-                        textAlign: TextAlign.start,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: _placed ? AppColors.ink2 : AppColors.muted,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: Space.md),
-                    FilledButton(
-                      // **ولا يُؤكَّد ما لم يُوضع.** الزرُّ معطَّلٌ حتى يحرّك
-                      // الخريطةَ أو يلصق رابطاً، فلا يُحفظ مركزُ المحافظة
-                      // موقعاً للعرس.
-                      onPressed: _placed
-                          ? () => Navigator.of(context).pop(_point)
-                          : null,
-                      child: const Text('تأكيد الموقع'),
-                    ),
-                  ],
+                // **الإحداثيّاتُ سطرٌ والزرُّ سطرٌ تحته، لا صفٌّ يجمعهما.**
+                //
+                // وكانا في `Row`، فكان الزرُّ يُعطى عرضاً **لا نهائيّاً**:
+                // نمطُ `FilledButton` في هذا التطبيق فيه
+                // `minimumSize: Size.fromHeight(48)` — أي عرضٌ لا نهائيّ —
+                // وهو صوابٌ داخل عمودٍ محدود العرض، ويرمي داخل صفٍّ يعطي
+                // أبناءه عرضاً غيرَ محدود. فكانت الشاشةُ ترمي ثلاثةَ عشرَ
+                // استثناءَ تخطيطٍ عند فتحها.
+                //
+                // ولم يكشفه أحد لأنّ هذه الشاشة لم تُركَّب في اختبارٍ قطّ —
+                // وهي الشاشةُ الوحيدة كذلك في التطبيق.
+                Text(
+                  _placed ? _point.text : 'لم يُحدَّد موقعٌ بعد',
+                  textDirection: TextDirection.ltr,
+                  textAlign: TextAlign.start,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: _placed ? AppColors.ink2 : AppColors.muted,
+                  ),
+                ),
+                const SizedBox(height: Space.md),
+                FilledButton(
+                  // **ولا يُؤكَّد ما لم يُوضع.** الزرُّ معطَّلٌ حتى يحرّك
+                  // الخريطةَ أو يلصق رابطاً، فلا يُحفظ مركزُ المحافظة
+                  // موقعاً للعرس.
+                  onPressed:
+                      _placed ? () => Navigator.of(context).pop(_point) : null,
+                  child: const Text('تأكيد الموقع'),
                 ),
               ],
             ),

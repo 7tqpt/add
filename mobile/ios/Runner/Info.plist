@@ -41,6 +41,8 @@
 	<string>لتصوير مستنداتك للتوثيق، أو تصوير خدمتك — صوراً ومقاطع — ليراها العملاء قبل الحجز.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>لاختيار مستنداتك للتوثيق، أو صور خدمتك ومقاطعها، من معرض جوالك.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>لتحديد موقع المناسبة على الخريطة بضغطة واحدة وأنت في المكان، بدل تحريكها بإصبعك. ولا يُقرأ موقعك إلا حين تضغط الزرّ، ولا يُقرأ والتطبيق مغلق.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
