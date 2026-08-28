@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../core/format.dart';
 import '../core/theme.dart';
@@ -11,6 +10,7 @@ import '../data/supabase.dart';
 import '../core/voice.dart';
 import '../ui/kit.dart';
 import '../ui/media.dart';
+import '../ui/viewer.dart';
 import 'chat_attach.dart';
 
 /// خيط المحادثة.
@@ -673,9 +673,26 @@ class _Attachment extends StatefulWidget {
 class _AttachmentState extends State<_Attachment> {
   late final Future<String?> _url = Api.chatMediaUrl(widget.message.attachmentPath);
 
-  Future<void> _open(String url) async {
-    final ok = await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
-    if (!ok && mounted) showMessage(context, 'لم يُفتح الملف — لا قارئ PDF على الجهاز.');
+  /// **يُفتح المرفقُ داخل التطبيق لا خارجه.**
+  ///
+  /// وكان يُسلَّم إلى `launchUrl` بـ`externalApplication`: وأندرويد لا يعرض
+  /// PDF بنفسه، فيُنزّله إلى مجلّد التنزيلات ويترك صاحبَه يبحث عنه هناك —
+  /// إن كان في جهازه قارئٌ أصلاً، وإلّا فلا شيء.
+  void _openAttachment(String url) {
+    final m = widget.message;
+    switch (m.attachment!) {
+      case ChatAttachment.image:
+        openImageViewer(context, url: url,
+            title: m.attachmentName.isEmpty ? 'صورة' : m.attachmentName);
+      case ChatAttachment.video:
+        openVideoViewer(context, url: url);
+      case ChatAttachment.file:
+        openPdfViewer(context, url: url,
+            name: m.attachmentName.isEmpty ? 'ملف' : m.attachmentName);
+      case ChatAttachment.audio:
+        // الصوتُ يُسمع في مكانه؛ لا شاشةَ له.
+        break;
+    }
   }
 
   @override
@@ -689,24 +706,36 @@ class _AttachmentState extends State<_Attachment> {
 
         switch (m.attachment!) {
           case ChatAttachment.image:
-            return ClipRRect(
-              borderRadius: BorderRadius.circular(10),
-              child: AspectRatio(
-                aspectRatio: 4 / 3,
-                child: loading
-                    ? Container(color: AppColors.surface2)
-                    : MediaThumb(url: url),
+            return InkWell(
+              key: const ValueKey('chat-image'),
+              onTap: url == null ? null : () => _openAttachment(url),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: AspectRatio(
+                  aspectRatio: 4 / 3,
+                  child: loading
+                      ? Container(color: AppColors.surface2)
+                      : MediaThumb(url: url),
+                ),
               ),
             );
 
           case ChatAttachment.video:
+            // **والفقاعةُ معاينةٌ لا مشغّل.** مقطعٌ يُشغَّل في مربّعٍ بعرض
+            // ٢٢٠ بكسل بين فقاعات المحادثة لا يُرى منه شيء، والضغطُ عليه
+            // يملأ به الشاشة.
             return ClipRRect(
               borderRadius: BorderRadius.circular(10),
               child: SizedBox(
                 width: 220,
                 child: url == null
                     ? Container(height: 124, color: AppColors.surface2)
-                    : VideoBox(url: url, seconds: m.attachmentSeconds),
+                    : VideoBox(
+                        key: const ValueKey('chat-video'),
+                        url: url,
+                        seconds: m.attachmentSeconds,
+                        onTap: () => _openAttachment(url),
+                      ),
               ),
             );
 
@@ -743,7 +772,8 @@ class _AttachmentState extends State<_Attachment> {
             // اسمُ الملفّ وحجمُه ثم يُفتح: «مرفق» وحدها لا تقول أهو العقد أم
             // قائمة الأسعار، ومن يفتح محادثةً بعد شهرٍ يبحث بالاسم.
             return InkWell(
-              onTap: url == null ? null : () => _open(url),
+              key: const ValueKey('chat-file'),
+              onTap: url == null ? null : () => _openAttachment(url),
               borderRadius: BorderRadius.circular(10),
               child: Row(
                 mainAxisSize: MainAxisSize.min,

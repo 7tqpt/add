@@ -69,9 +69,16 @@ class MediaThumb extends StatelessWidget {
 
 /// مشغّل الفيديو — إطارٌ يُضغط فيبدأ.
 class VideoBox extends StatefulWidget {
-  const VideoBox({super.key, required this.url, this.seconds = 0});
+  const VideoBox({super.key, required this.url, this.seconds = 0, this.onTap});
   final String? url;
   final int seconds;
+
+  /// ما يقع عند الضغط — أو `null` فيُشغَّل في مكانه.
+  ///
+  /// **والفرقُ بين الموضعين حقيقيّ:** في صفحة الخدمة الإطارُ عريضٌ يُرى فيه
+  /// العرضُ فيُشغَّل حيث هو، وفي فقاعة المحادثة عرضُه ٢٢٠ بكسلاً بين الرسائل
+  /// فلا يُرى منه شيء — فيُفتح على الشاشة كلِّها.
+  final VoidCallback? onTap;
 
   @override
   State<VideoBox> createState() => _VideoBoxState();
@@ -111,6 +118,11 @@ class _VideoBoxState extends State<VideoBox> {
   }
 
   void _toggle() {
+    final open = widget.onTap;
+    if (open != null) {
+      open();
+      return;
+    }
     final c = _controller;
     if (c == null) return;
     setState(() => c.value.isPlaying ? c.pause() : c.play());
