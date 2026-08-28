@@ -9,9 +9,18 @@ await db.exec(`
   create table if not exists auth.users (id uuid primary key, email text);
   create or replace function auth.uid() returns uuid language sql stable as $$
     select nullif(current_setting('test.uid', true), '')::uuid $$;
-  create role authenticated; create role anon; create role service_role;`)
+  create role authenticated; create role anon; create role service_role;
+  -- ما يكفي من مخطط التخزين لتمرّ ملفّاتُ السلال.
+  create schema if not exists storage;
+  create table if not exists storage.buckets (
+    id text primary key, name text, public boolean,
+    file_size_limit bigint, allowed_mime_types text[]);
+  create table if not exists storage.objects (
+    id uuid primary key default gen_random_uuid(), bucket_id text, name text);
+  create or replace function storage.foldername(p text) returns text[]
+    language sql immutable as $$ select string_to_array(p, '/') $$;`)
 for (const f of ['install.sql', 'seed.sql', 'apply.sql', 'support.sql', 'roles.sql',
-                 'invitations.sql', 'coupons.sql']) {
+                 'invitations.sql', 'coupons.sql', 'category_images.sql']) {
   await db.exec(readFileSync(`../${f}`, 'utf8'))
 }
 

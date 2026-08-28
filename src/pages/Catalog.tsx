@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from 'react'
-import { Search } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { ImagePlus, Search, Trash2 } from 'lucide-react'
 import { Badge } from '@/components/ui/Badge'
 import { Card, CardBody, CardHeader } from '@/components/ui/Card'
 import { EmptyState, ErrorState, LoadingBlock, Toast } from '@/components/ui/Feedback'
@@ -10,13 +10,16 @@ import { useAsync } from '@/hooks/useAsync'
 import { useDebounced } from '@/hooks/useDebounced'
 import { cn } from '@/lib/cn'
 import { formatDuration, formatMoney, formatNumber } from '@/lib/format'
-import type { ProviderService } from '@/lib/types'
+import type { ProviderService, ServiceCategory } from '@/lib/types'
 import {
+  categoryImageUrl,
+  clearCategoryImage,
   describeRule,
   listCategories,
   listPolicies,
   listServices,
   setCategoryActive,
+  setCategoryImage,
   setServiceActive,
 } from '@/services/catalog'
 import { errorText } from '@/services/base'
@@ -80,6 +83,32 @@ function CategoriesTab({ onToast }: { onToast: (message: string) => void }) {
   const [busyId, setBusyId] = useState<string | null>(null)
   const { data, error, loading, refetching, reload } = useAsync(listCategories, [])
 
+  async function upload(category: ServiceCategory, file: File) {
+    setBusyId(category.id)
+    try {
+      await setCategoryImage(category, file)
+      onToast(`حُدِّثت صورة قسم «${category.name}».`)
+      reload()
+    } catch (cause) {
+      onToast(errorText(cause, 'تعذّر رفع الصورة.'))
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  async function clearImage(category: ServiceCategory) {
+    setBusyId(category.id)
+    try {
+      await clearCategoryImage(category)
+      onToast(`أُزيلت صورة قسم «${category.name}» — عاد إلى أيقونته.`)
+      reload()
+    } catch (cause) {
+      onToast(errorText(cause, 'تعذّر إزالة الصورة.'))
+    } finally {
+      setBusyId(null)
+    }
+  }
+
   async function toggle(id: string, name: string, next: boolean) {
     const category = data?.find((entry) => entry.id === id)
     if (!category) return
@@ -116,6 +145,14 @@ function CategoriesTab({ onToast }: { onToast: (message: string) => void }) {
             }
           />
           <CardBody className="flex flex-col gap-3">
+            <CategoryImage
+              category={category}
+              canWrite={canWrite}
+              busy={busyId === category.id}
+              onPick={(file) => upload(category, file)}
+              onClear={() => clearImage(category)}
+            />
+
             <p className="text-xs leading-6 text-ink-2">{category.description}</p>
 
             <p className="tnum text-xs text-muted">
@@ -150,6 +187,111 @@ function CategoriesTab({ onToast }: { onToast: (message: string) => void }) {
           </CardBody>
         </Card>
       ))}
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+
+/**
+ * صورة القسم في اللوحة: معاينةٌ وزرُّ رفعٍ وزرُّ إزالة.
+ *
+ * **والحدُّ يُفحص هنا قبل الشبكة.** حاوية التخزين ترفض ما زاد على نصف
+ * ميجابايت — وهو الحارس الحقيقي — لكنّ رسالتها إنجليزيةٌ برمز HTTP، ورفعَ
+ * أربعة ميجابايت على شبكةٍ يمنية يمضي دقيقةً قبل أن يُردّ. ففحصٌ فوريٌّ هنا
+ * يوفّر الدقيقة ويقول العربية.
+ *
+ * وحين لا صورة تُعرض الأيقونة نفسُها التي يعرضها التطبيق — فيرى المسؤول ما
+ * يراه العميل، لا مربّعاً فارغاً لا يدلّ على شيء.
+ */
+const MAX_IMAGE_BYTES = 512 * 1024
+
+function CategoryImage({
+  category,
+  canWrite,
+  busy,
+  onPick,
+  onClear,
+}: {
+  category: ServiceCategory
+  canWrite: boolean
+  busy: boolean
+  onPick: (file: File) => void
+  onClear: () => void
+}) {
+  const input = useRef<HTMLInputElement>(null)
+  const [tooBig, setTooBig] = useState(false)
+  const url = categoryImageUrl(category.image_path)
+
+  function choose(file: File | undefined) {
+    if (!file) return
+    if (file.size > MAX_IMAGE_BYTES) {
+      setTooBig(true)
+      return
+    }
+    setTooBig(false)
+    onPick(file)
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center gap-3">
+        <div className="flex h-16 w-24 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-hairline bg-surface-2">
+          {url ? (
+            <img
+              src={url}
+              alt={`صورة قسم ${category.name}`}
+              className="h-full w-full object-cover"
+              loading="lazy"
+            />
+          ) : (
+            <span className="text-[11px] text-muted">بلا صورة</span>
+          )}
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <button
+            type="button"
+            disabled={!canWrite || busy}
+            onClick={() => input.current?.click()}
+            className="flex items-center gap-1.5 rounded-lg border border-hairline px-2.5 py-1 text-xs text-ink-2 transition hover:border-accent hover:text-accent disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <ImagePlus className="size-3.5" />
+            {category.image_path ? 'استبدل الصورة' : 'أضف صورة'}
+          </button>
+
+          {category.image_path ? (
+            <button
+              type="button"
+              disabled={!canWrite || busy}
+              onClick={onClear}
+              className="flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs text-critical transition hover:underline disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <Trash2 className="size-3.5" />
+              أزل الصورة
+            </button>
+          ) : null}
+        </div>
+      </div>
+
+      <input
+        ref={input}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        className="hidden"
+        onChange={(event) => {
+          choose(event.target.files?.[0])
+          // يُفرَّغ ليقبل اختيار الملفّ نفسه مرّةً ثانية بعد فشل.
+          event.target.value = ''
+        }}
+      />
+
+      {tooBig ? (
+        <p className="text-[11px] leading-5 text-critical">
+          الصورة أكبر من نصف ميجابايت. اختر صورةً أصغر — البطاقة تُعرض بعرض
+          صغير، والحجم الكبير يدفع ثمنه كل من يفتح التطبيق.
+        </p>
+      ) : null}
     </div>
   )
 }

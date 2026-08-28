@@ -364,6 +364,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                     CategoryCard(
                       label: c.name,
                       icon: categoryIcon(c.slug),
+                      imageUrl: Api.categoryImageUrl(c.imagePath),
                       tone: categoryTone(c.slug),
                       active: _categoryId == c.id,
                       onTap: () {

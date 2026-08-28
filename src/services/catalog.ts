@@ -66,6 +66,94 @@ export async function setCategoryActive(
   })
 }
 
+/** الحاوية عامّة، فلا توقيعَ ينتهي ولا نداءَ شبكة لكل بطاقة. */
+const CATEGORY_BUCKET = 'category-images'
+
+export function categoryImageUrl(path: string): string | null {
+  if (!isSupabaseConfigured || !path) return null
+  return requireSupabase().storage.from(CATEGORY_BUCKET).getPublicUrl(path).data.publicUrl
+}
+
+/**
+ * يرفع صورة القسم ويكتب مسارها في الصفّ.
+ *
+ * **والاسم يحمل ختم الوقت:** الحاوية عامّة، والروابط العامّة تُخزَّن في ذاكرة
+ * المتصفّح والوسطاء. فلو كُتبت الصورة الجديدة فوق المسار نفسه لبقي الناس
+ * يرون القديمة أياماً بلا سببٍ ظاهر. واسمٌ جديد يعني رابطاً جديداً يظهر فوراً.
+ *
+ * ويُحذف الملفّ القديم بعد نجاح الكتابة لا قبلها: لو حُذف أوّلاً ثمّ فشل
+ * الرفع لبقي القسم بلا صورة ولا سبيلَ لاستعادتها.
+ */
+export async function setCategoryImage(
+  category: ServiceCategory,
+  file: File,
+): Promise<string> {
+  if (!isSupabaseConfigured) {
+    const target = demoCategories.find((candidate) => candidate.id === category.id)
+    if (target) target.image_path = `${category.slug}/demo.jpg`
+    await delay(null, 200)
+    return target?.image_path ?? ''
+  }
+
+  const client = requireSupabase()
+  const extension = file.name.split('.').pop()?.toLowerCase() || 'jpg'
+  const path = `${category.slug}/${Date.now()}.${extension}`
+
+  const { error: uploadError } = await client.storage
+    .from(CATEGORY_BUCKET)
+    .upload(path, file, { contentType: file.type })
+  if (uploadError) throw uploadError
+
+  const { error } = await client
+    .from('service_categories')
+    .update({ image_path: path })
+    .eq('id', category.id)
+  if (error) throw error
+
+  const previous = category.image_path
+  if (previous && previous !== path) {
+    // فشل الحذف لا يُسقط العملية: الصورة الجديدة معروضة، والقديمة ملفٌّ زائد.
+    await client.storage.from(CATEGORY_BUCKET).remove([previous]).catch(() => undefined)
+  }
+
+  await recordAudit({
+    action: 'category.image',
+    entity: 'category',
+    entityId: category.id,
+    entityLabel: category.name,
+    details: { image: 'حُدِّثت صورة القسم' },
+  })
+  return path
+}
+
+/** يُزيل صورة القسم فيعود إلى أيقونته. */
+export async function clearCategoryImage(category: ServiceCategory): Promise<void> {
+  if (!isSupabaseConfigured) {
+    const target = demoCategories.find((candidate) => candidate.id === category.id)
+    if (target) target.image_path = ''
+    await delay(null, 200)
+    return
+  }
+
+  const client = requireSupabase()
+  const { error } = await client
+    .from('service_categories')
+    .update({ image_path: '' })
+    .eq('id', category.id)
+  if (error) throw error
+  if (category.image_path) {
+    await client.storage.from(CATEGORY_BUCKET).remove([category.image_path]).catch(() => undefined)
+  }
+
+  await recordAudit({
+    action: 'category.image',
+    entity: 'category',
+    entityId: category.id,
+    entityLabel: category.name,
+    details: { image: 'أُزيلت صورة القسم' },
+  })
+}
+
 // ---------------------------------------------------------------------------
 // الخدمات المعروضة
 // ---------------------------------------------------------------------------

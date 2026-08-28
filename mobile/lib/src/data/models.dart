@@ -12,14 +12,28 @@ class Governorate {
 }
 
 class ServiceCategory {
-  const ServiceCategory({required this.id, required this.name, required this.slug});
+  const ServiceCategory({
+    required this.id,
+    required this.name,
+    required this.slug,
+    this.imagePath = '',
+  });
   final String id;
   final String name;
   final String slug;
+
+  /// مسارُ صورة القسم داخل سلّة `category-images` — لا رابطٌ كامل.
+  ///
+  /// **والفراغُ هو الأصل**، والبطاقةُ تعود إلى أيقونتها حينئذٍ. ومبدَؤه فراغٌ
+  /// لا NULL، فقاعدةٌ لم يُشغَّل عليها `category_images.sql` بعدُ تُقرأ كما هي
+  /// بلا انكسار.
+  final String imagePath;
+
   factory ServiceCategory.fromMap(Map<String, dynamic> m) => ServiceCategory(
     id: m['id'] as String,
     name: m['name'] as String,
     slug: (m['slug'] ?? '') as String,
+    imagePath: (m['image_path'] ?? '') as String,
   );
 }
 
