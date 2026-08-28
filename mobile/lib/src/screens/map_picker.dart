@@ -16,6 +16,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../core/device_location.dart';
 import '../core/geo.dart';
+import '../core/place_search.dart';
 import '../core/theme.dart';
 import '../ui/kit.dart';
 
@@ -66,6 +67,10 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
   /// أيُقرأ الموقعُ الآن؟ — الزرُّ يدور ولا يُضغط مرّتين.
   bool _locating = false;
 
+  /// نتائجُ البحث باسم المكان، وحالتُه.
+  List<Place> _results = const [];
+  bool _searching = false;
+
   @override
   void dispose() {
     _paste.dispose();
@@ -81,17 +86,77 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
     _map.move(LatLng(point.lat, point.lng), zoom ?? _map.camera.zoom);
   }
 
-  void _readPasted() {
-    final found = parseGeoLink(_paste.text);
-    if (found == null) {
-      setState(() => _pasteError = _paste.text.contains('goo.gl')
-          // الرابطُ المختصر لا رقمَ فيه، وقولُ «غير صحيح» يظلمه.
-          ? 'هذا رابطٌ مختصر — افتحه في الخرائط أوّلاً ثمّ انسخ الرابط الكامل.'
-          : 'لم أجد موقعاً في هذا النصّ.');
+  /// حقلٌ واحدٌ يقبل الاثنين: **اسمَ مكانٍ أو رابطَه**.
+  ///
+  /// **وحقلان كانا سيصيران عبئاً.** قوقل ماب فيه صندوقٌ واحد، ومن يفتح شاشةً
+  /// فيها صندوقان يقف ليقرأ أيُّهما لأيّ. والفرقُ بينهما يُعرف من النصّ نفسه
+  /// لا من صاحبه: ما فيه إحداثيّةٌ يُقرأ إحداثيّة، وما سواه يُبحث اسماً.
+  Future<void> _readField() async {
+    final text = _paste.text.trim();
+    if (text.isEmpty) return;
+    FocusScope.of(context).unfocus();
+
+    // ١) أهو رابطٌ أو إحداثيّتان؟ فذاك جوابٌ فوريٌّ بلا شبكة.
+    final found = parseGeoLink(text);
+    if (found != null) {
+      setState(() => _results = const []);
+      _moveTo(found, zoom: 16);
       return;
     }
-    _moveTo(found, zoom: 16);
-    FocusScope.of(context).unfocus();
+
+    // ٢) والرابطُ المختصر يُقال فيه ما يُفعل — ولا يُبحث اسماً، فليس اسماً.
+    if (text.contains('goo.gl') || text.contains('http')) {
+      setState(() {
+        _results = const [];
+        _pasteError = text.contains('goo.gl')
+            ? 'هذا رابطٌ مختصر — افتحه في الخرائط أوّلاً ثمّ انسخ الرابط الكامل.'
+            : 'لم أجد موقعاً في هذا الرابط.';
+      });
+      return;
+    }
+
+    // ٣) وما سواه اسمُ مكان.
+    setState(() {
+      _searching = true;
+      _pasteError = null;
+      _results = const [];
+    });
+    try {
+      final places = await searchPlaces(text);
+      if (!mounted) return;
+      setState(() {
+        _searching = false;
+        _results = places;
+        // **و«لا نتائج» تُقال، ولا تُترك القائمةُ فارغةً بلا خبر.**
+        _pasteError = places.isEmpty
+            ? 'لم أجد مكاناً بهذا الاسم. جرّب اسم الحيّ أو المدينة، أو حرّك '
+                'الخريطة بإصبعك.'
+            : null;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _searching = false;
+        _pasteError = e is String ? e : 'تعذّر البحث الآن.';
+      });
+    }
+  }
+
+  /// يكبّر أو يصغّر درجةً — **ويلتزم حدَّي الخريطة**.
+  ///
+  /// ولولا القصُّ لَطُلبت بلاطاتٌ في مستوىً لا وجودَ له، فتظهر الخريطةُ
+  /// رماديّةً ولا يُقال لماذا.
+  void _zoomBy(double delta) {
+    final target = (_map.camera.zoom + delta).clamp(4.0, 19.0);
+    _map.move(_map.camera.center, target);
+  }
+
+  void _pickPlace(Place place) {
+    setState(() {
+      _results = const [];
+      _paste.text = shortPlaceName(place.name);
+    });
+    _moveTo(place.point, zoom: 15);
   }
 
   /// «موقعي الحالي» — يقرأ موقعَ الجهاز وينقل الخريطةَ إليه.
@@ -227,6 +292,34 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
                   ),
                 ),
 
+                // ── أزرارُ التكبير ────────────────────────────────────
+                //
+                // **والإصبعان ليسا بديلاً عنهما.** من يمسك جواله بيدٍ واحدة —
+                // وهو حالُ من يقف في قاعةٍ يسأل ويكتب — لا يستطيع القرصَ
+                // بإصبعين. وهما في قوقل ماب لهذا السبب نفسه.
+                Positioned(
+                  right: Space.md,
+                  bottom: 34,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _ZoomButton(
+                        key: const ValueKey('zoom-in'),
+                        icon: Icons.add,
+                        tooltip: 'تكبير',
+                        onTap: () => _zoomBy(1),
+                      ),
+                      const SizedBox(height: Space.sm),
+                      _ZoomButton(
+                        key: const ValueKey('zoom-out'),
+                        icon: Icons.remove,
+                        tooltip: 'تصغير',
+                        onTap: () => _zoomBy(-1),
+                      ),
+                    ],
+                  ),
+                ),
+
                 if (!_placed)
                   Positioned(
                     top: Space.md,
@@ -264,19 +357,68 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
                 // هنا فعلاً: يُرسَل الموقع في واتساب فيصل رابطاً. ومن كان
                 // موقعُه في يده لا يُطالَب بأن يبحث عنه من جديد.
                 TextField(
+                  key: const ValueKey('place-field'),
                   controller: _paste,
-                  textDirection: TextDirection.ltr,
+                  textInputAction: TextInputAction.search,
                   decoration: InputDecoration(
-                    labelText: 'أو الصق رابط الموقع',
-                    hintText: 'https://maps.google.com/…',
+                    labelText: 'ابحث عن مكان، أو الصق رابطه',
+                    hintText: 'حدة، السنينة، جامع الصالح…',
                     errorText: _pasteError,
-                    suffixIcon: TextButton(
-                      onPressed: _readPasted,
-                      child: const Text('اقرأ'),
+                    prefixIcon: const Icon(Icons.search, size: 20),
+                    suffixIcon: _searching
+                        ? const Padding(
+                            padding: EdgeInsets.all(12),
+                            child: SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                          )
+                        : TextButton(
+                            onPressed: _readField,
+                            child: const Text('ابحث'),
+                          ),
+                  ),
+                  onSubmitted: (_) => _readField(),
+                ),
+
+                // ── نتائجُ البحث ──────────────────────────────────────────
+                //
+                // **ستٌّ على الأكثر وفي صندوقٍ محدود الارتفاع.** قائمةٌ تطول
+                // تدفع زرَّ التأكيد تحت الطيّة، فيبحث صاحبُها عنه.
+                if (_results.isNotEmpty) ...[
+                  const SizedBox(height: Space.sm),
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxHeight: 190),
+                    child: Material(
+                      color: AppColors.surface2,
+                      borderRadius: BorderRadius.circular(12),
+                      child: ListView.separated(
+                        shrinkWrap: true,
+                        padding: EdgeInsets.zero,
+                        itemCount: _results.length,
+                        separatorBuilder: (_, _) =>
+                            const Divider(height: 1, color: AppColors.hairline),
+                        itemBuilder: (context, i) {
+                          final place = _results[i];
+                          return ListTile(
+                            key: ValueKey('place-$i'),
+                            dense: true,
+                            leading: const Icon(Icons.place_outlined,
+                                size: 18, color: AppColors.accent),
+                            title: Text(
+                              shortPlaceName(place.name),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(fontSize: 12.5, height: 1.5),
+                            ),
+                            onTap: () => _pickPlace(place),
+                          );
+                        },
+                      ),
                     ),
                   ),
-                  onSubmitted: (_) => _readPasted(),
-                ),
+                ],
                 const SizedBox(height: Space.md),
                 // **الإحداثيّاتُ سطرٌ والزرُّ سطرٌ تحته، لا صفٌّ يجمعهما.**
                 //
@@ -290,6 +432,10 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
                 // ولم يكشفه أحد لأنّ هذه الشاشة لم تُركَّب في اختبارٍ قطّ —
                 // وهي الشاشةُ الوحيدة كذلك في التطبيق.
                 Text(
+                  // **ومفتاحٌ عليه:** النصُّ هنا إحداثيّتان، وحقلُ البحث فوقه
+                  // قد يحمل الإحداثيّتين نفسَهما إن لُصقتا — فباحثٌ يسأل عن
+                  // النصّ وحده يجد اثنين ولا يدري أيُّهما قرأه.
+                  key: const ValueKey('point-text'),
                   _placed ? _point.text : 'لم يُحدَّد موقعٌ بعد',
                   textDirection: TextDirection.ltr,
                   textAlign: TextAlign.start,
@@ -382,6 +528,41 @@ class LocationRow extends StatelessWidget {
             ),
             const Icon(Icons.chevron_left, size: 20, color: AppColors.muted),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// زرُّ تكبيرٍ صغيرٌ أبيضُ على الخريطة.
+class _ZoomButton extends StatelessWidget {
+  const _ZoomButton({
+    super.key,
+    required this.icon,
+    required this.tooltip,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.surface,
+      borderRadius: BorderRadius.circular(10),
+      elevation: 2,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(10),
+        onTap: onTap,
+        child: Tooltip(
+          message: tooltip,
+          child: SizedBox(
+            width: 38,
+            height: 38,
+            child: Icon(icon, size: 20, color: AppColors.ink),
+          ),
         ),
       ),
     );
