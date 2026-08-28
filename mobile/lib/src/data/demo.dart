@@ -1631,10 +1631,29 @@ List<DayMark> demoDays = [
 bool _sameDay(DateTime a, DateTime b) =>
     a.year == b.year && a.month == b.month && a.day == b.day;
 
-List<DayMark> demoMyDays(DateTime from, DateTime to) => demoDays
-    .where((d) => !d.day.isBefore(from) && !d.day.isAfter(to))
-    .toList()
-  ..sort((a, b) => a.day.compareTo(b.day));
+/// علاماتُ الأيّام في مدىً — **ويُقارَن اليومُ يوماً لا لحظة.**
+///
+/// وهذا خطأٌ حقيقيٌّ لا في الاختبار: الشاشةُ تطلب المدى من أوّل الشهر إلى
+/// `DateTime(سنة, شهر + 1, 0)` — وهو آخرُ يومٍ عند **منتصف ليله**. وعلامةٌ
+/// وُضعت في ذلك اليوم ومعها ساعةٌ (وكلُّ `DateTime.now()` معها ساعة) تكون
+/// «بعده» بالمقارنة اللحظيّة، فتسقط من القائمة.
+///
+/// **فآخرُ يومٍ في كلّ شهرٍ كان يختفي من التقويم** في وضع التجربة. ولم يظهر
+/// ذلك في اختبارٍ واحدٍ تسعةً وعشرين يوماً من كل ثلاثين، ثم سقط اختباران في
+/// الثامن والعشرين من أغسطس — لأنّ `اليوم + ٣` صار الحادي والثلاثين.
+///
+/// والقاعدةُ الحقيقيّة سليمةٌ من هذا: `api_my_days` تأخذ `date` لا
+/// `timestamp`، و`Api.myDays` تُرسل التاريخ نصّاً. فالعطبُ في وضع التجربة
+/// وحده — وهو الوضعُ الذي يفتح به الناسُ التطبيقَ أوّلَ مرّة.
+List<DayMark> demoMyDays(DateTime from, DateTime to) {
+  DateTime dayOf(DateTime d) => DateTime(d.year, d.month, d.day);
+  final start = dayOf(from);
+  final end = dayOf(to);
+  return demoDays
+      .where((d) => !dayOf(d.day).isBefore(start) && !dayOf(d.day).isAfter(end))
+      .toList()
+    ..sort((a, b) => a.day.compareTo(b.day));
+}
 
 DayMark? demoSetAvailability(DateTime day, bool blocked, String note) {
   final held = demoDays.where((d) => _sameDay(d.day, day)).firstOrNull;

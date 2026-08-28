@@ -62,6 +62,35 @@ void main() {
     expect(visible, isTrue);
   });
 
+  testWidgets('**وآخرُ يومٍ في الشهر يُعرض — ولو حمل ساعة**', (tester) async {
+    // **حارسٌ لا يتبع تاريخَ اليوم.** يضع العلامةَ في آخر يومٍ من الشهر
+    // المعروض صراحةً، فيسأل السؤالَ نفسه في كلّ يومٍ من السنة.
+    //
+    // وما يحرسه خطأٌ وقع فعلاً: الشاشةُ تطلب المدى إلى
+    // `DateTime(سنة, شهر + 1, 0)` — آخرُ يومٍ عند **منتصف ليله** — وعلامةٌ
+    // في ذلك اليوم ومعها ساعةٌ تكون «بعده» بالمقارنة اللحظيّة فتسقط. فكان
+    // آخرُ يومٍ في كلّ شهرٍ يختفي من التقويم، ولم يظهر ذلك في اختبارٍ واحدٍ
+    // تسعةً وعشرين يوماً من كل ثلاثين — حتى سقط اختباران في الثامن
+    // والعشرين من أغسطس، لأنّ «اليوم + ٣» صار الحادي والثلاثين.
+    _phone(tester);
+    final now = DateTime.now();
+    final lastOfMonth = DateTime(now.year, now.month + 1, 0);
+    demoDays = [
+      DayMark(
+        // ساعةٌ ودقيقة، كما تأتي من `DateTime.now()` دائماً.
+        day: lastOfMonth.add(const Duration(hours: 13, minutes: 27)),
+        blocked: true,
+        note: 'آخرُ الشهر',
+      ),
+    ];
+
+    await tester.pumpWidget(_wrap(AvailabilityScreen(session: _session())));
+    await _settle(tester);
+
+    expect(find.textContaining('آخرُ الشهر'), findsOneWidget,
+        reason: 'سقط آخرُ يومٍ في الشهر من التقويم');
+  });
+
   testWidgets('ويومُ الحجز بلا زرّ «افتحه»', (tester) async {
     // **وهذا ما ينكسر بصمت:** زرٌّ يَعِد بفتح يومٍ لا يُفتح — يضغطه صاحبه فيظنّ
     // أنه فُتح، أو يردّه الخادم برسالةٍ لا يفهمها.
