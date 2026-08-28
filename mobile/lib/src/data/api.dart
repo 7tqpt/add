@@ -72,12 +72,27 @@ class Api {
 
   static Future<List<ServiceCategory>> categories() async {
     if (!isSupabaseConfigured) return demoDelay(demoCategories);
-    final rows = await db
-        .from('service_categories')
-        .select('id, name, slug')
-        .eq('is_active', true)
-        .order('sort_order', ascending: true);
-    return rows.map(ServiceCategory.fromMap).toList();
+
+    // **و`image_path` عمودٌ قد لا يكون في قاعدةٍ لم يُشغَّل عليها
+    // `category_images.sql` بعد.** والشاشةُ الأولى هي هذه — فلو سقطت لأجل
+    // عمود صورةٍ لَرأى فاتحُ التطبيق شاشةً حمراء بدل الأقسام كلِّها. وهذا وقع
+    // من قبل في شاشة المزوّد لأجل عمودٍ مثله، ولهذا كُتبت `whenColumnMissing`.
+    //
+    // فتُطلب الأعمدةُ كلُّها، وإن أنكرت القاعدةُ الجديدَ طُلبت الأضيق — وتبقى
+    // البطاقاتُ على أيقوناتها حتى يُشغَّل الملفّ.
+    Future<List<ServiceCategory>> read(String columns) async {
+      final rows = await db
+          .from('service_categories')
+          .select(columns)
+          .eq('is_active', true)
+          .order('sort_order', ascending: true);
+      return rows.map(ServiceCategory.fromMap).toList();
+    }
+
+    return whenColumnMissing(
+      () => read('id, name, slug, image_path'),
+      () => read('id, name, slug'),
+    );
   }
 
   /// و`governorate` **اسمُ محافظةٍ لا معرّفُها**: `v_services` تُعيد اسمها
@@ -1318,6 +1333,16 @@ class Api {
   ///
   /// و`?v=` بختمٍ زمنيّ: بلا فرقٍ في العنوان يعرض المتصفّح والتطبيق الصورةَ
   /// القديمة من ذاكرتهما بعد الاستبدال، فيبدو الرفعُ وكأنه لم يقع.
+  /// رابطُ صورة القسم — والسلّةُ عامّة، فلا توقيعَ ينتهي ولا نداءَ شبكة.
+  ///
+  /// **ويعود `null` لمن لا صورةَ له**، فتقرؤه البطاقةُ «أيقونة» لا «صورةٌ
+  /// مكسورة». والشاشةُ الأولى اثنتا عشرة بطاقة — أيقونةُ خطأٍ في كلٍّ منها
+  /// حكمٌ على التطبيق كلِّه.
+  static String? categoryImageUrl(String path) {
+    if (path.isEmpty || !isSupabaseConfigured) return null;
+    return db.storage.from('category-images').getPublicUrl(path);
+  }
+
   static String? avatarUrl(String path, {int? version}) {
     if (path.isEmpty) return null;
     if (!isSupabaseConfigured) return null;

@@ -35,6 +35,13 @@ export interface ServiceCategory {
   sort_order: number
   is_active: boolean
   custom_fields: CategoryField[]
+  /**
+   * مسار صورة القسم داخل حاوية `category-images` — لا رابطٌ كامل.
+   *
+   * والفراغ هو الأصل، والبطاقة تعود إلى أيقونتها حينئذٍ. فالصورة تعلو
+   * الأيقونة ولا تُلغيها.
+   */
+  image_path: string
   /** عدد مقدّمي الخدمة في هذا القسم — محسوب، لا مخزّن. */
   providers_count?: number
 }

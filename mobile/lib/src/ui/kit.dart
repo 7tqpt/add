@@ -990,10 +990,21 @@ class CategoryCard extends StatefulWidget {
     this.tone,
     this.width = 96,
     this.enterDelay = Duration.zero,
+    this.imageUrl,
   });
 
   final String label;
   final IconData icon;
+
+  /// صورةُ القسم — تحلّ محلّ الأيقونة في الدائرة نفسها.
+  ///
+  /// **وتعلو الأيقونةَ ولا تُلغيها:** ما لم يُرفع لقسمٍ صورةٌ بعدُ يبقى على
+  /// أيقونته، وإن فشل تحميلُها عاد إليها كذلك. فلا تصير الشاشةُ الأولى دوائرَ
+  /// فارغةً على شبكةٍ بطيئة.
+  ///
+  /// وفي الدائرة نفسها لا فوقها: مقاسُ البطاقة لا يتغيّر، فلا تنكسر الشبكةُ
+  /// بين قسمٍ ذي صورةٍ وقسمٍ بلا صورة.
+  final String? imageUrl;
   final bool active;
   final VoidCallback onTap;
 
@@ -1115,7 +1126,11 @@ class _CategoryCardState extends State<CategoryCard> {
                           ],
                         ),
                       ),
-                      child: Icon(widget.icon, size: 19, color: tone),
+                      child: _CategoryGlyph(
+                        imageUrl: widget.imageUrl,
+                        icon: widget.icon,
+                        tone: tone,
+                      ),
                     ),
                     const SizedBox(height: Space.sm),
                     // ثلاثة أسطرٍ بحدٍّ أقصى ثم قصٌّ. وثلاثةٌ لا سطران: أطولُ
@@ -1497,6 +1512,42 @@ class GlassHeader extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// ما داخل دائرة بطاقة القسم: صورتُه إن كانت، وإلّا أيقونتُه.
+class _CategoryGlyph extends StatelessWidget {
+  const _CategoryGlyph({
+    required this.imageUrl,
+    required this.icon,
+    required this.tone,
+  });
+
+  final String? imageUrl;
+  final IconData icon;
+  final Color tone;
+
+  @override
+  Widget build(BuildContext context) {
+    final url = imageUrl;
+    final fallback = Icon(icon, size: 19, color: tone);
+    if (url == null || url.isEmpty) return fallback;
+
+    return ClipOval(
+      child: Image.network(
+        url,
+        width: 36,
+        height: 36,
+        fit: BoxFit.cover,
+        // **والعودةُ إلى الأيقونة عند الفشل لا مربّعٌ مكسور.** الشاشةُ الأولى
+        // تُفتح على شبكةٍ يمنيّةٍ قد تنقطع، ومن رآها اثنتي عشرة أيقونةَ خطأٍ
+        // حكم على التطبيق كلِّه.
+        errorBuilder: (_, _, _) => fallback,
+        // وأثناء التحميل تبقى الأيقونةُ مكانها، فلا تومض الدائرةُ فارغةً.
+        loadingBuilder: (context, child, progress) =>
+            progress == null ? child : fallback,
       ),
     );
   }

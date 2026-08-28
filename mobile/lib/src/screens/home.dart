@@ -378,6 +378,7 @@ class _Categories extends StatelessWidget {
               CategoryCard(
                 label: c.name,
                 icon: categoryIcon(c.slug),
+                imageUrl: Api.categoryImageUrl(c.imagePath),
                 tone: categoryTone(c.slug),
                 active: false,
                 // العرضُ للشبكة لا للبطاقة: عرضٌ ثابتٌ داخل خليةٍ أضيق يفيض.
