@@ -351,9 +351,19 @@ class Api {
     const base = 'id, full_name, business_name, governorate, bio, status, rating, '
         'reviews_count, completed_bookings, total_earnings, rejection_reason';
 
+    // **وثلاثةُ مستويات، لا اثنان.** القاعدةُ قد ينقصها الشعارُ وحده، أو
+    // الشعارُ والنقطة، أو النقطةُ وحدها — فمن شغّل `provider_logo.sql` ولم
+    // يشغّل `nearby.sql` بعدُ يجب أن تعمل شاشتُه كاملةً إلّا الموقع.
+    //
+    // ولولا هذا لَقُرئ ملفُّ المزوّد بلا نقطةٍ أبداً: **العمودان لم يكونا في
+    // قائمة الأعمدة أصلاً**، فكان صاحبُ القاعة يضع دبّوسه ويحفظ، ثمّ يفتح
+    // الورقةَ فيجد «لم يُحدَّد موقع» — ويظنّ الحفظَ لم يقع.
     final row = await whenColumnMissing(
-      () => read('$base, logo_path'),
-      () => read(base),
+      () => read('$base, logo_path, latitude, longitude'),
+      () => whenColumnMissing(
+        () => read('$base, logo_path'),
+        () => read(base),
+      ),
     );
     return row == null ? null : ProviderProfile.fromMap(row);
   }
@@ -424,6 +434,14 @@ class Api {
       // ما «42703»، ويعرف تماماً معنى «شغّل هذا الملف».
       if (e.code == undefinedColumn && e.message.contains('logo_path')) {
         throw 'قاعدتك لم تُحدَّث بعد: شغّل ملف supabase/provider_logo.sql ثم أعد المحاولة.';
+      }
+      // **والموقعُ كذلك.** ومن حفظ دبّوسه على قاعدةٍ لم يُشغَّل عليها
+      // `nearby.sql` كان يُردّ برسالةِ Postgres الإنجليزيّة — وصاحبُ القاعة
+      // لا يعرف ما «42703»، ويعرف تماماً معنى «شغّل هذا الملف».
+      if (e.code == undefinedColumn &&
+          (e.message.contains('latitude') || e.message.contains('longitude'))) {
+        throw 'قاعدتك لم تُحدَّث بعد: شغّل ملفَّي supabase/location.sql ثم '
+            'supabase/nearby.sql، ثم أعد المحاولة.';
       }
       rethrow;
     }

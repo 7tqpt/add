@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
 
-import '../core/geo.dart';
 
 import '../core/format.dart';
 import '../core/theme.dart';
@@ -10,6 +8,7 @@ import '../data/api.dart';
 import '../data/models.dart';
 import '../data/supabase.dart';
 import '../ui/kit.dart';
+import '../ui/map_open.dart';
 import 'chat.dart';
 import 'labels.dart';
 
@@ -170,7 +169,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
                       alignment: AlignmentDirectional.centerStart,
                       child: TextButton.icon(
                         key: ValueKey('open-map-${b.id}'),
-                        onPressed: () => _openMap(context, b.point!),
+                        onPressed: () => openMap(context, b.point!),
                         icon: const Icon(Icons.map_outlined, size: 18),
                         label: const Text('افتح الموقع في الخرائط'),
                         style: TextButton.styleFrom(
@@ -237,18 +236,3 @@ class _RequestsScreenState extends State<RequestsScreen> {
 }
 
 
-/// يسلّم النقطة إلى تطبيق الخرائط في الجهاز.
-///
-/// **ولا خريطةَ داخل التطبيق هنا.** ما يحتاجه صاحبُ القاعة ليلةَ العرس هو
-/// **الملاحة** — صوتٌ يقول له «انعطف يميناً» — وهي في تطبيق الخرائط لا في
-/// شاشةٍ نرسمها. ورسمُ خريطةٍ ثمّ وضعُ زرٍّ فيها يفتح خرائطَ الجهاز خطوةٌ
-/// زائدةٌ بين الرجل وطريقه.
-Future<void> _openMap(BuildContext context, GeoPoint point) async {
-  final ok = await launchUrl(
-    Uri.parse(mapsUrl(point)),
-    mode: LaunchMode.externalApplication,
-  );
-  if (!ok && context.mounted) {
-    showMessage(context, 'تعذّر فتح الخرائط — الموقع: ${point.text}');
-  }
-}

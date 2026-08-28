@@ -203,6 +203,34 @@ void main() {
     expect(demoSettings.push, isTrue, reason: 'أُطفئت الدعاية فأُطفئ معها الحجز');
   });
 
+  testWidgets('**ولا زرَّ حذفِ حسابٍ في الإعدادات**', (tester) async {
+    // أُزيل بقرار صاحب المنتج، وصار الطريقُ صفحةً على الموقع — ورابطُها في
+    // «عن التطبيق» أدناه، فمن أراد حذف حسابه يجد الطريق من داخل التطبيق.
+    _phone(tester);
+    await tester.pumpWidget(_wrap(SettingsScreen(session: _session())));
+    await _settle(tester);
+
+    expect(find.text('حذف الحساب', skipOffstage: false), findsNothing);
+    expect(find.byIcon(Icons.delete_forever_outlined, skipOffstage: false),
+        findsNothing);
+  });
+
+  testWidgets('**وصفُّ نغمة الإشعار موجودٌ ويُضغط**', (tester) async {
+    // ولا يُختار الصوتُ هنا: أندرويد يثبّت نغمةَ القناة عند إنشائها. فالصفُّ
+    // يسوق صاحبَه إلى شاشة النظام حيث يختار النغمة والاهتزاز معاً.
+    _phone(tester);
+    await tester.pumpWidget(_wrap(SettingsScreen(session: _session())));
+    await _settle(tester);
+
+    final row = find.byKey(const ValueKey('notification-sound'), skipOffstage: false);
+    await tester.scrollUntilVisible(row, 200,
+        scrollable: find.byType(Scrollable).first);
+    await tester.pumpAndSettle();
+    expect(row, findsOneWidget);
+    expect(tester.widget<InkWell>(row).onTap, isNotNull,
+        reason: 'صفٌّ لا يُضغط أسوأُ من صفٍّ غائب');
+  });
+
   testWidgets('**والرابطان القانونيّان داخل الإعدادات**', (tester) async {
     // شرطُ متجر Google: سياسةُ الخصوصية في صفحة التطبيق **وداخله**. ومن يبحث
     // عمّا يُجمع من بياناته يبحث عنه هنا لا في المتجر.
@@ -213,9 +241,16 @@ void main() {
     await tester.pumpWidget(_wrap(SettingsScreen(session: _session())));
     await _settle(tester);
 
+    // **و`#` في العنوان جزءٌ منه لا زينة.** اللوحة تُنشر بـ`HashRouter`،
+    // فالعنوان الحقيقيّ `sdd.company/#/privacy`. وكان المكتوب بلا `#` —
+    // يفتح الموقعَ على صفحة الدخول لا على السياسة، بلا خطأٍ يظهر. وهذا
+    // الحارسُ عضّ حين صُحِّح العنوان، وهو المطلوب منه.
     for (final row in [
-      ('سياسة الخصوصية', 'https://sdd.company/privacy'),
-      ('شروط الاستخدام', 'https://sdd.company/terms'),
+      ('سياسة الخصوصية', 'https://sdd.company/#/privacy'),
+      ('شروط الاستخدام', 'https://sdd.company/#/terms'),
+      // **وطريقُ حذف الحساب لا يُفقد بحذف الزرّ.** «جوجل بلاي» يشترط طريقاً،
+      // فإن سقط هذا الرابطُ أيضاً لم يبقَ للتطبيق طريقٌ أصلاً.
+      ('طلب حذف الحساب', 'https://sdd.company/#/delete-account'),
     ]) {
       final finder = find.text(row.$1, skipOffstage: false);
       await tester.scrollUntilVisible(finder, 200,
@@ -230,28 +265,6 @@ void main() {
       expect(tester.widget<InkWell>(tile).onTap, isNotNull,
           reason: '«${row.$1}» صفٌّ لا يُضغط');
     }
-  });
-
-  testWidgets('وحذفُ الحساب يُسأل عنه ويُقال ما سيضيع', (tester) async {
-    // **شرطُ متجر Google، ولا رجعةَ فيه.** فيُقال ما يُحذف وما يبقى قبل أن
-    // يُضغط، لا بعده.
-    _phone(tester);
-    await tester.pumpWidget(_wrap(SettingsScreen(session: _session())));
-    await _settle(tester);
-
-    final button = find.text('حذف الحساب');
-    await tester.scrollUntilVisible(button, 200,
-        scrollable: find.byType(Scrollable).first);
-    await _settle(tester);
-    await tester.tap(button);
-    await _settle(tester);
-
-    expect(find.text('حذف الحساب نهائياً؟'), findsOneWidget);
-    // ونصُّ الزرّ يقول ما سيقع لا «موافق».
-    expect(find.widgetWithText(FilledButton, 'احذف حسابي'), findsOneWidget);
-    expect(find.widgetWithText(TextButton, 'إلغاء'), findsOneWidget);
-    // ويُقال إنّ السجلَّ الماليَّ يبقى — فلا يظنّ أنه يمحو أثره كلَّه.
-    expect(find.textContaining('سجلٌّ ماليٌّ'), findsOneWidget);
   });
 
   testWidgets('واللغةُ تُعرض ولا يُعرض مبدِّلٌ لخيارٍ واحد', (tester) async {

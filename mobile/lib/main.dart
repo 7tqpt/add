@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'src/core/format.dart';
+import 'src/core/i18n.dart';
 import 'src/core/session.dart';
 import 'src/core/theme.dart';
 import 'src/data/supabase.dart';
@@ -10,6 +11,7 @@ import 'src/screens/root.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initFormatting();
+  await loadLocale();
   await initSupabase();
   final session = Session();
   await session.boot();
@@ -22,20 +24,27 @@ class ArasApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'فرحتي',
-      debugShowCheckedModeBanner: false,
-      theme: buildTheme(),
-      // العربية لغةً وحيدة، والاتجاه يميني في كل الشجرة تبعاً لها — فلا حاجة
-      // إلى قلبٍ يدوي في كل شاشة كما في React Native.
-      locale: const Locale('ar'),
-      supportedLocales: const [Locale('ar')],
-      localizationsDelegates: const [
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-      ],
-      home: RootScreen(session: session),
+    // **والاستماعُ في الجذر لا في شاشة.** تبديلُ اللغة يقلب اتّجاه الشجرة
+    // كلِّها، فيُعاد بناؤها من فوق — ولو استمعت كلُّ شاشةٍ وحدها لَبقيت
+    // شاشاتٌ مفتوحةٌ على لغةٍ وشاشاتٌ على أخرى.
+    return ValueListenableBuilder<AppLocale>(
+      valueListenable: appLocale,
+      builder: (context, value, _) => MaterialApp(
+        title: 'فرحتي',
+        debugShowCheckedModeBanner: false,
+        theme: buildTheme(),
+        // الاتّجاه يتبع اللغة: العربيّة من اليمين والإنجليزيّة من اليسار،
+        // وMaterialApp يقلب الشجرة كلَّها تبعاً لـ`locale` — فلا `Directionality`
+        // تُكتب بيدٍ في شاشة.
+        locale: localeOf(value),
+        supportedLocales: const [Locale('ar'), Locale('en')],
+        localizationsDelegates: const [
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        home: RootScreen(session: session),
+      ),
     );
   }
 }
