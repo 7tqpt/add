@@ -27,7 +27,7 @@ for (const f of [
   'notifications.sql', 'push_hook.sql', 'provider_logo.sql', 'payments_app.sql',
   'broadcast.sql', 'availability.sql', 'subscriptions.sql', 'settlements.sql', 'promotions.sql',
   'plan_tasks.sql', 'income.sql', 'chat_media.sql', 'profile_extras.sql',
-  'coupons.sql',
+  'coupons.sql', 'location.sql', 'nearby.sql',
 ]) {
   await db.exec(readFileSync(`../${f}`, 'utf8'))
 }

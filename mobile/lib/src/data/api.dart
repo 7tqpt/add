@@ -84,22 +84,40 @@ class Api {
   /// (`provider_governorate`) لأنها معدّةٌ للعرض، و`governorates` جدولٌ
   /// أسماؤه هي التي تُطابَق. ومن رشّح بالمعرّف هنا لم يجد شيئاً وظنّ أن لا
   /// خدمة في المحافظة.
+  /// [near] نقطةُ الباحث. إن أُعطيت رُتِّبت النتائجُ بالقرب منها — ويقع
+  /// الترتيبُ **في الخادم**: القائمةُ محدودةٌ بأربعين صفّاً، وترتيبُ صفحةٍ
+  /// جاءت مرتّبةً بالتمييز يعطي «أقربَ الأربعين» لا «الأقربَ فعلاً».
   static Future<List<ServiceItem>> services({
     String? search,
     String? categoryId,
     String? governorate,
+    GeoPoint? near,
   }) async {
     if (!isSupabaseConfigured) {
       final term = (search ?? '').trim().toLowerCase();
-      return demoDelay(
-        demoServices.where((s) {
-          if (categoryId != null && s.categoryId != categoryId) return false;
-          if (governorate != null && s.providerGovernorate != governorate) return false;
-          if (term.isEmpty) return true;
-          return s.title.toLowerCase().contains(term) ||
-              s.providerName.toLowerCase().contains(term);
-        }).toList(),
-      );
+      final list = demoServices.where((s) {
+        if (categoryId != null && s.categoryId != categoryId) return false;
+        if (governorate != null && s.providerGovernorate != governorate) return false;
+        if (term.isEmpty) return true;
+        return s.title.toLowerCase().contains(term) ||
+            s.providerName.toLowerCase().contains(term);
+      }).toList();
+      if (near != null) sortByDistance(list, near, (s) => s.providerPoint);
+      return demoDelay(list);
+    }
+
+    if (near != null) {
+      final rows = await db.rpc('api_services_nearby', params: {
+        'p_latitude': near.lat,
+        'p_longitude': near.lng,
+        'p_category_id': categoryId,
+        'p_search': (search ?? '').trim(),
+        'p_limit': 40,
+        'p_governorate': governorate,
+      });
+      return (rows as List)
+          .map((r) => ServiceItem.fromMap(r as Map<String, dynamic>))
+          .toList();
     }
 
     var query = db.from('v_services').select();
@@ -154,19 +172,35 @@ class Api {
     String? search,
     String? categoryName,
     String? governorate,
+    GeoPoint? near,
   }) async {
     if (!isSupabaseConfigured) {
       final term = (search ?? '').trim().toLowerCase();
-      return demoDelay(
-        demoProviders.where((p) {
-          if (categoryName != null && !p.categories.contains(categoryName)) return false;
-          if (governorate != null && p.governorate != governorate) return false;
-          if (term.isEmpty) return true;
-          return p.businessName.toLowerCase().contains(term) ||
-              p.bio.toLowerCase().contains(term);
-        }).toList(),
-      );
+      final list = demoProviders.where((p) {
+        if (categoryName != null && !p.categories.contains(categoryName)) return false;
+        if (governorate != null && p.governorate != governorate) return false;
+        if (term.isEmpty) return true;
+        return p.businessName.toLowerCase().contains(term) ||
+            p.bio.toLowerCase().contains(term);
+      }).toList();
+      if (near != null) sortByDistance(list, near, (p) => p.point);
+      return demoDelay(list);
     }
+
+    if (near != null) {
+      final rows = await db.rpc('api_providers_nearby', params: {
+        'p_latitude': near.lat,
+        'p_longitude': near.lng,
+        'p_category': categoryName,
+        'p_search': (search ?? '').trim(),
+        'p_limit': 40,
+        'p_governorate': governorate,
+      });
+      return (rows as List)
+          .map((r) => PublicProvider.fromMap(r as Map<String, dynamic>))
+          .toList();
+    }
+
     var query = db.from('v_providers').select();
     if (categoryName != null) query = query.contains('categories', [categoryName]);
     if (governorate != null) query = query.eq('governorate', governorate);
@@ -336,20 +370,36 @@ class Api {
   /// صفّه، والمُشغِّل `guard_provider_self_update` يمنعه من مسّ الحالة
   /// والتوثيق والعمولة والتقييم. فدالّةٌ تكتفي بتمرير ما أُعطيت تضيف طبقةً بلا
   /// حماية.
+  /// [setPoint] يفصل «لا تمسّ الموقع» عن «امسحه».
+  ///
+  /// **ولا يكفي `point: null` وحده.** بقيّةُ الحقول تُحذف من الطلب حين تكون
+  /// `null` — وهو الصواب فيها: من يبدّل شعاره لا يريد أن يُمحى تعريفُه. لكنّ
+  /// الموقعَ يُمحى قصداً أحياناً: من وضع دبّوسه على بيت جاره يجب أن يستطيع
+  /// إزالته، لا أن يصحّحه إلى الأبد. فيُرفع علمٌ صريح.
   static Future<void> updateProviderProfile({
     required String providerId,
     String? businessName,
     String? bio,
     String? logoPath,
+    GeoPoint? point,
+    bool setPoint = false,
   }) async {
     final values = <String, dynamic>{
       'business_name': ?businessName,
       'bio': ?bio,
       'logo_path': ?logoPath,
+      if (setPoint) 'latitude': point?.lat,
+      if (setPoint) 'longitude': point?.lng,
     };
     if (values.isEmpty) return;
     if (!isSupabaseConfigured) {
-      demoUpdateProviderProfile(businessName: businessName, bio: bio, logoPath: logoPath);
+      demoUpdateProviderProfile(
+        businessName: businessName,
+        bio: bio,
+        logoPath: logoPath,
+        point: point,
+        setPoint: setPoint,
+      );
       return;
     }
     try {

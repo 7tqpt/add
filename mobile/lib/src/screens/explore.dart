@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../core/geo.dart';
 import '../core/theme.dart';
 import '../data/api.dart';
 import '../data/models.dart';
@@ -57,6 +58,16 @@ class _ExploreScreenState extends State<ExploreScreen> {
   String? _governorate;
   late Future<List<Governorate>> _governorates;
 
+  /// نقطةُ العميل — من **عنوانه الافتراضيّ** في دفتره.
+  ///
+  /// **ولا يُطلب موقعُ الجهاز.** العنوانُ الافتراضيّ هو موقعُ العرس نفسه، وهو
+  /// أصدقُ ممّا يقوله GPS وصاحبُه في مكتبه أو عند أهله. فلا إذنَ موقعٍ يُطلب،
+  /// ولا سطرَ يُضاف إلى سياسة الخصوصيّة.
+  GeoPoint? _myPoint;
+
+  /// أمُرتَّبٌ بالقرب الآن؟ — ولا يُرفع إلّا ومعه نقطة.
+  bool _nearest = false;
+
   /// صفُّ الأقسام — يُمسك ليُمرَّر إلى القسم المفتوح عليه.
   final _catsScroll = ScrollController();
 
@@ -67,6 +78,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
     _governorates = Api.governorates();
     _reload();
     _loadFavourites();
+    _loadMyPoint();
     _revealCategory();
   }
 
@@ -130,18 +142,36 @@ class _ExploreScreenState extends State<ExploreScreen> {
     });
   }
 
+  /// يقرأ نقطةَ العنوان الافتراضيّ — بصمتٍ إن لم توجد.
+  ///
+  /// **والمفتاحُ لا يظهر بلا نقطة.** مفتاحٌ يُضغط فلا يتغيّر شيء أسوأُ من
+  /// مفتاحٍ غائب، ومن لم يحفظ عنواناً بعدُ لا يُلام على ذلك في شاشة بحث.
+  Future<void> _loadMyPoint() async {
+    try {
+      final list = await Api.myAddresses();
+      final def = list.where((a) => a.isDefault).firstOrNull ?? list.firstOrNull;
+      final p = def?.point;
+      if (mounted && p != null) setState(() => _myPoint = p);
+    } catch (_) {
+      // الموقعُ زينةٌ لا شرط: فشلُ قراءة الدفتر لا يمنع التصفّح.
+    }
+  }
+
   void _reload() {
     setState(() {
+      final near = _nearest ? _myPoint : null;
       _services = Api.services(
         search: _applied,
         categoryId: _categoryId,
         governorate: _governorate,
+        near: near,
       );
       if (_asProviders) {
         _providers = Api.providers(
           search: _applied,
           categoryName: _categoryName,
           governorate: _governorate,
+          near: near,
         );
       }
     });
@@ -236,6 +266,23 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(horizontal: Space.lg),
                 children: [
+                  // **«الأقربُ إليّ» أوّلَ الصفّ ولا يظهر بلا نقطة.**
+                  //
+                  // وهو مع المحافظات لا فوقها: كلاهما يقول «أين»، والفرقُ أنّ
+                  // المحافظةَ تقصُّ والقربَ يرتّب. ومن اختار «عدن» ثمّ رفعه
+                  // رأى العدنيّين مرتّبين بالقرب — لا صنعاء.
+                  if (_myPoint != null) ...[
+                    PickChip(
+                      key: const ValueKey('nearest-chip'),
+                      label: 'الأقرب إليّ',
+                      active: _nearest,
+                      onTap: () {
+                        _nearest = !_nearest;
+                        _reload();
+                      },
+                    ),
+                    const SizedBox(width: Space.sm),
+                  ],
                   PickChip(
                     label: 'كل المحافظات',
                     active: _governorate == null,
@@ -333,7 +380,11 @@ class _ExploreScreenState extends State<ExploreScreen> {
         ),
         Expanded(
           child: _asProviders
-              ? _Providers(future: _providers, onRetry: _reload)
+              ? _Providers(
+                  future: _providers,
+                  onRetry: _reload,
+                  from: _nearest ? _myPoint : null,
+                )
               : FutureBuilder<List<ServiceItem>>(
             future: _services,
             builder: (context, snap) {
@@ -354,6 +405,10 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 separatorBuilder: (_, _) => const SizedBox(height: Space.md),
                 itemBuilder: (context, i) => ServiceListCard(
                   item: items[i],
+                  // المسافةُ تُكتب حين يكون الترتيبُ بها — لا دائماً: رقمٌ
+                  // على بطاقةٍ لم يُرتَّب بها يُقرأ ترتيباً فيُظنّ الأوّلُ
+                  // أقربَ وهو ليس كذلك.
+                  from: _nearest ? _myPoint : null,
                   isFavourite: _favourites.contains(items[i].id),
                   onToggleFavourite: () => _toggleFavourite(items[i].id),
                   onOpen: () => Navigator.of(context).push(
@@ -433,9 +488,10 @@ class _Toggle extends StatelessWidget {
 
 /// دليلُ المزوّدين.
 class _Providers extends StatelessWidget {
-  const _Providers({required this.future, required this.onRetry});
+  const _Providers({required this.future, required this.onRetry, this.from});
   final Future<List<PublicProvider>>? future;
   final VoidCallback onRetry;
+  final GeoPoint? from;
 
   @override
   Widget build(BuildContext context) {
@@ -457,7 +513,7 @@ class _Providers extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(Space.lg, Space.lg, Space.lg, glassNavSpace),
           itemCount: rows.length,
           separatorBuilder: (_, _) => const SizedBox(height: Space.md),
-          itemBuilder: (context, i) => _ProviderRow(provider: rows[i]),
+          itemBuilder: (context, i) => _ProviderRow(provider: rows[i], from: from),
         );
       },
     );
@@ -465,8 +521,9 @@ class _Providers extends StatelessWidget {
 }
 
 class _ProviderRow extends StatelessWidget {
-  const _ProviderRow({required this.provider});
+  const _ProviderRow({required this.provider, this.from});
   final PublicProvider provider;
+  final GeoPoint? from;
 
   @override
   Widget build(BuildContext context) {
@@ -516,7 +573,8 @@ class _ProviderRow extends StatelessWidget {
                     [
                       p.governorate,
                       if (p.categories.isNotEmpty) p.categories.first,
-                    ].where((t) => t.isNotEmpty).join(' · '),
+                    ].where((t) => t.isNotEmpty).join(' · ') +
+                        distanceSuffix(from, p.point),
                   ),
                   const SizedBox(height: Space.sm),
                   Row(

@@ -41,6 +41,16 @@ const demoCategories = [
   ServiceCategory(id: 'c12', name: 'الطباعة', slug: 'printing'),
 ];
 
+/// نقاطُ مقدّمي الخدمة في وضع العرض — تُسمّى مرّةً وتُستعمل في الموضعين.
+///
+/// **ولا تُكتب الأرقامُ مرّتين:** الخدمةُ تحمل نقطةَ مزوّدها، فلو كُتبت في
+/// البطاقة وفي ملفّ المزوّد لَافترقتا يومَ يُصحَّح أحدُهما — ولَقالت الخريطةُ
+/// شيئاً وقال ترتيبُ «الأقرب إليّ» غيرَه.
+const _ptSaneena = GeoPoint(15.3350, 44.1780); // حي السنينة — غربَ الأمانة
+const _ptZubairi = GeoPoint(15.3520, 44.2010); // شارع الزبيري — وسطها
+const _ptKhorMaksar = GeoPoint(12.7960, 45.0230); // خور مكسر — عدن
+const _ptSawan = GeoPoint(15.3690, 44.2600); // سعوان — شرقَ الأمانة
+
 const demoServices = [
   ServiceItem(
     id: 's1',
@@ -53,6 +63,7 @@ const demoServices = [
     categoryId: 'c1',
     categoryName: 'القاعات والخيام',
     providerId: 'p1',
+    providerPoint: _ptSaneena,
     providerName: 'قاعة التاج',
     providerGovernorate: 'أمانة العاصمة',
     providerRating: 4.9,
@@ -75,6 +86,7 @@ const demoServices = [
     categoryId: 'c2',
     categoryName: 'الطبخ والضيافة',
     providerId: 'p2',
+    providerPoint: _ptZubairi,
     providerName: 'مطبخ الأصالة',
     providerGovernorate: 'أمانة العاصمة',
     providerRating: 4.7,
@@ -94,6 +106,7 @@ const demoServices = [
     categoryId: 'c3',
     categoryName: 'التصوير والإضاءة',
     providerId: 'p3',
+    providerPoint: _ptKhorMaksar,
     providerName: 'استوديو السعادة',
     providerGovernorate: 'عدن',
     providerRating: 4.4,
@@ -114,6 +127,7 @@ const demoServices = [
     categoryId: 'c4',
     categoryName: 'الديكور والكوشة',
     providerId: 'p4',
+    providerPoint: _ptSawan,
     providerName: 'ديكور الياسمين',
     providerGovernorate: 'أمانة العاصمة',
     providerRating: 4.8,
@@ -133,6 +147,7 @@ const demoServices = [
     categoryId: 'c5',
     categoryName: 'الصوت والمعدات',
     providerId: 'p5',
+    // ولا نقطةَ لهذا: مزوّدٌ لم يضعها بعد.
     providerName: 'مركز النجم',
     providerGovernorate: 'تعز',
     providerRating: 4.2,
@@ -154,6 +169,7 @@ const demoServices = [
     categoryId: 'c1',
     categoryName: 'القاعات والخيام',
     providerId: 'p1',
+    providerPoint: _ptSaneena,
     providerName: 'قاعة التاج',
     providerGovernorate: 'أمانة العاصمة',
     providerRating: 4.9,
@@ -173,6 +189,7 @@ const demoServices = [
     categoryId: 'c1',
     categoryName: 'القاعات والخيام',
     providerId: 'p1',
+    providerPoint: _ptSaneena,
     providerName: 'قاعة التاج',
     providerGovernorate: 'أمانة العاصمة',
     providerRating: 4.9,
@@ -202,6 +219,7 @@ const demoProviders = [
     isFeatured: true,
     isVerified: true,
     categories: ['القاعات والخيام'],
+    point: _ptSaneena,
   ),
   PublicProvider(
     id: 'p2',
@@ -216,6 +234,7 @@ const demoProviders = [
     isFeatured: false,
     isVerified: true,
     categories: ['الطبخ والضيافة'],
+    point: _ptZubairi,
   ),
   PublicProvider(
     id: 'p3',
@@ -231,6 +250,7 @@ const demoProviders = [
     isFeatured: false,
     isVerified: true,
     categories: ['التصوير والإضاءة'],
+    point: _ptKhorMaksar,
   ),
   PublicProvider(
     id: 'p4',
@@ -245,6 +265,7 @@ const demoProviders = [
     isFeatured: false,
     isVerified: true,
     categories: ['الديكور والكوشة'],
+    point: _ptSawan,
   ),
   PublicProvider(
     id: 'p5',
@@ -259,6 +280,8 @@ const demoProviders = [
     isFeatured: false,
     isVerified: true,
     categories: ['الصوت والمعدات'],
+    // **وهذا بلا نقطةٍ عمداً.** مزوّدٌ لم يضع موقعه على الخريطة موجودٌ في
+    // المنصّة ويعمل، فتُرى في وضع العرض كيف يظهر: آخِراً، لا مخفيّاً.
   ),
 ];
 
@@ -541,7 +564,13 @@ void demoBecomeProvider({
 ///
 /// وبلا هذا يضغط المجرِّب «حفظ» فلا يتغيّر شيء على الشاشة، فيظنّ الحفظ معطوباً
 /// وهو إنما يجرّب بلا قاعدة.
-void demoUpdateProviderProfile({String? businessName, String? bio, String? logoPath}) {
+void demoUpdateProviderProfile({
+  String? businessName,
+  String? bio,
+  String? logoPath,
+  GeoPoint? point,
+  bool setPoint = false,
+}) {
   final p = demoProviderProfile;
   if (p == null) return;
   demoProviderProfile = ProviderProfile(
@@ -557,6 +586,9 @@ void demoUpdateProviderProfile({String? businessName, String? bio, String? logoP
     completedBookings: p.completedBookings,
     totalEarnings: p.totalEarnings,
     rejectionReason: p.rejectionReason,
+    // **والعلمُ يفصل «لا تمسّ» عن «امسح»** — كما في `Api`، وإلّا لَما استطاع
+    // أحدٌ في وضع العرض أن يُزيل نقطةً وضعها خطأً.
+    point: setPoint ? point : p.point,
   );
 }
 
@@ -888,6 +920,9 @@ List<SavedAddress> demoAddresses = [
     governorate: 'أمانة العاصمة',
     governorateId: null,
     isDefault: true,
+    // نقطةُ حدّة — وبها يظهر مفتاحُ «الأقرب إليّ» في وضع العرض. ولولاها
+    // لَكانت الميزةُ كلُّها غيرَ مرئيّةٍ لمن يجرّب التطبيق بلا قاعدة.
+    point: GeoPoint(15.3300, 44.1950),
   ),
 ];
 
@@ -912,6 +947,9 @@ void demoResetAccountExtras() {
       governorate: 'أمانة العاصمة',
       governorateId: null,
       isDefault: true,
+      // نقطةُ حدّة — وبها يظهر مفتاحُ «الأقرب إليّ» في وضع العرض. ولولاها
+      // لَكانت الميزةُ كلُّها غيرَ مرئيّةٍ لمن يجرّب التطبيق بلا قاعدة.
+      point: GeoPoint(15.3300, 44.1950),
     ),
   ];
   demoPaymentMethods = [
@@ -1631,10 +1669,29 @@ List<DayMark> demoDays = [
 bool _sameDay(DateTime a, DateTime b) =>
     a.year == b.year && a.month == b.month && a.day == b.day;
 
-List<DayMark> demoMyDays(DateTime from, DateTime to) => demoDays
-    .where((d) => !d.day.isBefore(from) && !d.day.isAfter(to))
-    .toList()
-  ..sort((a, b) => a.day.compareTo(b.day));
+/// علاماتُ الأيّام في مدىً — **ويُقارَن اليومُ يوماً لا لحظة.**
+///
+/// وهذا خطأٌ حقيقيٌّ لا في الاختبار: الشاشةُ تطلب المدى من أوّل الشهر إلى
+/// `DateTime(سنة, شهر + 1, 0)` — وهو آخرُ يومٍ عند **منتصف ليله**. وعلامةٌ
+/// وُضعت في ذلك اليوم ومعها ساعةٌ (وكلُّ `DateTime.now()` معها ساعة) تكون
+/// «بعده» بالمقارنة اللحظيّة، فتسقط من القائمة.
+///
+/// **فآخرُ يومٍ في كلّ شهرٍ كان يختفي من التقويم** في وضع التجربة. ولم يظهر
+/// ذلك في اختبارٍ واحدٍ تسعةً وعشرين يوماً من كل ثلاثين، ثم سقط اختباران في
+/// الثامن والعشرين من أغسطس — لأنّ `اليوم + ٣` صار الحادي والثلاثين.
+///
+/// والقاعدةُ الحقيقيّة سليمةٌ من هذا: `api_my_days` تأخذ `date` لا
+/// `timestamp`، و`Api.myDays` تُرسل التاريخ نصّاً. فالعطبُ في وضع التجربة
+/// وحده — وهو الوضعُ الذي يفتح به الناسُ التطبيقَ أوّلَ مرّة.
+List<DayMark> demoMyDays(DateTime from, DateTime to) {
+  DateTime dayOf(DateTime d) => DateTime(d.year, d.month, d.day);
+  final start = dayOf(from);
+  final end = dayOf(to);
+  return demoDays
+      .where((d) => !dayOf(d.day).isBefore(start) && !dayOf(d.day).isAfter(end))
+      .toList()
+    ..sort((a, b) => a.day.compareTo(b.day));
+}
 
 DayMark? demoSetAvailability(DateTime day, bool blocked, String note) {
   final held = demoDays.where((d) => _sameDay(d.day, day)).firstOrNull;

@@ -51,6 +51,7 @@ class ServiceItem {
     this.imagesCount = 0,
     this.hasVideo = false,
     this.hasAudio = false,
+    this.providerPoint,
   });
 
   final String id;
@@ -83,6 +84,12 @@ class ServiceItem {
   final bool hasVideo;
   final bool hasAudio;
 
+  /// نقطةُ مقدّم الخدمة على الخريطة — `null` لمن لم يضعها.
+  ///
+  /// تأتي مع صفّ الخدمة، فتُحسب المسافةُ في البطاقة بلا نداءٍ ثانٍ ولا عمودٍ
+  /// محسوبٍ من الخادم: ضربٌ واحدٌ لكلّ بطاقةٍ معروضة.
+  final GeoPoint? providerPoint;
+
   factory ServiceItem.fromMap(Map<String, dynamic> m) => ServiceItem(
     id: m['id'] as String,
     title: (m['title'] ?? '') as String,
@@ -105,6 +112,8 @@ class ServiceItem {
     imagesCount: ((m['images_count'] ?? 0) as num).toInt(),
     hasVideo: (m['has_video'] ?? false) as bool,
     hasAudio: (m['has_audio'] ?? false) as bool,
+    providerPoint:
+        pointFromRow(m, 'provider_latitude', 'provider_longitude'),
   );
 }
 
@@ -357,6 +366,7 @@ class ProviderProfile {
     required this.completedBookings,
     required this.totalEarnings,
     required this.rejectionReason,
+    this.point,
   });
 
   final String id;
@@ -372,6 +382,12 @@ class ProviderProfile {
   final num totalEarnings;
   final String rejectionReason;
 
+  /// نقطةُ محلّه على الخريطة — يضعها بنفسه، ويُرتَّب بها في «الأقرب إليّ».
+  ///
+  /// وليست من الحقول المحروسة: `guard_provider_self_update` يمنع الحالةَ
+  /// والتوثيقَ والعمولةَ والتقييم، لا موقعَ المحلّ — وهو أعرفُ الناس به.
+  final GeoPoint? point;
+
   factory ProviderProfile.fromMap(Map<String, dynamic> m) => ProviderProfile(
     id: m['id'] as String,
     businessName: (m['business_name'] ?? '') as String,
@@ -385,6 +401,7 @@ class ProviderProfile {
     completedBookings: ((m['completed_bookings'] ?? 0) as num).toInt(),
     totalEarnings: (m['total_earnings'] ?? 0) as num,
     rejectionReason: (m['rejection_reason'] ?? '') as String,
+    point: pointFromRow(m, 'latitude', 'longitude'),
   );
 }
 
@@ -411,6 +428,7 @@ class PublicProvider {
     required this.isFeatured,
     required this.isVerified,
     required this.categories,
+    this.point,
   });
 
   final String id;
@@ -437,6 +455,9 @@ class PublicProvider {
   /// أسماء أقسامه — لا معرّفاتها: هذه للعرض لا للترشيح.
   final List<String> categories;
 
+  /// نقطتُه على الخريطة — `null` لمن لم يضعها، وهم موجودون ويعملون.
+  final GeoPoint? point;
+
   factory PublicProvider.fromMap(Map<String, dynamic> m) => PublicProvider(
     id: m['id'] as String,
     businessName: (m['business_name'] ?? '') as String,
@@ -450,6 +471,7 @@ class PublicProvider {
     isFeatured: (m['is_featured'] ?? false) as bool,
     isVerified: m['verified_at'] != null,
     categories: _texts(m['categories']),
+    point: pointFromRow(m, 'latitude', 'longitude'),
   );
 }
 

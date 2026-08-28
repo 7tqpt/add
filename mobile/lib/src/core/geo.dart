@@ -6,6 +6,8 @@
 /// الخرائط في الجهاز.
 library;
 
+import 'dart:math' as math;
+
 /// نقطةٌ على الأرض.
 class GeoPoint {
   const GeoPoint(this.lat, this.lng);
@@ -139,3 +141,68 @@ GeoPoint startingPoint({GeoPoint? saved, String governorate = ''}) =>
     saved ??
     governorateCenters[governorate.trim()] ??
     const GeoPoint(15.3694, 44.1910);
+
+/// يقرأ نقطةً من صفٍّ جاء من القاعدة، أو `null` إن نقص أحدُ العمودين.
+///
+/// **ونصفُ نقطةٍ ليست نقطة.** القاعدةُ تمنع ذلك بقيد، لكنّ الصفَّ قد يصل من
+/// طريقةٍ لا تحمل العمودين أصلاً — فيُقرأ الغيابُ غياباً لا صفراً.
+GeoPoint? pointFromRow(Map<String, dynamic> m, String latKey, String lngKey) {
+  final lat = (m[latKey] as num?)?.toDouble();
+  final lng = (m[lngKey] as num?)?.toDouble();
+  if (lat == null || lng == null) return null;
+  final p = GeoPoint(lat, lng);
+  return p.isValid ? p : null;
+}
+
+/// المسافةُ بالكيلومترات بين نقطتين — القانونُ الهافرسينيّ.
+///
+/// **وهي نسخةُ `public.distance_km` نفسها في القاعدة**، بنصف القطر نفسه
+/// (٦٣٧١ كم). فالخادمُ يرتّب بها، والتطبيقُ يعرض بها الرقمَ على البطاقة —
+/// ولو اختلف الحسابان لَقال الترتيبُ شيئاً وقالت البطاقةُ غيره.
+///
+/// وتُحسب هنا لا تُطلب من الخادم: العمودان في الصفّ أصلاً، فضربٌ واحدٌ لكلّ
+/// بطاقةٍ معروضة أرخصُ من عمودٍ محسوبٍ يُنقل في كلّ صفّ.
+double distanceKm(GeoPoint a, GeoPoint b) {
+  const radius = 6371.0;
+  double rad(double d) => d * math.pi / 180;
+  final h = math.pow(math.sin(rad(b.lat - a.lat) / 2), 2) +
+      math.cos(rad(a.lat)) *
+          math.cos(rad(b.lat)) *
+          math.pow(math.sin(rad(b.lng - a.lng) / 2), 2);
+  return 2 * radius * math.asin(math.sqrt(h));
+}
+
+/// يرتّب قائمةً بالقرب من [from] — ومن لا نقطةَ له في الذيل لا خارجَ القائمة.
+///
+/// **وهي للوضع التجريبيّ وحده.** حين تكون القاعدةُ موصولةً يقع الترتيبُ في
+/// الخادم: القائمةُ محدودةٌ بأربعين صفّاً، وترتيبُ صفحةٍ جاءت مرتّبةً بالتمييز
+/// يعطي «أقربَ الأربعين» لا «الأقربَ فعلاً» — وهما مختلفان حين يكون في
+/// المنصّة ألف.
+///
+/// ويُطابق ترتيبُها ترتيبَ `nulls last` في الخادم، فلا تختلف الشاشةُ بين
+/// وضعين.
+void sortByDistance<T>(
+  List<T> items,
+  GeoPoint from,
+  GeoPoint? Function(T) pointOf,
+) {
+  items.sort((a, b) {
+    final pa = pointOf(a);
+    final pb = pointOf(b);
+    if (pa == null && pb == null) return 0;
+    if (pa == null) return 1; // من لا نقطةَ له آخراً
+    if (pb == null) return -1;
+    return distanceKm(from, pa).compareTo(distanceKm(from, pb));
+  });
+}
+
+/// «٤ كم» أو «٧٥٠ م» — نصٌّ يُقرأ لا رقمٌ عشريّ بأربع خانات.
+///
+/// **ودون الكيلومتر تُقال بالأمتار:** «٠٫٤ كم» تُقرأ بجهد، و«٤٠٠ م» تُعرف
+/// بنظرة. وفوق ذلك خانةٌ واحدة، وفوق العشرة لا كسورَ أصلاً — من يختار بين
+/// قاعتين لا يعنيه المئةُ متر.
+String distanceLabel(double km) {
+  if (km < 1) return '${(km * 1000).round()} م';
+  if (km < 10) return '${km.toStringAsFixed(1)} كم';
+  return '${km.round()} كم';
+}
