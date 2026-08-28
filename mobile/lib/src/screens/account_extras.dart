@@ -3,6 +3,7 @@
 //
 // **وكلٌّ منها يخدم شاشةً قائمة لا يقف وحده:** العنوان يملأ حقلَ الحجز الذي
 // كان يُكتب في كل مرّة، والمحفظة تملأ حقلَ الحوالة الذي كان يُكتب مع كل دفعة.
+import 'package:app_settings/app_settings.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -609,28 +610,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  Future<void> _deleteAccount() async {
-    final yes = await confirmDanger(
-      context,
-      title: 'حذف الحساب نهائياً؟',
-      body: 'سيُحذف حسابك وملفّك وعناوينك وطرق دفعك وخطّة عرسك ومفضّلتك — '
-          'ولا رجعة.\n\n'
-          'وتبقى سجلّاتُ حجوزاتك ومدفوعاتك بلا اسمك: هي سجلٌّ ماليٌّ يخصّ '
-          'مقدّم الخدمة أيضاً.\n\n'
-          'ولا يُحذف الحساب إن كان عليك حجزٌ قائم.',
-      confirm: 'احذف حسابي',
-    );
-    if (yes != true) return;
-    setState(() => _busy = true);
-    try {
-      await Api.deleteMyAccount();
-      await widget.session.signOut();
-    } catch (e) {
-      if (mounted) showMessage(context, messageOf(e));
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -665,6 +644,47 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ],
                 ),
 
+                const SizedBox(height: Space.sm),
+                // ── نغمةُ الإشعار ─────────────────────────────────────────
+                //
+                // **ولا تُختار هنا بل في شاشة النظام.** أندرويد يثبّت نغمةَ
+                // القناة عند إنشائها ولا تتغيّر بعدها من الشيفرة. وشاشةُ
+                // النظام تعطي أكثرَ ممّا نستطيع: النغمة والاهتزاز والأولويّة
+                // ونقطةَ الأيقونة — وكلُّها بيد صاحب الجهاز حيث يتوقّعها.
+                AppCard(
+                  children: [
+                    InkWell(
+                      key: const ValueKey('notification-sound'),
+                      borderRadius: BorderRadius.circular(12),
+                      onTap: () =>
+                          AppSettings.openAppSettings(type: AppSettingsType.notification),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: Space.sm),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.music_note_outlined,
+                                size: 20, color: AppColors.accent),
+                            const SizedBox(width: Space.md),
+                            const Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text('نغمة الإشعار'),
+                                  SizedBox(height: 2),
+                                  Muted('اختر النغمة والاهتزاز من إعدادات جهازك',
+                                      size: 11),
+                                ],
+                              ),
+                            ),
+                            const Icon(Icons.open_in_new,
+                                size: 16, color: AppColors.muted),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+
                 const SizedBox(height: Space.lg),
                 const SectionTitle('اللغة'),
                 const SizedBox(height: Space.sm),
@@ -682,28 +702,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ],
                 ),
 
-                const SizedBox(height: Space.lg),
-                const SectionTitle('الحساب'),
-                const SizedBox(height: Space.sm),
-                AppCard(
-                  children: [
-                    const Text(
-                      'حذفُ الحساب يمحو ملفّك وعناوينك وطرق دفعك وخطّة عرسك '
-                      'ومفضّلتك — ولا رجعة.',
-                      style: TextStyle(height: 1.7, color: AppColors.ink2),
-                    ),
-                    const SizedBox(height: Space.md),
-                    OutlinedButton.icon(
-                      onPressed: _busy ? null : _deleteAccount,
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppColors.critical,
-                        side: const BorderSide(color: AppColors.critical),
-                      ),
-                      icon: const Icon(Icons.delete_forever_outlined, size: 20),
-                      label: const Text('حذف الحساب'),
-                    ),
-                  ],
-                ),
 
                 // ── القانونيّ ──────────────────────────────────────────
                 //
@@ -725,6 +723,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       icon: Icons.description_outlined,
                       label: 'شروط الاستخدام',
                       url: 'https://sdd.company/#/terms',
+                    ),
+                    const Divider(height: 1, color: AppColors.hairline),
+                    // **وطلبُ حذف الحساب صار على الموقع لا هنا** — بقرار
+                    // صاحب المنتج. والرابطُ يبقى في التطبيق: من أراد حذف
+                    // حسابه يجب أن يجد الطريق إليه من داخله، ولو كان الطريق
+                    // صفحةً على الموقع.
+                    _LegalLink(
+                      icon: Icons.person_remove_outlined,
+                      label: 'طلب حذف الحساب',
+                      url: 'https://sdd.company/#/delete-account',
                     ),
                   ],
                 ),

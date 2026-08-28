@@ -18,7 +18,7 @@ import { PaymentsPage } from '@/pages/Payments'
 import { PlanDetailPage } from '@/pages/PlanDetail'
 import { PlansPage } from '@/pages/Plans'
 import { CouponsPage } from '@/pages/Coupons'
-import { PrivacyPage, TermsPage } from '@/pages/Legal'
+import { DeleteAccountPage, PrivacyPage, TermsPage } from '@/pages/Legal'
 import { PromotionsPage } from '@/pages/Promotions'
 import { ProviderDetailPage } from '@/pages/ProviderDetail'
 import { ProvidersPage } from '@/pages/Providers'
@@ -60,6 +60,9 @@ export function App() {
           ويُرفض النشر. ومحروسٌ في `supabase/tests/legal_public.test.mjs`. */}
       <Route path="/privacy" element={<PrivacyPage />} />
       <Route path="/terms" element={<TermsPage />} />
+      {/* طلب حذف الحساب — عامّةٌ كالسابقتين: من أراد حذف حسابه قد لا
+          يستطيع الدخول أصلاً، ومن خلف بوّابة الدخول لا يصل إليها. */}
+      <Route path="/delete-account" element={<DeleteAccountPage />} />
       <Route element={<RequireAuth />}>
         {/* حارس المجال داخل التخطيط: القائمة تبقى ظاهرة فيعرف المستخدم أين هو. */}
         <Route element={<AreaGuard />}>
