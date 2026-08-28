@@ -5,6 +5,8 @@
 // كان يُكتب في كل مرّة، والمحفظة تملأ حقلَ الحوالة الذي كان يُكتب مع كل دفعة.
 import 'package:app_settings/app_settings.dart';
 import 'package:flutter/material.dart';
+
+import '../core/i18n.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../core/geo.dart';
@@ -64,10 +66,10 @@ class _AddressesScreenState extends State<AddressesScreen> {
   Future<void> _delete(SavedAddress a) async {
     final yes = await confirmDanger(
       context,
-      title: 'حذف العنوان؟',
+      title: tr('حذف العنوان؟'),
       body: 'سيُحذف «${a.label.isEmpty ? a.details : a.label}» من عناوينك. '
           'والحجوزاتُ التي كُتب فيها لا تتأثّر.',
-      confirm: 'حذف',
+      confirm: tr('حذف'),
     );
     if (yes != true) return;
     try {
@@ -81,11 +83,11 @@ class _AddressesScreenState extends State<AddressesScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('العناوين')),
+      appBar: AppBar(title: Text(tr('العناوين'))),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _edit(),
         icon: const Icon(Icons.add_location_alt_outlined),
-        label: const Text('عنوان جديد'),
+        label: Text(tr('عنوان جديد')),
       ),
       body: FutureBuilder<List<SavedAddress>>(
         future: _future,
@@ -98,10 +100,10 @@ class _AddressesScreenState extends State<AddressesScreen> {
           }
           final rows = snap.data ?? const <SavedAddress>[];
           if (rows.isEmpty) {
-            return const EmptyBlock(
-              title: 'لا عناوين محفوظة',
+            return EmptyBlock(
+              title: tr('لا عناوين محفوظة'),
               description:
-                  'احفظ عنوان بيت العرس مرّةً واحدة، فيملأ نفسه في كل حجزٍ بعدها.',
+                  tr('احفظ عنوان بيت العرس مرّةً واحدة، فيملأ نفسه في كل حجزٍ بعدها.'),
             );
           }
           return ListView.separated(
@@ -117,7 +119,7 @@ class _AddressesScreenState extends State<AddressesScreen> {
                     children: [
                       Expanded(
                         child: Text(
-                          a.label.isEmpty ? 'عنوان' : a.label,
+                          a.label.isEmpty ? tr('عنوان') : a.label,
                           style: const TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w600,
@@ -128,7 +130,7 @@ class _AddressesScreenState extends State<AddressesScreen> {
                       // الافتراضيُّ يُعلَّم: قائمةٌ من ثلاثةٍ بلا علامةٍ لا
                       // يعرف صاحبها أيُّها سيملأ نموذج الحجز.
                       if (a.isDefault)
-                        const StatusBadge('الافتراضي', color: AppColors.good),
+                        StatusBadge(tr('الافتراضي'), color: AppColors.good),
                     ],
                   ),
                   const SizedBox(height: Space.xs),
@@ -143,14 +145,14 @@ class _AddressesScreenState extends State<AddressesScreen> {
                         TextButton.icon(
                           onPressed: () => _edit(a),
                           icon: const Icon(Icons.edit_outlined, size: 18),
-                          label: const Text('تعديل'),
+                          label: Text(tr('تعديل')),
                         ),
                         const Spacer(),
                         TextButton.icon(
                           onPressed: () => _delete(a),
                           style: TextButton.styleFrom(foregroundColor: AppColors.critical),
                           icon: const Icon(Icons.delete_outline, size: 18),
-                          label: const Text('حذف'),
+                          label: Text(tr('حذف')),
                         ),
                       ],
                     ),
@@ -200,7 +202,7 @@ class _AddressSheetState extends State<_AddressSheet> {
 
   Future<void> _save() async {
     if (_details.text.trim().length < 5) {
-      setState(() => _error = 'اكتب العنوان بتفصيلٍ يكفي لِمن يصل إليه.');
+      setState(() => _error = tr('اكتب العنوان بتفصيلٍ يكفي لِمن يصل إليه.'));
       return;
     }
     setState(() {
@@ -228,21 +230,21 @@ class _AddressSheetState extends State<_AddressSheet> {
   @override
   Widget build(BuildContext context) {
     return SheetBody(
-      title: widget.current == null ? 'عنوان جديد' : 'تعديل العنوان',
+      title: widget.current == null ? tr('عنوان جديد') : tr('تعديل العنوان'),
       children: [
         TextField(
           controller: _label,
-          decoration: const InputDecoration(
-            labelText: 'الاسم',
-            hintText: 'بيت العرس، القاعة، بيت العروس…',
+          decoration: InputDecoration(
+            labelText: tr('الاسم'),
+            hintText: tr('بيت العرس، القاعة، بيت العروس…'),
           ),
         ),
         const SizedBox(height: Space.md),
         DropdownButtonFormField<String?>(
           initialValue: _govId,
-          decoration: const InputDecoration(labelText: 'المحافظة'),
+          decoration: InputDecoration(labelText: tr('المحافظة')),
           items: [
-            const DropdownMenuItem<String?>(value: null, child: Text('غير محدّدة')),
+            DropdownMenuItem<String?>(value: null, child: Text(tr('غير محدّدة'))),
             for (final g in _govs)
               DropdownMenuItem<String?>(value: g.id, child: Text(g.name)),
           ],
@@ -253,9 +255,9 @@ class _AddressSheetState extends State<_AddressSheet> {
           controller: _details,
           minLines: 2,
           maxLines: 4,
-          decoration: const InputDecoration(
-            labelText: 'العنوان',
-            hintText: 'المنطقة، والشارع، وعلامةٌ مميّزة',
+          decoration: InputDecoration(
+            labelText: tr('العنوان'),
+            hintText: tr('المنطقة، والشارع، وعلامةٌ مميّزة'),
           ),
         ),
         const SizedBox(height: Space.md),
@@ -274,8 +276,8 @@ class _AddressSheetState extends State<_AddressSheet> {
         SwitchListTile(
           value: _default,
           onChanged: (v) => setState(() => _default = v),
-          title: const Text('اجعله الافتراضي'),
-          subtitle: const Muted('يملأ نموذج الحجز تلقائياً'),
+          title: Text(tr('اجعله الافتراضي')),
+          subtitle: Muted(tr('يملأ نموذج الحجز تلقائياً')),
           contentPadding: EdgeInsets.zero,
         ),
         if (_error != null) ...[
@@ -285,7 +287,7 @@ class _AddressSheetState extends State<_AddressSheet> {
         const SizedBox(height: Space.md),
         FilledButton(
           onPressed: _busy ? null : _save,
-          child: _busy ? const ButtonSpinner() : const Text('حفظ'),
+          child: _busy ? ButtonSpinner() : Text(tr('حفظ')),
         ),
       ],
     );
@@ -332,10 +334,10 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
   Future<void> _delete(SavedPaymentMethod m) async {
     final yes = await confirmDanger(
       context,
-      title: 'حذف الوسيلة؟',
+      title: tr('حذف الوسيلة؟'),
       body: 'سيُحذف «${m.accountRef}» من طرق دفعك. '
           'والحوالاتُ التي أُبلغ بها لا تتأثّر.',
-      confirm: 'حذف',
+      confirm: tr('حذف'),
     );
     if (yes != true) return;
     try {
@@ -349,11 +351,11 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('طرق الدفع')),
+      appBar: AppBar(title: Text(tr('طرق الدفع'))),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _edit(),
         icon: const Icon(Icons.add_card_outlined),
-        label: const Text('وسيلة جديدة'),
+        label: Text(tr('وسيلة جديدة')),
       ),
       body: FutureBuilder<List<SavedPaymentMethod>>(
         future: _future,
@@ -366,9 +368,9 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
           }
           final rows = snap.data ?? const <SavedPaymentMethod>[];
           if (rows.isEmpty) {
-            return const EmptyBlock(
-              title: 'لا طرق دفع محفوظة',
-              description: 'احفظ رقم محفظتك مرّةً واحدة، فيملأ نفسه في كل إبلاغٍ بحوالة.',
+            return EmptyBlock(
+              title: tr('لا طرق دفع محفوظة'),
+              description: tr('احفظ رقم محفظتك مرّةً واحدة، فيملأ نفسه في كل إبلاغٍ بحوالة.'),
             );
           }
           return ListView.separated(
@@ -393,7 +395,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                         ),
                       ),
                       if (m.isDefault)
-                        const StatusBadge('الافتراضي', color: AppColors.good),
+                        StatusBadge(tr('الافتراضي'), color: AppColors.good),
                     ],
                   ),
                   const SizedBox(height: Space.xs),
@@ -416,14 +418,14 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                         TextButton.icon(
                           onPressed: () => _edit(m),
                           icon: const Icon(Icons.edit_outlined, size: 18),
-                          label: const Text('تعديل'),
+                          label: Text(tr('تعديل')),
                         ),
                         const Spacer(),
                         TextButton.icon(
                           onPressed: () => _delete(m),
                           style: TextButton.styleFrom(foregroundColor: AppColors.critical),
                           icon: const Icon(Icons.delete_outline, size: 18),
-                          label: const Text('حذف'),
+                          label: Text(tr('حذف')),
                         ),
                       ],
                     ),
@@ -463,7 +465,7 @@ class _PaymentSheetState extends State<_PaymentSheet> {
 
   Future<void> _save() async {
     if (_ref.text.trim().length < 4) {
-      setState(() => _error = 'اكتب رقم المحفظة أو الحساب.');
+      setState(() => _error = tr('اكتب رقم المحفظة أو الحساب.'));
       return;
     }
     setState(() {
@@ -489,13 +491,12 @@ class _PaymentSheetState extends State<_PaymentSheet> {
   @override
   Widget build(BuildContext context) {
     return SheetBody(
-      title: widget.current == null ? 'وسيلة جديدة' : 'تعديل الوسيلة',
+      title: widget.current == null ? tr('وسيلة جديدة') : tr('تعديل الوسيلة'),
       children: [
         // **ويُقال ما يُحفظ وما لا يُحفظ.** من رأى «طرق الدفع» ظنّ بطاقةً
         // تُخزَّن، ومن ظنّ ذلك امتنع.
-        const InfoNote(
-          'نحفظ رقم محفظتك التي تُحوّل منها ليملأ نفسه عند الإبلاغ بالحوالة — '
-          'ولا نحفظ بطاقات ولا أرقاماً سرّية.',
+        InfoNote(
+          tr('نحفظ رقم محفظتك التي تُحوّل منها ليملأ نفسه عند الإبلاغ بالحوالة — ولا نحفظ بطاقات ولا أرقاماً سرّية.'),
         ),
         const SizedBox(height: Space.md),
         Wrap(
@@ -515,24 +516,24 @@ class _PaymentSheetState extends State<_PaymentSheet> {
           controller: _ref,
           keyboardType: TextInputType.text,
           textDirection: TextDirection.ltr,
-          decoration: const InputDecoration(
-            labelText: 'رقم المحفظة أو الحساب',
+          decoration: InputDecoration(
+            labelText: tr('رقم المحفظة أو الحساب'),
             hintText: '7XXXXXXXX',
           ),
         ),
         const SizedBox(height: Space.md),
         TextField(
           controller: _holder,
-          decoration: const InputDecoration(
-            labelText: 'اسم صاحب المحفظة',
-            hintText: 'كما هو مسجَّلٌ لديهم',
+          decoration: InputDecoration(
+            labelText: tr('اسم صاحب المحفظة'),
+            hintText: tr('كما هو مسجَّلٌ لديهم'),
           ),
         ),
         const SizedBox(height: Space.sm),
         SwitchListTile(
           value: _default,
           onChanged: (v) => setState(() => _default = v),
-          title: const Text('اجعلها الافتراضية'),
+          title: Text(tr('اجعلها الافتراضية')),
           contentPadding: EdgeInsets.zero,
         ),
         if (_error != null) ...[
@@ -542,7 +543,7 @@ class _PaymentSheetState extends State<_PaymentSheet> {
         const SizedBox(height: Space.md),
         FilledButton(
           onPressed: _busy ? null : _save,
-          child: _busy ? const ButtonSpinner() : const Text('حفظ'),
+          child: _busy ? ButtonSpinner() : Text(tr('حفظ')),
         ),
       ],
     );
@@ -614,21 +615,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('الإعدادات')),
+      appBar: AppBar(title: Text(tr('الإعدادات'))),
       body: _loading
           ? const LoadingBlock()
           : ListView(
               padding: const EdgeInsets.all(Space.lg),
               children: [
-                const SectionTitle('الإشعارات'),
+                SectionTitle(tr('الإشعارات')),
                 const SizedBox(height: Space.sm),
                 AppCard(
                   children: [
                     SwitchListTile(
                       value: _s.push,
                       onChanged: _busy ? null : (v) => _set(push: v),
-                      title: const Text('إشعارات الحجوزات والرسائل'),
-                      subtitle: const Muted('قُبل حجزك، وصلتك رسالة، تأكّدت حوالتك'),
+                      title: Text(tr('إشعارات الحجوزات والرسائل')),
+                      subtitle: Muted(tr('قُبل حجزك، وصلتك رسالة، تأكّدت حوالتك')),
                       contentPadding: EdgeInsets.zero,
                     ),
                     const Divider(height: 1, color: AppColors.hairline),
@@ -637,8 +638,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     SwitchListTile(
                       value: _s.promos,
                       onChanged: _busy ? null : (v) => _set(promos: v),
-                      title: const Text('العروض والإعلانات'),
-                      subtitle: const Muted('خصومات المزوّدين والحملات'),
+                      title: Text(tr('العروض والإعلانات')),
+                      subtitle: Muted(tr('خصومات المزوّدين والحملات')),
                       contentPadding: EdgeInsets.zero,
                     ),
                   ],
@@ -686,18 +687,48 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
 
                 const SizedBox(height: Space.lg),
-                const SectionTitle('اللغة'),
+                SectionTitle(tr('اللغة')),
                 const SizedBox(height: Space.sm),
-                const AppCard(
+                AppCard(
                   children: [
-                    // **ولا مبدِّلَ لغةٍ يُعرض ولا لغةَ ثانية.** قائمةٌ فيها
-                    // خيارٌ واحد تُوهم بثانٍ لا وجود له.
-                    Row(
-                      children: [
-                        Icon(Icons.language, size: 20, color: AppColors.accent),
-                        SizedBox(width: Space.md),
-                        Expanded(child: Text('العربية')),
-                      ],
+                    for (final value in AppLocale.values) ...[
+                      if (value != AppLocale.values.first)
+                        const Divider(height: 1, color: AppColors.hairline),
+                      // **واسمُ اللغة بلغتها هي.** من يبحث عن الإنجليزيّة في
+                      // شاشةٍ عربيّة يبحث عن كلمة `English` لا عن
+                      // «الإنجليزية» — وهذا عرفُ كلّ مبدّلِ لغة.
+                      InkWell(
+                        key: ValueKey('locale-${value.name}'),
+                        borderRadius: BorderRadius.circular(12),
+                        onTap: _busy ? null : () => setLocale(value),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: Space.sm),
+                          child: Row(
+                            children: [
+                              Icon(
+                                appLocale.value == value
+                                    ? Icons.radio_button_checked
+                                    : Icons.radio_button_unchecked,
+                                size: 20,
+                                color: appLocale.value == value
+                                    ? AppColors.accent
+                                    : AppColors.muted,
+                              ),
+                              const SizedBox(width: Space.md),
+                              Expanded(child: Text(localeName(value))),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: Space.xs),
+                    // **ويُقال صراحةً ما لا تفعله الترجمة.** أسماءُ الأقسام
+                    // والخدمات والمزوّدين تأتي من القاعدة بالعربيّة، فمن بدّل
+                    // اللغة يرى أزراراً إنجليزيّةً فوق محتوىً عربيّ. وقولُها
+                    // هنا أصدقُ من أن يكتشفها بنفسه فيظنّ الترجمةَ ناقصة.
+                    Muted(
+                      tr(tr('أسماء الخدمات والمزوّدين تبقى كما كتبها أصحابها.')),
+                      size: 11,
                     ),
                   ],
                 ),
@@ -709,19 +740,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 // يشترط سياسةَ خصوصيّةٍ في صفحة التطبيق **وداخله**، ومن يبحث
                 // عمّا يُجمع من بياناته يبحث عنه هنا لا في المتجر.
                 const SizedBox(height: Space.lg),
-                const SectionTitle('عن التطبيق'),
+                SectionTitle(tr('عن التطبيق')),
                 const SizedBox(height: Space.sm),
                 AppCard(
                   children: [
                     _LegalLink(
                       icon: Icons.privacy_tip_outlined,
-                      label: 'سياسة الخصوصية',
+                      label: tr('سياسة الخصوصية'),
                       url: 'https://sdd.company/#/privacy',
                     ),
                     const Divider(height: 1, color: AppColors.hairline),
                     _LegalLink(
                       icon: Icons.description_outlined,
-                      label: 'شروط الاستخدام',
+                      label: tr('شروط الاستخدام'),
                       url: 'https://sdd.company/#/terms',
                     ),
                     const Divider(height: 1, color: AppColors.hairline),
@@ -731,14 +762,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     // صفحةً على الموقع.
                     _LegalLink(
                       icon: Icons.person_remove_outlined,
-                      label: 'طلب حذف الحساب',
+                      label: tr('طلب حذف الحساب'),
                       url: 'https://sdd.company/#/delete-account',
                     ),
                   ],
                 ),
 
                 const SizedBox(height: Space.xl),
-                const Center(child: Muted('الإصدار 1.0.0', size: 11)),
+                Center(child: Muted(tr('الإصدار 1.0.0'), size: 11)),
               ],
             ),
     );
