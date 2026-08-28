@@ -86,6 +86,44 @@ for (const address of MAILBOXES) {
      legal.split(address).length - 1 >= 2)
 }
 
+// ── **ما يفتحه التطبيق هو ما يخدمه الموقع** ─────────────────────────────────
+//
+// **وهذا الفحصُ وُلد من رابطٍ ميّتٍ شُحن فعلاً.** كان التطبيق يفتح
+// `sdd.company/privacy`، واللوحةُ تُنشر بـ`HashRouter` — فالعنوان الحقيقيّ
+// `sdd.company/#/privacy`. والرابطُ بلا `#` يفتح الموقعَ على صفحة الدخول لا
+// على السياسة: لا خطأً يظهر، ولا صفحةَ «غير موجود» — شيءٌ آخر يُعرض فحسب،
+// وهو أخبثُ من العطل الصريح.
+//
+// والحارسُ الذي كان هنا يقيس أنّ المسارين **خارج الحراسة**، وذلك صحيحٌ وباقٍ
+// — لكنّه لا يقول شيئاً عن شكل العنوان. فيُقرأ نوعُ الموجّه من `main.tsx`
+// ويُقارَن بما يكتبه التطبيق.
+const mainSrc = readFileSync(new URL('../../src/main.tsx', import.meta.url), 'utf8')
+const isHashRouter = /<HashRouter>/.test(mainSrc)
+const appSettings = readFileSync(
+  new URL('../../mobile/lib/src/screens/account_extras.dart', import.meta.url), 'utf8')
+const appLinks = [...appSettings.matchAll(/'(https:\/\/sdd\.company[^']*)'/g)].map((m) => m[1])
+
+ok('تجهيزٌ: التطبيق يحمل رابطي السياسة والشروط', appLinks.length === 2,
+   appLinks.join(' | '))
+ok('تجهيزٌ: اللوحة تُنشر بموجّه الـhash', isHashRouter)
+
+if (isHashRouter) {
+  for (const link of appLinks) {
+    ok(`و«${link}» فيه #`, link.includes('/#/'))
+  }
+} else {
+  for (const link of appLinks) {
+    ok(`و«${link}» بلا # — والموجّه ليس hash`, !link.includes('/#/'))
+  }
+}
+
+// وكلُّ رابطٍ يشير إلى مسارٍ موجودٍ في `App.tsx` فعلاً — لا إلى اسمٍ مخترَع.
+for (const link of appLinks) {
+  const path = '/' + link.split('/').pop()
+  ok(`و«${path}» مسارٌ مسجَّلٌ في اللوحة`,
+     new RegExp(`path="${path}"`).test(src))
+}
+
 // ── سياسةُ الخصوصيّة تطابق ما يطلبه التطبيق فعلاً ───────────────────────────
 //
 // **وهذا الفحصُ وُلد من كذبةٍ كادت تُنشر.** كانت السياسة تقول نصّاً «ولا نقرأ

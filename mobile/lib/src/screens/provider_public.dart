@@ -6,6 +6,7 @@ import '../data/api.dart';
 import '../data/models.dart';
 import '../data/supabase.dart';
 import '../ui/kit.dart';
+import '../ui/map_open.dart';
 import '../ui/media.dart';
 import '../ui/service_card.dart';
 import 'chat.dart';
@@ -568,6 +569,15 @@ class _About extends StatelessWidget {
     final p = provider;
     return _TabList(
       children: [
+        // ── أين المحلّ ────────────────────────────────────────────────────
+        //
+        // **وكان ناقصاً كلَّه.** نقطةُ المزوّد تُحفظ ويُرتَّب بها البحث، ولا
+        // يراها العميل في شيء. ومن قرأ «أمانة العاصمة» لا يعرف أفي حدّة هو أم
+        // في سعوان — وبينهما نصفُ ساعةٍ ليلةَ العرس.
+        if (p.point != null) ...[
+          _LocationCard(provider: p),
+          const SizedBox(height: Space.md),
+        ],
         if (p.bio.isEmpty)
           const EmptyBlock(
             title: 'لا نبذة بعد',
@@ -637,6 +647,45 @@ class _Gallery extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+/// «موقع المحلّ» — بطاقةٌ تفتح النقطةَ في تطبيق الخرائط.
+///
+/// **ولا تظهر لمن لا نقطةَ له.** ومزوّدٌ لم يضع موقعه موجودٌ ويعمل، وبطاقةٌ
+/// تقول «الموقع غير محدَّد» عقوبةٌ له وخبرٌ لا ينفع من يقرؤه.
+class _LocationCard extends StatelessWidget {
+  const _LocationCard({required this.provider});
+  final PublicProvider provider;
+
+  @override
+  Widget build(BuildContext context) {
+    final point = provider.point!;
+    return AppCard(
+      children: [
+        Row(
+          children: [
+            const Icon(Icons.place_outlined, size: 20, color: AppColors.accent),
+            const SizedBox(width: Space.sm),
+            const Expanded(child: SectionTitle('موقع المحلّ')),
+          ],
+        ),
+        const SizedBox(height: Space.sm),
+        Text(
+          provider.governorate.isEmpty
+              ? 'حدّده مقدّم الخدمة على الخريطة.'
+              : '${provider.governorate} — حدّده مقدّم الخدمة على الخريطة.',
+          style: const TextStyle(height: 1.8, fontSize: 13.5, color: AppColors.ink2),
+        ),
+        const SizedBox(height: Space.md),
+        FilledButton.icon(
+          key: const ValueKey('open-provider-map'),
+          onPressed: () => openMap(context, point),
+          icon: const Icon(Icons.map_outlined, size: 18),
+          label: const Text('افتح في الخرائط'),
+        ),
+      ],
     );
   }
 }

@@ -213,9 +213,13 @@ void main() {
     await tester.pumpWidget(_wrap(SettingsScreen(session: _session())));
     await _settle(tester);
 
+    // **و`#` في العنوان جزءٌ منه لا زينة.** اللوحة تُنشر بـ`HashRouter`،
+    // فالعنوان الحقيقيّ `sdd.company/#/privacy`. وكان المكتوب بلا `#` —
+    // يفتح الموقعَ على صفحة الدخول لا على السياسة، بلا خطأٍ يظهر. وهذا
+    // الحارسُ عضّ حين صُحِّح العنوان، وهو المطلوب منه.
     for (final row in [
-      ('سياسة الخصوصية', 'https://sdd.company/privacy'),
-      ('شروط الاستخدام', 'https://sdd.company/terms'),
+      ('سياسة الخصوصية', 'https://sdd.company/#/privacy'),
+      ('شروط الاستخدام', 'https://sdd.company/#/terms'),
     ]) {
       final finder = find.text(row.$1, skipOffstage: false);
       await tester.scrollUntilVisible(finder, 200,

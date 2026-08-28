@@ -718,13 +718,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     _LegalLink(
                       icon: Icons.privacy_tip_outlined,
                       label: 'سياسة الخصوصية',
-                      url: 'https://sdd.company/privacy',
+                      url: 'https://sdd.company/#/privacy',
                     ),
                     const Divider(height: 1, color: AppColors.hairline),
                     _LegalLink(
                       icon: Icons.description_outlined,
                       label: 'شروط الاستخدام',
-                      url: 'https://sdd.company/terms',
+                      url: 'https://sdd.company/#/terms',
                     ),
                   ],
                 ),
@@ -742,6 +742,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
 ///
 /// وخارج التطبيق لا داخله: الصفحةُ تُحدَّث بلا إصدارٍ جديد، ونسخةٌ مدفونةٌ في
 /// الشيفرة تتقادم ويبقى المستخدم يقرأ سياسةً بطلت.
+///
+/// **و`#` في العنوان ليست زينة.** اللوحة تُنشر بـ`HashRouter` — اختيرت لأنّ
+/// الاستضافة الثابتة لا تعرف أنّ `/privacy` مسارٌ داخليّ. فالعنوانُ الحقيقيّ
+/// `sdd.company/#/privacy`، والذي كان مكتوباً هنا `sdd.company/privacy` بلا
+/// `#`: يفتح الموقعَ على صفحة الدخول لا على السياسة.
+///
+/// **ولم يكشفه حارسٌ لأنّ الحارس كان يقيس غيرَ ذلك:** `legal_public.test.mjs`
+/// يتأكّد أنّ المسارين خارج `RequireAuth` — وهو صحيحٌ وباقٍ — ولم يكن يسأل
+/// أنّ ما يفتحه التطبيق هو ما يخدمه الموقع. وصار يسأل.
 class _LegalLink extends StatelessWidget {
   const _LegalLink({required this.icon, required this.label, required this.url});
 
