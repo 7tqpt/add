@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../core/format.dart';
+import '../core/geo.dart';
 import '../core/theme.dart';
 import '../data/api.dart';
 import '../data/models.dart';
@@ -24,6 +25,7 @@ class ServiceListCard extends StatelessWidget {
     this.onToggleFavourite,
     this.onOpenProvider,
     this.showProvider = true,
+    this.from,
   });
 
   final ServiceItem item;
@@ -37,6 +39,12 @@ class ServiceListCard extends StatelessWidget {
   final VoidCallback? onOpenProvider;
 
   final bool showProvider;
+
+  /// نقطةُ العميل — إن أُعطيت كُتبت المسافةُ على البطاقة.
+  ///
+  /// **ورقمٌ لا ترتيبٌ صامت:** من رفع «الأقرب إليّ» يرى القائمةَ تتبدّل ولا
+  /// يعرف لماذا. و«على بُعد ٤ كم» تقول له سببَ الترتيب وتُغنيه عن الثقة به.
+  final GeoPoint? from;
 
   @override
   Widget build(BuildContext context) {
@@ -101,9 +109,16 @@ class ServiceListCard extends StatelessWidget {
                   ),
                   const SizedBox(height: Space.xs),
                   if (showProvider)
-                    _ProviderLine(item: item, onOpenProvider: onOpenProvider)
+                    _ProviderLine(
+                      item: item,
+                      onOpenProvider: onOpenProvider,
+                      from: from,
+                    )
                   else
-                    Muted('${item.categoryName} · ${item.providerGovernorate}'),
+                    Muted(
+                      '${item.categoryName} · ${item.providerGovernorate}'
+                      '${distanceSuffix(from, item.providerPoint)}',
+                    ),
                   // شارتان تقولان إن وراء البطاقة ما يُرى ويُسمع: بلا هذه
                   // العلامة لا يعرف أحدٌ أن للخدمة مقطعاً حتى يفتحها — ومن لم
                   // يفتحها لم يعرف.
@@ -160,13 +175,15 @@ class ServiceListCard extends StatelessWidget {
 /// ضغطة البطاقة فتُفتح الخدمة، وهو الأغلب. وللاسم لونُ العلامة وأيقونةٌ
 /// صغيرة، فيُعرف أنه يُضغط قبل أن يُضغط.
 class _ProviderLine extends StatelessWidget {
-  const _ProviderLine({required this.item, this.onOpenProvider});
+  const _ProviderLine({required this.item, this.onOpenProvider, this.from});
   final ServiceItem item;
   final VoidCallback? onOpenProvider;
+  final GeoPoint? from;
 
   @override
   Widget build(BuildContext context) {
-    final rest = '${item.categoryName} · ${item.providerGovernorate}';
+    final rest = '${item.categoryName} · ${item.providerGovernorate}'
+        '${distanceSuffix(from, item.providerPoint)}';
     if (onOpenProvider == null) {
       return Muted('${item.providerName} · $rest');
     }
@@ -241,4 +258,13 @@ class MediaChip extends StatelessWidget {
       ],
     ),
   );
+}
+
+/// «‏ · ٤ كم» أو فراغٌ — تُلحَق بسطر البطاقة.
+///
+/// **وفراغٌ لمن لا نقطةَ له، لا «غير معروف».** هو مزوّدٌ يعمل ولم يضع دبّوسه،
+/// وكتابةُ نقصٍ على بطاقته عقوبةٌ لا خبر.
+String distanceSuffix(GeoPoint? from, GeoPoint? to) {
+  if (from == null || to == null) return '';
+  return ' · ${distanceLabel(distanceKm(from, to))}';
 }

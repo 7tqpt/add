@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../core/format.dart';
+import '../core/geo.dart';
 import '../core/session.dart';
 import '../core/theme.dart';
 import '../data/api.dart';
@@ -10,6 +11,7 @@ import '../data/supabase.dart';
 import '../ui/kit.dart';
 import 'documents.dart';
 import 'labels.dart';
+import 'map_picker.dart';
 import 'provider_public.dart';
 import 'money.dart';
 import 'subscription.dart';
@@ -431,6 +433,7 @@ class _ProfileEditor extends StatefulWidget {
 class _ProfileEditorState extends State<_ProfileEditor> {
   late final _name = TextEditingController(text: widget.profile.businessName);
   late final _bio = TextEditingController(text: widget.profile.bio);
+  late GeoPoint? _point = widget.profile.point;
   bool _busy = false;
   String? _error;
 
@@ -456,6 +459,10 @@ class _ProfileEditorState extends State<_ProfileEditor> {
         providerId: widget.profile.id,
         businessName: name,
         bio: _bio.text.trim(),
+        point: _point,
+        // **ويُرسل الموقعُ دائماً من هذه الورقة** — فالحقلُ معروضٌ فيها،
+        // وإرسالُ ما يراه صاحبُه هو معنى «حفظ». وبه يقع المحوُ أيضاً.
+        setPoint: true,
       );
       if (mounted) Navigator.of(context).pop(true);
     } catch (e) {
@@ -500,6 +507,22 @@ class _ProfileEditorState extends State<_ProfileEditor> {
             const SizedBox(height: Space.sm),
             const Muted(
               'هذا ما يقرؤه العميل في صفحتك قبل أن يحجز.',
+              size: 11,
+            ),
+            const SizedBox(height: Space.lg),
+            const SectionTitle('موقع محلّك'),
+            const SizedBox(height: Space.sm),
+            LocationRow(
+              point: _point,
+              governorate: widget.profile.governorate,
+              onChanged: (p) => setState(() => _point = p),
+            ),
+            const SizedBox(height: Space.sm),
+            // **ولماذا يضعه أصلاً:** العميلُ يرتّب البحث بـ«الأقرب إليّ»، ومن
+            // لا نقطةَ له يظهر بعد من وضعها. ومن في السنينة لا يعبر المدينة
+            // إلى سعوان ليلةَ العرس وهو يجد مثلَه قريباً.
+            const Muted(
+              'يُرتَّب بحث العميل بالأقرب إليه. ومن لم يضع موقعه يظهر بعد من وضعه.',
               size: 11,
             ),
             if (_error != null) ...[
