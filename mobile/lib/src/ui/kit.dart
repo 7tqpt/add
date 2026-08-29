@@ -893,29 +893,67 @@ class EmptyBlock extends StatelessWidget {
 }
 
 class ErrorBlock extends StatelessWidget {
-  const ErrorBlock({super.key, required this.message, this.onRetry});
+  const ErrorBlock({
+    super.key,
+    required this.message,
+    this.onRetry,
+    this.details,
+  });
   final String message;
   final VoidCallback? onRetry;
+
+  /// نصٌّ تقنيٌّ يُطوى — رمزُ العطب وردُّ الخادم.
+  ///
+  /// **ويُطوى ولا يُحذف.** عرضُه في وجه العميل يُريه أقواساً لا تعنيه؛ وحذفُه
+  /// بالكلّيّة يُعمي صاحبَ المنصّة حين يسأله عميلٌ «ماذا ظهر لك؟». فيبقى
+  /// خلف طيّةٍ لا تُفتح إلّا بقصد.
+  final String? details;
+
   @override
-  Widget build(BuildContext context) => Center(
-    child: Padding(
-      padding: const EdgeInsets.all(Space.xl),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            message,
-            textAlign: TextAlign.center,
-            style: const TextStyle(color: AppColors.critical, height: 1.7),
-          ),
-          if (onRetry != null) ...[
-            const SizedBox(height: Space.lg),
-            OutlinedButton(onPressed: onRetry, child: const Text('إعادة المحاولة')),
+  Widget build(BuildContext context) {
+    final technical = details?.trim();
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(Space.xl),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: AppColors.critical, height: 1.7),
+            ),
+            if (onRetry != null) ...[
+              const SizedBox(height: Space.lg),
+              OutlinedButton(onPressed: onRetry, child: const Text('إعادة المحاولة')),
+            ],
+            if (technical != null && technical.isNotEmpty) ...[
+              const SizedBox(height: Space.md),
+              Theme(
+                data: Theme.of(context)
+                    .copyWith(dividerColor: Colors.transparent),
+                child: ExpansionTile(
+                  key: const ValueKey('error-details'),
+                  tilePadding: EdgeInsets.zero,
+                  childrenPadding: EdgeInsets.zero,
+                  title: const Muted('تفاصيل تقنية', size: 11),
+                  children: [
+                    SelectableText(
+                      technical,
+                      textDirection: TextDirection.ltr,
+                      textAlign: TextAlign.start,
+                      style: const TextStyle(
+                          fontSize: 11, height: 1.6, color: AppColors.muted),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ],
-        ],
+        ),
       ),
-    ),
-  );
+    );
+  }
 }
 
 /// أيقونة القسم من `slug`.
