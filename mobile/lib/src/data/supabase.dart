@@ -73,7 +73,33 @@ String? clockSkewLabel(Duration? skew) {
 ///
 /// يُقارَن به لا بنصّ الرسالة: النصّ إنجليزيٌّ يتغيّر بين الإصدارات، والرمز
 /// جزءٌ من الواجهة.
-String? errorCodeOf(Object error) => error is PostgrestException ? error.code : null;
+/// رمزُ العطب — **ولو لم يصل نوعاً**.
+///
+/// **وهذا ما كان مكسوراً:** الاكتفاءُ بـ`PostgrestException` كان يعيد `null`
+/// لكلّ عطبٍ يصل من مسلكٍ آخر (المصادقة، أو ردٌّ خامٌ من الخادم). ووقع ذلك
+/// فعلاً على جهاز: ردٌّ فيه `"code":"PGRST303"` صريحاً، فقُرئ بلا رمز.
+///
+/// وأثرُه ثلاثةٌ لا واحد:
+///
+///   ١. عُرض على صاحبه نصُّ JSON خاماً.
+///   ٢. وقيل له «الغالب أنّ ملفات المخطّط لم تُطبَّق» — وهو تشخيصٌ كاذب،
+///      يُرسله إلى مجلّدٍ سليمٍ يبحث فيه.
+///   ٣. **ولم يعمل الإصلاحُ الذاتيّ أصلاً**: `_healClockSkew` مشروطٌ بهذا
+///      الرمز، فلمّا غاب لم يُحاوَل شيء. ميزةٌ مبنيّةٌ وميّتة.
+///
+/// فيُقرأ الرمزُ من النوع إن وُجد، ثمّ من نصّ الردّ، ثمّ من الرسالة المعروفة.
+String? errorCodeOf(Object error) {
+  if (error is PostgrestException && error.code != null) return error.code;
+
+  final text = error.toString();
+  // `"code":"PGRST303"` — كما يردّه PostgREST في جسم الردّ.
+  final coded = RegExp(r'"code"\s*:\s*"([A-Za-z0-9]+)"').firstMatch(text);
+  if (coded != null) return coded.group(1);
+
+  // وبالرسالة حين لا رمزَ فيها: بعض المسالك تُسقط الجسمَ وتُبقي النصّ.
+  if (text.contains('JWT issued at future')) return jwtIssuedAtFuture;
+  return null;
+}
 
 /// يستخرج رسالةً مقروءة مما رُمي.
 ///
@@ -92,5 +118,16 @@ String messageOf(Object error) {
         : error.message;
   }
   final text = error.toString();
-  return text.isEmpty ? 'تعذّر تنفيذ الطلب.' : text;
+  if (text.isEmpty) return 'تعذّر تنفيذ الطلب.';
+
+  // **ولا يُعرض JSON خامٌ على أحد.** ردٌّ مثل
+  // `{"message":"JWT issued at future","code":"PGRST303",…}` وقع على شاشة
+  // مستخدمٍ فعلاً. ومن رأى أقواساً وعلاماتِ اقتباسٍ لا يقرأ منها شيئاً، ولا
+  // يعرف أنّ ساعةَ جهازه هي السبب.
+  final message = RegExp(r'"message"\s*:\s*"((?:[^"\\]|\\.)*)"').firstMatch(text);
+  if (message != null) {
+    final body = message.group(1)!.replaceAll(r'\"', '"');
+    if (body.trim().isNotEmpty) return body;
+  }
+  return text;
 }

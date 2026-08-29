@@ -47,6 +47,28 @@ void _phone(WidgetTester tester, {double height = 3200}) {
   addTearDown(tester.view.reset);
 }
 
+/// اليومُ المزروع، ثمّ **الانتقالُ إلى شهره إن لزم**.
+///
+/// **وهذا وُلد من سقوطٍ متكرّر:** الاختبارُ كان يزرع «اليوم + ٣» ويقرأ الشبكة
+/// وهي تعرض **الشهر الحاليّ وحده**. فإن وقع اليومُ الثالثُ في الشهر التالي —
+/// وذلك يقع في آخر ثلاثة أيّامٍ من كلّ شهر — لم يُوجد شيء، وسقط الاختبارُ
+/// على شيفرةٍ سليمة.
+///
+/// والشاشةُ فيها انتقالٌ بين الشهور أصلاً، فيُستعمل. وبه يصير الاختبارُ
+/// مستقلّاً عن يوم تشغيله، **ويقيس زرَّ الشهر التالي في الطريق**.
+DateTime _seedDay() => DateTime.now().add(const Duration(days: 3));
+
+Future<void> _revealSeeded(WidgetTester tester) async {
+  final now = DateTime.now();
+  final target = _seedDay();
+  final months =
+      (target.year - now.year) * 12 + (target.month - now.month);
+  for (var i = 0; i < months; i++) {
+    await tester.tap(find.byTooltip('الشهر التالي'));
+    await _settle(tester);
+  }
+}
+
 void main() {
   setUp(demoResetDays);
 
@@ -97,13 +119,14 @@ void main() {
     _phone(tester);
     demoDays = [
       DayMark(
-        day: DateTime.now().add(const Duration(days: 3)),
+        day: _seedDay(),
         blocked: true,
         note: 'محجوز — BK-1',
       ),
     ];
     await tester.pumpWidget(_wrap(AvailabilityScreen(session: _session())));
     await _settle(tester);
+    await _revealSeeded(tester);
 
     expect(find.textContaining('محجوز — BK-1'), findsOneWidget);
     expect(find.text('افتحه'), findsNothing);
@@ -112,11 +135,11 @@ void main() {
 
   testWidgets('ويومُ العذر له زرّ يفتحه فعلاً', (tester) async {
     _phone(tester);
-    final day = DateTime.now().add(const Duration(days: 3));
-    demoDays = [DayMark(day: day, blocked: true, note: 'سفر')];
+    demoDays = [DayMark(day: _seedDay(), blocked: true, note: 'سفر')];
 
     await tester.pumpWidget(_wrap(AvailabilityScreen(session: _session())));
     await _settle(tester);
+    await _revealSeeded(tester);
 
     expect(find.text('افتحه'), findsOneWidget);
     await tester.tap(find.text('افتحه'));

@@ -90,12 +90,18 @@ class _RootScreenState extends State<RootScreen> {
               title: const Text('تعذّرت قراءة حسابك'),
               actions: [TextButton(onPressed: session.signOut, child: const Text('خروج'))],
             ),
+            // **ولا نصَّ تقنيٌّ في وجه صاحب الجهاز.** كان يُعرض جسمُ الردّ
+            // كما هو — أقواسٌ وعلاماتُ اقتباسٍ ورمزُ حالة — فيقرأ العميلُ
+            // شيئاً لا يعنيه ولا يدلّه على ما يفعل. والذي يعنيه سطران:
+            // ما وقع، وما يصنع.
+            //
+            // ويبقى التفصيلُ خلف طيّةٍ لمن يريده: صاحبُ المنصّة يحتاجه حين
+            // يسأله عميلٌ، وحذفُه بالكلّيّة يُعمينا عن العطب.
             body: ErrorBlock(
-              message:
-                  'دخولك نجح، لكن قراءة ملفك من قاعدة البيانات فشلت:\n\n'
-                  '${session.identityError}\n\n'
-                  '${identityHint(session.identityErrorCode, session.clockDrift)}',
+              message: identityHint(
+                  session.identityErrorCode, session.clockDrift),
               onRetry: session.refreshIdentity,
+              details: session.identityError,
             ),
           );
         }
