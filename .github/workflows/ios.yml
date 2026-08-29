@@ -1,0 +1,84 @@
+name: بناء تطبيق آيفون
+
+# **يُشغَّل يدوياً وحده — ولا يعمل مع كل دفعة.**
+#
+# عاملُ macOS على GitHub يُحسب بعشرة أضعاف دقائق Linux. فسيرٌ يعمل مع كل دفعة
+# يأكل حصّةَ الشهر في أيّام. وهذا يُشغَّل حين تريد أن تعرف: أيُبنى التطبيق
+# لآيفون اليوم؟
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ios:
+    name: بناء آيفون (بلا توقيع)
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.47.0
+          channel: stable
+          cache: true
+
+      # نفسُ ما في `apk.yml`: المفتاح العام وحده، ولا `service_role` ولا كلمة
+      # مرور القاعدة — الحزمةُ تُفكّ ويُستخرج ما فيها.
+      - name: تهيئة مفاتيح المشروع
+        working-directory: mobile
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          if [ -n "$SUPABASE_URL" ] && [ -n "$SUPABASE_ANON_KEY" ]; then
+            printf '{\n  "SUPABASE_URL": "%s",\n  "SUPABASE_ANON_KEY": "%s"\n}\n' \
+              "$SUPABASE_URL" "$SUPABASE_ANON_KEY" > env.json
+          else
+            echo '{}' > env.json
+          fi
+
+      - run: flutter pub get
+        working-directory: mobile
+
+      # ــــ التبعيّات الأصليّة ــــــــــــــــــــــــــــــــــــــــــــــــ
+      #
+      # `Podfile` غيرُ موجودٍ في المستودع، وهذا صواب: Flutter يولّده من
+      # `pubspec.yaml` عند أوّل بناء. وتوليدُه هنا يعني أنّ الحزم الأصليّة
+      # كلَّها — الخريطة والقارئ والموقع والمسجّل — تُجلب وتُبنى فعلاً.
+      #
+      # وهذه أوّلُ مرّةٍ يقع فيها ذلك في هذا المشروع: البناءُ لأندرويد لا
+      # يقول شيئاً عن آيفون.
+      - name: بناء آيفون بلا توقيع
+        working-directory: mobile
+        run: flutter build ios --release --no-codesign
+
+      # ــــ ما يُقاس ــــــــــــــــــــــــــــــــــــــــــــــــــــــــــ
+      #
+      # **ولا حزمة IPA تخرج من هنا.** ملفُّ IPA يحتاج شهادةَ توقيعٍ من حساب
+      # Apple Developer، ولا شهادةَ في هذا المستودع. فما يُثبته هذا السير
+      # شيءٌ واحد — أنّ الشيفرة **تُبنى** لآيفون — وهو المجهولُ الذي يستحقّ
+      # أن يُعرف قبل شراء جهازٍ أو حساب.
+      - name: حجمُ ما بُني
+        working-directory: mobile
+        run: |
+          APP=build/ios/iphoneos/Runner.app
+          if [ ! -d "$APP" ]; then
+            echo "::error::لم يخرج Runner.app — راجع خطوة البناء."
+            exit 1
+          fi
+          MB=$(du -sm "$APP" | cut -f1)
+          echo "حجم Runner.app: ${MB} م.ب"
+          {
+            echo "## بناءُ آيفون ✅"
+            echo ""
+            echo "- الشيفرة **تُبنى** لآيفون."
+            echo "- حجم \`Runner.app\`: **${MB} م.ب** (بلا توقيع، وليس حجم التنزيل من المتجر)."
+            echo ""
+            echo "### وما لا يُثبته هذا"
+            echo ""
+            echo "لا يُثبت أنّ التطبيق **يعمل** على جهاز — ذاك يحتاج تجربةً على آيفون."
+            echo "ولا يُخرج حزمةً تُنشر: النشر يحتاج حساب Apple Developer وشهادةَ توقيع."
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -50,3 +50,7 @@ app.*.map.json
 # مفاتيح المشروع — تُمرَّر بـ --dart-define-from-file=env.json
 env.json
 android/app/google-services.json
+# ونظيرُه في آيفون — ملكُ مشروع Firebase الخاصّ بصاحب المنصّة، يوضع بيده
+# ولا يُرفع هنا. وغيابُه لا يُسقط التطبيق: `Firebase.initializeApp` محاطةٌ
+# بـ`try/catch`، فيبقى كلُّ شيءٍ يعمل إلّا الإشعارَ والجوالُ مغلق.
+ios/Runner/GoogleService-Info.plist
