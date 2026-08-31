@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
+import 'src/core/app_lock.dart';
 import 'src/core/format.dart';
 import 'src/core/i18n.dart';
 import 'src/core/session.dart';
@@ -15,6 +16,7 @@ Future<void> main() async {
   await initSupabase();
   final session = Session();
   await session.boot();
+  await appLock.boot();
   runApp(ArasApp(session: session));
 }
 
@@ -43,7 +45,7 @@ class ArasApp extends StatelessWidget {
           GlobalWidgetsLocalizations.delegate,
           GlobalCupertinoLocalizations.delegate,
         ],
-        home: RootScreen(session: session),
+        home: RootScreen(session: session, lock: appLock),
       ),
     );
   }
