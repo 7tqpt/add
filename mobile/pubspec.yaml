@@ -94,7 +94,13 @@ dependencies:
   # وهي قناةُ أسلوبٍ (method channel) صغيرة، لا شيفرةَ ثقيلةَ فيها.
   app_settings: ^9.0.0
   shared_preferences: ^2.5.5
-  flutter_secure_storage: ^11.0.0
+  # خزنةُ النظام لبصمة رمز القفل — Keychain وKeystore.
+  #
+  # **و‍١٠٫٣٫١ مثبَّتةٌ لا ١١، والسببُ مقيسٌ من بناءٍ سقط.** ١١٫٠٫٠ تشترط
+  # `compileSdk 37`، والمشروع على ٣٦، وAGP ٩٫١٫٠ أقصى ما يوصي به ٣٦ — فرفعُ
+  # المشروع كلِّه لأجل حزمةٍ واحدة يجرّ ترقية AGP ومعها كلُّ حزمةٍ أصليّةٍ
+  # فيه. و١٠٫٣٫١ تشترط ٣٦ بالضبط، وواجهتُها هي هي.
+  flutter_secure_storage: ^10.3.1
   crypto: ^3.0.7
 dev_dependencies:
   flutter_test:
