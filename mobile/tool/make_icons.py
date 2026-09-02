@@ -8,6 +8,7 @@
   · mipmap-{mdpi..xxxhdpi}/ic_launcher.png            — الأجهزة قبل أندرويد ٨
   · mipmap-{...}/ic_launcher_foreground.png           — طبقة الواجهة المتكيّفة
   · drawable/ic_launcher_background.xml               — أرضيةٌ بلون الصورة
+  · ios/…/AppIcon.appiconset/*.png                    — مقاسات آيفون وآيباد
 
 لماذا سكربتٌ لا خطواتٌ باليد: المقاسات خمسة وطبقتان، وأيُّ واحدةٍ تُنسى
 تظهر أيقونةً مشوّهة على طرازٍ واحدٍ من الأجهزة لا يملكه أحدٌ في الفريق.
@@ -21,7 +22,9 @@ try:
 except ImportError:
     sys.exit('يلزم Pillow:  pip install Pillow')
 
-RES = Path(__file__).resolve().parent.parent / 'android/app/src/main/res'
+ROOT = Path(__file__).resolve().parent.parent
+RES = ROOT / 'android/app/src/main/res'
+IOS = ROOT / 'ios/Runner/Assets.xcassets/AppIcon.appiconset'
 DENSITIES = {'mdpi': 48, 'hdpi': 72, 'xhdpi': 96, 'xxhdpi': 144, 'xxxhdpi': 192}
 
 def trim_margin(im: Image.Image, fill: float = 0.5) -> Image.Image:
@@ -111,6 +114,59 @@ def square(im: Image.Image) -> Image.Image:
     return canvas
 
 
+def write_ios(art: Image.Image, bg: tuple[int, int, int]) -> None:
+    """يكتب مقاسات آيفون وآيباد من `Contents.json` نفسِه.
+
+    **والمقاساتُ تُقرأ من الملفّ لا تُكتب قائمةً هنا.** Xcode هو صاحبُ ذلك
+    الملفّ، ويُبدّله بين إصدارات Flutter — فقائمةٌ منسوخةٌ تعتّق صامتةً،
+    فيخرج البناءُ ناقصَ مقاسٍ يرفضه المتجر.
+
+    **ولا شفافيّةَ في أيقونة آيفون.** App Store يرفض أيقونةً فيها قناةُ ألفا
+    رفضاً صريحاً، ويرفض المستديرَ الزوايا كذلك — النظامُ يقصّها بقناعه هو.
+    فتُسطَّح على أرضيّتها وتُحفظ مربّعةً كاملة.
+
+    وكانت أيقونةُ آيفون **شعارَ Flutter نفسَه** حتى اليوم: أُبدلت أيقونةُ
+    أندرويد من قبل ونُسيت هذه، ولا شيءَ في المستودع كان ينبّه — فالبناءُ
+    ينجح والشعارُ غريب. وهي الآن تُولَّد مع أختها في نداءٍ واحد.
+    """
+    manifest = IOS / 'Contents.json'
+    if not manifest.exists():
+        print('  — لا مجلّد أيقونات آيفون؛ تُخطّى.')
+        return
+
+    import json
+    images = json.loads(manifest.read_text(encoding='utf-8'))['images']
+    # المقاسُ بالنقاط × المضاعِف = البكسل. و«83.5x83.5» عشريٌّ فيُقرأ عائماً.
+    wanted: dict[str, int] = {}
+    for item in images:
+        name = item.get('filename')
+        if not name:
+            continue
+        pts = float(item['size'].split('x')[0])
+        scale = int(item['scale'].rstrip('x'))
+        wanted[name] = max(wanted.get(name, 0), round(pts * scale))
+
+    # **والزوايا تُملأ بالأرضية لا تُترك سوداء.** العملُ مربّعٌ مستدير
+    # الزوايا، وما خارج استدارته أسودُ الصورة. وأندرويد يخفيه بقناعه،
+    # وآيفون يقصّ بقناعٍ **أوسعَ** من استدارة العمل — فتبقى أربعُ لطخاتٍ
+    # سوداءَ عند الحواف. رأيتُها في نسخة ١٠٢٤ قبل هذا السطر.
+    flat = Image.new('RGB', art.size, bg)
+    rgb = art.convert('RGB')
+    px = rgb.load()
+    mask = Image.new('L', art.size, 0)
+    mpx = mask.load()
+    for y in range(art.size[1]):
+        for x in range(art.size[0]):
+            r, g, b = px[x, y]
+            mpx[x, y] = 0 if (r + g + b) <= 70 else 255
+    flat.paste(rgb, mask=mask)
+    for name, px in sorted(wanted.items(), key=lambda kv: kv[1]):
+        out = flat.resize((px, px), Image.LANCZOS)
+        path = IOS / name
+        out.save(path)          # RGB بلا ألفا — وهو شرطُ المتجر
+    print(f'  ✓ آيفون/آيباد: {len(wanted)} ملفّاً في AppIcon.appiconset')
+
+
 def main() -> None:
     args = sys.argv[1:]
     global RES
@@ -160,6 +216,8 @@ def main() -> None:
         path = RES / f'mipmap-{name}/ic_launcher_foreground.png'
         layer.save(path)
         print(f'  ✓ {path.relative_to(RES)}')
+
+    write_ios(art, bg)
 
     xml = RES / 'drawable/ic_launcher_background.xml'
     xml.parent.mkdir(parents=True, exist_ok=True)
