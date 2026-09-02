@@ -6,6 +6,7 @@
 import 'package:app_settings/app_settings.dart';
 import 'package:flutter/material.dart';
 
+import '../core/app_lock.dart';
 import '../core/i18n.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -16,6 +17,7 @@ import '../core/theme.dart';
 import '../data/api.dart';
 import '../data/models.dart';
 import '../data/supabase.dart' show messageOf;
+import 'lock.dart';
 import 'map_picker.dart';
 import '../ui/kit.dart';
 
@@ -590,6 +592,40 @@ class _SettingsScreenState extends State<SettingsScreen> {
     });
   }
 
+  /// يفعّل القفلَ أو يطفئه.
+  ///
+  /// **والرمزُ يُطلب مرّتين عند التفعيل** — من ضبط رمزاً بإصبعٍ زلّ ثمّ أُقفل
+  /// عليه لا سبيلَ له إلّا الخروجُ من حسابه.
+  Future<void> _toggleLock() async {
+    final lock = appLock;
+    if (lock.enabled) {
+      await lock.disable();
+      if (mounted) {
+        setState(() {});
+        showMessage(context, tr('أُطفئ قفل التطبيق.'));
+      }
+      return;
+    }
+
+    final pin = await askPin(context, title: tr('اختر رمزاً من أربعة أرقام'));
+    if (pin == null || !mounted) return;
+    final again = await askPin(context, title: tr('أعِد الرمز للتأكيد'));
+    if (again == null || !mounted) return;
+    if (pin != again) {
+      showMessage(context, tr('الرمزان غير متطابقين — لم يُفعَّل القفل.'));
+      return;
+    }
+    try {
+      await lock.enable(pin, lock.after);
+      if (mounted) {
+        setState(() {});
+        showMessage(context, tr('فُعّل قفل التطبيق.'));
+      }
+    } catch (e) {
+      if (mounted) showMessage(context, messageOf(e));
+    }
+  }
+
   Future<void> _set({bool? push, bool? promos}) async {
     final before = _s;
     setState(() {
@@ -683,6 +719,67 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                       ),
                     ),
+                  ],
+                ),
+
+                const SizedBox(height: Space.lg),
+                SectionTitle(tr('قفل التطبيق')),
+                const SizedBox(height: Space.sm),
+                AppCard(
+                  children: [
+                    // **ومقولٌ ما هو وما ليس هو.** أربعةُ أرقامٍ عشرةُ آلاف
+                    // احتمال — قفلُ خصوصيّةٍ لا حصنُ أمان. ومن ظنّه حصناً
+                    // وضع فيه ما لا يُوضع.
+                    Muted(
+                      tr('يمنع من يفتح جوالك أن يرى حجوزاتك ومحادثاتك. وليس '
+                          'حمايةً من سرقة الحساب — تلك كلمةُ مرورك.'),
+                      size: 11,
+                    ),
+                    const SizedBox(height: Space.md),
+                    Row(
+                      children: [
+                        Icon(
+                          appLock.enabled
+                              ? Icons.lock_outline
+                              : Icons.lock_open_outlined,
+                          size: 20,
+                          color: AppColors.accent,
+                        ),
+                        const SizedBox(width: Space.md),
+                        Expanded(
+                          child: Text(appLock.enabled
+                              ? tr('القفل مفعّل')
+                              : tr('القفل مطفأ')),
+                        ),
+                        TextButton(
+                          key: const ValueKey('lock-toggle'),
+                          onPressed: _busy ? null : _toggleLock,
+                          child: Text(appLock.enabled
+                              ? tr('أطفئه')
+                              : tr('فعّله')),
+                        ),
+                      ],
+                    ),
+                    if (appLock.enabled) ...[
+                      const Divider(height: Space.lg, color: AppColors.hairline),
+                      Text(tr('يُطلب الرمز'), style: const TextStyle(fontSize: 13)),
+                      const SizedBox(height: Space.xs),
+                      Wrap(
+                        spacing: Space.xs,
+                        runSpacing: Space.xs,
+                        children: [
+                          for (final value in LockAfter.values)
+                            PickChip(
+                              label: lockAfterName(value),
+                              active: appLock.after == value,
+                              onTap: () async {
+                                await appLock.changeAfter(value);
+                                if (mounted) setState(() {});
+                              },
+                            ),
+                        ],
+                      ),
+                    ],
                   ],
                 ),
 

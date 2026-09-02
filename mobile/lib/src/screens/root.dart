@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 
+import '../core/app_lock.dart';
 import '../core/session.dart';
 import '../data/supabase.dart';
 import '../ui/kit.dart';
 import 'welcome.dart';
+import 'lock.dart';
 import 'onboarding.dart';
 import 'customer_shell.dart';
 import 'provider_shell.dart';
@@ -13,14 +15,17 @@ import 'provider_shell.dart';
 /// الترتيب مقصود — من لا جلسة له لا معنى لسؤاله عن دوره، ومن لا ملف له لا
 /// يستطيع الحجز ولو كان مسجَّل الدخول.
 class RootScreen extends StatefulWidget {
-  const RootScreen({super.key, required this.session});
+  const RootScreen({super.key, required this.session, this.lock});
   final Session session;
+
+  /// حارسُ القفل — يُترك فارغاً في الاختبارات التي لا تعنيها.
+  final AppLock? lock;
 
   @override
   State<RootScreen> createState() => _RootScreenState();
 }
 
-class _RootScreenState extends State<RootScreen> {
+class _RootScreenState extends State<RootScreen> with WidgetsBindingObserver {
   /// حالُ الجلسة في آخر مرّةٍ نُظر فيها — يُقارَن بها لالتقاط **التبدّل**.
   ///
   /// **وتُملأ في `initState` لا بـ`late`.** الأخيرةُ تؤجّل الحساب إلى أوّل
@@ -32,12 +37,16 @@ class _RootScreenState extends State<RootScreen> {
   @override
   void initState() {
     super.initState();
+    // **مراقبةُ دورة الحياة هنا لا في شاشة.** المغادرةُ والعودةُ تقعان
+    // للتطبيق كلِّه، وشاشةٌ تراقبهما تفوتها الحالُ وهي ليست في المقدّمة.
+    WidgetsBinding.instance.addObserver(this);
     _signedIn = widget.session.signedIn;
     widget.session.addListener(_onSessionChanged);
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     widget.session.removeListener(_onSessionChanged);
     super.dispose();
   }
@@ -70,7 +79,39 @@ class _RootScreenState extends State<RootScreen> {
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final lock = widget.lock;
+    if (lock == null) return;
+    // **والمغادرةُ تُسجَّل والعودةُ تُقارَن.** التطبيق قد يُقتل في الخلفيّة
+    // فلا يعمل فيه مؤقّت — والذي يبقى هو لحظةُ آخر استعمال.
+    if (state == AppLifecycleState.resumed) {
+      lock.onReturn();
+    } else if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.hidden) {
+      lock.onLeave();
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final session = widget.session;
+    final lock = widget.lock;
+
+    // **والقفلُ فوق كلّ شيءٍ إلّا الدخول.** من ليس داخلاً لا معنى لقفله —
+    // وشاشةُ الترحيب ليس فيها ما يُخفى.
+    if (lock != null && session.signedIn) {
+      return ListenableBuilder(
+        listenable: lock,
+        builder: (context, child) => lock.locked
+            ? LockScreen(lock: lock, onSignOut: session.signOut)
+            : child!,
+        child: _body(context),
+      );
+    }
+    return _body(context);
+  }
+
+  Widget _body(BuildContext context) {
     final session = widget.session;
     return ListenableBuilder(
       listenable: session,
