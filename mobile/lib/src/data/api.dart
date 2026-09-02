@@ -2,6 +2,8 @@ import 'dart:typed_data';
 
 import 'package:supabase_flutter/supabase_flutter.dart' show FileOptions, PostgrestException;
 
+import '../core/app_update.dart';
+import '../core/app_version.dart';
 import '../core/geo.dart';
 import 'models.dart';
 import 'supabase.dart';
@@ -1767,5 +1769,32 @@ class Api {
       'p_method': method,
       'p_sender_ref': senderRef,
     });
+  }
+
+  /// أحدثُ النسخ المنشورة لمنصّة هذا الجهاز.
+  ///
+  /// **وخمسةُ صفوفٍ لا صفٌّ واحد:** الأحدثُ قد يكون مطروحاً على عشرةٍ في
+  /// المئة، وصاحبُ الجهاز ليس منها — فيُعرض عليه ما قبله لا أن يُترك على
+  /// نسخته. والاختيارُ في `pickUpdate`.
+  ///
+  /// **ولا تُسقط شيئاً إن سقطت.** فحصُ التحديث يقع عند الإقلاع، وشبكةٌ
+  /// منقطعةٌ أو قاعدةٌ لم يُشغَّل عليها `app_download.sql` بعدُ لا يجوز أن
+  /// تمنع أحداً من فتح تطبيقه. فتُرجع قائمةً فارغة.
+  static Future<List<AppRelease>> releases() async {
+    if (!isSupabaseConfigured) return const [];
+    try {
+      final rows = await db
+          .from('app_versions')
+          .select('build, version, notes, download_url, force_update, '
+              'rollout_percent')
+          .eq('platform', appPlatform)
+          .order('build', ascending: false)
+          .limit(5);
+      return rows
+          .map((r) => AppRelease.fromMap(Map<String, dynamic>.from(r)))
+          .toList();
+    } catch (_) {
+      return const [];
+    }
   }
 }

@@ -1003,21 +1003,25 @@ export const mockVersions: AppVersion[] = [
     id: 'ver_1', platform: 'ios', version: '1.4.0', build: 1401, released_at: isoAt(5, 10),
     force_update: false, rollout_percent: 100,
     notes: 'إضافة خطة العرس وتحسين سرعة البحث.',
+    download_url: 'https://sdd.company/dl/farhati-1.4.0-ios.ipa',
   },
   {
     id: 'ver_2', platform: 'android', version: '1.4.0', build: 1402, released_at: isoAt(4, 10),
     force_update: false, rollout_percent: 70,
     notes: 'إضافة خطة العرس ودعم محفظة جوالي.',
+    download_url: 'https://sdd.company/dl/farhati-1.4.0-arm64.apk',
   },
   {
     id: 'ver_3', platform: 'ios', version: '1.3.2', build: 1322, released_at: isoAt(30, 10),
     force_update: true, rollout_percent: 100,
     notes: 'إصلاح ثغرة في تجديد الجلسة — التحديث إجباري.',
+    download_url: 'https://sdd.company/dl/farhati-1.3.2-ios.ipa',
   },
   {
     id: 'ver_4', platform: 'android', version: '1.3.0', build: 1300, released_at: isoAt(48, 10),
     force_update: false, rollout_percent: 100,
     notes: 'إشعارات الحجز داخل التطبيق.',
+    download_url: '',
   },
 ]
 
