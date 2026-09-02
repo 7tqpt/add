@@ -4,5 +4,5 @@
      يولّده tool/make_icons.py — لا يُحرَّر باليد. -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="rectangle">
-    <solid android:color="#0128B3" />
+    <solid android:color="#C2486A" />
 </shape>
