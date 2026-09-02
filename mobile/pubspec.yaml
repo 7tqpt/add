@@ -16,7 +16,16 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.0.0+1
+# **يُرفع رقمُ البناء (ما بعد `+`) مع كلّ حزمةٍ تُنشر.**
+#
+# وهو المقارَنُ في `app_versions.build`: من ثبّت حزمةً تقول «١» ثمّ نزّل
+# حزمةً تقول «١» كذلك يبقى شريطُ «صدرت نسخةٌ أحدث» أمامه إلى الأبد — نزّل
+# ولم يتغيّر عنده شيء.
+#
+# وقد بقي `1.0.0+1` من أوّل دفعةٍ للتطبيق حتى ٥٧ حزمةً بُنيت كلُّها تقول
+# «أنا الأولى». ويحرسه `app_update_test.dart`: يقرأ هذا السطر ويقارنه
+# بثابتَي `app_version.dart`.
+version: 1.0.1+2
 
 environment:
   sdk: ^3.13.0

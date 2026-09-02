@@ -168,6 +168,18 @@ jobs:
           LABEL=$("$AAPT" dump badging "$APK" | sed -n "s/^application-label:'\(.*\)'/\1/p")
           [ "$LABEL" != "aras" ] || { echo "::error::اسم التطبيق ما زال اسم القالب."; exit 1; }
 
+          # ــــ رقمُ البناء واسمُ النسخة ــــــــــــــــــــــــــــــــــــــ
+          #
+          # **يُقرآن من الحزمة نفسِها لا من `pubspec.yaml`.** الملفُّ يقول ما
+          # طُلب، والحزمةُ تقول ما خرج — وبينهما `flutter.versionCode` وGradle.
+          # والذي يقارنه التطبيقُ بجدول `app_versions` هو ما في الحزمة.
+          BADGING=$("$AAPT" dump badging "$APK")
+          VCODE=$(echo "$BADGING" | sed -n "s/.*versionCode='\([0-9]*\)'.*/\1/p" | head -1)
+          VNAME=$(echo "$BADGING" | sed -n "s/.*versionName='\([^']*\)'.*/\1/p" | head -1)
+          echo "VCODE=$VCODE" >> "$GITHUB_ENV"
+          echo "VNAME=$VNAME" >> "$GITHUB_ENV"
+          echo "رقم البناء: $VCODE — اسم النسخة: $VNAME"
+
           # وهل حملت الحزمةُ تهيئةَ Firebase فعلاً؟
           #
           # لا يكفي أن يُكتب الملف: إضافة Google Services تُطبَّق بشرطٍ في
@@ -332,6 +344,34 @@ jobs:
             echo "افتح هذا من متصفّح جوالك:"
             echo ""
             echo "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/tag/$TAG"
+            echo ""
+
+            # ــــ سطرُ الإدخال، جاهزاً ــــــــــــــــــــــــــــــــــــــ
+            #
+            # **ولا يُكتب رقمُ البناء بيد.** هو مقروءٌ من الحزمة التي رُفعت
+            # للتوّ، والرابطُ هو رابطُ أصلِها بعينه. ورقمٌ يُنسخ بالعين من
+            # سجلٍّ إلى محرّر SQL يُخطأ مرّةً في كلّ عشر — ويُخطئ صامتاً:
+            # صفٌّ برقمٍ أقلّ لا يظهر لأحد، وبرقمٍ أكبر يُبقي الشريطَ بعد
+            # التنزيل.
+            #
+            # والأصلُ لا صفحةُ الإصدار: التطبيق يفتح ما في العمود مباشرةً،
+            # ورابطُ الصفحة يُنزل صاحبَه على صفحةٍ يبحث فيها عن الملفّ.
+            ASSET="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/download/$TAG/$(basename "$ARM64")"
+            echo "### أضِف النسخة إلى قاعدتك"
+            echo ""
+            echo "الصقه في محرّر SQL — أو أدخل الرابط في **اللوحة ← الإصدارات**:"
+            echo ""
+            echo '```sql'
+            echo "insert into public.app_versions"
+            echo "  (platform, version, build, download_url, notes)"
+            echo "values"
+            echo "  ('android', '${VNAME}', ${VCODE},"
+            echo "   '${ASSET}',"
+            echo "   'وصفٌ قصيرٌ يقرؤه صاحبُ الجوال في الشريط.')"
+            echo "on conflict (platform, build) do update"
+            echo "  set download_url = excluded.download_url,"
+            echo "      version       = excluded.version;"
+            echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
       # لا تُبنى مع كل تشغيل: بناءٌ ثانٍ كامل يضاعف الزمن، ولا يُنشر على Play
