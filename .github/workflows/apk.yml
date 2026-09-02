@@ -174,11 +174,35 @@ jobs:
           # طُلب، والحزمةُ تقول ما خرج — وبينهما `flutter.versionCode` وGradle.
           # والذي يقارنه التطبيقُ بجدول `app_versions` هو ما في الحزمة.
           BADGING=$("$AAPT" dump badging "$APK")
-          VCODE=$(echo "$BADGING" | sed -n "s/.*versionCode='\([0-9]*\)'.*/\1/p" | head -1)
+          APKCODE=$(echo "$BADGING" | sed -n "s/.*versionCode='\([0-9]*\)'.*/\1/p" | head -1)
           VNAME=$(echo "$BADGING" | sed -n "s/.*versionName='\([^']*\)'.*/\1/p" | head -1)
-          echo "VCODE=$VCODE" >> "$GITHUB_ENV"
+
+          # **والرقمُ الذي يُدخَل في `app_versions` هو رقمُ `pubspec` لا رقمُ
+          # الحزمة.** و‍`--split-per-abi` يضيف ألفاً لكلّ معماريّة: حزمةُ
+          # arm64 خرجت بـ‍`versionCode = 2002` و‍`pubspec` يقول `+2`.
+          #
+          # والتطبيقُ يقارن بثابت `app_version.dart` — وهو رقمُ `pubspec`
+          # بعينه، يحرسه اختبار. فلو أُدخل ٢٠٠٢ لَرأى صاحبُ أحدث حزمةٍ
+          # الشريطَ أبداً: ينزّل ثمّ يعود فيجده كما هو.
+          #
+          # وقد كتبتُ أوّلَ مرّة «تُقرأ من الحزمة لأنّها أصدق»، وهي حجّةٌ
+          # خاطئة: الحزمةُ تقول رقماً **لا يقارنه التطبيق**.
+          BUILD=$(sed -n 's/^version: .*+\([0-9][0-9]*\)$/\1/p' mobile/pubspec.yaml | head -1)
+          if [ -z "$BUILD" ]; then
+            echo "::error::لم أقرأ رقم البناء من mobile/pubspec.yaml"
+            exit 1
+          fi
+
+          # وحارسٌ على العلاقة بينهما: الإزاحةُ مضاعفاتُ ألف، فالباقي هو
+          # رقمُ pubspec. وإن تبدّلت قسمةُ Flutter يوماً سقط هذا وتُراجع.
+          if [ "$((APKCODE % 1000))" -ne "$BUILD" ]; then
+            echo "::error::رقمُ الحزمة $APKCODE لا يوافق pubspec (+$BUILD) — راجع قسمة versionCode."
+            exit 1
+          fi
+
+          echo "VCODE=$BUILD" >> "$GITHUB_ENV"
           echo "VNAME=$VNAME" >> "$GITHUB_ENV"
-          echo "رقم البناء: $VCODE — اسم النسخة: $VNAME"
+          echo "رقم البناء (pubspec): $BUILD — في الحزمة: $APKCODE — النسخة: $VNAME"
 
           # وهل حملت الحزمةُ تهيئةَ Firebase فعلاً؟
           #
