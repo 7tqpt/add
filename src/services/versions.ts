@@ -16,7 +16,14 @@ export async function listVersions(): Promise<AppVersion[]> {
     .select('*')
     .order('released_at', { ascending: false })
   if (error) throw error
-  return (data ?? []) as AppVersion[]
+  // A database that has not run `app_download.sql` yet returns rows without
+  // the column at all, and `download_url` would be undefined while the type
+  // promises a string — so every `.startsWith` downstream throws. The feature
+  // should be missing, not the page.
+  return (data ?? []).map((row) => ({
+    ...row,
+    download_url: (row as { download_url?: string }).download_url ?? '',
+  })) as AppVersion[]
 }
 
 export async function setForceUpdate(version: AppVersion, forceUpdate: boolean): Promise<void> {
@@ -41,6 +48,45 @@ export async function setForceUpdate(version: AppVersion, forceUpdate: boolean):
     entityId: version.id,
     entityLabel: `${version.version} (${version.platform})`,
     details: { from: previous, to: forceUpdate },
+  })
+}
+
+/** https alone — the app opens whatever this holds, so a bad scheme is a hole. */
+export function isDownloadUrlValid(url: string): boolean {
+  if (url === '') return true // Clearing the link is allowed.
+  if (!url.startsWith('https://')) return false
+  try {
+    return new URL(url).hostname !== ''
+  } catch {
+    return false
+  }
+}
+
+export async function setDownloadUrl(version: AppVersion, url: string): Promise<void> {
+  const trimmed = url.trim()
+  if (!isDownloadUrlValid(trimmed)) {
+    throw new Error('الرابط يجب أن يبدأ بـ https:// — التطبيق يفتح هذا الرابط على جهاز صاحبه.')
+  }
+  const previous = version.download_url
+
+  if (!isSupabaseConfigured) {
+    const target = demoVersions.find((candidate) => candidate.id === version.id)
+    if (target) target.download_url = trimmed
+    await delay(null, 180)
+  } else {
+    const { error } = await requireSupabase()
+      .from('app_versions')
+      .update({ download_url: trimmed })
+      .eq('id', version.id)
+    if (error) throw error
+  }
+
+  await recordAudit({
+    action: 'version.download_url',
+    entity: 'version',
+    entityId: version.id,
+    entityLabel: `${version.version} (${version.platform})`,
+    details: { from: previous || '(فارغ)', to: trimmed || '(فارغ)' },
   })
 }
 

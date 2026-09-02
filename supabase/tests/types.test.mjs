@@ -20,7 +20,8 @@ await db.exec(`
   create or replace function storage.foldername(p text) returns text[]
     language sql immutable as $$ select string_to_array(p, '/') $$;`)
 for (const f of ['install.sql', 'seed.sql', 'apply.sql', 'support.sql', 'roles.sql',
-                 'invitations.sql', 'coupons.sql', 'category_images.sql']) {
+                 'invitations.sql', 'coupons.sql', 'category_images.sql',
+                 'app_download.sql']) {
   await db.exec(readFileSync(`../${f}`, 'utf8'))
 }
 

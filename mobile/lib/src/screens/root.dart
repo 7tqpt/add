@@ -6,6 +6,7 @@ import '../data/supabase.dart';
 import '../ui/kit.dart';
 import 'welcome.dart';
 import 'lock.dart';
+import 'update_prompt.dart';
 import 'onboarding.dart';
 import 'customer_shell.dart';
 import 'provider_shell.dart';
@@ -15,11 +16,19 @@ import 'provider_shell.dart';
 /// الترتيب مقصود — من لا جلسة له لا معنى لسؤاله عن دوره، ومن لا ملف له لا
 /// يستطيع الحجز ولو كان مسجَّل الدخول.
 class RootScreen extends StatefulWidget {
-  const RootScreen({super.key, required this.session, this.lock});
+  const RootScreen({
+    super.key,
+    required this.session,
+    this.lock,
+    this.update,
+  });
   final Session session;
 
   /// حارسُ القفل — يُترك فارغاً في الاختبارات التي لا تعنيها.
   final AppLock? lock;
+
+  /// حارسُ التحديث — يُترك فارغاً كذلك.
+  final UpdateGate? update;
 
   @override
   State<RootScreen> createState() => _RootScreenState();
@@ -94,6 +103,37 @@ class _RootScreenState extends State<RootScreen> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
+    final update = widget.update;
+    if (update == null) return _locked(context);
+
+    // **والتحديثُ الإجباريُّ فوق القفل وفوق الدخول جميعاً.** من كان على نسخةٍ
+    // لا تعمل مع الخدمة لا ينفعه أن يفتح قفله ولا أن يسجّل دخوله — النداءُ
+    // نفسُه هو المكسور. ومن لم يسجّل بعدُ أحوجُ الناس إليه: نسختُه قد تكون
+    // عاجزةً عن تسجيله أصلاً.
+    return ListenableBuilder(
+      listenable: update,
+      builder: (context, child) {
+        final forced = update.forced;
+        if (forced != null) return ForcedUpdateScreen(release: forced);
+
+        final banner = update.banner;
+        if (banner == null) return child!;
+        return Column(
+          children: [
+            SafeArea(
+              bottom: false,
+              child: UpdateBanner(release: banner, onDismiss: update.dismiss),
+            ),
+            Expanded(child: child!),
+          ],
+        );
+      },
+      child: _locked(context),
+    );
+  }
+
+  /// طبقةُ القفل — تحت التحديث وفوق كلّ ما عداه.
+  Widget _locked(BuildContext context) {
     final session = widget.session;
     final lock = widget.lock;
 

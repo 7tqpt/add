@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
@@ -8,6 +10,7 @@ import 'src/core/session.dart';
 import 'src/core/theme.dart';
 import 'src/data/supabase.dart';
 import 'src/screens/root.dart';
+import 'src/screens/update_prompt.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -17,6 +20,10 @@ Future<void> main() async {
   final session = Session();
   await session.boot();
   await appLock.boot();
+  // **بلا `await`: فحصُ التحديث لا يُؤخّر الإقلاع.** نداءُ شبكةٍ قبل أوّل
+  // إطارٍ يجعل من كان على شبكةٍ ضعيفةٍ ينظر إلى شاشةٍ بيضاءَ ثوانيَ لأجل
+  // خبرٍ يحتمل التأخير. فيُطلق، ويُعرض الشريطُ حين يصل.
+  unawaited(appUpdate.check());
   runApp(ArasApp(session: session));
 }
 
@@ -45,7 +52,7 @@ class ArasApp extends StatelessWidget {
           GlobalWidgetsLocalizations.delegate,
           GlobalCupertinoLocalizations.delegate,
         ],
-        home: RootScreen(session: session, lock: appLock),
+        home: RootScreen(session: session, lock: appLock, update: appUpdate),
       ),
     );
   }

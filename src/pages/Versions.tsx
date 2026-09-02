@@ -2,13 +2,19 @@ import { useCallback, useEffect, useState } from 'react'
 import { Card, CardBody, CardHeader } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { EmptyState, ErrorState, LoadingBlock, Toast } from '@/components/ui/Feedback'
-import { Toggle } from '@/components/ui/Field'
+import { Field, Input, Toggle } from '@/components/ui/Field'
 import { useAuth } from '@/context/AuthContext'
 import { useAsync } from '@/hooks/useAsync'
 import { cn } from '@/lib/cn'
 import { PLATFORM_LABEL, formatDate } from '@/lib/format'
 import type { AppVersion } from '@/lib/types'
-import { listVersions, setForceUpdate, setRollout } from '@/services/versions'
+import {
+  isDownloadUrlValid,
+  listVersions,
+  setDownloadUrl,
+  setForceUpdate,
+  setRollout,
+} from '@/services/versions'
 import { errorText } from '@/services/base'
 
 export function VersionsPage() {
@@ -60,11 +66,19 @@ function VersionCard({
   // The slider tracks locally while dragging and only commits on release, so a
   // drag from 60 to 100 is one write instead of nine.
   const [rollout, setRolloutValue] = useState(version.rollout_percent)
+  const [url, setUrl] = useState(version.download_url)
   const [busy, setBusy] = useState(false)
 
   useEffect(() => {
     setRolloutValue(version.rollout_percent)
   }, [version.rollout_percent])
+
+  useEffect(() => {
+    setUrl(version.download_url)
+  }, [version.download_url])
+
+  const urlError =
+    isDownloadUrlValid(url.trim()) ? null : 'يجب أن يبدأ بـ https:// — التطبيق يفتحه على جهاز صاحبه.'
 
   async function commit(action: () => Promise<void>, message: string) {
     setBusy(true)
@@ -84,6 +98,12 @@ function VersionCard({
     void commit(() => setRollout(version, rollout), 'تم تحديث نسبة الطرح.')
   }
 
+  function commitUrl() {
+    const trimmed = url.trim()
+    if (trimmed === version.download_url || urlError) return
+    void commit(() => setDownloadUrl(version, trimmed), 'تم حفظ رابط التنزيل.')
+  }
+
   return (
     <Card>
       <CardHeader
@@ -99,7 +119,12 @@ function VersionCard({
         }
         subtitle={`صدر في ${formatDate(version.released_at)}`}
         actions={
-          version.force_update ? (
+          // A version with no link reaches nobody, so "available to everyone"
+          // would be a lie — and the lie is the dangerous kind: it reads as
+          // shipped while the app silently skips the row.
+          !version.download_url ? (
+            <Badge tone="warning">بلا رابط</Badge>
+          ) : version.force_update ? (
             <Badge tone="serious">تحديث إجباري</Badge>
           ) : version.rollout_percent < 100 ? (
             <Badge tone="warning">طرح تدريجي</Badge>
@@ -110,6 +135,42 @@ function VersionCard({
       />
       <CardBody className="flex flex-col gap-4">
         <p className="text-xs leading-6 text-ink-2">{version.notes || 'لا توجد ملاحظات.'}</p>
+
+        <Field
+          label="رابط التنزيل"
+          error={urlError}
+          hint={
+            version.download_url ? (
+              <a
+                href={version.download_url}
+                target="_blank"
+                rel="noreferrer noopener"
+                className="text-accent underline underline-offset-2"
+              >
+                افتح الرابط للتأكّد منه
+              </a>
+            ) : (
+              'بدون رابط لا يُعرض هذا الإصدار على أحد — ولو كان إجبارياً.'
+            )
+          }
+        >
+          {(id) => (
+            <Input
+              id={id}
+              dir="ltr"
+              inputMode="url"
+              placeholder="https://…"
+              value={url}
+              disabled={busy || !canWrite}
+              title={canWrite ? undefined : 'دورك الحالي للقراءة فقط'}
+              onChange={(event) => setUrl(event.target.value)}
+              onBlur={commitUrl}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') event.currentTarget.blur()
+              }}
+            />
+          )}
+        </Field>
 
         <div className="flex flex-col gap-2">
           <div className="flex items-center justify-between text-xs">

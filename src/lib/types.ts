@@ -559,6 +559,8 @@ export interface AppVersion {
   force_update: boolean
   rollout_percent: number
   notes: string
+  /** رابط تنزيل الحزمة — https وحده، ويقرؤه التطبيق. */
+  download_url: string
 }
 
 export interface AppSettings {
