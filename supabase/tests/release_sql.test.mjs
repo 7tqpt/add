@@ -67,10 +67,31 @@ function assignment(varName) {
   return line ?? ''
 }
 
+/** مجلّدُ عمل الخطوة التي فيها ذلك السطر — كما يقوله السير. */
+function workingDirOf(needle) {
+  // **ولا يُفترض المجلّد.** الخطوةُ لها `working-directory`، فالمسارُ في
+  // سطرها نسبيٌّ إليه لا إلى جذر المستودع.
+  //
+  // وهذا ما أسقط بناءَ ٦٢: كتبتُ `mobile/pubspec.yaml` والخطوةُ تعمل في
+  // `mobile` أصلاً، فصار `mobile/mobile/pubspec.yaml`. **ومرّ الاختبارُ**
+  // لأنّه كان يشغّل السطرَ من جذر المستودع — فبيئتُه تفارق البيئةَ الحقيقيّة
+  // في المحور الذي انكسر بعينه.
+  const at = yml.indexOf(needle)
+  if (at < 0) return null
+  const head = yml.slice(0, at)
+  const stepAt = head.lastIndexOf('\n      - name:')
+  const step = yml.slice(stepAt, at)
+  const wd = step.match(/^\s*working-directory:\s*(\S+)\s*$/m)?.[1]
+  return wd ?? '.'
+}
+
 // (أ) رقمُ البناء — يُنفَّذ من جذر المستودع كما يفعل السير.
 const buildLine = assignment('BUILD')
+const buildDir = workingDirOf(buildLine)
+ok('ومجلّدُ عملِ خطوته يُقرأ من السير', buildDir !== null, String(buildDir))
 const derivedBuild = execFileSync('bash', ['-c', `${buildLine}\necho "$BUILD"`], {
-  cwd: new URL('../../', import.meta.url).pathname,
+  // **ويُشغَّل من حيث يشغّله السير** — لا من جذر المستودع.
+  cwd: new URL(`${buildDir}/`, new URL('../../', import.meta.url)).pathname,
   encoding: 'utf8',
 }).trim()
 ok('**والسيرُ يشتقُّ رقمَ البناء من pubspec لا من الحزمة**',
