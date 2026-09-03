@@ -12,7 +12,9 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:aras/src/core/theme.dart';
+import 'package:aras/src/ui/kit.dart';
 import 'package:aras/src/ui/motion.dart';
+import 'package:aras/src/ui/service_card.dart';
 
 Widget _wrap(
   Widget child, {
@@ -315,6 +317,57 @@ void main() {
       await tester.pumpAndSettle();
       expect(_slideOf(tester, 'الثانية'), Offset.zero);
       expect(find.text('الثانية'), findsOneWidget);
+    });
+  });
+
+  // ==========================================================================
+  //  **اللمسةُ في البطاقة المشتركة**
+  // ==========================================================================
+  //
+  // بطاقاتُ التطبيق كلِّها تُبنى من `AppCard`، فالانخفاضُ يُركَّب فيها مرّةً
+  // ويعمّ. **وحارسُه هنا لا في شاشة**: لو قِيس في شاشةٍ واحدةٍ لَبقيت
+  // البقيّةُ بلا حارس، ولو نُزع من `AppCard` لَما سقط شيء — وقد جرّبتُ
+  // نزعَه فلم يسقط، فكُتب هذا.
+
+  testWidgets('**والبطاقةُ المشتركة تنخفض تحت الإصبع**', (tester) async {
+    await tester.pumpWidget(_wrap(
+      Scaffold(body: AppCard(onTap: () {}, children: const [Text('بطاقة')])),
+    ));
+    double scale() => tester
+        .widget<AnimatedScale>(find
+            .descendant(of: find.byType(AppCard), matching: find.byType(AnimatedScale))
+            .first)
+        .scale;
+    expect(scale(), 1.0);
+    final gesture = await tester.startGesture(tester.getCenter(find.text('بطاقة')));
+    await tester.pump();
+    expect(scale(), lessThan(1.0), reason: 'لا تُحسّ اللمسةُ في البطاقات');
+    await gesture.up();
+    await tester.pump();
+    expect(scale(), 1.0);
+  });
+
+  testWidgets('وبطاقةٌ للعرض لا تنخفض', (tester) async {
+    await tester.pumpWidget(_wrap(
+      const Scaffold(body: AppCard(children: [Text('عرضٌ فقط')])),
+    ));
+    expect(
+      find.descendant(of: find.byType(AppCard), matching: find.byType(Pressable)),
+      findsNothing,
+    );
+  });
+
+  // ==========================================================================
+  //  **الغلافُ الطائر**
+  // ==========================================================================
+
+  group('وسمُ الغلاف', () {
+    test('**واحدٌ يُشتقّ من المعرّف فلا يفترق الطرفان**', () {
+      // ولو كُتب الوسمُ نصّاً في البطاقة ونصّاً في الصفحة لَافترقا يوماً
+      // بحرفٍ واحد، فلا يطير شيءٌ ولا يُقال لأحدٍ لماذا.
+      expect(serviceHeroTag('s1'), serviceHeroTag('s1'));
+      expect(serviceHeroTag('s1'), isNot(serviceHeroTag('s2')));
+      expect(serviceHeroTag('s1'), contains('s1'));
     });
   });
 

@@ -20,6 +20,8 @@ import 'package:aras/src/data/demo.dart';
 import 'package:aras/src/data/models.dart';
 import 'package:aras/src/screens/service_detail.dart';
 import 'package:aras/src/ui/celebrate.dart';
+import 'package:aras/src/ui/kit.dart';
+import 'package:aras/src/ui/service_card.dart';
 
 Widget _wrap(Widget child) => MaterialApp(
   theme: buildTheme(),
@@ -173,6 +175,28 @@ void main() {
     await _fill(tester, 'كود الخصم (اختياري)', 'EID2');
     expect(_appliedRow(), findsNothing,
         reason: 'بقي خصمُ كودٍ لم يعُد في الحقل');
+  });
+
+  testWidgets('**والغلافُ يُرسم قبل أن تصل الخدمة**', (tester) async {
+    // **ووقتُ التحميل هو وقتُ الانتقال بعينه.** فلو كان الغلافُ داخل
+    // `FutureBuilder` لَما وُجد أثناءه — فيطير من البطاقة إلى فراغٍ
+    // ويرتدّ، ويرى صاحبُ الشاشة بياضاً حيث ضغط.
+    _phone(tester);
+    await tester.pumpWidget(_wrap(const ServiceDetailScreen(
+      serviceId: 's1',
+      coverPath: 'services/s1/cover.jpg',
+    )));
+    await tester.pump();   // إطارٌ واحد: الخدمةُ لم تصل بعد
+
+    expect(find.byType(LoadingBlock), findsOneWidget,
+        reason: 'وصلت الخدمةُ فوراً — فالاختبارُ لا يقيس ما يدّعي');
+    expect(
+      find.byWidgetPredicate(
+          (w) => w is Hero && w.tag == serviceHeroTag('s1')),
+      findsOneWidget,
+      reason: 'لا موضعَ يطير إليه الغلاف',
+    );
+    await _settle(tester);
   });
 
   testWidgets('**والحجزُ يحمل الكودَ ومبلغَه**', (tester) async {

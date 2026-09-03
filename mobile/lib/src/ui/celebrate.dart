@@ -204,6 +204,105 @@ class _BeatingHeartState extends State<BeatingHeart>
   }
 }
 
+/// زهرةٌ تتفتّح — بتلاتٌ تدور وتكبر ثمّ تستقرّ.
+///
+/// **ومرسومةٌ بالشيفرة كأختيها.** ستُّ بتلاتٍ حول قلبٍ ذهبيّ، كلُّ بتلةٍ
+/// قطعةٌ ناقصيّةٌ تدور بسدس دورة. والرسمُ يخرج حادّاً على كلّ كثافة.
+class BloomingFlower extends StatefulWidget {
+  const BloomingFlower({super.key, this.size = 72, this.petals = 6});
+
+  final double size;
+  final int petals;
+
+  @override
+  State<BloomingFlower> createState() => _BloomingFlowerState();
+}
+
+class _BloomingFlowerState extends State<BloomingFlower>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _c =
+      AnimationController(vsync: this, duration: const Duration(milliseconds: 1100));
+  bool _started = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_started) return;
+    _started = true;
+    if (!reduceMotion(context)) _c.forward();
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // **ولمن أطفأ الحركةَ تُرسم متفتّحةً لا غائبة** — الزهرةُ زينةٌ، لكنّ
+    // غيابَها يترك فراغاً في التخطيط يُقرأ عطباً.
+    final t = reduceMotion(context) ? 1.0 : null;
+    return SizedBox(
+      width: widget.size,
+      height: widget.size,
+      child: t != null
+          ? CustomPaint(painter: _FlowerPainter(1, widget.petals))
+          : AnimatedBuilder(
+              animation: _c,
+              builder: (_, _) => CustomPaint(
+                painter: _FlowerPainter(
+                  Curves.easeOutBack.transform(_c.value.clamp(0.0, 1.0)),
+                  widget.petals,
+                ),
+              ),
+            ),
+    );
+  }
+}
+
+class _FlowerPainter extends CustomPainter {
+  _FlowerPainter(this.t, this.petals);
+
+  final double t;
+  final int petals;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final centre = Offset(size.width / 2, size.height / 2);
+    final radius = size.width / 2 * t.clamp(0.0, 1.2);
+    final paint = Paint()..color = AppColors.accentLift.withValues(alpha: 0.9);
+
+    canvas.save();
+    canvas.translate(centre.dx, centre.dy);
+    // **وتدور ربعَ دورةٍ وهي تتفتّح** — التفتّحُ بلا دورانٍ يُقرأ تكبيراً
+    // لا تفتّحاً.
+    canvas.rotate(t * pi / 2);
+    for (var i = 0; i < petals; i++) {
+      canvas.save();
+      canvas.rotate(2 * pi * i / petals);
+      canvas.drawOval(
+        Rect.fromCenter(
+          center: Offset(0, -radius * 0.52),
+          width: radius * 0.52,
+          height: radius * 0.92,
+        ),
+        paint,
+      );
+      canvas.restore();
+    }
+    canvas.drawCircle(
+      Offset.zero,
+      radius * 0.28,
+      Paint()..color = AppColors.goldOnAccent,
+    );
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(_FlowerPainter old) => old.t != t || old.petals != petals;
+}
+
 /// لوحُ التهنئة: قصاصاتٌ وقلبٌ ونصّ — يُعرض عند تمام الحجز.
 class CelebrationOverlay extends StatelessWidget {
   const CelebrationOverlay({
@@ -228,7 +327,18 @@ class CelebrationOverlay extends StatelessWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const BeatingHeart(size: 58),
+                  // زهرتان تكتنفان القلبَ — أصغرُ منه فلا تسحبان البصرَ عنه.
+                  const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      BloomingFlower(size: 34),
+                      SizedBox(width: Space.md),
+                      BeatingHeart(size: 58),
+                      SizedBox(width: Space.md),
+                      BloomingFlower(size: 34),
+                    ],
+                  ),
                   const SizedBox(height: Space.lg),
                   Text(
                     title,

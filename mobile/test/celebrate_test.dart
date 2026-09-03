@@ -170,6 +170,43 @@ void main() {
   });
 
   // ==========================================================================
+  //  الزهرة
+  // ==========================================================================
+
+  group('الزهرة', () {
+    testWidgets('**تتفتّح ثمّ تستقرّ**', (tester) async {
+      _phone(tester);
+      await tester.pumpWidget(
+          _wrap(const Scaffold(body: Center(child: BloomingFlower()))));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 600));
+      expect(tester.takeException(), isNull);
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull, reason: 'لم تستقرّ');
+    });
+
+    testWidgets('**ولمن أطفأ الحركةَ تُرسم متفتّحةً لا غائبة**', (tester) async {
+      // غيابُها يترك فراغاً في التخطيط يُقرأ عطباً.
+      _phone(tester);
+      await tester.pumpWidget(_wrap(
+          const Scaffold(body: Center(child: BloomingFlower())), still: true));
+      await tester.pump();
+      expect(
+        find.descendant(
+            of: find.byType(BloomingFlower), matching: find.byType(CustomPaint)),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+            of: find.byType(BloomingFlower),
+            matching: find.byType(AnimatedBuilder)),
+        findsNothing,
+        reason: 'تحرّكت وقد طُلب الإطفاء',
+      );
+    });
+  });
+
+  // ==========================================================================
   //  لوحُ التهنئة
   // ==========================================================================
 

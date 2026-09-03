@@ -6,6 +6,7 @@ import '../core/theme.dart';
 import '../data/api.dart';
 import '../data/models.dart';
 import '../data/supabase.dart';
+import '../ui/motion.dart';
 import '../ui/kit.dart';
 import 'service_media.dart';
 
@@ -109,7 +110,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
             separatorBuilder: (_, _) => const SizedBox(height: Space.md),
             itemBuilder: (context, i) {
               final s = rows[i];
-              return AppCard(
+              return FadeSlideIn(index: i, child: AppCard(
                 children: [
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -169,7 +170,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
                     label: const Text('الصور والمقاطع'),
                   ),
                 ],
-              );
+              ));
             },
           );
         },

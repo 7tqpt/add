@@ -5,6 +5,7 @@ import '../core/theme.dart';
 import '../data/api.dart';
 import '../data/models.dart';
 import '../data/supabase.dart';
+import '../ui/motion.dart';
 import '../ui/kit.dart';
 import 'chat.dart';
 
@@ -73,7 +74,7 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
               itemCount: rows.length,
               separatorBuilder: (_, _) =>
                   const Divider(height: 1, color: AppColors.hairline, indent: 72),
-              itemBuilder: (context, i) => _Row(conversation: rows[i], onTap: () => _open(rows[i])),
+              itemBuilder: (context, i) => FadeSlideIn(index: i, child: _Row(conversation: rows[i], onTap: () => _open(rows[i]))),
             ),
           );
         },

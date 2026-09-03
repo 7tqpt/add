@@ -7,6 +7,7 @@ import '../data/api.dart';
 import '../data/models.dart';
 import '../data/supabase.dart';
 import '../ui/celebrate.dart';
+import '../ui/service_card.dart';
 import '../ui/kit.dart';
 import 'account_extras.dart';
 import 'map_picker.dart';
@@ -15,8 +16,19 @@ import 'chat.dart';
 import 'provider_public.dart';
 
 class ServiceDetailScreen extends StatefulWidget {
-  const ServiceDetailScreen({super.key, required this.serviceId});
+  const ServiceDetailScreen({
+    super.key,
+    required this.serviceId,
+    this.coverPath,
+  });
   final String serviceId;
+
+  /// غلافُ الخدمة كما تعرفه البطاقةُ التي فُتحت منها.
+  ///
+  /// **ويُمرَّر ليُرسم في أوّل إطار.** الخدمةُ تُقرأ من الشبكة، فكانت
+  /// الشاشةُ تفتح فارغةً حتى تصل — ثمّ يظهر كلُّ شيءٍ دفعةً. والغلافُ
+  /// معروفٌ عند المنادي، فيُرسم فوراً ويطير إليه من البطاقة.
+  final String? coverPath;
   @override
   State<ServiceDetailScreen> createState() => _ServiceDetailScreenState();
 }
@@ -270,7 +282,31 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('تفاصيل الخدمة')),
-      body: FutureBuilder<ServiceItem?>(
+      body: Column(
+        children: [
+          // **والغلافُ خارجَ `FutureBuilder` عمداً.** لو كان داخلَه لَما وُجد
+          // أثناء التحميل — ووقتُ التحميل هو وقتُ الانتقال بعينه، فيطير
+          // الغلافُ من البطاقة إلى فراغٍ ويرتدّ. وخارجَه يُرسم في أوّل إطار
+          // فيجد الطائرُ موضعَه، ويرى صاحبُ الشاشة ما ضغط عليه بدل بياض.
+          if (widget.coverPath != null)
+            Hero(
+              tag: serviceHeroTag(widget.serviceId),
+              child: SizedBox(
+                height: 190,
+                width: double.infinity,
+                child: MediaThumb(url: Api.mediaUrl(widget.coverPath)),
+              ),
+            ),
+          Expanded(
+            child: _body(context),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _body(BuildContext context) {
+    return FutureBuilder<ServiceItem?>(
         future: _future,
         builder: (context, snap) {
           if (snap.connectionState != ConnectionState.done) return const LoadingBlock();
@@ -530,7 +566,6 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
             ],
           );
         },
-      ),
     );
   }
 }
