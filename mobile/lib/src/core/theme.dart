@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../ui/motion.dart';
+
 /// ألوان المنصة ومقاييسها.
 ///
 /// **نبيذيٌّ على كريم، وذهبٌ للزينة** — هويّةُ «فرحتي» كما رُسمت في لوحة
@@ -113,6 +115,12 @@ class Space {
 
 ThemeData buildTheme() {
   final base = ThemeData(
+    // انتقالُ الشاشة الموحّد — يعمّ كلَّ `Navigator.push` في التطبيق.
+    // انظر `ui/motion.dart` للسبب.
+    pageTransitionsTheme: const PageTransitionsTheme(builders: {
+      TargetPlatform.android: FarhatiPageTransitions(),
+      TargetPlatform.iOS: FarhatiPageTransitions(),
+    }),
     useMaterial3: true,
     // أصلٌ لا احتياط — انظر `brandFont`. والاحتياط يبقى خلفه: النسخُ يغطّي
     // ما لا يغطّيه Plex من محارف، فلا يختفي نصٌّ بلا رسالة.

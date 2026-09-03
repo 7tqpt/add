@@ -6,6 +6,7 @@ import '../core/theme.dart';
 import '../data/api.dart';
 import '../data/models.dart';
 import '../data/supabase.dart';
+import '../ui/celebrate.dart';
 import '../ui/kit.dart';
 import 'account_extras.dart';
 import 'map_picker.dart';
@@ -237,14 +238,26 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
         point: _point,
       );
       if (!mounted) return;
-      showMessage(
+      // **وتُطفأ الدوّارةُ قبل التهنئة لا بعدها.** شاشةُ التهنئة تنتظر
+      // صاحبَها حتى يُغلقها، فلو بقي `_busy` صادقاً لَظلّ زرُّ «احجز» يدور
+      // تحتها ما دامت مفتوحة — ويراه من رجع بزرّ النظام يدور على حجزٍ قد
+      // تمّ. وكشفه اختبارُ الكوبونات: `pumpAndSettle` لا يسكن أبداً.
+      setState(() => _busy = false);
+
+      // **والخبرُ في شاشةٍ تبقى لا في شريطٍ يمرّ.** فيه رقمُ الحجز ومبلغُ
+      // العربون، وهما ما يحتاجه صاحبُه ليحوّل — ومن نظر إلى جواله بعد
+      // ثانيتين فاته الرقم.
+      await showCelebration(
         context,
-        booking.discountAmount > 0
-            ? 'رقم حجزك ${booking.reference} — خُصم '
-                '${formatMoney(booking.discountAmount)} بكود ${booking.couponCode}.'
-            : 'رقم حجزك ${booking.reference} — العربون '
-                '${formatMoney(booking.depositAmount)}.',
+        title: 'تمّ حجزك',
+        body: booking.discountAmount > 0
+            ? 'رقم حجزك ${booking.reference}\nخُصم '
+                '${formatMoney(booking.discountAmount)} بكود ${booking.couponCode}'
+            : 'رقم حجزك ${booking.reference}\nالعربون '
+                '${formatMoney(booking.depositAmount)}',
+        actionLabel: 'إلى حجوزاتي',
       );
+      if (!mounted) return;
       Navigator.of(context).pop();
     } catch (e) {
       if (mounted) setState(() => _error = messageOf(e));

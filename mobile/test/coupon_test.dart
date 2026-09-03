@@ -19,6 +19,7 @@ import 'package:aras/src/core/theme.dart';
 import 'package:aras/src/data/demo.dart';
 import 'package:aras/src/data/models.dart';
 import 'package:aras/src/screens/service_detail.dart';
+import 'package:aras/src/ui/celebrate.dart';
 
 Widget _wrap(Widget child) => MaterialApp(
   theme: buildTheme(),
@@ -190,6 +191,24 @@ void main() {
     expect(booking.discountAmount, greaterThan(0));
     expect(booking.totalPrice, service.price,
         reason: 'الخصمُ نقص من السعر الأصليّ بدل أن يُسجَّل بجانبه');
+
+    // ــ والخبرُ يبقى أمام صاحبه ــــــــــــــــــــــــــــــــــــــــــــ
+    //
+    // **ورقمُ الحجز هو الخبر.** به يُحوَّل العربون وبه يُسأل عن الحجز. وكان
+    // يُقال في شريطٍ يظهر ثانيتين ثمّ يذهب — فمن نظر إلى جواله بعدها فاته
+    // ولا سبيل إليه. فصار في شاشةٍ لا تُغلق حتى يُغلقها.
+    //
+    // **ويُسأل عن نصّ التهنئة وحدَه.** شاشةُ الحجز باقيةٌ تحتها وفي حقلها
+    // «SDD5000» — فسؤالٌ عامٌّ يجده مرّتين ويسقط على شيءٍ لا يخصّه. وقد وقع.
+    Finder inCelebration(Finder what) =>
+        find.descendant(of: find.byType(CelebrationOverlay), matching: what);
+
+    expect(inCelebration(find.text('تمّ حجزك')), findsOneWidget);
+    expect(inCelebration(find.textContaining(booking.reference)), findsOneWidget,
+        reason: 'ضاع رقمُ الحجز — وهو ما يُحوَّل به');
+    expect(inCelebration(find.textContaining('SDD5000')), findsOneWidget,
+        reason: 'لم يُقل له أنّ كودَه طُبّق');
+    expect(find.byKey(const ValueKey('celebrate-action')), findsOneWidget);
   });
 
   testWidgets('**ولا يُطبَّق كودٌ لم يتحقّق منه الخادم**', (tester) async {
