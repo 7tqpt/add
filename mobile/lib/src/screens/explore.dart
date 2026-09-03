@@ -5,6 +5,7 @@ import '../core/theme.dart';
 import '../data/api.dart';
 import '../data/models.dart';
 import '../data/supabase.dart';
+import '../ui/motion.dart';
 import '../ui/kit.dart';
 import '../ui/service_card.dart';
 import 'provider_public.dart';
@@ -404,7 +405,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 padding: const EdgeInsets.fromLTRB(Space.lg, Space.lg, Space.lg, glassNavSpace),
                 itemCount: items.length,
                 separatorBuilder: (_, _) => const SizedBox(height: Space.md),
-                itemBuilder: (context, i) => ServiceListCard(
+                itemBuilder: (context, i) => FadeSlideIn(index: i, child: ServiceListCard(
+                  flyCover: true,
                   item: items[i],
                   // المسافةُ تُكتب حين يكون الترتيبُ بها — لا دائماً: رقمٌ
                   // على بطاقةٍ لم يُرتَّب بها يُقرأ ترتيباً فيُظنّ الأوّلُ
@@ -414,7 +416,10 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   onToggleFavourite: () => _toggleFavourite(items[i].id),
                   onOpen: () => Navigator.of(context).push(
                     MaterialPageRoute(
-                      builder: (_) => ServiceDetailScreen(serviceId: items[i].id),
+                      builder: (_) => ServiceDetailScreen(
+                        serviceId: items[i].id,
+                        coverPath: items[i].coverPath,
+                      ),
                     ),
                   ),
                   // اسمُ المزوّد بابٌ إلى ملفّه: من رأى «كوشة ورد» قد يريد أن
@@ -427,7 +432,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                       ),
                     ),
                   ),
-                ),
+                )),
               );
             },
           ),
@@ -514,7 +519,7 @@ class _Providers extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(Space.lg, Space.lg, Space.lg, glassNavSpace),
           itemCount: rows.length,
           separatorBuilder: (_, _) => const SizedBox(height: Space.md),
-          itemBuilder: (context, i) => _ProviderRow(provider: rows[i], from: from),
+          itemBuilder: (context, i) => FadeSlideIn(index: i, child: _ProviderRow(provider: rows[i], from: from)),
         );
       },
     );

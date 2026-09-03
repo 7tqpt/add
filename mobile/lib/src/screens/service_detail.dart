@@ -6,6 +6,8 @@ import '../core/theme.dart';
 import '../data/api.dart';
 import '../data/models.dart';
 import '../data/supabase.dart';
+import '../ui/celebrate.dart';
+import '../ui/service_card.dart';
 import '../ui/kit.dart';
 import 'account_extras.dart';
 import 'map_picker.dart';
@@ -14,8 +16,19 @@ import 'chat.dart';
 import 'provider_public.dart';
 
 class ServiceDetailScreen extends StatefulWidget {
-  const ServiceDetailScreen({super.key, required this.serviceId});
+  const ServiceDetailScreen({
+    super.key,
+    required this.serviceId,
+    this.coverPath,
+  });
   final String serviceId;
+
+  /// غلافُ الخدمة كما تعرفه البطاقةُ التي فُتحت منها.
+  ///
+  /// **ويُمرَّر ليُرسم في أوّل إطار.** الخدمةُ تُقرأ من الشبكة، فكانت
+  /// الشاشةُ تفتح فارغةً حتى تصل — ثمّ يظهر كلُّ شيءٍ دفعةً. والغلافُ
+  /// معروفٌ عند المنادي، فيُرسم فوراً ويطير إليه من البطاقة.
+  final String? coverPath;
   @override
   State<ServiceDetailScreen> createState() => _ServiceDetailScreenState();
 }
@@ -237,14 +250,26 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
         point: _point,
       );
       if (!mounted) return;
-      showMessage(
+      // **وتُطفأ الدوّارةُ قبل التهنئة لا بعدها.** شاشةُ التهنئة تنتظر
+      // صاحبَها حتى يُغلقها، فلو بقي `_busy` صادقاً لَظلّ زرُّ «احجز» يدور
+      // تحتها ما دامت مفتوحة — ويراه من رجع بزرّ النظام يدور على حجزٍ قد
+      // تمّ. وكشفه اختبارُ الكوبونات: `pumpAndSettle` لا يسكن أبداً.
+      setState(() => _busy = false);
+
+      // **والخبرُ في شاشةٍ تبقى لا في شريطٍ يمرّ.** فيه رقمُ الحجز ومبلغُ
+      // العربون، وهما ما يحتاجه صاحبُه ليحوّل — ومن نظر إلى جواله بعد
+      // ثانيتين فاته الرقم.
+      await showCelebration(
         context,
-        booking.discountAmount > 0
-            ? 'رقم حجزك ${booking.reference} — خُصم '
-                '${formatMoney(booking.discountAmount)} بكود ${booking.couponCode}.'
-            : 'رقم حجزك ${booking.reference} — العربون '
-                '${formatMoney(booking.depositAmount)}.',
+        title: 'تمّ حجزك',
+        body: booking.discountAmount > 0
+            ? 'رقم حجزك ${booking.reference}\nخُصم '
+                '${formatMoney(booking.discountAmount)} بكود ${booking.couponCode}'
+            : 'رقم حجزك ${booking.reference}\nالعربون '
+                '${formatMoney(booking.depositAmount)}',
+        actionLabel: 'إلى حجوزاتي',
       );
+      if (!mounted) return;
       Navigator.of(context).pop();
     } catch (e) {
       if (mounted) setState(() => _error = messageOf(e));
@@ -257,7 +282,31 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('تفاصيل الخدمة')),
-      body: FutureBuilder<ServiceItem?>(
+      body: Column(
+        children: [
+          // **والغلافُ خارجَ `FutureBuilder` عمداً.** لو كان داخلَه لَما وُجد
+          // أثناء التحميل — ووقتُ التحميل هو وقتُ الانتقال بعينه، فيطير
+          // الغلافُ من البطاقة إلى فراغٍ ويرتدّ. وخارجَه يُرسم في أوّل إطار
+          // فيجد الطائرُ موضعَه، ويرى صاحبُ الشاشة ما ضغط عليه بدل بياض.
+          if (widget.coverPath != null)
+            Hero(
+              tag: serviceHeroTag(widget.serviceId),
+              child: SizedBox(
+                height: 190,
+                width: double.infinity,
+                child: MediaThumb(url: Api.mediaUrl(widget.coverPath)),
+              ),
+            ),
+          Expanded(
+            child: _body(context),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _body(BuildContext context) {
+    return FutureBuilder<ServiceItem?>(
         future: _future,
         builder: (context, snap) {
           if (snap.connectionState != ConnectionState.done) return const LoadingBlock();
@@ -517,7 +566,6 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
             ],
           );
         },
-      ),
     );
   }
 }

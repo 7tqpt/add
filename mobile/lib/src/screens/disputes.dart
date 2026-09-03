@@ -6,6 +6,7 @@ import '../core/theme.dart';
 import '../data/api.dart';
 import '../data/models.dart';
 import '../data/supabase.dart';
+import '../ui/motion.dart';
 import '../ui/kit.dart';
 import 'labels.dart';
 
@@ -60,11 +61,11 @@ class _DisputesScreenState extends State<DisputesScreen> {
               padding: const EdgeInsets.all(Space.lg),
               itemCount: rows.length,
               separatorBuilder: (_, _) => const SizedBox(height: Space.md),
-              itemBuilder: (context, i) => _Row(
+              itemBuilder: (context, i) => FadeSlideIn(index: i, child: _Row(
                 dispute: rows[i],
                 session: widget.session,
                 onBack: _reload,
-              ),
+              )),
             ),
           );
         },

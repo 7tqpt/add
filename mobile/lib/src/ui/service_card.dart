@@ -16,6 +16,9 @@ import 'media.dart';
 ///
 /// وما يختلف بين الموضعين مُعامِلاتٌ لا شيفرة: القلب يظهر حيث تُفتح المفضّلة،
 /// واسمُ المزوّد يُذكر حيث لا يكون هو صاحب الصفحة.
+/// وسمُ الغلاف الطائر — واحدٌ يُشتقّ من المعرّف، فلا يفترق الطرفان.
+String serviceHeroTag(String serviceId) => 'service-cover-$serviceId';
+
 class ServiceListCard extends StatelessWidget {
   const ServiceListCard({
     super.key,
@@ -26,6 +29,7 @@ class ServiceListCard extends StatelessWidget {
     this.onOpenProvider,
     this.showProvider = true,
     this.from,
+    this.flyCover = false,
   });
 
   final ServiceItem item;
@@ -46,6 +50,26 @@ class ServiceListCard extends StatelessWidget {
   /// يعرف لماذا. و«على بُعد ٤ كم» تقول له سببَ الترتيب وتُغنيه عن الثقة به.
   final GeoPoint? from;
 
+  /// أيطير الغلافُ إلى صفحة الخدمة؟
+  ///
+  /// **واختياريٌّ لا مفروض.** وسمُ `Hero` يجب أن يكون **فريداً في الشاشة**،
+  /// وشاشةٌ تعرض الخدمةَ نفسَها في موضعين — مميَّزةً وفي قائمة — ترمي
+  /// استثناءً وقت الانتقال. فمن عرف أنّ قائمتَه لا تكرّر يرفعه.
+  final bool flyCover;
+
+  Widget _cover() {
+    final image = ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: SizedBox(
+        width: 76,
+        height: 76,
+        child: MediaThumb(url: Api.mediaUrl(item.coverPath)),
+      ),
+    );
+    if (!flyCover) return image;
+    return Hero(tag: serviceHeroTag(item.id), child: image);
+  }
+
   @override
   Widget build(BuildContext context) {
     final favourite = isFavourite;
@@ -59,14 +83,7 @@ class ServiceListCard extends StatelessWidget {
             // بعرض الشاشة في كلٍّ منها يصير صفحةَ صورٍ تُمرَّر طويلاً، والقصد
             // مقارنةُ خدماتٍ لا تصفّحُ ألبوم.
             if (item.coverPath != null) ...[
-              ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: SizedBox(
-                  width: 76,
-                  height: 76,
-                  child: MediaThumb(url: Api.mediaUrl(item.coverPath)),
-                ),
-              ),
+              _cover(),
               const SizedBox(width: Space.md),
             ],
             Expanded(

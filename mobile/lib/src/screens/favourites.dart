@@ -118,7 +118,12 @@ class _FavouritesScreenState extends State<FavouritesScreen> {
                   isFavourite: true,
                   onToggleFavourite: () => _remove(item),
                   onOpen: () => Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => ServiceDetailScreen(serviceId: item.id)),
+                    MaterialPageRoute(
+                      builder: (_) => ServiceDetailScreen(
+                        serviceId: item.id,
+                        coverPath: item.coverPath,
+                      ),
+                    ),
                   ),
                   onOpenProvider: () => Navigator.of(context).push(
                     MaterialPageRoute(

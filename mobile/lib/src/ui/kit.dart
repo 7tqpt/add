@@ -4,6 +4,7 @@ import 'dart:ui' show ImageFilter;
 import 'package:flutter/material.dart';
 
 import '../core/theme.dart';
+import 'motion.dart';
 
 /// عناصر الواجهة المشتركة.
 
@@ -21,7 +22,17 @@ class AppCard extends StatelessWidget {
       ),
     );
     if (onTap == null) return card;
-    return InkWell(onTap: onTap, borderRadius: BorderRadius.circular(12), child: card);
+    // **واللمسةُ تُحسّ هنا لا في كلّ شاشة.** البطاقاتُ في التطبيق كلِّه
+    // تُبنى من هذه، فانخفاضُها تحت الإصبع يُركَّب مرّةً ويعمّ.
+    //
+    // **و`InkWell` أُزيل من هنا، وأُزيل عن قصد.** كنتُ لففتُه بـ`Pressable`
+    // فبقيت البطاقةُ لا تنخفض: `InkWell` يكسب حَلبةَ الإيماءات فلا يصل
+    // `onTapDown` إلى ما فوقه أصلاً. أي أنّ اللمسةَ كانت **ميّتةً في كلّ
+    // بطاقةٍ في التطبيق** ولا يظهر ذلك إلّا بالإصبع — وكشفه اختبار.
+    //
+    // ولا تُفقد موجتُه شيئاً: أرضيّةُ بطاقاتنا معتمةٌ تبتلعها، وقد قيل ذلك
+    // في `Pressable` نفسِها.
+    return Pressable(onTap: onTap, child: card);
   }
 }
 

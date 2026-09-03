@@ -7,6 +7,7 @@ import '../core/session.dart';
 import '../data/api.dart';
 import '../data/models.dart';
 import '../data/supabase.dart';
+import '../ui/motion.dart';
 import '../ui/kit.dart';
 import '../ui/map_open.dart';
 import 'chat.dart';
@@ -122,7 +123,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
             itemBuilder: (context, i) {
               final b = rows[i];
               final busy = _busyId == b.id;
-              return AppCard(
+              return FadeSlideIn(index: i, child: AppCard(
                 children: [
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -226,7 +227,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
                     label: Text('راسل ${b.userName}'),
                   ),
                 ],
-              );
+              ));
             },
           ),
         );

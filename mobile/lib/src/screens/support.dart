@@ -6,6 +6,7 @@ import '../core/theme.dart';
 import '../data/api.dart';
 import '../data/models.dart';
 import '../data/supabase.dart';
+import '../ui/motion.dart';
 import '../ui/kit.dart';
 import 'labels.dart';
 import 'ticket.dart';
@@ -167,7 +168,7 @@ class _SupportScreenState extends State<SupportScreen> {
               separatorBuilder: (_, _) => const SizedBox(height: Space.md),
               itemBuilder: (context, i) {
                 final t = rows[i];
-                return AppCard(
+                return FadeSlideIn(index: i, child: AppCard(
                   onTap: () =>
                       Navigator.of(context)
                           .push(MaterialPageRoute(builder: (_) => TicketScreen(ticket: t))),
@@ -209,7 +210,7 @@ class _SupportScreenState extends State<SupportScreen> {
                     const SizedBox(height: Space.xs),
                     Muted('آخر حركة ${formatRelative(t.lastMessageAt)}'),
                   ],
-                );
+                ));
               },
             );
           },
