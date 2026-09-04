@@ -1,4 +1,5 @@
 import 'dart:async' show Timer;
+import 'dart:math' as math;
 import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
@@ -861,20 +862,254 @@ class KeyValue extends StatelessWidget {
   );
 }
 
-class LoadingBlock extends StatelessWidget {
-  const LoadingBlock({super.key, this.label = 'جارٍ التحميل…'});
-  final String label;
+// ============================================================================
+//  الانتظار
+// ============================================================================
+
+/// أين يقف رأسُ القوس وكم طولُه عند اللحظة [v] من الدورة (‎٠–١‎).
+///
+/// **وشرطان يجب أن يصحّا وإلّا اهتزّ الدوّار:**
+///
+///   ١. **أن يعود إلى حيث بدأ عند تمام الدورة** — أي أنّ ما يقطعه الذيلُ في
+///      الدورة الواحدة دوراتٌ صحيحةٌ لا كسر. وإلّا قفز القوسُ قفزةً مع كلّ
+///      دورة، وهي قفزةٌ تُرى ولا يُعرف سببُها.
+///   ٢. **وألّا يسبق الذيلُ الرأسَ** — وإلّا انقلب الطولُ سالباً فاختفى
+///      القوسُ لحظةً في كلّ دورة.
+///
+/// وكلاهما مقيسٌ في `loading_test.dart` على مئة نقطةٍ من الدورة، لأنّ
+/// أيَّهما انكسر لا يظهر إلّا لعينٍ تنظر إلى الدوّار ثوانيَ متّصلة.
+({double start, double sweep}) spinnerPhase(double v) {
+  // الرأسُ يسبق في نصف الدورة الأوّل، والذيلُ يلحقه في الثاني.
+  final head = Curves.easeInOut.transform((v / 0.5).clamp(0.0, 1.0));
+  final tail = Curves.easeInOut.transform(((v - 0.5) / 0.5).clamp(0.0, 1.0));
+  const turn = 2 * math.pi;
+  const minSweep = 0.05;
+  const span = 0.78;
+  return (
+    // ‎−π/٢‎: تبدأ من أعلى الدائرة لا من يمينها.
+    start: (v + tail) * turn - math.pi / 2,
+    sweep: (minSweep + span * (head - tail)) * turn,
+  );
+}
+
+/// دوّارُ الانتظار — قوسٌ يلفّ ويتنفّس، من الذهبيّ إلى نبيذيّ الهويّة.
+///
+/// **ولمَ لا `CircularProgressIndicator`:** لأنّه دوّارُ أندرويد نفسُه في كلّ
+/// تطبيقٍ على الجهاز، أزرقَ كان أو مصبوغاً. وأكثرُ ما يُرى من التطبيق في
+/// أوّل ثانيتين هو هذا الدوّار — فأن يكون من الهويّة أَولى من أن يكون من
+/// النظام.
+class BrandSpinner extends StatefulWidget {
+  const BrandSpinner({
+    super.key,
+    this.size = 40,
+    this.stroke = 3.4,
+    this.color = AppColors.accent,
+    this.tint = AppColors.gold,
+  });
+
+  final double size;
+  final double stroke;
+
+  /// طرفُ القوس الغامق، وهو لونُ أثره الباهت كذلك.
+  final Color color;
+
+  /// طرفُه الفاتح.
+  final Color tint;
+
   @override
-  Widget build(BuildContext context) => Center(
-    child: Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        const CircularProgressIndicator(color: AppColors.accent),
-        const SizedBox(height: Space.md),
-        Muted(label),
-      ],
+  State<BrandSpinner> createState() => _BrandSpinnerState();
+}
+
+class _BrandSpinnerState extends State<BrandSpinner>
+    with SingleTickerProviderStateMixin {
+  AnimationController? _c;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // **ويُطفأ ويُشعل في الاتّجاهين.** الإعدادُ يُبدَّل والتطبيقُ مفتوح،
+    // فمن شغّله وشاشةُ انتظارٍ معروضةٌ يبقى الدوّارُ يلفّ في وجهه لو لم
+    // يُسأل إلّا مرّةً عند البناء.
+    if (reduceMotion(context)) {
+      _c?.dispose();
+      _c = null;
+      return;
+    }
+    _c ??= AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _c?.dispose();
+    super.dispose();
+  }
+
+  Widget _paint(double v) => CustomPaint(
+    size: Size.square(widget.size),
+    painter: _SpinnerPainter(
+      phase: spinnerPhase(v),
+      stroke: widget.stroke,
+      color: widget.color,
+      tint: widget.tint,
     ),
   );
+
+  @override
+  Widget build(BuildContext context) {
+    final c = _c;
+    // **ولمن أطفأ الحركةَ قوسٌ ساكنٌ لا فراغ.** غيابُ الدوّار يُقرأ «لا شيء
+    // يحدث»، وهو أسوأ ما يُقال لمن ينتظر.
+    if (c == null) return _paint(0.28);
+    return AnimatedBuilder(
+      animation: c,
+      builder: (context, _) => _paint(c.value),
+    );
+  }
+}
+
+class _SpinnerPainter extends CustomPainter {
+  const _SpinnerPainter({
+    required this.phase,
+    required this.stroke,
+    required this.color,
+    required this.tint,
+  });
+
+  final ({double start, double sweep}) phase;
+  final double stroke;
+  final Color color;
+  final Color tint;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final r = (math.min(size.width, size.height) - stroke) / 2;
+    if (r <= 0) return;
+    final centre = Offset(size.width / 2, size.height / 2);
+    final box = Rect.fromCircle(center: centre, radius: r);
+
+    // أثرٌ باهتٌ يُري الدائرةَ كلَّها، فيُقرأ القوسُ ماضياً فيها لا معلَّقاً.
+    canvas.drawCircle(
+      centre,
+      r,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = stroke
+        ..color = color.withValues(alpha: 0.10),
+    );
+
+    canvas.drawArc(
+      box,
+      phase.start,
+      phase.sweep,
+      false,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = stroke
+        ..strokeCap = StrokeCap.round
+        // **والتدرّجُ يُدار مع القوس.** لو تُرك ثابتاً في مكانه لَتبدّل لونُ
+        // الرأس كلّما مرّ بجهة، وهو وميضٌ لا تدرّج.
+        ..shader = SweepGradient(
+          endAngle: phase.sweep,
+          colors: [tint, color],
+          transform: GradientRotation(phase.start),
+        ).createShader(box),
+    );
+  }
+
+  @override
+  bool shouldRepaint(_SpinnerPainter old) =>
+      old.phase != phase ||
+      old.stroke != stroke ||
+      old.color != color ||
+      old.tint != tint;
+}
+
+/// كتلةُ الانتظار — دوّارُ الهويّة وسطرٌ يقول ما يُنتظر.
+class LoadingBlock extends StatefulWidget {
+  const LoadingBlock({
+    super.key,
+    this.label = 'جارٍ التحميل…',
+    this.delay = const Duration(milliseconds: 220),
+    this.color = AppColors.accent,
+    this.tint = AppColors.gold,
+    this.labelColor,
+  });
+
+  final String label;
+  final Color color;
+  final Color tint;
+
+  /// لونُ السطر — يُترك فارغاً على الأرضيّات الفاتحة، ويُمرَّر على النبيذيّ.
+  ///
+  /// **ولا يُترك للافتراض هناك:** لونُ `Muted` رماديٌّ نبيذيٌّ باهتٌ صُنع
+  /// للأرضيّة الكريميّة، ونسبتُه على النبيذيّ الغامق ‎١٫٢:١‎ — أي لا يُقرأ.
+  final Color? labelColor;
+
+  /// كم تُمهَل الشاشةُ قبل أن يظهر شيء.
+  ///
+  /// **وهذه المهلةُ هي أهمُّ ما في هذه الكتلة.** أكثرُ القراءات تعود في أقلّ
+  /// من عُشر ثانية، فدوّارٌ يظهر فوراً يومض ويختفي قبل أن تُدركه العين —
+  /// وشاشةٌ تومض في كلّ فتحةٍ تُقرأ متعثّرةً وإن كانت أسرعَ من غيرها. ومن
+  /// انتظر فعلاً لم تضرّه خُمسُ ثانيةٍ من السكون.
+  final Duration delay;
+
+  @override
+  State<LoadingBlock> createState() => _LoadingBlockState();
+}
+
+class _LoadingBlockState extends State<LoadingBlock> {
+  bool _show = false;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.delay <= Duration.zero) {
+      _show = true;
+      return;
+    }
+    // ويُلغى في `dispose`: أكثرُ هذه الكتل تُبنى ثمّ تُرمى قبل أن تحين مهلتُها.
+    _timer = Timer(widget.delay, () {
+      if (mounted) setState(() => _show = true);
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final still = reduceMotion(context);
+    return Center(
+      // **والمساحةُ محجوزةٌ قبل الظهور.** لو بُني الفراغُ ثمّ حلَّ محلَّه
+      // المحتوى لَقفز ما حوله بعد خُمس ثانية.
+      child: AnimatedOpacity(
+        opacity: _show ? 1 : 0,
+        duration: still ? Duration.zero : Motion.normal,
+        curve: Motion.enter,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            BrandSpinner(color: widget.color, tint: widget.tint),
+            const SizedBox(height: Space.md),
+            if (widget.labelColor == null)
+              Muted(widget.label)
+            else
+              Text(
+                widget.label,
+                style: TextStyle(fontSize: 12, color: widget.labelColor),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class EmptyBlock extends StatelessWidget {

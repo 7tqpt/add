@@ -157,7 +157,7 @@ class _RootScreenState extends State<RootScreen> with WidgetsBindingObserver {
       listenable: session,
       builder: (context, _) {
         if (session.loading) {
-          return const Scaffold(body: LoadingBlock(label: 'جارٍ التحقق…'));
+          return const BootScreen();
         }
         // شاشةُ الترحيب لمن لا جلسة له وحده — ومن سجّل مرّةً يفتح التطبيق
         // على شاشته مباشرةً. وشاشةُ ترحيبٍ تسبق كلَّ فتحةٍ عائقٌ يوميٌّ لا
