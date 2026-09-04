@@ -25,10 +25,19 @@ Widget _wrap(Widget child) => MaterialApp(
   home: Directionality(textDirection: TextDirection.rtl, child: child),
 );
 
+/// يمشي بالوقت إلى ما بعد مشهد الدخول.
+///
+/// **و`pumpAndSettle` لا تصلح لهذه الشاشة، وهذا مقصودٌ لا عطب.** شاشةُ
+/// الترحيب لا تسكن أبداً: بعد أن يُرسم القوس ويصعد الاسم تبقى ذرّاتٌ ذهبيّةٌ
+/// تصعد وشريطُ ضوءٍ يمرّ — لأنّ صاحبها يقف أمامها يقرأ ويقرّر، فشاشةٌ ساكنةٌ
+/// تُقرأ صورةً لا تطبيقاً.
+///
+/// و`pumpAndSettle` تنتظر أن تفرغ المقاويدُ كلُّها، فتُعلَّق هنا حتى تنقضي
+/// مهلتُها. فيُمشى بالوقت مقداراً معلوماً بدلاً منها.
 Future<void> _settle(WidgetTester tester) async {
-  await tester.pumpAndSettle();
-  await tester.pump(const Duration(seconds: 1));
-  await tester.pumpAndSettle();
+  await tester.pump();
+  await tester.pump(const Duration(seconds: 2));
+  await tester.pump(const Duration(milliseconds: 400));
 }
 
 void _phone(WidgetTester tester) {

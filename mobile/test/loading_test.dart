@@ -240,17 +240,107 @@ void main() {
   });
 
   // ==========================================================================
+  //  الحياة — حسابٌ صافٍ يُسأل بلا شاشة
+  // ==========================================================================
+
+  group('الذرّاتُ الذهبيّة', () {
+    test('**تعود كلُّ ذرّةٍ إلى موضعها عند تمام الدورة**', () {
+      // ولو كانت سرعةُ ذرّةٍ كسراً من الدورة لَقفزت عند تمامها — وأربعَ
+      // عشرةَ ذرّةً تقفز معاً كلَّ تسع ثوانٍ تُرى ارتجاجةً في الشاشة كلِّها.
+      for (var i = 0; i < 14; i++) {
+        final a = moteAt(i, 0);
+        final b = moteAt(i, 1);
+        expect(b.x, closeTo(a.x, 1e-9), reason: 'قفزت أفقيّاً: $i');
+        expect(b.y, closeTo(a.y, 1e-9), reason: 'قفزت رأسيّاً: $i');
+        expect(b.alpha, closeTo(a.alpha, 1e-9), reason: 'ومضت: $i');
+      }
+    });
+
+    test('**وتولد وتنطفئ في طرفَيها ولا تنبثق**', () {
+      for (var i = 0; i < 14; i++) {
+        // في لحظةِ ولادتها وموتها تكون معدومةَ الشفافيّة.
+        final born = _birthOf(i);
+        expect(moteAt(i, born).alpha, closeTo(0, 1e-6),
+            reason: 'ظهرت الذرّةُ $i فجأةً');
+      }
+    });
+
+    test('ولا تخرج ذرّةٌ عن حدود المنطقة', () {
+      for (var i = 0; i < 14; i++) {
+        for (var k = 0; k <= 60; k++) {
+          final m = moteAt(i, k / 60);
+          expect(m.x, inInclusiveRange(0, 1), reason: 'خرجت $i عند $k');
+          expect(m.y, inInclusiveRange(0, 1), reason: 'خرجت $i عند $k');
+          expect(m.alpha, inInclusiveRange(0, 1));
+          expect(m.r, greaterThan(0));
+        }
+      }
+    });
+
+    test('**ولا تصعد كلُّها في صفٍّ واحدٍ ولا بسرعةٍ واحدة**', () {
+      // ذرّاتٌ متساويةُ السرعة تُقرأ شبكةً تتحرّك لا غباراً في ضوء.
+      final ys = {for (var i = 0; i < 14; i++) moteAt(i, 0.3).y.toStringAsFixed(3)};
+      expect(ys.length, greaterThan(8), reason: 'اصطفّت الذرّاتُ في خطّ');
+      final xs = {for (var i = 0; i < 14; i++) moteAt(i, 0.3).x.toStringAsFixed(2)};
+      expect(xs.length, greaterThan(8), reason: 'اصطفّت في عمود');
+    });
+  });
+
+  group('شريطُ الضوء', () {
+    test('**يرتاح أكثرَ ممّا يمرّ**', () {
+      // بريقٌ متّصلٌ يصير خلفيّةً متحرّكةً تسحب البصرَ عن الزرّ.
+      var seen = 0;
+      for (var i = 0; i < 200; i++) {
+        final c = glintAt(i / 200);
+        if (c != null && c > -0.18 && c < 1.18) seen++;
+      }
+      expect(seen / 200, lessThan(0.55), reason: 'لا يكاد يهدأ');
+      expect(seen, greaterThan(0), reason: 'لا يمرّ أصلاً');
+    });
+
+    test('ويدخل من خارج الحافّة ويخرج من خارجها', () {
+      // فلا يُرى يُولد في وسط الشاشة ولا ينقطع فيها.
+      final first = glintAt(0)!;
+      expect(first, lessThan(-0.18), reason: 'وُلد داخل الإطار');
+      // آخرُ لحظةٍ من نصيب المرور — ‎٠٫٣٥‎ من نصف الدورة، أي ‎٠٫١٧٥‎ منها.
+      final last = glintAt(0.1749)!;
+      expect(last, greaterThan(1.18), reason: 'انقطع داخل الإطار');
+    });
+
+    test('ويمرّ مرّتين في الدورة لا مرّةً', () {
+      // تسعُ ثوانٍ بين بريقٍ وبريقٍ طويلةٌ جدّاً، وأربعٌ ونصفٌ تُلاحَظ.
+      var passes = 0;
+      var wasOff = true;
+      for (var i = 0; i <= 400; i++) {
+        final c = glintAt(i / 400);
+        final on = c != null && c > -0.18 && c < 1.18;
+        if (on && wasOff) passes++;
+        wasOff = !on;
+      }
+      expect(passes, 2);
+    });
+  });
+
+  // ==========================================================================
   //  شاشةُ البداية
   // ==========================================================================
 
   group('شاشةُ البداية', () {
+    // **ويُسأل عن رسّام القوس بعينه لا عن أوّل `CustomPaint`.** في العلامة
+    // الآن رسّامان: الذرّاتُ خلفَ القوس، والقوسُ. والذرّاتُ أوّلُ ما تجده
+    // `.first` — فيقرأ الاختبارُ رسّاماً لا يخصّه ويمرّ على كلّ حال.
     double archProgress(WidgetTester tester) => (tester
-            .widget<CustomPaint>(find
-                .descendant(
-                    of: find.byType(ArchMark), matching: find.byType(CustomPaint))
-                .first)
+            .widget<CustomPaint>(find.byWidgetPredicate(
+                (w) => w is CustomPaint && w.painter is ArchPainter))
             .painter! as ArchPainter)
         .progress;
+
+    /// يمشي بالوقت إلى ما بعد نهاية مقود الدخول.
+    ///
+    /// **و`pumpAndSettle` لا تصلح هنا بعد اليوم:** الشاشةُ لا تسكن أبداً —
+    /// وهذا هو المقصود منها، لا عطبٌ فيها.
+    Future<void> enter(WidgetTester tester) =>
+        tester.pump(const Duration(milliseconds: 1800));
 
     testWidgets('**يُرسم القوسُ متدرّجاً لا دفعةً واحدة**', (tester) async {
       _phone(tester);
@@ -265,7 +355,7 @@ void main() {
       expect(mid, greaterThan(0));
       expect(mid, lessThan(1), reason: 'اكتمل قبل أوانه');
 
-      await tester.pumpAndSettle();
+      await enter(tester);
       expect(archProgress(tester), 1, reason: 'لم يكتمل');
     });
 
@@ -284,7 +374,7 @@ void main() {
       expect(_opacityOf(tester, find.text('فرحتي')), 0,
           reason: 'ظهر الاسمُ مع القوس فلم يبقَ للمشهد ترتيب');
 
-      await tester.pumpAndSettle();
+      await enter(tester);
       expect(_opacityOf(tester, find.text('فرحتي')), 1);
     });
 
@@ -299,6 +389,109 @@ void main() {
       expect(archProgress(tester), 1, reason: 'رُسم القوسُ وقد طُلب الإطفاء');
       expect(_opacityOf(tester, find.text('فرحتي')), 1);
       expect(find.text('كل خدمات زفافك في مكان واحد'), findsOneWidget);
+      // ولا ذرّةَ تصعد، ولا مقودَ يدور: `pumpAndSettle` تُعلَّق لو بقي واحد.
+      expect(find.byKey(const ValueKey('motes')), findsNothing);
+      await tester.pumpAndSettle();
+    });
+
+    // ======================================================================
+    //  **الحياة بعد الدخول**
+    //
+    //  وهذا هو المطلوبُ الذي لأجله كُتب هذا كلُّه: كانت الشاشةُ تحيا ثانيةً
+    //  ونصفاً ثمّ تسكن سكوناً تامّاً — وصاحبُها يقف أمامها يقرأ ويقرّر،
+    //  فيرى صورةً لا شاشة.
+    // ======================================================================
+
+    testWidgets('**تبقى الشاشةُ حيّةً بعد أن يستقرّ دخولُها**', (tester) async {
+      _phone(tester);
+      await tester.pumpWidget(_wrap(Scaffold(
+        body: _Drive(builder: (t) => ArchMark(t: t)),
+      )));
+      await enter(tester);
+
+      CustomPainter motes() => tester
+          .widget<CustomPaint>(find.byKey(const ValueKey('motes')))
+          .painter!;
+
+      // مقودُ الدخول انتهى، والقوسُ اكتمل — ومع ذلك ما زال شيءٌ يتحرّك.
+      expect(archProgress(tester), 1);
+      final a = motes();
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(motes().shouldRepaint(a), isTrue,
+          reason: 'سكنت الشاشةُ بعد الدخول فصارت صورةً');
+    });
+
+    testWidgets('**وتبقى حيّةً بعد دقيقةٍ لا ثانيتين**', (tester) async {
+      // **ودقيقةٌ لا ثانيتان عمداً:** `repeat()` قد تُوقف من حيث لا يُدرى —
+      // بمقودٍ يُتلَف، أو بدورةٍ تنتهي ولا تُعاد. وقياسٌ بعد نصف ثانيةٍ لا
+      // يفرّق بين حياةٍ باقيةٍ وحياةٍ ستنقطع بعد الدورة الأولى. والدورةُ
+      // تسعُ ثوانٍ، فدقيقةٌ تقطع ستّاً منها.
+      _phone(tester);
+      await tester.pumpWidget(_wrap(Scaffold(
+        body: _Drive(builder: (t) => ArchMark(t: t)),
+      )));
+      await enter(tester);
+      await tester.pump(const Duration(seconds: 60));
+
+      CustomPainter motes() => tester
+          .widget<CustomPaint>(find.byKey(const ValueKey('motes')))
+          .painter!;
+      final a = motes();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(motes().shouldRepaint(a), isTrue,
+          reason: 'ماتت الشاشةُ بعد دورةٍ أو دورتين');
+    });
+
+    testWidgets('**والبريقُ يُرسم فعلاً ثمّ يهدأ**', (tester) async {
+      // **وحسابُه وحده لا يكفي.** في هذا المشروع ميزاتٌ حُسبت صحيحةً ولم
+      // تُوصَل بشيء فبقيت ميّتةً شهوراً. فيُسأل عن الطبقة نفسِها على الشجرة:
+      // أتظهر؟ ثمّ أتغيب؟
+      _phone(tester);
+      await tester.pumpWidget(_wrap(Scaffold(
+        body: _Drive(builder: (t) => ArchMark(t: t)),
+      )));
+      await enter(tester);
+
+      final glint = find.descendant(
+          of: find.byType(ArchMark), matching: find.byType(ShaderMask));
+      var seen = 0;
+      var quiet = 0;
+      // دورةٌ كاملةٌ بخطواتٍ من مئةٍ وخمسين مللٍّ.
+      for (var i = 0; i < 60; i++) {
+        await tester.pump(const Duration(milliseconds: 150));
+        if (glint.evaluate().isEmpty) {
+          quiet++;
+        } else {
+          seen++;
+        }
+      }
+      expect(seen, greaterThan(0), reason: 'البريقُ يُحسب ولا يُرسم');
+      expect(quiet, greaterThan(seen), reason: 'لا يكاد يهدأ');
+    });
+
+    testWidgets('**ولا تبتلع الذرّاتُ لمسةً تحتها**', (tester) async {
+      // طبقةٌ فوق الشاشة تلتقط الأصابع تجعل صاحبَها يضغط فلا يقع شيء —
+      // فيظنّ التطبيقَ معلَّقاً وهو يزيّن له. ولا يُرى هذا في لقطةٍ أبداً.
+      //
+      // والزرُّ في أسفل منطقة العلامة لا في وسطها: الوسطُ فيه الاسمُ نفسُه،
+      // فتُقاس عندئذٍ عوازلُ النصّ لا طبقةُ الذرّات.
+      _phone(tester);
+      var taps = 0;
+      await tester.pumpWidget(_wrap(Scaffold(
+        body: Stack(children: [
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: FilledButton(
+              onPressed: () => taps++,
+              child: const Text('ابدأ'),
+            ),
+          ),
+          Positioned.fill(child: _Drive(builder: (t) => ArchMark(t: t))),
+        ]),
+      )));
+      await enter(tester);
+      await tester.tap(find.text('ابدأ'));
+      expect(taps, 1, reason: 'ابتلعت الذرّاتُ اللمسة');
     });
 
     testWidgets('وشاشةُ الدخول لا تومض بالأبيض', (tester) async {
@@ -352,3 +545,14 @@ class _DriveState extends State<_Drive> with SingleTickerProviderStateMixin {
   @override
   Widget build(BuildContext context) => widget.builder(_c);
 }
+
+/// لحظةُ ولادة الذرّة [i] من الدورة — حين تكون في أسفل المنطقة.
+///
+/// `p == 0` يقع حين `v * speed + phase` عددٌ صحيح.
+double _birthOf(int i) {
+  final phase = _frac(i * 0.7548776662);
+  final speed = 1 + (i % 3);
+  return (1 - phase) / speed;
+}
+
+double _frac(double x) => x - x.floorToDouble();
