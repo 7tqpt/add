@@ -195,11 +195,59 @@ class Stage extends StatelessWidget {
   );
 }
 
-/// علامةُ «فرحتي» — قوسٌ يُرسم كأنّ يداً ترسمه، ثمّ يمتلئ باسمها.
+/// **مدّةُ دورة الحياة.** كلُّ ما يبقى يتحرّك بعد استقرار المشهد يُشتقّ منها،
+/// فيدور معاً ولا يتنافر.
+const _ambienceCycle = Duration(seconds: 9);
+
+double _frac(double x) => x - x.floorToDouble();
+
+/// موضعُ الذرّة الذهبيّة رقم [i] وحجمُها وشفافيّتُها عند اللحظة [v] من الدورة.
 ///
-/// **ولا مقودَ لها من عندها:** تأخذه ممّن يعرضها، فتكون حركتُها جزءاً من
-/// حركة الشاشة لا حركةً مستقلّةً تبدأ متى شاءت.
-class ArchMark extends StatelessWidget {
+/// و[x] و[y] كسران من العرض والارتفاع لا بكسلات، فتُسأل الدالّةُ بلا شاشة.
+///
+/// **وسرعاتُها أعدادٌ صحيحةٌ من الدورة عمداً** — مرّةً أو مرّتين أو ثلاثاً.
+/// ولو كانت كسراً (١٫٤ مثلاً) لَقفزت الذرّةُ إلى موضعٍ آخر عند تمام الدورة،
+/// وهي قفزةٌ تقع كلَّ تسع ثوانٍ في أربعَ عشرةَ ذرّةً معاً فتُرى ارتجاجةً في
+/// الشاشة كلِّها. وهذا لا يُكتشف إلّا بالنظر إلى الشاشة عشرَ ثوانٍ متّصلة.
+({double x, double y, double r, double alpha}) moteAt(int i, double v) {
+  // توزيعٌ ثابتٌ لا عشوائيّ: يُسأل في الاختبار، ويخرج واحداً في كلّ تشغيل.
+  final phase = _frac(i * 0.7548776662);
+  final lane = _frac(i * 0.6180339887);
+  final speed = 1 + (i % 3);
+
+  // ٠ في أسفل المنطقة، ١ في أعلاها.
+  final p = _frac(v * speed + phase);
+  final sway = math.sin(p * 2 * math.pi + phase * 6.0) * 0.03;
+
+  return (
+    x: (0.07 + 0.86 * lane + sway).clamp(0.0, 1.0),
+    y: 1 - p,
+    r: 1.1 + 2.0 * _frac(i * 0.3819660113),
+    // **تولد وتنطفئ في طرفَيها.** ذرّةٌ تظهر فجأةً في أسفل الشاشة وتنقطع
+    // في أعلاها تُقرأ عطباً في الرسم لا ضوءاً.
+    alpha: math.sin(p * math.pi).clamp(0.0, 1.0),
+  );
+}
+
+/// أين يقف شريطُ الضوء الذي يمرّ على الذهب — أو `null` إن كان في راحته.
+///
+/// **ولمَ يرتاح أكثرَ ممّا يمرّ:** بريقٌ متّصلٌ يصير خلفيّةً متحرّكةً تُتعب
+/// العين وتسحب البصرَ عن الزرّ. ومرّةٌ كلَّ أربعِ ثوانٍ ونصفٍ تُلاحَظ ثمّ
+/// تُترك المشهدَ يستقرّ.
+double? glintAt(double v) {
+  const share = 0.35; // نصيبُ المرور من نصف الدورة
+  final g = _frac(v * 2);
+  if (g > share) return null;
+  // من خارج الحافّة إلى خارج الحافّة الأخرى، فلا يُرى يبدأ ولا ينتهي.
+  return -0.3 + 1.6 * (g / share);
+}
+
+/// علامةُ «فرحتي» — قوسٌ يُرسم كأنّ يداً ترسمه، ثمّ يمتلئ باسمها ويبقى حيّاً.
+///
+/// **ومقودُ الدخول لا يأتي من عندها:** تأخذه ممّن يعرضها، فتكون حركةُ دخولها
+/// جزءاً من حركة الشاشة لا حركةً مستقلّةً تبدأ متى شاءت. وأمّا حياتُها بعد
+/// الدخول فمن عندها، لأنّها لا تنتهي فلا معنى لأن يملكها غيرُها.
+class ArchMark extends StatefulWidget {
   const ArchMark({super.key, required this.t, this.showTagline = true});
 
   final Animation<double> t;
@@ -215,86 +263,254 @@ class ArchMark extends StatelessWidget {
       Curves.easeInOutCubic.transform((v / 0.62).clamp(0.0, 1.0));
 
   @override
+  State<ArchMark> createState() => _ArchMarkState();
+}
+
+/// **ومقودان لا واحد، ولكلٍّ عملُه:**
+///
+///   • `widget.t` مقودُ **الدخول** — يمشي مرّةً ويقف. يرسم القوسَ ويرفع
+///     الاسم. وهو ملكُ الشاشة لا ملكُ العلامة، لأنّ الزرَّ يتبع فترتَه.
+///   • و`_amb` مقودُ **الحياة** — يدور بلا انقطاع. ذرّاتٌ ذهبيّةٌ تصعد،
+///     وشريطُ ضوءٍ يمرّ على الذهب، وهالةٌ تتنفّس خلف القلب.
+///
+/// **والثاني هو المقصود من هذا كلِّه.** كانت الشاشةُ تحيا ثانيةً ونصفاً ثمّ
+/// تسكن سكوناً تامّاً — وصاحبُها يقف أمامها يقرأ ويقرّر، فيرى صورةً لا
+/// شاشة. وأوّلُ ما يُحكم به على تطبيقٍ هو هذه الثواني.
+class _ArchMarkState extends State<ArchMark>
+    with SingleTickerProviderStateMixin {
+  /// `null` تعني أنّ صاحب الجهاز طلب تقليلَ الحركة.
+  AnimationController? _amb;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (reduceMotion(context)) {
+      _amb?.dispose();
+      _amb = null;
+      return;
+    }
+    _amb ??= AnimationController(vsync: this, duration: _ambienceCycle)
+      ..repeat();
+  }
+
+  @override
+  void dispose() {
+    _amb?.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final amb = _amb;
+    if (amb == null) return _build(widget.t.value, null);
+    return AnimatedBuilder(
+      animation: Listenable.merge([widget.t, amb]),
+      builder: (context, _) => _build(widget.t.value, amb.value),
+    );
+  }
+
+  /// [life] هي لحظةُ دورة الحياة، أو `null` إن كانت الحركةُ مطفأة.
+  Widget _build(double t, double? life) {
+    Widget mark = _mark(t, life);
+
+    // شريطُ الضوء: يُطلى على الذهب وحده — `srcATop` لا يمسّ ما تحته شفّافاً،
+    // فلا يُضيء الأرضيّةَ النبيذيّةَ داخل القوس وإنّما الخطَّ والحرف.
+    final c = life == null ? null : glintAt(life);
+    if (c != null && c > -0.18 && c < 1.18) {
+      mark = ShaderMask(
+        blendMode: BlendMode.srcATop,
+        shaderCallback: (r) => LinearGradient(
+          begin: Alignment.topRight,
+          end: Alignment.bottomLeft,
+          colors: const [
+            Colors.transparent,
+            Color(0x8CFFFFFF),
+            Colors.transparent,
+          ],
+          stops: [
+            (c - 0.16).clamp(0.0, 1.0),
+            c.clamp(0.0, 1.0),
+            (c + 0.16).clamp(0.0, 1.0),
+          ],
+        ).createShader(r),
+        child: mark,
+      );
+    }
+
+    if (life != null) {
+      mark = Stack(
+        children: [
+          // الذرّاتُ خلف القوس والحرف.
+          Positioned.fill(
+            child: RepaintBoundary(
+              child: CustomPaint(
+                key: const ValueKey('motes'),
+                painter: _MotesPainter(t: life),
+              ),
+            ),
+          ),
+          Positioned.fill(child: mark),
+        ],
+      );
+    }
+
+    // ======================================================================
+    //  **ولا تلتقط هذه العلامةُ كلُّها لمسةً — وهذا سطرٌ لازم.**
+    //
+    //  `CustomPaint` ذاتُ الرسّام **تبتلع كلَّ لمسةٍ في مربّعها افتراضاً**:
+    //
+    //      bool hitTestSelf(Offset p) =>
+    //          _painter != null && (_painter!.hitTest(p) ?? true);
+    //
+    //  فالافتراضُ `true` لا `false` — وهو عكسُ ما يظنّه من يقرأ. وقد ظننتُه
+    //  أنا، ثمّ كسر ضابطٌ سالبٌ ظنّي: زرٌّ وُضع تحت المربّع فلم يُضغط.
+    //
+    //  ولم يكن ذلك يضرّ إلى اليوم لأنّ مربّعَ العلامة فارغٌ ممّا يُضغط. لكنّه
+    //  فخٌّ منصوبٌ لمن يضع فيه شيئاً غداً: يضغط فلا يقع شيء، فيبحث في زرّه
+    //  وفي `onPressed` — والعلّةُ في طبقةِ زينةٍ فوقه.
+    //
+    //  والعلامةُ زينةٌ محضة: لا زرَّ فيها ولا حقل. فتُرفع يدُها عن اللمس
+    //  كلِّها دفعةً واحدة.
+    // ======================================================================
+    return IgnorePointer(child: mark);
+  }
+
+  Widget _mark(double t, double? life) {
     // القوسُ يحوي الاسم لا يجاوره: هكذا يُقرأ إطاراً لا زخرفةً ملقاةً في
     // الأعلى.
-    return AnimatedBuilder(
-      animation: t,
-      builder: (context, _) => CustomPaint(
-        painter: ArchPainter(progress: archAt(t.value)),
-        child: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // القلبُ يكبر إلى حجمه لا يصعد — فيُقرأ نبضةً أولى.
-              _heart(Stage.at(t.value, 0.34, 0.64)),
-              const SizedBox(height: Space.md),
-              Stage(
-                t: t,
-                from: 0.44,
-                to: 0.76,
-                child: const Text(
-                  'فرحتي',
+    return CustomPaint(
+      painter: ArchPainter(progress: ArchMark.archAt(t)),
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // القلبُ يكبر إلى حجمه لا يصعد — فيُقرأ نبضةً أولى.
+            _heart(Stage.at(t, 0.34, 0.64), life),
+            const SizedBox(height: Space.sm),
+            _rise(
+              Stage.at(t, 0.44, 0.76),
+              const Text(
+                'فرحتي',
+                style: TextStyle(
+                  fontSize: 44,
+                  height: 1.2,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.goldOnAccent,
+                  fontFamilyFallback: arabicFallback,
+                ),
+              ),
+            ),
+            const SizedBox(height: Space.xs),
+            _rise(
+              Stage.at(t, 0.56, 0.86),
+              Text(
+                'للأعراس اليمنية',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.goldOnAccent.withValues(alpha: 0.9),
+                  fontFamilyFallback: arabicFallback,
+                ),
+              ),
+            ),
+            if (widget.showTagline) ...[
+              const SizedBox(height: Space.lg),
+              _rise(
+                Stage.at(t, 0.66, 0.96),
+                Text(
+                  'كل خدمات زفافك في مكان واحد',
+                  textAlign: TextAlign.center,
                   style: TextStyle(
-                    fontSize: 44,
-                    height: 1.2,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.goldOnAccent,
+                    fontSize: 14,
+                    height: 1.7,
+                    color: Colors.white.withValues(alpha: 0.9),
                     fontFamilyFallback: arabicFallback,
                   ),
                 ),
               ),
-              const SizedBox(height: Space.xs),
-              Stage(
-                t: t,
-                from: 0.56,
-                to: 0.86,
-                child: Text(
-                  'للأعراس اليمنية',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.goldOnAccent.withValues(alpha: 0.9),
-                    fontFamilyFallback: arabicFallback,
-                  ),
-                ),
-              ),
-              if (showTagline) ...[
-                const SizedBox(height: Space.lg),
-                Stage(
-                  t: t,
-                  from: 0.66,
-                  to: 0.96,
-                  child: Text(
-                    'كل خدمات زفافك في مكان واحد',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 14,
-                      height: 1.7,
-                      color: Colors.white.withValues(alpha: 0.9),
-                      fontFamilyFallback: arabicFallback,
-                    ),
-                  ),
-                ),
-              ],
             ],
-          ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _heart(double s) => Opacity(
+  /// **و`Stage` لا تُستعمل هنا وإن كانت أوضح.** هذه العلامةُ تُبنى في كلّ
+  /// إطارٍ أصلاً (الذرّاتُ تتحرّك)، و`Stage` تُنشئ `AnimatedBuilder` لكلّ
+  /// عنصرٍ فيها — أي أربعةٌ تُبنى وتُهدَم ستّين مرّةً في الثانية بلا فائدة.
+  /// والحسابُ نفسُه: `Stage.at`.
+  Widget _rise(double s, Widget child) => Opacity(
     opacity: s,
-    child: Transform.scale(
-      scale: 0.6 + 0.4 * s,
-      child: const Icon(
-        Icons.favorite_rounded,
-        size: 40,
-        color: AppColors.goldOnAccent,
-      ),
+    child: Transform.translate(
+      offset: Offset(0, Motion.rise * (1 - s)),
+      child: child,
     ),
   );
+
+  /// القلبُ وهالتُه — والهالةُ هي التي تتنفّس لا القلب.
+  ///
+  /// **ولمَ الهالةُ لا القلب:** قلبٌ يكبر ويصغر بلا انقطاع يسحب البصرَ إليه
+  /// أبداً فيمنع قراءةَ ما حوله؛ وضوءٌ يشتدّ ويخفت خلفه يُحسّ ولا يُنظر
+  /// إليه.
+  Widget _heart(double s, double? life) {
+    // ثلاثُ نفَساتٍ في الدورة — عددٌ صحيحٌ فلا تنقطع النفَسُ عند تمامها.
+    final breath =
+        life == null ? 0.55 : 0.35 + 0.65 * (0.5 - 0.5 * math.cos(life * 6 * math.pi));
+    return Opacity(
+      opacity: s,
+      child: Transform.scale(
+        scale: 0.6 + 0.4 * s,
+        child: Container(
+          width: 78,
+          height: 78,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: RadialGradient(
+              colors: [
+                AppColors.goldOnAccent.withValues(alpha: 0.26 * breath),
+                AppColors.goldOnAccent.withValues(alpha: 0),
+              ],
+            ),
+          ),
+          child: const Center(
+            child: Icon(
+              Icons.favorite_rounded,
+              size: 40,
+              color: AppColors.goldOnAccent,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// ذرّاتٌ ذهبيّةٌ تصعد داخل القوس — كغبارٍ في ضوء.
+class _MotesPainter extends CustomPainter {
+  const _MotesPainter({required this.t});
+  final double t;
+
+  /// **أربعَ عشرةَ لا أربعين.** أربعون تصير ثلجاً متساقطاً بالمقلوب، وهي
+  /// زخرفةٌ تُلاحَظ فتُشغل؛ وأربعَ عشرةَ تُحسّ الشاشةَ حيّةً ولا تُعدّ.
+  static const count = 14;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint();
+    for (var i = 0; i < count; i++) {
+      final m = moteAt(i, t);
+      if (m.alpha <= 0.01) continue;
+      paint.color = AppColors.goldOnAccent.withValues(alpha: 0.34 * m.alpha);
+      canvas.drawCircle(
+        Offset(m.x * size.width, m.y * size.height),
+        m.r,
+        paint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(_MotesPainter old) => old.t != t;
 }
 
 /// قوسٌ يمنيٌّ بخطٍّ ذهبيّ — قوسان متداخلان وتاجٌ مدبَّب.
