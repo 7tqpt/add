@@ -88,7 +88,65 @@ String? clockSkewLabel(Duration? skew) {
 ///      الرمز، فلمّا غاب لم يُحاوَل شيء. ميزةٌ مبنيّةٌ وميّتة.
 ///
 /// فيُقرأ الرمزُ من النوع إن وُجد، ثمّ من نصّ الردّ، ثمّ من الرسالة المعروفة.
+/// رمزٌ من عندنا لا من خادم: لم تُوجد شبكةٌ أصلاً فلم يُسأل أحد.
+const offlineCode = 'OFFLINE';
+
+/// ما يُقال حين لا شبكة — **جملةٌ واحدةٌ في موضعٍ واحد**.
+///
+/// وتُقارَن بها `ErrorBlock` لتعرض وجهَ الانقطاع بدل وجه العطب. وهذا يجعل
+/// كلَّ شاشةٍ تمرّ بـ`messageOf` تعرفه بلا أن تُبدَّل واحدةً واحدة — وهنّ
+/// أربعٌ وثلاثون.
+const offlineMessage = 'لا يوجد اتصال بالإنترنت.';
+
+/// أعطبُ الطلبِ انقطاعُ شبكةٍ لا ردٌّ من خادم؟
+///
+/// **ولمَ هذا أصلاً:** من فتح التطبيق بلا شبكةٍ كان يُقال له «الغالب أنّ
+/// ملفات مجلّد supabase/ لم تُطبَّق على المشروع» ويُعرض له
+/// `ClientException with SocketException: Failed host lookup`. وهذا تشخيصٌ
+/// كاذبٌ في أسوأ لحظة: يُرسل صاحبَ الجوال إلى مجلّدٍ لا يملكه ولا يعرفه،
+/// وسببُه أنّ جواله على وضع الطيران.
+///
+/// **والتمييزُ بردّ الخادم لا بنصّه أوّلاً:** إن جاء `PostgrestException` أو
+/// عطبُ مصادقةٍ له رمزُ حالة، فالشبكةُ عملت والخادمُ ردّ — فليس هذا انقطاعاً
+/// مهما كان في نصّه. وعطبُ الخمسمئة يصل من `gotrue` بالنوع نفسِه الذي يصل
+/// به انقطاعُ الشبكة (`AuthRetryableFetchException`)، ويفرّق بينهما أنّ
+/// الأوّل له رمزُ حالةٍ والثاني لا.
+bool isOffline(Object error) {
+  // ردٌّ من خادم: الشبكةُ عملت.
+  if (error is PostgrestException) return false;
+  if (error is StorageException) return false;
+  if (error is AuthException && error.statusCode != null) return false;
+
+  final text = error.toString();
+  return _offlineMarks.any(text.contains);
+}
+
+/// **وعلاماتٌ نصّيّةٌ لا أنواع:** أنواعُ `dart:io` لا توجد على الوِب، وقد
+/// كُسر هذا المشروع مرّةً من قبل باستيراد `dart:io` في شيفرةٍ مشتركة.
+///
+/// **وخمسٌ لا خمسَ عشرة.** كانت القائمةُ أطولَ من هذا: «Failed host lookup»
+/// و«No address associated with hostname» و«Connection refused» وأخواتُها.
+/// ثمّ كُسرت كلُّ واحدةٍ منها في ضابطٍ سالبٍ فبقيت الاختباراتُ خضراء — لأنّ
+/// النصَّ الذي تحملها يحمل «SocketException» أو «ClientException» معها،
+/// فتلتقطه الأخرى. **وعلامةٌ لا يسقط بحذفها شيءٌ ليست تغطيةً بل مظهرَها**،
+/// وهي تُقرأ حرصاً وهي حشو. فبقيت خمسٌ، لكلٍّ منها سطرٌ في الاختبار لا
+/// تلتقطه غيرُها.
+///
+/// و`ClientException` هي أوسعُها ومقصودةٌ كذلك: `package:http` لا يرميها
+/// إلّا لعطبٍ في النقل نفسِه — في الجوال والمتصفّح جميعاً — فهي المسلكُ
+/// الذي يصل منه أكثرُ ما يقع.
+const _offlineMarks = [
+  'SocketException',
+  'ClientException',
+  'HttpException',
+  'HandshakeException',
+  'TimeoutException',
+];
+
 String? errorCodeOf(Object error) {
+  // **قبل كلّ شيء:** لو قُرئ الرمزُ من النصّ أوّلاً لَوقع رمزُ الحالة في
+  // عنوان الرابط أو في نصّ العطب موقعَ رمزِ الخادم.
+  if (isOffline(error)) return offlineCode;
   if (error is PostgrestException && error.code != null) return error.code;
 
   final text = error.toString();
@@ -107,6 +165,9 @@ String? errorCodeOf(Object error) {
 /// كل أخطاء القاعدة ويعرض جملةً لا تدلّ على شيء. نصّ الخطأ يسمّي الجدول أو
 /// الدالة الناقصة بالضبط.
 String messageOf(Object error) {
+  // **والانقطاعُ أوّلُ ما يُسأل عنه.** بلا هذا يخرج نصُّ `SocketException`
+  // بعنوان المشروع ورقم الخطأ في وجه صاحب الجوال.
+  if (isOffline(error)) return offlineMessage;
   if (error is PostgrestException) {
     final hint = error.hint == null ? '' : ' — ${error.hint}';
     final code = error.code == null ? '' : '[${error.code}] ';

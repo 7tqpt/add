@@ -166,10 +166,23 @@ class _RootScreenState extends State<RootScreen> with WidgetsBindingObserver {
         // قبل شاشة الإكمال: من تعذّرت قراءة هويته لعطبٍ في القاعدة ليس
         // «مستخدماً بلا ملف»، وسَوقُه إلى الإكمال يُخفي السبب ويُفشل الحفظ.
         if (session.identityError != null) {
+          final offline = session.identityErrorCode == offlineCode;
           return Scaffold(
             appBar: AppBar(
-              title: const Text('تعذّرت قراءة حسابك'),
-              actions: [TextButton(onPressed: session.signOut, child: const Text('خروج'))],
+              title: Text(offline ? 'لا يوجد اتصال' : 'تعذّرت قراءة حسابك'),
+              // **ولا زرَّ خروجٍ لمن انقطعت شبكتُه.** الخروجُ يمحو الجلسة،
+              // والدخولُ من جديدٍ يحتاج شبكةً. فمن ضغطه وهو مقطوعٌ حبس
+              // نفسَه خارجَ التطبيق حتى تعود الشبكة — وقد كان داخلَه قبل
+              // ثانية. وهو زرٌّ يُضغط فعلاً هنا: الشاشةُ تقول «تعذّر» فيظنّه
+              // مخرجاً.
+              actions: offline
+                  ? null
+                  : [
+                      TextButton(
+                        onPressed: session.signOut,
+                        child: const Text('خروج'),
+                      ),
+                    ],
             ),
             // **ولا نصَّ تقنيٌّ في وجه صاحب الجهاز.** كان يُعرض جسمُ الردّ
             // كما هو — أقواسٌ وعلاماتُ اقتباسٍ ورمزُ حالة — فيقرأ العميلُ
@@ -182,7 +195,8 @@ class _RootScreenState extends State<RootScreen> with WidgetsBindingObserver {
               message: identityHint(
                   session.identityErrorCode, session.clockDrift),
               onRetry: session.refreshIdentity,
-              details: session.identityError,
+              // ولا تفصيلَ تقنيَّ للانقطاع: لا شيء فيه يُسأل عنه أحد.
+              details: offline ? null : session.identityError,
             ),
           );
         }
@@ -201,6 +215,14 @@ class _RootScreenState extends State<RootScreen> with WidgetsBindingObserver {
 /// عليه فرقُ ساعةٍ بين جهازه والخادم بحث في مجلّد `supabase/` وهو سليم.
 /// والتشخيص الخاطئ أسوأ من الصمت: يُرسل صاحبَه إلى مكانٍ لا شيء فيه.
 String identityHint(String? code, [Duration? drift]) => switch (code) {
+  // **ولا شبكةَ أصلاً.** وهذه أكثرُ الحالات وقوعاً: من فتح التطبيق في
+  // مكانٍ لا تغطية فيه، أو ونسي وضع الطيران. وكانت تقع في `_` فيُقال له
+  // «الغالب أنّ ملفات مجلّد supabase/ لم تُطبَّق» — وهو لا يملك المجلّد
+  // ولا يعرف ما هو.
+  //
+  // والنصُّ هنا هو `offlineMessage` بعينه لتعرفه `ErrorBlock` فتعرض وجهَ
+  // الانقطاع: رمزُ واي‑فاي مشطوبٌ وسطران، لا حبرٌ أحمر.
+  offlineCode => offlineMessage,
   // الرمز «صادرٌ في المستقبل»: ساعةُ من أصدره تسبق ساعةَ من يقرؤه. وقد حاول
   // التطبيق وحده مرّتين بينهما ثانيتان قبل أن يصل إلى هنا.
   jwtIssuedAtFuture =>

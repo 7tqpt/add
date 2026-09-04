@@ -5,6 +5,7 @@ import 'dart:ui' show ImageFilter;
 import 'package:flutter/material.dart';
 
 import '../core/theme.dart';
+import '../data/supabase.dart' show offlineMessage;
 import 'motion.dart';
 
 /// عناصر الواجهة المشتركة.
@@ -1157,6 +1158,12 @@ class ErrorBlock extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // **وانقطاعُ الشبكة ليس عطباً، فلا يُعرض بوجه العطب.** لا حبرَ أحمرَ
+    // ولا «تفاصيل تقنية»: صاحبُ الجوال لم يُخطئ ولا التطبيقُ أخطأ، وإنّما
+    // انقطعت شبكتُه — ورمزُ الواي‑فاي المشطوب يقولها في لحظةٍ بلا قراءة،
+    // وهو رمزٌ يعرفه الناسُ في كلّ تطبيقٍ وكلّ لغة.
+    if (message == offlineMessage) return _offline(context);
+
     final technical = details?.trim();
     return Center(
       child: SingleChildScrollView(
@@ -1200,6 +1207,61 @@ class ErrorBlock extends StatelessWidget {
       ),
     );
   }
+
+  /// وجهُ الانقطاع — رمزٌ عالميٌّ وسطران وزرُّ إعادة.
+  Widget _offline(BuildContext context) => Center(
+    child: SingleChildScrollView(
+      padding: const EdgeInsets.all(Space.xl),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 76,
+            height: 76,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: AppColors.accent.withValues(alpha: Tint.disc),
+            ),
+            child: const Icon(
+              // **ورمزُ الواي‑فاي المشطوب لا السحابةُ ولا علامةُ التعجّب.**
+              // هذا هو الرمزُ الذي يعرفه الناسُ من كلّ تطبيقٍ استعملوه، ومن
+              // شريط الحالة في أعلى جوالهم نفسِه.
+              Icons.wifi_off_rounded,
+              key: ValueKey('offline-icon'),
+              size: 36,
+              color: AppColors.accent,
+            ),
+          ),
+          const SizedBox(height: Space.lg),
+          const Text(
+            'لا يوجد اتصال بالإنترنت',
+            key: ValueKey('offline-title'),
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 17,
+              fontWeight: FontWeight.w700,
+              color: AppColors.ink,
+            ),
+          ),
+          const SizedBox(height: Space.sm),
+          const Text(
+            // **ويُقال ما يُفعل لا ما وقع فقط.** «لا يوجد اتصال» خبرٌ،
+            // و«شغّل البيانات أو الواي‑فاي» عملٌ يُفعل الآن.
+            'شغّل بيانات الجوال أو الواي‑فاي، ثم أعد المحاولة.',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 13, height: 1.7, color: AppColors.muted),
+          ),
+          if (onRetry != null) ...[
+            const SizedBox(height: Space.lg),
+            FilledButton(
+              onPressed: onRetry,
+              child: const Text('إعادة المحاولة'),
+            ),
+          ],
+        ],
+      ),
+    ),
+  );
 }
 
 /// أيقونة القسم من `slug`.
