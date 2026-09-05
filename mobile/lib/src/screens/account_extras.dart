@@ -13,6 +13,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../core/geo.dart';
 
 import '../core/session.dart';
+import '../core/app_version.dart';
 import '../core/theme.dart';
 import '../data/api.dart';
 import '../data/models.dart';
@@ -896,7 +897,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
 
                 const SizedBox(height: Space.xl),
-                Center(child: Muted(tr('الإصدار 1.0.0'), size: 11)),
+                Center(child: Muted(appVersionLabel, size: 11)),
               ],
             ),
     );

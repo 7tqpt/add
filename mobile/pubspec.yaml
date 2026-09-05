@@ -25,7 +25,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # وقد بقي `1.0.0+1` من أوّل دفعةٍ للتطبيق حتى ٥٧ حزمةً بُنيت كلُّها تقول
 # «أنا الأولى». ويحرسه `app_update_test.dart`: يقرأ هذا السطر ويقارنه
 # بثابتَي `app_version.dart`.
-version: 1.0.8+9
+version: 1.0.9+10
 
 environment:
   sdk: ^3.13.0

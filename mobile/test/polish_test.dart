@@ -14,8 +14,10 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:aras/src/core/app_lock.dart';
+import 'package:aras/src/core/app_version.dart';
 import 'package:aras/src/core/session.dart';
 import 'package:aras/src/core/theme.dart';
+import 'package:aras/src/screens/account.dart';
 import 'package:aras/src/screens/account_extras.dart';
 import 'package:aras/src/screens/customer_shell.dart';
 import 'package:aras/src/screens/lock.dart';
@@ -179,6 +181,44 @@ void main() {
       lock.onLeave();
       lock.onReturn();
       expect(lock.locked, isTrue, reason: 'غادر التطبيقُ ولم يُقفل');
+    });
+  });
+
+  // ==========================================================================
+  //  ٦) رقمُ النسخة — **يُقرأ من الثابت لا يُكتب بيده**
+  // ==========================================================================
+
+  group('رقمُ النسخة', () {
+    test('**لا يُكتب رقمٌ بيده في سطر الإصدار**', () {
+      // **وهذا ما كان.** كان في شاشتين «الإصدار 1.0.0» مكتوبةً حرفاً، فبقي
+      // على ١٫٠٫٠ ثماني نسخٍ متتالية. وصاحبُ الجهاز لا يملك أن يعرف أيَّ
+      // حزمةٍ يشغّل — **ولا نحن**: سُئلنا «عدّلتَ الأيقونات ولم تتغيّر»،
+      // ولا سبيلَ إلى الجواب إلّا أن يُعرف ما في يده.
+      expect(appVersionLabel, contains(appVersionName));
+      expect(appVersionLabel, contains('$appBuild'));
+      expect(appVersionLabel, isNot(contains('1.0.0')),
+          reason: 'ما لم تكن النسخةُ ١٫٠٫٠ فعلاً');
+    });
+
+    testWidgets('**ويُعرض في «حسابي» كما هو**', (tester) async {
+      _screen(tester);
+      // و`AccountScreen` جسمُ تبويبٍ لا شاشةٌ كاملة، فتحتاج `Material`
+      // فوقها كما تجدها في القشرة.
+      await tester.pumpWidget(_wrap(
+        Scaffold(body: AccountScreen(session: Session())),
+      ));
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.text(appVersionLabel, skipOffstage: false), findsOneWidget,
+          reason: 'سطرُ الإصدار لا يقول ما في الحزمة');
+    });
+
+    testWidgets('وفي الإعدادات كذلك', (tester) async {
+      _screen(tester);
+      await tester.pumpWidget(_wrap(SettingsScreen(session: Session())));
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.text(appVersionLabel, skipOffstage: false), findsOneWidget);
     });
   });
 

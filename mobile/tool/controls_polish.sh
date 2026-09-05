@@ -10,6 +10,8 @@ CORE=lib/src/core/app_lock.dart
 KIT=lib/src/ui/kit.dart
 EXTRAS=lib/src/screens/account_extras.dart
 SHELL=lib/src/screens/customer_shell.dart
+ACC=lib/src/screens/account.dart
+VER=lib/src/core/app_version.dart
 TEST=test/polish_test.dart
 
 command -v flutter >/dev/null || { echo "لا flutter في المسار"; exit 1; }
@@ -19,7 +21,7 @@ flutter test "$TEST" 2>&1 | grep -q 'All tests passed' \
   || { echo "الأساسُ أحمر"; exit 1; }
 echo "أخضر."
 
-FILES=("$DET" "$LOCK" "$CORE" "$KIT" "$EXTRAS" "$SHELL")
+FILES=("$DET" "$LOCK" "$CORE" "$KIT" "$EXTRAS" "$SHELL" "$ACC" "$VER")
 for f in "${FILES[@]}"; do cp "$f" "/tmp/pol.$(basename "$f").bak"; done
 restore() { for f in "${FILES[@]}"; do cp "/tmp/pol.$(basename "$f").bak" "$f"; done; }
 trap restore EXIT
@@ -139,6 +141,20 @@ control "م) تقويمان متجاوران في الشريط كما كانا" 
   sub "$SHELL" '            icon: Icons.receipt_long_outlined,
             activeIcon: Icons.receipt_long,' '            icon: Icons.fact_check_outlined,
             activeIcon: Icons.fact_check,'
+
+# ── ٦) رقمُ النسخة ────────────────────────────────────────────────────────
+
+control "ن) «حسابي» تكتب رقماً بيدها كما كانت" \
+  sub "$ACC" '        Center(child: Muted(appVersionLabel, size: 11)),' \
+             "        const Center(child: Muted('الإصدار 1.0.0', size: 11)),"
+
+control "ه٢) الإعدادات تكتب رقماً بيدها كما كانت" \
+  sub "$EXTRAS" '                Center(child: Muted(appVersionLabel, size: 11)),' \
+                "                Center(child: Muted(tr('الإصدار 1.0.0'), size: 11)),"
+
+control "و٢) السطرُ لا يحمل رقمَ البناء فلا تُعرف الحزمة" \
+  sub "$VER" "String get appVersionLabel => 'الإصدار \$appVersionName (\$appBuild)';" \
+             "String get appVersionLabel => 'الإصدار \$appVersionName';"
 
 echo
 echo "== الحصيلة: $pass سقطت، $fail لم تسقط =="
