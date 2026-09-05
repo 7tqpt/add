@@ -202,8 +202,12 @@ class _CustomerShellState extends State<CustomerShell> {
           GlassNavItem(label: 'الرئيسية', icon: Icons.home_outlined, activeIcon: Icons.home),
           GlassNavItem(
             label: 'حجوزاتي',
-            icon: Icons.calendar_today_outlined,
-            activeIcon: Icons.calendar_today,
+            // **وقائمةُ حجوزاتٍ لا تقويم.** كان تقويماً، و«خطة العرس»
+            // تقويمٌ آخرُ يجاوره في الشريط نفسِه — أيقونتان متشابهتان في
+            // أربعةٍ وعشرين بكسلاً، فيضغط صاحبُها إحداهما يقصد الأخرى.
+            // والحجوزاتُ سجلٌّ يُقرأ سطراً سطراً، لا يومٌ في شهر.
+            icon: Icons.receipt_long_outlined,
+            activeIcon: Icons.receipt_long,
           ),
           GlassNavItem(label: 'استكشف', icon: Icons.search_outlined, activeIcon: Icons.search),
           // دفترٌ لا قلب: القلب صار للمفضّلة — يُضغط على الخدمة فتُحفظ،
@@ -211,8 +215,10 @@ class _CustomerShellState extends State<CustomerShell> {
           // «خطة العرس» يبحث عمّا حفظه.
           GlassNavItem(
             label: 'خطة العرس',
-            icon: Icons.event_note_outlined,
-            activeIcon: Icons.event_note,
+            // وخطةُ العرس قائمةُ مهامٍّ تُشطَب واحدةً واحدة — وهذا ما
+            // تعرضه الشاشةُ فعلاً: مهامُّ ونسبةُ إنجاز.
+            icon: Icons.fact_check_outlined,
+            activeIcon: Icons.fact_check,
           ),
           GlassNavItem(label: 'حسابي', icon: Icons.person_outline, activeIcon: Icons.person),
         ],

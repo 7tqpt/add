@@ -9,6 +9,7 @@ LOCK=lib/src/screens/lock.dart
 CORE=lib/src/core/app_lock.dart
 KIT=lib/src/ui/kit.dart
 EXTRAS=lib/src/screens/account_extras.dart
+SHELL=lib/src/screens/customer_shell.dart
 TEST=test/polish_test.dart
 
 command -v flutter >/dev/null || { echo "لا flutter في المسار"; exit 1; }
@@ -18,7 +19,7 @@ flutter test "$TEST" 2>&1 | grep -q 'All tests passed' \
   || { echo "الأساسُ أحمر"; exit 1; }
 echo "أخضر."
 
-FILES=("$DET" "$LOCK" "$CORE" "$KIT" "$EXTRAS")
+FILES=("$DET" "$LOCK" "$CORE" "$KIT" "$EXTRAS" "$SHELL")
 for f in "${FILES[@]}"; do cp "$f" "/tmp/pol.$(basename "$f").bak"; done
 restore() { for f in "${FILES[@]}"; do cp "/tmp/pol.$(basename "$f").bak" "$f"; done; }
 trap restore EXIT
@@ -119,6 +120,25 @@ control "ط) حجمُها ثابتٌ لا يتبع ما تجاوره" \
       height: size,' '    child: SizedBox(
       width: 18,
       height: 18,'
+
+# ── ٥) الأيقونات ──────────────────────────────────────────────────────────
+
+control "ي) رمزان متطابقان في قسمين" \
+  sub "$KIT" "  'catering' => Icons.restaurant_outlined," \
+             "  'catering' => Icons.festival_outlined,"
+
+control "ك) قسمٌ يقع على الرمز الاحتياطيّ" \
+  sub "$KIT" "  'printing' => Icons.print_outlined," \
+             "  'printing' => Icons.category_outlined,"
+
+control "ل) قسمٌ يأخذ رمزَ تبويبٍ من الشريط" \
+  sub "$KIT" "  'planners' => Icons.celebration_outlined," \
+             "  'planners' => Icons.fact_check_outlined,"
+
+control "م) تقويمان متجاوران في الشريط كما كانا" \
+  sub "$SHELL" '            icon: Icons.receipt_long_outlined,
+            activeIcon: Icons.receipt_long,' '            icon: Icons.fact_check_outlined,
+            activeIcon: Icons.fact_check,'
 
 echo
 echo "== الحصيلة: $pass سقطت، $fail لم تسقط =="

@@ -1337,16 +1337,25 @@ class ErrorBlock extends StatelessWidget {
 /// والافتراضيّ ليس زينة: من يضيف قسماً جديداً من اللوحة غداً يجد له أيقونةً
 /// معقولة بدل فراغٍ في بطاقةٍ نصفُها فارغ.
 IconData categoryIcon(String slug) => switch (slug) {
-  'halls' => Icons.meeting_room_outlined,
+  // **خيمةٌ لا باب.** كان `meeting_room` — وهو بابٌ يخرج منه سهم، يُقرأ
+  // «خروج» لا «قاعة». والقسمُ اسمُه «القاعات والخيام»، و`festival` سرادقٌ
+  // مضروبٌ بأعمدة: هو الشيءُ نفسُه الذي يُحجَز.
+  'halls' => Icons.festival_outlined,
   'catering' => Icons.restaurant_outlined,
-  'artists' => Icons.music_note_outlined,
+  // **ميكروفونٌ لا نوتة.** النوتةُ تقول «موسيقى»، والقسمُ مغنّون وفرقٌ
+  // تُحجَز لتُحيي ليلة — والميكروفونُ يقول ذلك بلا حرف.
+  'artists' => Icons.mic_outlined,
   'sound' => Icons.speaker_outlined,
   'photography' => Icons.photo_camera_outlined,
   'support' => Icons.water_drop_outlined,
   'cars' => Icons.directions_car_outlined,
   'attire' => Icons.checkroom_outlined,
-  'planners' => Icons.event_note_outlined,
-  'beauty' => Icons.brush_outlined,
+  // **ولا دفترَ مواعيدَ لمتعهّدي الحفلات.** كان `event_note` — وهو التقويمُ
+  // نفسُه الذي في شريط التنقّل، فيلتبس القسمُ بالتبويب.
+  'planners' => Icons.celebration_outlined,
+  // **مقصٌّ لا فرشاةُ دهان.** كان `brush` — وهي فرشاةُ طلاءٍ تُقرأ «دهان»؛
+  // والقسمُ «التجميل والكوافير».
+  'beauty' => Icons.content_cut_outlined,
   'decor' => Icons.local_florist_outlined,
   'printing' => Icons.print_outlined,
   _ => Icons.category_outlined,

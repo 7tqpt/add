@@ -17,6 +17,7 @@ import 'package:aras/src/core/app_lock.dart';
 import 'package:aras/src/core/session.dart';
 import 'package:aras/src/core/theme.dart';
 import 'package:aras/src/screens/account_extras.dart';
+import 'package:aras/src/screens/customer_shell.dart';
 import 'package:aras/src/screens/lock.dart';
 import 'package:aras/src/screens/service_detail.dart';
 import 'package:aras/src/ui/kit.dart';
@@ -178,6 +179,75 @@ void main() {
       lock.onLeave();
       lock.onReturn();
       expect(lock.locked, isTrue, reason: 'غادر التطبيقُ ولم يُقفل');
+    });
+  });
+
+  // ==========================================================================
+  //  ٥) الأيقونات — **ولا تتشابه اثنتان**
+  // ==========================================================================
+
+  group('الأيقونات', () {
+    // أسماءُ الأقسام كما في `supabase/seed.sql`.
+    const slugs = [
+      'halls', 'catering', 'artists', 'sound', 'photography', 'support',
+      'cars', 'attire', 'planners', 'beauty', 'decor', 'printing',
+    ];
+
+    test('**ولا يتكرّر رمزٌ بين قسمين**', () {
+      // **وهذا ما ينكسر بصمت.** رمزان متشابهان في شبكةٍ من اثنتَي عشرةَ
+      // بطاقةً يجعلان صاحبَها يفتح «الطباعة» وهو يريد «التصوير» — ولا يظهر
+      // ذلك في مراجعةِ شيفرةٍ لأنّ كلَّ سطرٍ صحيحٌ على حدة.
+      final seen = <IconData, String>{};
+      for (final slug in slugs) {
+        final icon = categoryIcon(slug);
+        expect(seen[icon], isNull,
+            reason: 'الرمزُ نفسُه في «$slug» و«${seen[icon]}»');
+        seen[icon] = slug;
+      }
+    });
+
+    test('ولا قسمَ يقع على الرمز الاحتياطيّ', () {
+      // الاحتياطيُّ لِما يُضاف من اللوحة غداً، لا لأقسامنا الاثنَي عشر.
+      for (final slug in slugs) {
+        expect(categoryIcon(slug), isNot(Icons.category_outlined), reason: slug);
+      }
+      expect(categoryIcon('ما-لا-نعرفه'), Icons.category_outlined);
+    });
+
+    test('**والأقسامُ لا تأخذ رموزَ شريط التنقّل**', () {
+      // بطاقةُ قسمٍ برمز التبويب تُقرأ تبويباً، فتُضغط لتنتقل لا لتُرشِّح.
+      const nav = [
+        Icons.home_outlined,
+        Icons.receipt_long_outlined,
+        Icons.search_outlined,
+        Icons.fact_check_outlined,
+        Icons.person_outline,
+      ];
+      for (final slug in slugs) {
+        expect(nav, isNot(contains(categoryIcon(slug))), reason: slug);
+      }
+    });
+
+    testWidgets('**ولا يتشابه رمزان في شريط التنقّل**', (tester) async {
+      // كان «حجوزاتي» تقويماً و«خطة العرس» تقويماً آخرَ يجاوره — أيقونتان
+      // متشابهتان في أربعةٍ وعشرين بكسلاً، فيضغط صاحبُها إحداهما يقصد
+      // الأخرى.
+      _screen(tester);
+      await tester.pumpWidget(_wrap(CustomerShell(session: Session())));
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+
+      // **وتُقرأ الرموزُ المرسومةُ تحت الشريط نفسِه** لا قائمةُ الإعدادات:
+      // `GlassNavItem` صنفُ بياناتٍ لا عنصرُ شجرة، وقائمةٌ صحيحةٌ قد تُرسم
+      // خطأً. والمقصودُ ما يراه صاحبُ الشاشة.
+      final icons = tester
+          .widgetList<Icon>(find.descendant(
+              of: find.byType(GlassNavBar), matching: find.byType(Icon)))
+          .map((i) => i.icon)
+          .toList();
+      expect(icons.length, 5, reason: 'تبدّل عددُ التبويبات المرسومة');
+      expect(icons.toSet().length, icons.length,
+          reason: 'رمزان متطابقان في الشريط — يُضغط أحدُهما ويُقصد الآخر');
     });
   });
 
