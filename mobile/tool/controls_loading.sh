@@ -123,8 +123,14 @@ control "ي) القوسُ يظهر كاملاً في أوّل إطار" \
 control "ك) الاسمُ يظهر مع القوس لا بعده" \
   sub "$FILE_WEL" '              Stage.at(t, 0.44, 0.76),' '              Stage.at(t, 0.0, 0.001),'
 
+# **وهذا الضابطُ عُلِّق مرّةً، والعلّةُ فيه هو لا في الشيفرة.** كان كسرُه
+# يلفّ `mark` في `Builder(builder: (_) => mark)` — والمغلَقاتُ في دارت تلتقط
+# المتغيّرَ نفسَه لا قيمتَه، فصار البانِي يُعيد نفسَه: شجرةٌ لا قعرَ لها،
+# فيدور `flutter test` بلا نهاية. أي أنّ الكسرَ كان معطوباً لا الحارس.
+#
+# والكسرُ الصحيحُ أبسطُ منه: يُترك الحسابُ كما هو ويُمنع الطلاء.
 control "ث) البريقُ يُحسب ولا يُرسم — ميزةٌ مبنيّةٌ وميّتة" \
-  sub "$FILE_WEL" '      mark = ShaderMask(' '      mark = Opacity(opacity: 1, child: mark); mark = Builder(builder: (_) => mark); if (false) mark = ShaderMask('
+  sub "$FILE_WEL" '    if (c != null && c > -0.18 && c < 1.18) {' '    if (c != null && c > 99.0 && c < 100.0) {'
 
 control "ل) شاشةُ الدخول تومض بالأبيض" \
   sub "$FILE_WEL" '    body: BrandBackdrop(
