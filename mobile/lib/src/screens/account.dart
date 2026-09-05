@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../core/session.dart';
+import '../core/app_version.dart';
 import '../core/theme.dart';
 import '../ui/kit.dart';
 import '../data/api.dart';
@@ -179,7 +180,7 @@ class _AccountScreenState extends State<AccountScreen> {
         ),
 
         const SizedBox(height: Space.lg),
-        const Center(child: Muted('الإصدار 1.0.0', size: 11)),
+        Center(child: Muted(appVersionLabel, size: 11)),
         const SizedBox(height: Space.lg),
       ],
     );

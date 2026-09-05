@@ -108,6 +108,16 @@ control "ل) زرُّ الخدمة يُرسل شيئاً غيرَ النصّ ا�
 control "م) بندُ «شارك التطبيق» يظهر بلا رابط — يُضغط فلا يقع شيء" \
   sub "$BTN" '      if (!isShareUrlValid(url)) return const SizedBox.shrink();' ''
 
+# ── رابطُ الدعوة: القاعدةُ أوّلاً ثمّ المخبوز ────────────────────────────
+
+control "ن) المخبوزُ يعلو على قيمة القاعدة فلا يُبدَّل من اللوحة أبداً" \
+  sub "$SHARE" '    isShareUrlValid(fromDatabase) ? fromDatabase.trim() : shareUrlFallback;' \
+               '    shareUrlFallback;'
+
+control "س) قيمةٌ فاسدةٌ في القاعدة تُستعمل كما هي" \
+  sub "$SHARE" '    isShareUrlValid(fromDatabase) ? fromDatabase.trim() : shareUrlFallback;' \
+               '    fromDatabase.trim();'
+
 echo
 echo "== الحصيلة: $pass سقطت، $fail لم تسقط =="
 [ "$fail" -eq 0 ]

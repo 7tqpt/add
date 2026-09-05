@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart' show FileOptions, Postgr
 import '../core/app_update.dart';
 import '../core/app_version.dart';
 import '../core/geo.dart';
+import '../core/share.dart' show pickShareUrl;
 import 'models.dart';
 import 'supabase.dart';
 import 'demo.dart';
@@ -1473,12 +1474,15 @@ class Api {
   /// «لا رابطَ بعد» — وهو الصدق. أمّا رميُ العطب فيُسقط زرَّ المشاركة على
   /// شاشةٍ سليمةٍ في كلّ شيءٍ سواه.
   static Future<String> shareUrl() async {
-    if (!isSupabaseConfigured) return demoShareUrl;
+    if (!isSupabaseConfigured) return pickShareUrl('');
     final row = await whenColumnMissing<Map<String, dynamic>?>(
       () => db.from('app_settings').select('share_url').eq('id', 1).maybeSingle(),
       () async => null,
     );
-    return (row?['share_url'] as String?)?.trim() ?? '';
+    // **والقاعدةُ تعلو على المخبوز، والمخبوزُ يملأ فراغَها.** قاعدةٌ لم
+    // يُطبَّق عليها `share_link.sql`، أو حقلٌ تُرك فارغاً — كلاهما يقع على
+    // رابط صفحة الإصدارات لا على لا شيء.
+    return pickShareUrl((row?['share_url'] as String?) ?? '');
   }
 
   /// أين يُحوَّل المال — من إعدادات المنصّة.

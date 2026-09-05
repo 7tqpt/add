@@ -48,14 +48,21 @@ jobs:
         # والمفتاح العام وحده هنا — لا `service_role` ولا كلمة مرور القاعدة،
         # فالحزمة تُفكّ ويُستخرج ما فيها.
         run: |
+          # **ورابطُ الدعوة يُخبز في كل حزمة.** رسائلُ المشاركة كانت تخرج
+          # بلا سطر رابطٍ حتى تُضبط `app_settings.share_url` بيد صاحب
+          # المنصّة — فوصل الخبرُ إلى من لا يعرف من أين يأتي بالتطبيق.
+          # وهذا احتياطٌ لا بديل: أوّلُ قيمةٍ في القاعدة تعلو عليه، فيبقى
+          # التبديلُ بلا تحديثِ تطبيق.
+          SHARE_URL="https://github.com/${GITHUB_REPOSITORY}/releases/latest"
+          echo "رابط الدعوة في المشاركة: $SHARE_URL"
           if [ -n "$SUPABASE_URL" ] && [ -n "$SUPABASE_ANON_KEY" ]; then
-            printf '{\n  "SUPABASE_URL": "%s",\n  "SUPABASE_ANON_KEY": "%s"\n}\n' \
-              "$SUPABASE_URL" "$SUPABASE_ANON_KEY" > env.json
+            printf '{\n  "SUPABASE_URL": "%s",\n  "SUPABASE_ANON_KEY": "%s",\n  "SHARE_URL": "%s"\n}\n' \
+              "$SUPABASE_URL" "$SUPABASE_ANON_KEY" "$SHARE_URL" > env.json
             echo "المفاتيح مضبوطة — التطبيق سيتصل بقاعدتك."
             echo "### المفاتيح: مضبوطة ✅" >> "$GITHUB_STEP_SUMMARY"
             echo "التطبيق في هذه الحزمة يتصل بقاعدتك." >> "$GITHUB_STEP_SUMMARY"
           else
-            echo '{}' > env.json
+            printf '{\n  "SHARE_URL": "%s"\n}\n' "$SHARE_URL" > env.json
             echo "لا أسرار مضبوطة — التطبيق سيعمل على البيانات التجريبية."
             echo "### المفاتيح: غير مضبوطة ⚠️" >> "$GITHUB_STEP_SUMMARY"
             echo "الحزمة تعمل على **البيانات التجريبية** لا قاعدتك. لربطها: Settings ← Secrets and variables ← Actions، وأضِف \`SUPABASE_URL\` و\`SUPABASE_ANON_KEY\`، ثم أعِد التشغيل." >> "$GITHUB_STEP_SUMMARY"
