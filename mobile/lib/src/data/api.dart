@@ -1467,6 +1467,20 @@ class Api {
   // العربونُ ما بقي منه، والباقي ما بقي من الإجمالي. ولو قبِلت مبلغاً من
   // التطبيق لأمكن دفع عربون قاعةٍ بريالٍ واحد.
 
+  /// رابطُ الدعوة الذي يخرج في رسائل المشاركة — من إعدادات المنصّة.
+  ///
+  /// **وقاعدةٌ لم يُطبَّق عليها `share_link.sql` تنكر العمود**، فيُقرأ ذلك
+  /// «لا رابطَ بعد» — وهو الصدق. أمّا رميُ العطب فيُسقط زرَّ المشاركة على
+  /// شاشةٍ سليمةٍ في كلّ شيءٍ سواه.
+  static Future<String> shareUrl() async {
+    if (!isSupabaseConfigured) return demoShareUrl;
+    final row = await whenColumnMissing<Map<String, dynamic>?>(
+      () => db.from('app_settings').select('share_url').eq('id', 1).maybeSingle(),
+      () async => null,
+    );
+    return (row?['share_url'] as String?)?.trim() ?? '';
+  }
+
   /// أين يُحوَّل المال — من إعدادات المنصّة.
   static Future<PaymentSettings> paymentSettings() async {
     if (!isSupabaseConfigured) return demoDelay(demoPaymentSettings);

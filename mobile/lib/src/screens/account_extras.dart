@@ -20,6 +20,7 @@ import '../data/supabase.dart' show messageOf;
 import 'lock.dart';
 import 'map_picker.dart';
 import '../ui/kit.dart';
+import '../ui/share_button.dart';
 
 /// اسمُ وسيلة التحويل كما تُعرض.
 const paymentMethodNames = {
@@ -657,6 +658,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
           : ListView(
               padding: const EdgeInsets.all(Space.lg),
               children: [
+                // **وأوّلَ القائمة عمداً.** كلُّ رسالةٍ تُرسَل دعوةٌ إلى
+                // التطبيق، وبندٌ في القاع لا يراه أحد. ويغيب من نفسه إن لم
+                // يُضبط الرابط في إعدادات المنصّة.
+                const ShareAppTile(),
+
                 SectionTitle(tr('الإشعارات')),
                 const SizedBox(height: Space.sm),
                 AppCard(

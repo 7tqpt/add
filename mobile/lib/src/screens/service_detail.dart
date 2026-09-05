@@ -8,6 +8,7 @@ import '../data/models.dart';
 import '../data/supabase.dart';
 import '../ui/celebrate.dart';
 import '../ui/service_card.dart';
+import '../ui/share_button.dart';
 import '../ui/kit.dart';
 import 'account_extras.dart';
 import 'map_picker.dart';
@@ -281,7 +282,22 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('تفاصيل الخدمة')),
+      appBar: AppBar(
+        title: const Text('تفاصيل الخدمة'),
+        // **و`_future` نفسُها لا نداءٌ ثانٍ.** `FutureBuilder` على المستقبل
+        // عينِه يشترك في نتيجته، فلا تُقرأ الخدمةُ مرّتين لأجل زرّ.
+        actions: [
+          FutureBuilder<ServiceItem?>(
+            future: _future,
+            builder: (context, snap) {
+              final item = snap.data;
+              // ولا زرَّ قبل أن تصل الخدمة: زرٌّ يُضغط فلا يقع شيء.
+              if (item == null) return const SizedBox.shrink();
+              return ShareServiceButton(item: item);
+            },
+          ),
+        ],
+      ),
       body: Column(
         children: [
           // **والغلافُ خارجَ `FutureBuilder` عمداً.** لو كان داخلَه لَما وُجد
