@@ -279,6 +279,13 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
     }
   }
 
+  /// ارتفاعُ صندوق الغلاف — واحدٌ قبل وصول الصور وبعده، فلا يقفز ما تحته.
+  static const _coverHeight = 230.0;
+
+  /// **ومستقبلٌ واحدٌ للوسائط يشترك فيه الغلافُ والجسم.** لو كان لكلٍّ نداؤه
+  /// لَقُرئت وسائطُ الخدمة مرّتين في كلّ فتحة.
+  late final Future<List<ServiceMedia>> _media = Api.serviceMedia(widget.serviceId);
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -304,13 +311,33 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
           // أثناء التحميل — ووقتُ التحميل هو وقتُ الانتقال بعينه، فيطير
           // الغلافُ من البطاقة إلى فراغٍ ويرتدّ. وخارجَه يُرسم في أوّل إطار
           // فيجد الطائرُ موضعَه، ويرى صاحبُ الشاشة ما ضغط عليه بدل بياض.
+          //
+          // **والمعرضُ هو الغلافُ نفسُه لا شيءٌ تحته.** كانا اثنين: غلافٌ في
+          // الأعلى ومعرضٌ تحته يعرض الصورَ كلَّها — والغلافُ أوّلُ تلك الصور.
+          // فكانت الصورةُ الواحدة تُعرض مرّتين متلاصقتين، وخدمةٌ لها صورةٌ
+          // واحدةٌ تملأ نصفَ الشاشة بنسختين منها.
+          //
+          // فصار الصندوقُ واحداً: يُرسم فيه الغلافُ في أوّل إطار (فيجد
+          // الطائرُ موضعَه)، فإذا وصلت الصورُ حلّ محلَّه معرضٌ يُقلَّب — بلا
+          // قفزةٍ في التخطيط، لأنّ الارتفاع واحدٌ قبلُ وبعد.
           if (widget.coverPath != null)
             Hero(
               tag: serviceHeroTag(widget.serviceId),
               child: SizedBox(
-                height: 190,
+                height: _coverHeight,
                 width: double.infinity,
-                child: MediaThumb(url: Api.mediaUrl(widget.coverPath)),
+                child: FutureBuilder<List<ServiceMedia>>(
+                  future: _media,
+                  builder: (context, snap) {
+                    final images = (snap.data ?? const <ServiceMedia>[])
+                        .where((m) => m.kind == MediaKind.image)
+                        .toList();
+                    if (images.length < 2) {
+                      return MediaThumb(url: Api.mediaUrl(widget.coverPath));
+                    }
+                    return _Gallery(images: images);
+                  },
+                ),
               ),
             ),
           Expanded(
@@ -338,7 +365,14 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
               // الوسائط فوق كل شيء: من فتح الخدمة يريد أن يرى ما يشتريه قبل
               // أن يقرأ عنه. والسعرُ تحتها لأن السعر يُحكَم عليه بعد الرؤية
               // لا قبلها.
-              _Media(serviceId: widget.serviceId),
+              _Media(
+                media: _media,
+                // **والصورُ تُعرض هنا فقط لمن جاء بلا غلاف.** من فُتحت له
+                // الشاشةُ من بطاقةٍ تحمل غلافَها يراها في الأعلى، ومن جاء
+                // من موضعٍ لا يعرف الغلافَ (إشعارٌ، رابط) لا يرى صورةً
+                // أصلاً لولا هذا.
+                showImages: widget.coverPath == null,
+              ),
               AppCard(
                 children: [
                   Row(
@@ -691,20 +725,23 @@ class _ProviderRow extends StatelessWidget {
 /// ونداءٌ مستقلٌّ عن الخدمة: عطبُ الوسائط لا يجوز أن يمنع الحجز — من فتح
 /// الشاشة ليحجز يحجز، ولو تعذّرت الصور.
 class _Media extends StatefulWidget {
-  const _Media({required this.serviceId});
-  final String serviceId;
+  const _Media({required this.media, required this.showImages});
+
+  /// مستقبلُ الوسائط — يأتي من الشاشة فيشترك فيه الغلافُ وهذا الجسم.
+  final Future<List<ServiceMedia>> media;
+
+  /// أتُعرض الصورُ هنا؟ لا تُعرض لمن رأى الغلافَ في الأعلى — وإلّا كُرِّرت.
+  final bool showImages;
 
   @override
   State<_Media> createState() => _MediaState();
 }
 
 class _MediaState extends State<_Media> {
-  late final Future<List<ServiceMedia>> _future = Api.serviceMedia(widget.serviceId);
-
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<List<ServiceMedia>>(
-      future: _future,
+      future: widget.media,
       builder: (context, snap) {
         final all = snap.data ?? const <ServiceMedia>[];
         if (all.isEmpty) return const SizedBox.shrink();
@@ -716,8 +753,8 @@ class _MediaState extends State<_Media> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if (images.isNotEmpty) ...[
-              _Gallery(images: images),
+            if (widget.showImages && images.isNotEmpty) ...[
+              SizedBox(height: 230, child: _Gallery(images: images)),
               const SizedBox(height: Space.md),
             ],
             if (video != null) ...[
@@ -759,43 +796,57 @@ class _GalleryState extends State<_Gallery> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    return Stack(
       children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(14),
-          child: AspectRatio(
-            aspectRatio: 4 / 3,
-            child: PageView(
-              controller: _controller,
-              onPageChanged: (i) => setState(() => _page = i),
-              children: [
-                for (final m in widget.images) MediaThumb(url: Api.mediaUrl(m.path)),
-              ],
-            ),
+        Positioned.fill(
+          child: PageView(
+            controller: _controller,
+            onPageChanged: (i) => setState(() => _page = i),
+            children: [
+              for (final m in widget.images) MediaThumb(url: Api.mediaUrl(m.path)),
+            ],
           ),
         ),
         // النقاط تغيب مع الصورة الواحدة: نقطةٌ واحدة تحت صورةٍ واحدة تقول
         // شيئاً لا معنى له.
-        if (widget.images.length > 1) ...[
-          const SizedBox(height: Space.sm),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              for (var i = 0; i < widget.images.length; i++) ...[
-                if (i > 0) const SizedBox(width: 5),
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  width: i == _page ? 16 : 5,
-                  height: 5,
-                  decoration: BoxDecoration(
-                    color: i == _page ? AppColors.accent : AppColors.hairline,
-                    borderRadius: BorderRadius.circular(999),
-                  ),
+        if (widget.images.length > 1)
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: Space.sm,
+            child: Center(
+              // **وقرصٌ داكنٌ تحت النقاط.** صورةُ فستانٍ بيضاء تبتلع نقاطاً
+              // بيضاء وصورةٌ داكنةٌ تبتلع نقاطاً نبيذيّة — والقرصُ يجعلها
+              // تُرى على كلّ صورة.
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: Space.sm, vertical: 5),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.34),
+                  borderRadius: BorderRadius.circular(999),
                 ),
-              ],
-            ],
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    for (var i = 0; i < widget.images.length; i++) ...[
+                      if (i > 0) const SizedBox(width: 5),
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        width: i == _page ? 16 : 5,
+                        height: 5,
+                        decoration: BoxDecoration(
+                          color: i == _page
+                              ? Colors.white
+                              : Colors.white.withValues(alpha: 0.55),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
           ),
-        ],
       ],
     );
   }

@@ -22,10 +22,10 @@ import 'package:flutter/foundation.dart';
 /// **وهو المقارَن لا اسمُ النسخة.** «1.0.0» نصٌّ يُقارَن بالحروف فيصير
 /// «1.0.10» أقدمَ من «1.0.9»، ورقمُ البناء عددٌ صحيحٌ يزيد أبداً — وعليه
 /// قيدُ `unique (platform, build)` في القاعدة.
-const appBuild = 7;
+const appBuild = 8;
 
 /// اسمُ النسخة كما يُعرض للناس — الجزءُ الذي قبل `+`.
-const appVersionName = '1.0.6';
+const appVersionName = '1.0.7';
 
 /// اسمُ المنصّة كما هو في عمود `app_versions.platform`.
 ///

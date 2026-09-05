@@ -608,22 +608,46 @@ class _SettingsScreenState extends State<SettingsScreen> {
       return;
     }
 
-    final pin = await askPin(context, title: tr('اختر رمزاً من أربعة أرقام'));
-    if (pin == null || !mounted) return;
-    final again = await askPin(context, title: tr('أعِد الرمز للتأكيد'));
-    if (again == null || !mounted) return;
-    if (pin != again) {
-      showMessage(context, tr('الرمزان غير متطابقين — لم يُفعَّل القفل.'));
-      return;
-    }
-    try {
-      await lock.enable(pin, lock.after);
-      if (mounted) {
-        setState(() {});
-        showMessage(context, tr('فُعّل قفل التطبيق.'));
+    // **ومن أخطأ في التأكيد يُعاد إلى أوّل الخطوتين لا يُطرَد.**
+    //
+    // كانت الشاشةُ تُغلق وتقول «الرمزان غير متطابقين» في شريطٍ عابر، فيبحث
+    // صاحبُها عن زرّ «فعّله» من جديد — وأكثرُهم لا يعيد المحاولة أصلاً.
+    // والخطأُ في تأكيد أربعةِ أرقامٍ بالإبهام وارد.
+    String? note;
+    while (true) {
+      // والشاشةُ قد تُغلق بين دورةٍ وأخرى: من ألغى ثمّ خرج من الإعدادات.
+      if (!mounted) return;
+      final pin = await askPin(
+        context,
+        title: tr('اختر رمزاً من أربعة أرقام'),
+        subtitle: tr('يُطلب فورَ خروجك من التطبيق'),
+        step: tr('الخطوة ١ من ٢'),
+        note: note,
+      );
+      if (pin == null || !mounted) return;
+
+      final again = await askPin(
+        context,
+        title: tr('أعِد الرمز للتأكيد'),
+        step: tr('الخطوة ٢ من ٢'),
+      );
+      if (again == null || !mounted) return;
+
+      if (pin != again) {
+        note = tr('الرمزان لم يتطابقا. اختر رمزاً من جديد.');
+        continue;
       }
-    } catch (e) {
-      if (mounted) showMessage(context, messageOf(e));
+
+      try {
+        await lock.enable(pin);
+        if (mounted) {
+          setState(() {});
+          showMessage(context, tr('فُعّل قفل التطبيق.'));
+        }
+      } catch (e) {
+        if (mounted) showMessage(context, messageOf(e));
+      }
+      return;
     }
   }
 
@@ -768,21 +792,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     if (appLock.enabled) ...[
                       const Divider(height: Space.lg, color: AppColors.hairline),
-                      Text(tr('يُطلب الرمز'), style: const TextStyle(fontSize: 13)),
-                      const SizedBox(height: Space.xs),
-                      Wrap(
-                        spacing: Space.xs,
-                        runSpacing: Space.xs,
+                      // **ولا خياراتِ مهلةٍ هنا بعد اليوم.** كانت خمسةَ
+                      // أزرار، وأشيعُها «بعد ربع ساعة» — أي أنّ من أخذ
+                      // الجوالَ من يد صاحبه يقرأ كلَّ شيءٍ ما لم تمضِ خمسَ
+                      // عشرةَ دقيقة، وهي الحالُ الغالبة.
+                      Row(
                         children: [
-                          for (final value in LockAfter.values)
-                            PickChip(
-                              label: lockAfterName(value),
-                              active: appLock.after == value,
-                              onTap: () async {
-                                await appLock.changeAfter(value);
-                                if (mounted) setState(() {});
-                              },
+                          const Icon(Icons.bolt_rounded,
+                              size: 18, color: AppColors.accent),
+                          const SizedBox(width: Space.sm),
+                          Expanded(
+                            child: Muted(
+                              tr('يُطلب الرمز فورَ خروجك من التطبيق'),
+                              size: 12,
                             ),
+                          ),
                         ],
                       ),
                     ],
