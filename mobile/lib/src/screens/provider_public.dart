@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 
 import '../core/format.dart';
 import '../core/theme.dart';
+import '../core/share.dart';
 import '../data/api.dart';
 import '../data/models.dart';
 import '../data/supabase.dart';
 import '../ui/kit.dart';
+import '../ui/share_button.dart';
 import '../ui/map_open.dart';
 import '../ui/media.dart';
 import '../ui/service_card.dart';
@@ -99,6 +101,26 @@ class _PublicProviderScreenState extends State<PublicProviderScreen> {
         elevation: 0,
         foregroundColor: AppColors.accentInk,
         title: const Text(''),
+        actions: [
+          // `_future` نفسُها لا نداءٌ ثانٍ — ولا زرَّ قبل أن يصل الملفّ.
+          FutureBuilder<PublicProvider?>(
+            future: _future,
+            builder: (context, snap) {
+              final p = snap.data;
+              if (p == null) return const SizedBox.shrink();
+              return ShareIconButton(
+                compose: (url) => shareTextForProvider(
+                  name: p.businessName,
+                  governorate: p.governorate,
+                  rating: p.rating,
+                  reviewsCount: p.reviewsCount,
+                  about: p.bio,
+                  url: url,
+                ),
+              );
+            },
+          ),
+        ],
       ),
       body: FutureBuilder<PublicProvider?>(
         future: _future,

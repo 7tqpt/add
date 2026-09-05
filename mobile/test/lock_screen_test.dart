@@ -34,10 +34,16 @@ void _phone(WidgetTester tester) {
 }
 
 /// عددُ النقاط المملوءة — تُعرف بلونها لا بنصّها، فالرمزُ لا يُعرض.
+///
+/// **ويُسأل تحت `pin-dots` وحدها.** `AnimatedContainer` يقع في شجرة Material
+/// في مواضعَ أخرى، وسؤالٌ عامٌّ يجد أوّلَها فيقيس شيئاً لا يخصّه.
 int _filled(WidgetTester tester) {
-  final row = tester.widget<Row>(find.byKey(const ValueKey('pin-dots')));
   var n = 0;
-  for (final dot in row.children.whereType<Container>()) {
+  final dots = find.descendant(
+    of: find.byKey(const ValueKey('pin-dots')),
+    matching: find.byType(AnimatedContainer),
+  );
+  for (final dot in tester.widgetList<AnimatedContainer>(dots)) {
     final box = dot.decoration as BoxDecoration;
     if (box.color == AppColors.accent) n++;
   }

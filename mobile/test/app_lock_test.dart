@@ -83,129 +83,77 @@ void main() {
       expect(lock.locked, isFalse);
     });
 
-    test('**وغيابٌ قصيرٌ لا يقفل**', () async {
-      // ومن ردّ على مكالمةٍ ثمّ عاد بعد ثانيتين لا يُطالَب برمز — وقفلٌ
-      // يُطلب في كلّ تبديلِ تطبيقٍ يُطفئه صاحبُه في يومه الأوّل.
-      await lockSetPin('1111');
-      final lock = AppLock();
-      await lock.boot();
-      await lock.unlock('1111');
-      await lock.changeAfter(LockAfter.fifteenMinutes);
-
-      lock.onLeave();
-      lock.onReturn();
-      expect(lock.locked, isFalse);
-    });
-
-    test('**و«فوراً» تقفل عند أوّل مغادرة**', () async {
-      await lockSetPin('1111');
-      final lock = AppLock();
-      await lock.boot();
-      await lock.unlock('1111');
-      await lock.changeAfter(LockAfter.immediately);
-
-      lock.onLeave();
-      lock.onReturn();
-      expect(lock.locked, isTrue);
-    });
-
-    test('وعودةٌ بلا مغادرةٍ لا تقفل', () async {
-      await lockSetPin('1111');
-      final lock = AppLock();
-      await lock.boot();
-      await lock.unlock('1111');
-      lock.onReturn();
-      expect(lock.locked, isFalse);
-    });
-
     // ========================================================================
-    //  **الإقلاعُ بعد قتلِ النظام**
-    // ========================================================================
+    //  **فورَ المغادرة — لا مهلةَ تُختار**
     //
-    // أندرويد يقتل ما في الخلفيّة متى ضاقت الذاكرة. ولو حُسب القتلُ إقلاعاً
-    // جديداً لَصارت كلُّ المدد «فوراً» عملياً — واختيارُ صاحبِ الجهاز لا
-    // معنى له.
+    //  كانت خمسُ مددٍ تُختار، وحُذفت. وأشيعُها «بعد ربع ساعة» — أي أنّ من
+    //  أخذ الجوالَ من يد صاحبه يقرأ كلَّ شيءٍ ما لم تمضِ خمسَ عشرةَ دقيقة،
+    //  وهي الحالُ الغالبة: الجوالُ يُؤخذ ويُنظَر فيه ويُعاد في دقيقة.
+    // ========================================================================
 
-    test('**وقتلُ النظامِ بعد غيابٍ قصيرٍ لا يقفل**', () async {
+    test('**والمغادرةُ تقفل مهما قصُرت**', () async {
       await lockSetPin('1111');
-      await lockSetAfter(LockAfter.oneHour);
-      // خرج قبل دقيقتين ثمّ قُتل تطبيقُه.
-      storage['lock_left_at'] =
-          DateTime.now().subtract(const Duration(minutes: 2)).toIso8601String();
-
       final lock = AppLock();
       await lock.boot();
-      expect(lock.locked, isFalse,
-          reason: 'طُولب برمزه ولم يمضِ عليه إلّا دقيقتان');
+      await lock.unlock('1111');
+
+      lock.onLeave();
+      lock.onReturn();
+      expect(lock.locked, isTrue, reason: 'غادر التطبيقُ ولم يُقفل');
     });
 
-    test('وقتلُ النظامِ بعد غيابٍ طويلٍ يقفل', () async {
+    test('**وعودةٌ بلا مغادرةٍ لا تقفل**', () async {
+      // بعضُ الأجهزة تُرسل `resumed` بلا `paused` قبلها — وقفلٌ عندها
+      // يُلقي شاشةَ الرمز في وجه من لم يغادر.
       await lockSetPin('1111');
-      await lockSetAfter(LockAfter.fifteenMinutes);
-      storage['lock_left_at'] =
-          DateTime.now().subtract(const Duration(hours: 3)).toIso8601String();
+      final lock = AppLock();
+      await lock.boot();
+      await lock.unlock('1111');
+      lock.onReturn();
+      expect(lock.locked, isFalse);
+    });
 
+    test('**ومغادرتان متتاليتان لا تُبقيان علامةً معلّقة**', () async {
+      // من غادر وعاد فأدخل رمزَه، ثمّ عاد `resumed` مرّةً أخرى بلا مغادرة،
+      // لا يُقفل عليه ثانيةً.
+      await lockSetPin('1111');
+      final lock = AppLock();
+      await lock.boot();
+      await lock.unlock('1111');
+
+      lock.onLeave();
+      lock.onReturn();
+      await lock.unlock('1111');
+      lock.onReturn();
+      expect(lock.locked, isFalse, reason: 'بقيت علامةُ المغادرة بعد الفتح');
+    });
+
+    test('**وكلُّ إقلاعٍ مقفل**', () async {
+      // التطبيقُ كان مغلقاً، ولا يُعرف كم مضى ولا في يد من كان الجوال.
+      await lockSetPin('1111');
       final lock = AppLock();
       await lock.boot();
       expect(lock.locked, isTrue);
     });
 
-    test('و«فوراً» تقفل عند الإقلاع مهما قصُر الغياب', () async {
+    test('**والتفعيلُ لا يقفل في اللحظة نفسِها**', () async {
+      // من ضبط رمزَه للتوّ لم يغادر بعد، وشاشةُ رمزٍ فورَ الضبط تُقرأ عطباً.
+      final lock = AppLock();
+      await lock.boot();
+      await lock.enable('1111');
+      expect(lock.enabled, isTrue);
+      expect(lock.locked, isFalse);
+    });
+
+    test('ولا يبقى مفتاحُ المدّة القديم بعد الإزالة', () async {
+      // «lock_after» و«lock_left_at» باقيان في خزائن الأجهزة التي حدّثت.
       await lockSetPin('1111');
-      await lockSetAfter(LockAfter.immediately);
+      storage['lock_after'] = 'oneHour';
       storage['lock_left_at'] = DateTime.now().toIso8601String();
 
-      final lock = AppLock();
-      await lock.boot();
-      expect(lock.locked, isTrue);
-    });
-
-    test('**ولحظةٌ محفوظةٌ فاسدةٌ تُقفل ولا تُسقط**', () async {
-      // خزنةٌ عبثَ بها أحدٌ أو تلفت — والمجهولُ يُقفل، ولا يرمي الإقلاع.
-      await lockSetPin('1111');
-      storage['lock_left_at'] = 'ليس تاريخاً';
-
-      final lock = AppLock();
-      await lock.boot();
-      expect(lock.locked, isTrue);
-    });
-
-    test('**والفتحُ يُجدّد اللحظة**', () async {
-      // ولولاه لَبقيت لحظةُ الغياب القديمة، فمن فتح قفلَه ثمّ قُتل تطبيقُه
-      // بعد ثانيةٍ وجد الرمزَ وهو لم يغب.
-      await lockSetPin('1111');
-      await lockSetAfter(LockAfter.oneHour);
-      storage['lock_left_at'] =
-          DateTime.now().subtract(const Duration(days: 1)).toIso8601String();
-
-      final first = AppLock();
-      await first.boot();
-      expect(first.locked, isTrue);
-      await first.unlock('1111');
-
-      final second = AppLock();
-      await second.boot();
-      expect(second.locked, isFalse, reason: 'بقيت اللحظةُ القديمة بعد الفتح');
-    });
-
-    test('والمغادرةُ تكتب اللحظةَ في الخزنة', () async {
-      await lockSetPin('1111');
-      final lock = AppLock();
-      await lock.boot();
-      await lock.unlock('1111');
-      storage.remove('lock_left_at');
-
-      lock.onLeave();
-      await Future<void>.delayed(Duration.zero);
-      expect(storage['lock_left_at'], isNotNull);
-    });
-
-    test('والمدّةُ تُحفظ وتُقرأ عند الإقلاع', () async {
-      await lockSetPin('1111');
-      await lockSetAfter(LockAfter.oneHour);
-      final lock = AppLock();
-      await lock.boot();
-      expect(lock.after, LockAfter.oneHour);
+      await lockClear();
+      expect(storage['lock_after'], isNull);
+      expect(storage['lock_left_at'], isNull);
     });
   });
 
@@ -269,16 +217,4 @@ void main() {
     });
   });
 
-  // ==========================================================================
-  //  المدد
-  // ==========================================================================
-
-  test('ولكلّ مدّةٍ اسمٌ وزمنٌ يوافقه', () {
-    expect(lockDelay(LockAfter.immediately), Duration.zero);
-    expect(lockDelay(LockAfter.fifteenMinutes), const Duration(minutes: 15));
-    expect(lockDelay(LockAfter.oneHour), const Duration(hours: 1));
-    for (final v in LockAfter.values) {
-      expect(lockAfterName(v).trim(), isNotEmpty, reason: v.name);
-    }
-  });
 }

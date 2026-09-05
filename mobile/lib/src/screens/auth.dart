@@ -262,7 +262,6 @@ class _AuthScreenState extends State<AuthScreen> {
             textDirection: TextDirection.ltr,
             decoration: const InputDecoration(
               labelText: 'كلمة المرور الجديدة',
-              hintText: '••••••••',
               helperText: 'ثمانية أحرف فأكثر.',
             ),
           ),
@@ -355,9 +354,13 @@ class _AuthScreenState extends State<AuthScreen> {
                           autocorrect: false,
                           // البريد لاتيني: يُترك من اليسار وإلا تبعثرت رموزه.
                           textDirection: TextDirection.ltr,
+                          // **ولا مثالَ داخل الحقل.** كان فيه
+                          // `you@example.com` — حروفٌ لاتينيّةٌ باهتةٌ في
+                          // شاشةٍ عربيّةٍ كلُّها، تُقرأ لأوّل وهلةٍ نصّاً
+                          // مكتوباً فعلاً فيمسحه صاحبُها قبل أن يكتب.
+                          // والعنوانُ فوق الحقل يقول ما يُكتب فيه.
                           decoration: const InputDecoration(
                             labelText: 'البريد الإلكتروني',
-                            hintText: 'you@example.com',
                           ),
                         ),
                         const SizedBox(height: Space.md),
@@ -365,9 +368,10 @@ class _AuthScreenState extends State<AuthScreen> {
                           controller: _password,
                           obscureText: true,
                           textDirection: TextDirection.ltr,
+                          // وثمانُ نقاطٍ في حقلٍ مخفيٍّ أصلاً لا تقول شيئاً:
+                          // ما يُكتب فيه يخرج نقاطاً على كلّ حال.
                           decoration: InputDecoration(
                             labelText: 'كلمة المرور',
-                            hintText: '••••••••',
                             helperText: _signUp ? 'ثمانية أحرف فأكثر.' : null,
                           ),
                         ),

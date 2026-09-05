@@ -34,24 +34,23 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import 'i18n.dart';
 
-/// بعد كم من الغياب يُطلب الرمز.
-enum LockAfter { immediately, oneMinute, fiveMinutes, fifteenMinutes, oneHour }
-
-Duration lockDelay(LockAfter value) => switch (value) {
-  LockAfter.immediately => Duration.zero,
-  LockAfter.oneMinute => const Duration(minutes: 1),
-  LockAfter.fiveMinutes => const Duration(minutes: 5),
-  LockAfter.fifteenMinutes => const Duration(minutes: 15),
-  LockAfter.oneHour => const Duration(hours: 1),
-};
-
-String lockAfterName(LockAfter value) => switch (value) {
-  LockAfter.immediately => tr('فوراً'),
-  LockAfter.oneMinute => tr('بعد دقيقة'),
-  LockAfter.fiveMinutes => tr('بعد خمس دقائق'),
-  LockAfter.fifteenMinutes => tr('بعد ربع ساعة'),
-  LockAfter.oneHour => tr('بعد ساعة'),
-};
+// **ولا مهلةَ تُختار بعد اليوم — يُقفل فورَ المغادرة.**
+//
+// كانت خمسةُ خيارات: فوراً، وبعد دقيقة، وخمسٍ، وربعِ ساعة، وساعة. وحُذفت،
+// وحُذف معها حسابُ لحظةِ المغادرة وحفظُها في الخزنة.
+//
+// **وعلّةُ الحذف أنّ الخيار كان يُضعف القفلَ بيد صاحبه وهو لا يدري.** من
+// وضع رمزاً إنّما وضعه ليمنع من يمسك جوالَه أن يقرأ حجوزاته؛ و«بعد ربع
+// ساعة» — وكانت هي الافتراضيّة — تعني أنّ من أخذ الجوالَ من يده يفتح كلَّ
+// شيءٍ ما لم تمضِ خمسَ عشرةَ دقيقة. وهي الحالُ الغالبة: الجوالُ يُؤخذ
+// ويُنظَر فيه ويُعاد في دقيقة.
+//
+// وخمسةُ أزرارٍ تسأل صاحبَها سؤالاً أمنيّاً لا يملك جوابَه — والجوابُ
+// الصحيحُ واحدٌ منها فقط.
+//
+// **وثمنُه معلومٌ ومقبول:** من فتح ورقةَ المشاركة أو معرضَ الصور ثمّ عاد
+// يُطالَب برمزه، لأنّ التطبيق غادر المقدّمةَ فعلاً. وهذا ما تفعله تطبيقاتُ
+// البنوك، وهو ثمنُ القفل لا عطبٌ فيه.
 
 /// عددُ المحاولات الخاطئة قبل إخراج الحساب.
 ///
@@ -61,8 +60,11 @@ const lockMaxAttempts = 5;
 
 const _keyHash = 'lock_pin_hash';
 const _keySalt = 'lock_pin_salt';
-const _keyAfter = 'lock_after';
-const _keyLeftAt = 'lock_left_at';
+// **ويُمسح مفتاحا العهد القديم عند الإزالة.** «lock_after» و«lock_left_at»
+// لم يعودا يُقرآن، لكنّهما باقيان في خزائن الأجهزة التي حدّثت. ومفتاحٌ
+// مهجورٌ في الخزنة لا يضرّ اليوم، لكنّه يضرّ يومَ يُكتب مفتاحٌ باسمٍ يشبهه.
+const _keyLegacyAfter = 'lock_after';
+const _keyLegacyLeftAt = 'lock_left_at';
 
 /// بديلٌ يُركَّب في الاختبارات — لا خزنةَ نظامٍ في `flutter test`.
 ///
@@ -129,7 +131,8 @@ Future<void> lockSetPin(String pin) async {
 Future<void> lockClear() async {
   await _write(_keyHash, null);
   await _write(_keySalt, null);
-  await _write(_keyLeftAt, null);
+  await _write(_keyLegacyAfter, null);
+  await _write(_keyLegacyLeftAt, null);
 }
 
 /// أيطابق هذا الرمزُ المضبوط؟
@@ -139,16 +142,6 @@ Future<bool> lockVerify(String pin) async {
   if (hash == null || salt == null) return false;
   return _digest(pin, salt) == hash;
 }
-
-Future<LockAfter> lockAfter() async {
-  final saved = await _read(_keyAfter);
-  return LockAfter.values.firstWhere(
-    (v) => v.name == saved,
-    orElse: () => LockAfter.fifteenMinutes,
-  );
-}
-
-Future<void> lockSetAfter(LockAfter value) => _write(_keyAfter, value.name);
 
 /// النسخةُ الواحدة — كما `appLocale` في `i18n.dart`.
 ///
@@ -165,59 +158,46 @@ final appLock = AppLock();
 class AppLock extends ChangeNotifier {
   bool _enabled = false;
   bool _locked = false;
-  LockAfter _after = LockAfter.fifteenMinutes;
-  DateTime? _leftAt;
+
+  /// أغادر التطبيقُ المقدّمةَ منذ آخر فتح؟
+  ///
+  /// **وعلامةٌ لا لحظةُ زمن.** لم يبقَ ما يُحسب: الغيابُ غيابٌ مهما قصر.
+  /// وهي تمنع أن يُقفل التطبيقُ على `resumed` جاءت بلا `paused` قبلها —
+  /// وهي تقع في بعض الأجهزة.
+  bool _left = false;
   int _wrong = 0;
 
   bool get enabled => _enabled;
   bool get locked => _enabled && _locked;
-  LockAfter get after => _after;
   int get wrongAttempts => _wrong;
   int get attemptsLeft => lockMaxAttempts - _wrong;
 
-  /// يُقرأ عند الإقلاع.
+  /// يُقرأ عند الإقلاع — **وكلُّ إقلاعٍ مقفل**.
   ///
-  /// **ولحظةُ المغادرة تُقرأ من الخزنة لا من الذاكرة.** أندرويد يقتل ما في
-  /// الخلفيّة متى ضاقت الذاكرة — ومن اختار «بعد ساعة» ثمّ خرج دقيقتين فقُتل
-  /// تطبيقُه، لو حُسب القتلُ إقلاعاً جديداً لَطُولب برمزه وهو لم يمضِ عليه
-  /// إلّا دقيقتان. فتُحفظ اللحظةُ عند المغادرة وتُقارَن عند العودة، ولا فرقَ
-  /// بين عودةٍ من الخلفيّة وعودةٍ بعد قتل.
-  ///
-  /// **وبلا لحظةٍ محفوظةٍ يُقفل.** أوّلُ إقلاعٍ بعد التفعيل، وخزنةٌ مُسحت،
-  /// وجهازٌ أُعيد تشغيله — كلُّها مجهولةٌ المدّة، والمجهولُ يُقفل.
+  /// وهو أصدقُ ما يمكن قولُه: التطبيقُ كان مغلقاً، ولا يُعرف كم مضى ولا في
+  /// يد من كان الجوال.
   Future<void> boot() async {
     _enabled = await lockIsSet();
-    _after = await lockAfter();
-    if (!_enabled) {
-      _locked = false;
-      notifyListeners();
-      return;
-    }
-    final saved = DateTime.tryParse(await _read(_keyLeftAt) ?? '');
-    _locked =
-        saved == null || DateTime.now().difference(saved) >= lockDelay(_after);
+    _locked = _enabled;
+    _left = false;
     notifyListeners();
   }
 
   /// يُنادى حين يغادر التطبيقُ المقدّمة.
+  ///
+  /// ولا يُقفل هنا: القفلُ عند العودة، وإلّا لَرأى صاحبُه شاشةَ الرمز تُرسم
+  /// خلفه وهو يغادر.
   void onLeave() {
     if (!_enabled) return;
-    final now = DateTime.now();
-    _leftAt = now;
-    // بلا `await`: `didChangeAppLifecycleState` لا ينتظر، والنظامُ قد يجمّد
-    // التطبيق بعد لحظات — فتُطلق الكتابةُ ولا يُوقَف عليها شيء.
-    _write(_keyLeftAt, now.toIso8601String());
+    _left = true;
   }
 
-  /// يُنادى عند العودة — فيُقفل إن طال الغياب.
+  /// يُنادى عند العودة — فيُقفل إن كان غادر.
   void onReturn() {
-    if (!_enabled || _locked) return;
-    final left = _leftAt;
-    if (left == null) return;
-    if (DateTime.now().difference(left) >= lockDelay(_after)) {
-      _locked = true;
-      notifyListeners();
-    }
+    if (!_enabled || _locked || !_left) return;
+    _locked = true;
+    _left = false;
+    notifyListeners();
   }
 
   /// يفتح بالرمز، أو يعدّ محاولةً خاطئة.
@@ -228,11 +208,7 @@ class AppLock extends ChangeNotifier {
     if (await lockVerify(pin)) {
       _locked = false;
       _wrong = 0;
-      _leftAt = null;
-      // **وتُجدَّد اللحظةُ عند الفتح.** ولولا ذلك لَبقيت لحظةُ الغياب
-      // القديمةَ محفوظةً، فمن فتح قفلَه ثمّ قُتل تطبيقُه بعد ثانية وجد
-      // الرمزَ مرّةً أخرى وهو لم يغب.
-      await _write(_keyLeftAt, DateTime.now().toIso8601String());
+      _left = false;
       notifyListeners();
       return true;
     }
@@ -243,15 +219,15 @@ class AppLock extends ChangeNotifier {
 
   bool get exhausted => _wrong >= lockMaxAttempts;
 
-  Future<void> enable(String pin, LockAfter after) async {
+  /// يفعّل القفل بالرمز — **ولا يُقفل عليه في اللحظة نفسِها**.
+  ///
+  /// من ضبط رمزَه للتوّ لم يغادر بعد، وشاشةُ رمزٍ تُلقى في وجهه فورَ الضبط
+  /// تُقرأ عطباً لا حمايةً.
+  Future<void> enable(String pin) async {
     await lockSetPin(pin);
-    await lockSetAfter(after);
-    // ولحظةُ التفعيل استعمالٌ — فمن فعّله ثمّ قُتل تطبيقُه لا يُقفل عليه
-    // فوراً وهو لم يغادر.
-    await _write(_keyLeftAt, DateTime.now().toIso8601String());
     _enabled = true;
-    _after = after;
     _locked = false;
+    _left = false;
     _wrong = 0;
     notifyListeners();
   }
@@ -261,12 +237,6 @@ class AppLock extends ChangeNotifier {
     _enabled = false;
     _locked = false;
     _wrong = 0;
-    notifyListeners();
-  }
-
-  Future<void> changeAfter(LockAfter value) async {
-    await lockSetAfter(value);
-    _after = value;
     notifyListeners();
   }
 

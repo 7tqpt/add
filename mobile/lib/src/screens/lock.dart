@@ -9,6 +9,7 @@ import '../core/app_lock.dart';
 import '../core/i18n.dart';
 import '../core/theme.dart';
 import '../ui/kit.dart';
+import '../ui/motion.dart';
 
 class LockScreen extends StatefulWidget {
   const LockScreen({super.key, required this.lock, required this.onSignOut});
@@ -88,7 +89,11 @@ class _LockScreenState extends State<LockScreen> {
         child: Center(
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(Space.xl),
-            child: Column(
+            // **وعرضٌ محدود.** على لوحٍ أو جوالٍ عريضٍ جدّاً تتباعد المفاتيحُ
+            // حتى لا تُدخَل أربعةُ أرقامٍ بإبهامٍ واحد.
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 380),
+              child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 const Icon(Icons.lock_outline, size: 40, color: AppColors.accent),
@@ -102,30 +107,7 @@ class _LockScreenState extends State<LockScreen> {
                 const SizedBox(height: Space.xl),
 
                 // النقاطُ الأربع — تُري ما أُدخل بلا أن تُظهر الرقم.
-                Row(
-                  key: const ValueKey('pin-dots'),
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    for (var i = 0; i < 4; i++)
-                      Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 7),
-                        width: 14,
-                        height: 14,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: i < _pin.length
-                              ? AppColors.accent
-                              : Colors.transparent,
-                          border: Border.all(
-                            color: i < _pin.length
-                                ? AppColors.accent
-                                : AppColors.hairline,
-                            width: 1.5,
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
+                PinDots(key: const ValueKey('pin-dots'), filled: _pin.length),
 
                 if (_error != null) ...[
                   const SizedBox(height: Space.lg),
@@ -146,13 +128,47 @@ class _LockScreenState extends State<LockScreen> {
                   onPressed: _busy ? null : _forgot,
                   child: Text(tr('نسيتُ الرمز')),
                 ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
       ),
     );
   }
+}
+
+/// النقاطُ الأربع — تُري ما أُدخل بلا أن تُظهر الرقم.
+///
+/// **وواحدةٌ للشاشة وللورقة.** كانتا نسختين متطابقتين في ملفٍّ واحد، فبُدّلت
+/// إحداهما مرّةً وبقيت الأخرى.
+class PinDots extends StatelessWidget {
+  const PinDots({super.key, required this.filled, this.size = 17});
+  final int filled;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    mainAxisAlignment: MainAxisAlignment.center,
+    children: [
+      for (var i = 0; i < 4; i++)
+        AnimatedContainer(
+          duration: Motion.fast,
+          curve: Motion.enter,
+          margin: EdgeInsets.symmetric(horizontal: size * 0.5),
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: i < filled ? AppColors.accent : Colors.transparent,
+            border: Border.all(
+              color: i < filled ? AppColors.accent : AppColors.hairline,
+              width: 1.6,
+            ),
+          ),
+        ),
+    ],
+  );
 }
 
 /// لوحةُ الأرقام — ثلاثةٌ في كلّ صفّ، والصفرُ وحده مع زرّ المحو.
@@ -165,53 +181,73 @@ class _Pad extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Widget key(String label, {VoidCallback? onTap, Widget? icon}) => SizedBox(
-      width: 72,
-      height: 62,
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          key: ValueKey('pad-$label'),
-          borderRadius: BorderRadius.circular(14),
-          onTap: busy ? null : (onTap ?? () => onDigit(label)),
-          child: Center(
-            child: icon ??
-                Text(
-                  label,
-                  style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.ink,
-                  ),
-                ),
-          ),
-        ),
-      ),
-    );
+    // **والمفتاحُ يكبر بكِبَر الشاشة ولا يبقى على اثنين وسبعين بكسلاً.**
+    //
+    // كان مقاسُه ثابتاً، فيخرج على جوالٍ عريضٍ لوحةً صغيرةً محشورةً في وسط
+    // فراغٍ واسع — تُقرأ لوحةَ آلةٍ حاسبةٍ لا لوحةَ قفل. ويُقاس هنا من عرض
+    // المتاح لا من عرض الشاشة، فتصحّ اللوحةُ داخل ورقةٍ سفليّةٍ ضيّقةٍ كما
+    // تصحّ في شاشةٍ كاملة.
+    //
+    // **وسقفٌ فوقه لا يعلو:** على الجوالات العريضة والألواح يصير المفتاحُ
+    // أعرضَ من الإبهام فيبعد الرقمُ عن الرقم، فتُدخَل أربعةُ أرقامٍ بحركةِ
+    // يدٍ كاملةٍ لا بإبهام.
+    return LayoutBuilder(
+      builder: (context, box) {
+        final available = box.maxWidth.isFinite ? box.maxWidth : 320.0;
+        final w = (available / 3).clamp(64.0, 104.0);
+        final h = w * 0.86;
+        final digit = (w * 0.36).clamp(24.0, 34.0);
 
-    return Column(
-      children: [
-        for (final row in const [
-          ['1', '2', '3'],
-          ['4', '5', '6'],
-          ['7', '8', '9'],
-        ])
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [for (final d in row) key(d)],
+        Widget key(String label, {VoidCallback? onTap, Widget? icon}) => SizedBox(
+          width: w,
+          height: h,
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              key: ValueKey('pad-$label'),
+              borderRadius: BorderRadius.circular(w / 2),
+              onTap: busy ? null : (onTap ?? () => onDigit(label)),
+              child: Center(
+                child: icon ??
+                    Text(
+                      label,
+                      style: TextStyle(
+                        fontSize: digit,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.ink,
+                      ),
+                    ),
+              ),
+            ),
           ),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
+        );
+
+        return Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            const SizedBox(width: 72),
-            key('0'),
-            key('back',
-                onTap: onBack,
-                icon: const Icon(Icons.backspace_outlined,
-                    size: 22, color: AppColors.ink2)),
+            for (final row in const [
+              ['1', '2', '3'],
+              ['4', '5', '6'],
+              ['7', '8', '9'],
+            ])
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [for (final d in row) key(d)],
+              ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                SizedBox(width: w),
+                key('0'),
+                key('back',
+                    onTap: onBack,
+                    icon: Icon(Icons.backspace_outlined,
+                        size: digit * 0.82, color: AppColors.ink2)),
+              ],
+            ),
           ],
-        ),
-      ],
+        );
+      },
     );
   }
 }
@@ -219,7 +255,13 @@ class _Pad extends StatelessWidget {
 /// يسأل عن رمزٍ رباعيٍّ في ورقةٍ سفليّة — لضبطه أو تأكيده.
 ///
 /// ويعيد الرمزَ أو `null` إن رجع بلا إدخال.
-Future<String?> askPin(BuildContext context, {required String title}) {
+Future<String?> askPin(
+  BuildContext context, {
+  required String title,
+  String? subtitle,
+  String? step,
+  String? note,
+}) {
   return showModalBottomSheet<String>(
     context: context,
     isScrollControlled: true,
@@ -227,13 +269,31 @@ Future<String?> askPin(BuildContext context, {required String title}) {
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
     ),
-    builder: (_) => _PinSheet(title: title),
+    builder: (_) => _PinSheet(
+      title: title,
+      subtitle: subtitle,
+      step: step,
+      note: note,
+    ),
   );
 }
 
 class _PinSheet extends StatefulWidget {
-  const _PinSheet({required this.title});
+  const _PinSheet({
+    required this.title,
+    this.subtitle,
+    this.step,
+    this.note,
+  });
+
   final String title;
+  final String? subtitle;
+
+  /// «١ من ٢» — **ومن لا يعرف كم بقي يظنّ الشاشةَ عالقةً حين تُعاد عليه.**
+  final String? step;
+
+  /// ما يُقال لمن أخطأ في المحاولة السابقة.
+  final String? note;
 
   @override
   State<_PinSheet> createState() => _PinSheetState();
@@ -246,34 +306,44 @@ class _PinSheetState extends State<_PinSheet> {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.all(Space.lg),
-      child: Column(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 380),
+        child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          Container(
+            width: 46,
+            height: 46,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: AppColors.accent.withValues(alpha: Tint.disc),
+            ),
+            child: const Icon(Icons.lock_outline,
+                size: 22, color: AppColors.accent),
+          ),
+          const SizedBox(height: Space.md),
+          if (widget.step != null) ...[
+            Muted(widget.step!, size: 11),
+            const SizedBox(height: Space.xs),
+          ],
           Text(widget.title,
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+          if (widget.subtitle != null) ...[
+            const SizedBox(height: Space.xs),
+            Muted(widget.subtitle!, size: 12),
+          ],
+          if (widget.note != null) ...[
+            const SizedBox(height: Space.sm),
+            Text(
+              widget.note!,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                  color: AppColors.critical, fontSize: 12.5, height: 1.6),
+            ),
+          ],
           const SizedBox(height: Space.lg),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              for (var i = 0; i < 4; i++)
-                Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 7),
-                  width: 14,
-                  height: 14,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: i < _pin.length ? AppColors.accent : Colors.transparent,
-                    border: Border.all(
-                      color: i < _pin.length
-                          ? AppColors.accent
-                          : AppColors.hairline,
-                      width: 1.5,
-                    ),
-                  ),
-                ),
-            ],
-          ),
+          PinDots(filled: _pin.length),
           const SizedBox(height: Space.lg),
           _Pad(
             busy: false,
@@ -295,6 +365,7 @@ class _PinSheetState extends State<_PinSheet> {
             child: Text(tr('إلغاء')),
           ),
         ],
+        ),
       ),
     );
   }

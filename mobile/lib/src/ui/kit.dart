@@ -744,7 +744,15 @@ class StatusBadge extends StatelessWidget {
   );
 }
 
-/// علامةُ التوثيق — قرصٌ بلون العلامة فيه صحّ.
+/// أزرقُ التوثيق.
+///
+/// **وهو أزرقُ لا نبيذيّ، وهذا خروجٌ عن لوح الألوان عن قصد.** علامةُ التوثيق
+/// الزرقاء ليست زينةً من عندنا: هي عُرفٌ تعلّمه الناسُ من فيسبوك وإنستغرام
+/// وتويتر وتيك توك، فيقرؤونها في لمحةٍ بلا أن يقرأوا حرفاً. وصبغُها بلون
+/// الهويّة يجعلها زخرفةً أخرى في شاشةٍ نبيذيّةٍ كلُّها — تُرى ولا تُفهم.
+const verifiedBlue = Color(0xFF1D9BF0);
+
+/// علامةُ التوثيق — قرصٌ مسنَّنٌ أزرقُ فيه صحّ.
 ///
 /// تقع **إلى جانب الاسم** لا في سطرٍ تحته: هي صفةٌ للاسم لا خبرٌ مستقلّ، ومن
 /// رآها لصيقةً به عرف من فوره أن هذا هو المزوّد الذي وثّقته الإدارة لا اسماً
@@ -753,22 +761,78 @@ class StatusBadge extends StatelessWidget {
 /// وحجمُها من حجم النصّ الذي تجاوره: علامةٌ بحجمٍ ثابت إلى جانب اسمٍ كبير
 /// تبدو منسيّة، وإلى جانب اسمٍ صغير تبدو دخيلة.
 class VerifiedMark extends StatelessWidget {
-  const VerifiedMark({super.key, this.size = 18, this.tooltip = 'مزوّد موثَّق'});
+  const VerifiedMark({
+    super.key,
+    this.size = 18,
+    this.tooltip = 'مزوّد موثَّق',
+    this.color = verifiedBlue,
+  });
+
   final double size;
   final String tooltip;
+
+  /// **ويُمرَّر ليُسأل عنه.** لونٌ محبوسٌ في رسّامٍ خاصٍّ لا يُقاس إلّا
+  /// بقراءة البكسلات، فيُخرَج إلى حيث يُقرأ.
+  final Color color;
 
   @override
   Widget build(BuildContext context) => Tooltip(
     message: tooltip,
-    child: Container(
+    child: SizedBox(
       width: size,
       height: size,
-      alignment: Alignment.center,
-      decoration: const BoxDecoration(shape: BoxShape.circle, color: AppColors.accent),
-      // الأبيض على أزرق العلامة ‎٧٫٥٥:١‎ — مقيسٌ لا مفترَض.
-      child: Icon(Icons.check_rounded, size: size * 0.68, color: AppColors.accentInk),
+      child: CustomPaint(
+        painter: _VerifiedPainter(color: color),
+        child: Center(
+          // الأبيضُ على هذا الأزرق ‎٣٫٠٩:١‎ — وهو حدُّ النصّ الكبير والرموز.
+          child: Icon(
+            Icons.check_rounded,
+            size: size * 0.56,
+            color: Colors.white,
+          ),
+        ),
+      ),
     ),
   );
+}
+
+/// القرصُ المسنَّن — اثنا عشرَ فصّاً حول دائرة.
+///
+/// **ويُرسم باتّحاد دوائرَ لا بمضلّعٍ نجميّ.** المضلّعُ يعطي تروساً حادّةَ
+/// الأطراف، والفصوصُ في هذه العلامة **مستديرة**. واتّحادُ اثنتَي عشرةَ دائرةً
+/// صغيرةً حول دائرةٍ كبرى يعطي الشكلَ نفسَه بلا حسابِ منحنيات.
+class _VerifiedPainter extends CustomPainter {
+  const _VerifiedPainter({required this.color});
+  final Color color;
+
+  static const _lobes = 12;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final r = math.min(size.width, size.height) / 2;
+    if (r <= 0) return;
+    final centre = Offset(size.width / 2, size.height / 2);
+
+    // القرصُ الداخليّ يبتلع أنصافَ الدوائر الداخلة فيه فلا يبقى إلّا نتوءُها.
+    final core = r * 0.80;
+    final lobe = r * 0.235;
+    final ring = r - lobe;
+
+    var path = Path()..addOval(Rect.fromCircle(center: centre, radius: core));
+    for (var i = 0; i < _lobes; i++) {
+      final a = i * 2 * math.pi / _lobes - math.pi / 2;
+      final c = centre + Offset(math.cos(a) * ring, math.sin(a) * ring);
+      path = Path.combine(
+        PathOperation.union,
+        path,
+        Path()..addOval(Rect.fromCircle(center: c, radius: lobe)),
+      );
+    }
+    canvas.drawPath(path, Paint()..color = color);
+  }
+
+  @override
+  bool shouldRepaint(_VerifiedPainter old) => old.color != color;
 }
 
 /// صورةُ مقدّم الخدمة: شعارُه إن رفعه، وإلّا حرفُه في قرص.
@@ -1273,16 +1337,25 @@ class ErrorBlock extends StatelessWidget {
 /// والافتراضيّ ليس زينة: من يضيف قسماً جديداً من اللوحة غداً يجد له أيقونةً
 /// معقولة بدل فراغٍ في بطاقةٍ نصفُها فارغ.
 IconData categoryIcon(String slug) => switch (slug) {
-  'halls' => Icons.meeting_room_outlined,
+  // **خيمةٌ لا باب.** كان `meeting_room` — وهو بابٌ يخرج منه سهم، يُقرأ
+  // «خروج» لا «قاعة». والقسمُ اسمُه «القاعات والخيام»، و`festival` سرادقٌ
+  // مضروبٌ بأعمدة: هو الشيءُ نفسُه الذي يُحجَز.
+  'halls' => Icons.festival_outlined,
   'catering' => Icons.restaurant_outlined,
-  'artists' => Icons.music_note_outlined,
+  // **ميكروفونٌ لا نوتة.** النوتةُ تقول «موسيقى»، والقسمُ مغنّون وفرقٌ
+  // تُحجَز لتُحيي ليلة — والميكروفونُ يقول ذلك بلا حرف.
+  'artists' => Icons.mic_outlined,
   'sound' => Icons.speaker_outlined,
   'photography' => Icons.photo_camera_outlined,
   'support' => Icons.water_drop_outlined,
   'cars' => Icons.directions_car_outlined,
   'attire' => Icons.checkroom_outlined,
-  'planners' => Icons.event_note_outlined,
-  'beauty' => Icons.brush_outlined,
+  // **ولا دفترَ مواعيدَ لمتعهّدي الحفلات.** كان `event_note` — وهو التقويمُ
+  // نفسُه الذي في شريط التنقّل، فيلتبس القسمُ بالتبويب.
+  'planners' => Icons.celebration_outlined,
+  // **مقصٌّ لا فرشاةُ دهان.** كان `brush` — وهي فرشاةُ طلاءٍ تُقرأ «دهان»؛
+  // والقسمُ «التجميل والكوافير».
+  'beauty' => Icons.content_cut_outlined,
   'decor' => Icons.local_florist_outlined,
   'printing' => Icons.print_outlined,
   _ => Icons.category_outlined,
