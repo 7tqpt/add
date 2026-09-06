@@ -1,0 +1,157 @@
+-- ============================================================================
+--  اللافتاتُ الإعلانيّة في أعلى الرئيسية
+-- ============================================================================
+--
+--  المساحةُ التي كانت لبطاقتَي «خطة العرس» و«حجوزاتي» صارت للإعلان، تُدار من
+--  لوحة التحكّم. ولا جدولَ جديدٌ لها: `promotions` فيها `kind = 'banner'`
+--  و`image_url` و`starts_at`/`ends_at` منذ أوّل مخطَّط — كانت معرَّفةً ولا
+--  تُقرأ.
+--
+--  ── وعلّةٌ كانت كامنةً تُصلَح هنا ──────────────────────────────────────────
+--
+--  `api_active_promotions` — التي تملأ شريط «مزوّدون مميّزون» — **لا تسأل عن
+--  النوع**. فأوّلُ لافتةٍ تُنشأ كانت ستظهر في ذلك الشريط بطاقةَ مزوّدٍ كذلك،
+--  لأنّ كليهما صفٌّ في الجدول نفسِه بحالة `active`. ولم يظهر ذلك قطُّ لأنّه
+--  لم تُنشأ لافتةٌ قطّ. فتُقيَّد بـ`kind = 'featured'`.
+--
+--  التشغيل:  psql "$DATABASE_URL" -f supabase/banners.sql
+-- ============================================================================
+
+begin;
+
+-- ----------------------------------------------------------------------------
+--  سلّةُ صور اللافتات — عامّةٌ للقراءة، ويكتب فيها من يكتب في «النموّ»
+-- ----------------------------------------------------------------------------
+--
+--  ومنفصلةٌ عن `category-images`: حدُّ الحجم هنا أوسع (اللافتةُ صورةٌ عريضة
+--  لا أيقونةُ قسم)، وحذفُ صورِ حملةٍ منتهيةٍ لا يجوز أن يقترب من صور الأقسام.
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('ad-banners', 'ad-banners', true, 2097152,
+        array['image/jpeg', 'image/png', 'image/webp'])
+on conflict (id) do update
+  set public             = excluded.public,
+      file_size_limit    = excluded.file_size_limit,
+      allowed_mime_types = excluded.allowed_mime_types;
+
+drop policy if exists ad_banners_public_read on storage.objects;
+create policy ad_banners_public_read on storage.objects
+  for select to anon, authenticated
+  using (bucket_id = 'ad-banners');
+
+drop policy if exists ad_banners_admin_insert on storage.objects;
+create policy ad_banners_admin_insert on storage.objects
+  for insert to authenticated
+  with check (bucket_id = 'ad-banners' and public.can_write_area('growth'));
+
+drop policy if exists ad_banners_admin_update on storage.objects;
+create policy ad_banners_admin_update on storage.objects
+  for update to authenticated
+  using (bucket_id = 'ad-banners' and public.can_write_area('growth'))
+  with check (bucket_id = 'ad-banners' and public.can_write_area('growth'));
+
+drop policy if exists ad_banners_admin_delete on storage.objects;
+create policy ad_banners_admin_delete on storage.objects
+  for delete to authenticated
+  using (bucket_id = 'ad-banners' and public.can_write_area('growth'));
+
+-- ----------------------------------------------------------------------------
+--  ما يقرؤه التطبيق
+-- ----------------------------------------------------------------------------
+--
+--  **وصورةٌ فارغةٌ تُسقَط هنا لا في التطبيق وحده.** لافتةٌ بلا صورة تعني في
+--  الشاشة مستطيلاً رماديّاً بعرضها في أعلى الرئيسية — وهو أسوأُ مما لو لم
+--  تكن هناك لافتةٌ أصلاً.
+--
+--  والاسمُ الظاهرُ من المزوّد إن كان لها مزوّد: اللافتةُ قد تكون حملةً من
+--  المنصّة نفسِها فلا وجهةَ لها ولا اسم.
+create or replace function public.api_active_banners()
+returns table (
+  id uuid, image_url text, provider_id uuid, provider_name text, ends_at timestamptz
+)
+language sql stable security definer set search_path = public as $$
+  select pr.id,
+         pr.image_url,
+         pr.provider_id,
+         coalesce(p.business_name, ''),
+         pr.ends_at
+    from public.promotions pr
+    left join public.service_providers p
+           on p.id = pr.provider_id and p.status = 'verified'
+   where pr.kind = 'banner'
+     and pr.placement = 'home'
+     and pr.status = 'active'
+     and now() between pr.starts_at and pr.ends_at
+     and coalesce(pr.image_url, '') <> ''
+   order by pr.starts_at desc
+   limit 6
+$$;
+
+grant execute on function public.api_active_banners() to anon, authenticated;
+
+-- ----------------------------------------------------------------------------
+--  وشريطُ «مزوّدون مميّزون» يقتصر على الإبراز
+-- ----------------------------------------------------------------------------
+create or replace function public.api_active_promotions()
+returns table (
+  id uuid, provider_id uuid, provider_name text, logo_path text,
+  governorate text, rating numeric, ends_at timestamptz
+)
+language sql stable security definer set search_path = public as $$
+  select pr.id, pr.provider_id, p.business_name, p.logo_path,
+         p.governorate, p.rating, pr.ends_at
+    from public.promotions pr
+    join public.service_providers p on p.id = pr.provider_id
+   where pr.kind = 'featured'
+     and pr.status = 'active'
+     and now() between pr.starts_at and pr.ends_at
+     and p.status = 'verified'
+   order by pr.ends_at asc
+   limit 10
+$$;
+
+grant execute on function public.api_active_promotions() to anon, authenticated;
+
+-- ----------------------------------------------------------------------------
+--  والمجدولةُ تُفعَّل حين يحين وقتها
+-- ----------------------------------------------------------------------------
+--
+--  **وهذه ثغرةٌ كانت في النظام كلِّه لا في اللافتات وحدها.** `expire_promotions`
+--  تُنهي ما انقضى، ولا شيءَ يرفع `scheduled` إلى `active` حين يحين موعدُها.
+--  فحملةٌ تُنشأ لتبدأ غداً كانت تبقى «مجدولة» إلى الأبد ولا تُعرض يوماً.
+--
+--  والاسمُ يبقى `expire_promotions` ليبقى ما يناديه — الجدولةُ اليوميّة —
+--  عاملاً بلا تعديل.
+create or replace function public.expire_promotions()
+returns integer language plpgsql security definer set search_path = public as $$
+declare
+  n integer;
+begin
+  update public.promotions
+     set status = 'active'
+   where status = 'scheduled'
+     and now() between starts_at and ends_at;
+
+  update public.promotions
+     set status = 'ended'
+   where status = 'active' and ends_at < now();
+  get diagnostics n = row_count;
+  return n;
+end $$;
+
+revoke execute on function public.expire_promotions() from public, authenticated;
+
+commit;
+
+-- ----------------------------------------------------------------------------
+--  تحقّق
+-- ----------------------------------------------------------------------------
+select 'سلّة اللافتات' as البند,
+       coalesce((select id from storage.buckets where id = 'ad-banners'), 'غير موجودة') as القيمة
+union all
+select 'دالّة اللافتات',
+       coalesce((select 'موجودة' from pg_proc where proname = 'api_active_banners'), 'غير موجودة')
+union all
+select 'شريط المميّزين يقتصر على featured',
+       case when (select prosrc from pg_proc where proname = 'api_active_promotions')
+                 like '%kind = ''featured''%'
+            then 'نعم' else 'لا' end;

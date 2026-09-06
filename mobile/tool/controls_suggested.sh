@@ -137,6 +137,34 @@ run "ح) القلبُ لا يتبدّل بالضغط" sub "$HOME_DART" \
     try {' \
   '    try {'
 
+# ط) اللافتةُ بمقاسٍ آخر — لا بمقاس البطاقة التي كانت مكانها.
+run "ط) مقاسٌ غيرُ مقاس البطاقة" sub "$HOME_DART" \
+  '          height: 196,
+          child: PageView(' \
+  '          height: 140,
+          child: PageView('
+
+# ي) شارةُ «إعلان» تُرفع عن اللافتة.
+run "ي) لافتةٌ بلا شارة «إعلان»" sub "$HOME_DART" \
+  "                  'إعلان'," \
+  "                  '',"
+
+# ك) لا دوران: المؤقّتُ لا يُسلَّح.
+run "ك) لافتةٌ لا تدور وحدها" sub "$HOME_DART" \
+  '    _tick = Timer.periodic(const Duration(seconds: 3), (_) => _next());' \
+  ''
+
+# ل) الدورانُ أبطأُ من ثلاث ثوانٍ — «كل ٣ ثوانٍ» رقمٌ لا تقريب.
+run "ل) دورانٌ كلَّ عشر ثوانٍ" sub "$HOME_DART" \
+  'Timer.periodic(const Duration(seconds: 3), (_) => _next())' \
+  'Timer.periodic(const Duration(seconds: 10), (_) => _next())'
+
+# م) المؤقّتُ لا يُلغى عند زوال الشاشة.
+run "م) مؤقّتٌ يبقى بعد زوال الشاشة" sub "$HOME_DART" \
+  '    _tick?.cancel();
+    _controller.dispose();' \
+  '    _controller.dispose();'
+
 echo
 echo "== الحصيلة: $PASS سقطت، $FAIL لم تسقط =="
 [ "$FAIL" -eq 0 ]

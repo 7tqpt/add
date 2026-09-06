@@ -1,3 +1,5 @@
+import 'dart:async' show Timer;
+
 import 'package:flutter/material.dart';
 
 import '../core/format.dart';
@@ -68,11 +70,13 @@ class _HomeScreenState extends State<HomeScreen> {
       // والإعلانات معها: نداءٌ ثالثٌ في الحزمة نفسها لا رابعٌ بعدها. وفشلُه
       // لا يُسقط الرئيسية — شريطٌ ينقص لا شاشةٌ حمراء.
       Api.activePromotions().catchError((_) => <PromoSlot>[]),
+      Api.activeBanners().catchError((_) => <PromoBanner>[]),
     ]);
     return _HomeData(
       plans: results[0] as List<WeddingPlan>,
       bookings: results[1] as List<Booking>,
       promos: results[2] as List<PromoSlot>,
+      banners: results[3] as List<PromoBanner>,
     );
   }
 
@@ -103,12 +107,12 @@ class _HomeScreenState extends State<HomeScreen> {
           child: ListView(
             padding: EdgeInsets.only(top: glassHeaderTop(context), bottom: glassNavSpace),
             children: [
-              _HeroCards(
-                data: data,
-                onPlan: () => widget.onGoTo(3),
-                onBookings: () => widget.onGoTo(1),
-              ),
-              const SizedBox(height: Space.lg),
+              // اللافتاتُ الإعلانيّة — وتغيب كلَّها إن لم تكن هناك حملةٌ
+              // جارية، فلا يبقى في أعلى الشاشة صندوقٌ فارغٌ ينتظر إعلاناً.
+              if (data.banners.isNotEmpty) ...[
+                _Banners(banners: data.banners),
+                const SizedBox(height: Space.lg),
+              ],
               if (data.promos.isNotEmpty) ...[
                 _pad(_Promoted(promos: data.promos)),
                 const SizedBox(height: Space.md),
@@ -131,10 +135,12 @@ class _HomeData {
     required this.plans,
     required this.bookings,
     this.promos = const [],
+    this.banners = const [],
   });
   final List<WeddingPlan> plans;
   final List<Booking> bookings;
   final List<PromoSlot> promos;
+  final List<PromoBanner> banners;
 
   WeddingPlan? get plan => plans.isEmpty ? null : plans.first;
 
@@ -161,124 +167,178 @@ class _HomeData {
   int countOf(BookingStatus status) => upcoming.where((b) => b.status == status).length;
 }
 
-// ── البطاقتان الكبيرتان ──────────────────────────────────────────────────────
-/// خطةُ العرس وحجوزاتك — بطاقتان تُمرَّران بالإبهام.
+// ── اللافتاتُ الإعلانيّة ─────────────────────────────────────────────────────
+/// مساحةُ الإعلان في أعلى الرئيسية — صورةٌ تُمرَّر بالإبهام.
 ///
-/// بطاقتان كبيرتان لا أربعُ بطاقاتٍ صغيرة: هذان هما سؤالا من يفتح التطبيق —
-/// **كم بقي** و**ما حالُ حجوزاتي** — فيأخذان الشاشة كلَّها لا زاويةً منها.
-/// والتمرير أرخص من الضغط: الإبهام يمرّ فتظهر الثانية، بلا خروجٍ من الشاشة
-/// ولا زرِّ رجوع.
+/// **وكانت هنا بطاقتان كبيرتان:** «خطة العرس» و«حجوزاتي». حُذفتا بطلبِ صاحب
+/// المنصّة لتصير المساحةُ للإعلانات، وكلتاهما بابُها قائمٌ في الشريط السفلي.
 ///
-/// وتُطلّ الثانيةُ من الجانب (‏`viewportFraction` دون الواحد‏): بطاقةٌ تملأ
-/// العرض تماماً لا تقول إن وراءها شيئاً، فلا يُمرِّر أحدٌ ما لا يعلم أنه هناك.
-class _HeroCards extends StatefulWidget {
-  const _HeroCards({required this.data, required this.onPlan, required this.onBookings});
-
-  final _HomeData data;
-  final VoidCallback onPlan;
-  final VoidCallback onBookings;
+/// **والمقاسُ مقاسُهما نفسُه** — ‎١٩٦‎ ارتفاعاً، وإطلالةُ التالية من الجانب،
+/// والنقاطُ تحتها. فما تغيّر ما يملأ المساحةَ لا المساحةُ نفسُها.
+///
+/// **ومكتوبٌ عليها «إعلان» صراحةً.** مساحةٌ مدفوعةٌ تُعرض كأنّها اختيارُ
+/// المنصّة تخدع من يقرؤها، ومن اكتشف ذلك لاحقاً لم يعد يثق بترتيبٍ آخرَ
+/// فيها. وهو ما قيل في شريط «مزوّدون مميّزون» وهذا أَولى به: موضعُه أعلى
+/// الشاشة.
+class _Banners extends StatefulWidget {
+  const _Banners({required this.banners});
+  final List<PromoBanner> banners;
 
   @override
-  State<_HeroCards> createState() => _HeroCardsState();
+  State<_Banners> createState() => _BannersState();
 }
 
-class _HeroCardsState extends State<_HeroCards> {
-  // ‎٠٫٨٨‎: تبقى من الثانية شريحةٌ تُرى ولا تُقرأ — كافيةٌ للدلالة، لا تُشتّت.
+class _BannersState extends State<_Banners> {
+  // ‎٠٫٨٨‎: تبقى من التالية شريحةٌ تُرى ولا تُقرأ — كافيةٌ للدلالة على أنّ
+  // وراءها شيئاً، لا تُشتّت. وهي نسبةُ البطاقتين قبلها.
   final _controller = PageController(viewportFraction: 0.88);
   int _page = 0;
 
+  /// مؤقّتُ الدوران — يُحفظ ليُلغى.
+  ///
+  /// **ومؤقّتٌ لا يُلغى يُسقط الاختبارات كلَّها** («A Timer is still
+  /// pending»)، وهو محقٌّ: التسريبُ واحدٌ في الاختبار وعلى الجهاز.
+  Timer? _tick;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _arm();
+  }
+
+  /// يُشغَّل الدوران — أو لا يُشغَّل.
+  ///
+  /// **ولا يدور لواحدة:** لا شيءَ ينتقل إليه.
+  ///
+  /// **ولا يدور لمن أطفأ الحركة.** لافتةٌ تتبدّل تحت العين كلَّ ثلاثِ ثوانٍ
+  /// من أشدّ ما يزعج أصحابَ حساسيّة الحركة، وهو إعدادٌ في النظام يُسأل عنه
+  /// كما يُسأل في الدوّار وفي دخول البطاقات.
+  void _arm() {
+    _tick?.cancel();
+    _tick = null;
+    if (widget.banners.length < 2 || reduceMotion(context)) return;
+    // ثلاثُ ثوانٍ: ما يكفي لقراءة لافتةٍ لا لحفظها.
+    _tick = Timer.periodic(const Duration(seconds: 3), (_) => _next());
+  }
+
+  void _next() {
+    if (!mounted || !_controller.hasClients) return;
+    // الدورةُ تعود إلى الأولى: `%` لا حدٌّ يقف عنده، وإلّا وقفت اللافتاتُ
+    // عند الأخيرة ولم يعد أحدٌ يرى الأولى.
+    final next = (_page + 1) % widget.banners.length;
+    _controller.animateToPage(
+      next,
+      duration: const Duration(milliseconds: 420),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
   @override
   void dispose() {
+    _tick?.cancel();
     _controller.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final cards = [_planCard(), _bookingsCard()];
     return Column(
       children: [
         SizedBox(
           // ارتفاعٌ ثابت: `PageView` لا يقيس أبناءه، فبلا حدٍّ يعلوه يرمي.
-          // والرقم مقيسٌ على الرسم لا مقدَّر — أطولُ محتوىً هو بطاقة الخطة
-          // بشريطها وسطرَي المبلغ.
+          // والرقمُ هو ارتفاعُ البطاقتين اللتين كانتا هنا — «بنفس حجم
+          // البطاقة».
           height: 196,
           child: PageView(
             controller: _controller,
-            onPageChanged: (i) => setState(() => _page = i),
+            onPageChanged: (i) {
+              setState(() => _page = i);
+              // **وتُعاد المهلةُ من الصفر بعد كلّ انتقال.** من مرّر بإبهامه
+              // لافتةً لا يجوز أن تُسحب من تحت عينه بعد جزءٍ من الثانية
+              // لأنّ المؤقّت كان قد قارب.
+              _arm();
+            },
             children: [
-              for (final card in cards)
-                Padding(padding: const EdgeInsets.symmetric(horizontal: 6), child: card),
+              for (final banner in widget.banners)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 6),
+                  child: _BannerCard(banner: banner),
+                ),
             ],
           ),
         ),
-        const SizedBox(height: Space.md),
-        _Dots(active: _page, total: cards.length),
+        // ولا نقاطَ للافتةٍ واحدة: نقطةٌ وحدها تقول «هنا واحدة» ولا تُفيد.
+        if (widget.banners.length > 1) ...[
+          const SizedBox(height: Space.md),
+          _Dots(active: _page, total: widget.banners.length),
+        ],
       ],
     );
   }
+}
 
-  Widget _planCard() {
-    final p = widget.data.plan;
-    final has = p != null && p.weddingDate.isNotEmpty;
-    final days = has ? daysUntil(p.weddingDate) : null;
-    final paid = has && p.totalCost > 0 ? (p.paidAmount / p.totalCost).clamp(0.0, 1.0).toDouble() : null;
+class _BannerCard extends StatelessWidget {
+  const _BannerCard({required this.banner});
+  final PromoBanner banner;
 
-    return BigHeroCard(
-      // نبيذيٌّ من لون العلامة إلى أغمقَ منه: البطاقة سطحٌ لا لطخة.
-      // والأبيضُ على أفتح طرفيه ‎٨٫٠٨:١‎.
-      colors: const [AppColors.accentLift, AppColors.accentDeep],
-      icon: Icons.favorite_rounded,
-      title: 'خطة العرس',
-      headline: has ? countdownLabel(days) : 'ابدأ خطة عرسك',
-      subtitle: has
-          ? [formatDate(p.weddingDate), if (p.governorate.isNotEmpty) p.governorate].join(' · ')
-          : 'التاريخ والميزانية وعدد الضيوف في مكانٍ واحد',
-      progress: paid,
-      footer: has
-          ? (paid == null
-                ? 'لم تُضَف تكاليف بعد'
-                : 'مدفوع ${(paid * 100).round()}٪ · متبقٍّ ${formatMoney(p.remainingAmount)}')
-          : 'اضغط لإنشاء الخطة',
-      onTap: widget.onPlan,
+  @override
+  Widget build(BuildContext context) {
+    // نصفُ القطر ‎٢٢‎ — هو نصفُ قطر البطاقة الكبيرة، فلا تُقرأ اللافتةُ
+    // جسماً غريباً عن الشاشة.
+    final card = ClipRRect(
+      borderRadius: BorderRadius.circular(22),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          // **والرابطُ كاملٌ لا مسارٌ في سلّة.** عمودُ القاعدة اسمُه
+          // `image_url`، واللافتةُ قد تُرفع في سلّةٍ خاصّةٍ بها أو تأتي من
+          // خارج المنصّة أصلاً — فلا يُفترض لها موضعُ تخزينٍ واحد.
+          MediaThumb(url: banner.imageUrl.isEmpty ? null : banner.imageUrl),
+          // شارةُ «إعلان» على ركنٍ أعلى: صغيرةٌ لا تبتلع الصورة، ومقروءةٌ
+          // على أيّ صورةٍ لأنّ لها أرضيّتَها.
+          PositionedDirectional(
+            top: 8,
+            start: 8,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: AppColors.ink.withValues(alpha: 0.55),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                child: Text(
+                  'إعلان',
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: Colors.white,
+                    fontFamilyFallback: arabicFallback,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
-  }
 
-  Widget _bookingsCard() {
-    final s = BookingsSummary.of(widget.data.bookings);
-    final list = s.upcoming;
-    final next = s.next;
-    final confirmed = s.confirmed;
-    final pending = s.pending;
-
-    return BigHeroCard(
-      // طَفليٌّ محروق: لونٌ ثانٍ يفصل البطاقتين بلمحةٍ قبل قراءة العنوان،
-      // وهو من عائلة الكريم والذهب لا غريبٌ عنها — والأبيض عليه ‎٥٫٥٦:١‎.
-      colors: const [Color(0xFFA3521A), Color(0xFF6B3208)],
-      icon: Icons.event_available_rounded,
-      title: 'حجوزاتي',
-      headline: list.isEmpty ? 'لا حجوزات قادمة' : formatCount(list.length, bookingForms),
-      subtitle: next == null
-          ? 'تصفّح الخدمات واحجز أوّل خدمة'
-          : 'أقربها ${_whenLabel(daysUntil(next.eventDate))} · ${next.providerName}',
-      footer: list.isEmpty
-          ? 'اضغط لعرض حجوزاتك'
-          : [
-              if (confirmed > 0) 'مؤكّد $confirmed',
-              if (pending > 0) 'بانتظار المزوّد $pending',
-            ].join(' · '),
-      onTap: widget.onBookings,
+    // **ولا تُضغط لافتةٌ لا وجهةَ لها.** ضغطةٌ لا يقع بعدها شيءٌ تُقرأ عطباً
+    // في التطبيق لا إعلاناً بلا رابط.
+    if (banner.providerId.isEmpty) return card;
+    return Pressable(
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => PublicProviderScreen(
+            providerId: banner.providerId,
+            // الاسمُ يُكتب في الشريط ريثما يصل الملفّ — فلا تُفتح الشاشةُ
+            // على عنوانٍ عامٍّ ثمّ يتبدّل تحت العين.
+            name: banner.providerName.isEmpty ? null : banner.providerName,
+          ),
+        ),
+      ),
+      child: card,
     );
   }
 }
-
-String _whenLabel(int? days) {
-  if (days == null) return '—';
-  if (days == 0) return 'اليوم';
-  if (days == 1) return 'غداً';
-  return 'بعد ${formatCount(days, dayForms)}';
-}
-
 
 /// نقاطٌ تحت البطاقات — كم بطاقةً هناك وأينَ أنت منها.
 class _Dots extends StatelessWidget {

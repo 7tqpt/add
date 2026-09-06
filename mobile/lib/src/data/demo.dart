@@ -1809,6 +1809,22 @@ final demoSettlements = [
 
 // ----- الإعلانات -----
 
+/// لافتتان في وضع العرض — بلا صورةٍ حقيقيّة.
+///
+/// ولا شبكةَ في الاختبارات أصلاً، فيُرسم مكانُ الصورة سطحاً باهتاً. والمقصودُ
+/// من وجودهما هنا الهندسةُ لا الصورة: أن يُقاس مقاسُ اللافتة وتمريرُها
+/// ونقاطُها بلا خادم.
+const demoBanners = [
+  PromoBanner(
+    id: 'banner-1',
+    imageUrl: 'https://example.invalid/banners/1.jpg',
+    providerId: 'p1',
+    providerName: 'قاعة التاج الملكي',
+  ),
+  // والثانيةُ بلا وجهة: حملةٌ من المنصّة نفسِها لا لمزوّدٍ بعينه.
+  PromoBanner(id: 'banner-2', imageUrl: 'https://example.invalid/banners/2.jpg'),
+];
+
 const demoPromos = [
   PromoSlot(
     id: 'promo-1',

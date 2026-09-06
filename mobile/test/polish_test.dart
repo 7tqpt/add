@@ -667,4 +667,59 @@ void main() {
       });
     }
   });
+
+  // ==========================================================================
+  //  ٦) مساحةُ الإعلان في أعلى الرئيسية
+  // ==========================================================================
+
+  group('اللافتاتُ الإعلانيّة', () {
+    Future<void> open(WidgetTester tester) async {
+      _screen(tester, height: 3000);
+      await tester.pumpWidget(_wrap(CustomerShell(session: Session())));
+      await _settle(tester);
+    }
+
+    testWidgets('**بمقاس البطاقتين اللتين كانتا هنا**', (tester) async {
+      // «بنفس حجم البطاقة» — والرقمُ ‎١٩٦‎ هو ارتفاعُ `PageView` نفسِه لا
+      // ارتفاعُ اللافتة داخله، فيُقاس الشريطُ لا ما فيه.
+      await open(tester);
+      expect(tester.getSize(find.byType(PageView)).height, 196);
+    });
+
+    testWidgets('**وعليها «إعلان» صراحةً**', (tester) async {
+      // مساحةٌ مدفوعةٌ تُعرض كأنّها اختيارُ المنصّة تخدع من يقرؤها.
+      await open(tester);
+      expect(
+        find.descendant(of: find.byType(PageView), matching: find.text('إعلان')),
+        findsWidgets,
+      );
+    });
+
+    testWidgets('**وتدور وحدها كلَّ ثلاث ثوانٍ**', (tester) async {
+      // **ويُقاس ما رُسم لا ما جُدول.** مؤقّتٌ يعمل ولا ينتقل شيءٌ لا يفيد،
+      // فيُقرأ موضعُ الشريط قبل الثلاث وبعدها.
+      await open(tester);
+      int at() => tester
+          .widget<PageView>(find.byType(PageView))
+          .controller!
+          .page!
+          .round();
+      final before = at();
+
+      await tester.pump(const Duration(seconds: 3));
+      await tester.pumpAndSettle();
+
+      final after = at();
+      expect(after, isNot(before), reason: 'لم تنتقل اللافتةُ بعد ثلاث ثوانٍ');
+    });
+
+    testWidgets('**ولا يُترك مؤقّتُها معلّقاً بعد زوال الشاشة**', (tester) async {
+      // مؤقّتٌ دوريٌّ لا يُلغى يُبقي الشاشةَ حيّةً في الذاكرة بعد إغلاقها،
+      // وإطارُ الاختبار يُسقط أيَّ اختبارٍ يتركه — وهو محقٌّ.
+      await open(tester);
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump(const Duration(seconds: 10));
+      expect(tester.takeException(), isNull);
+    });
+  });
 }

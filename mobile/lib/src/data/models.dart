@@ -1335,6 +1335,37 @@ class Settlement {
 }
 
 /// إعلانٌ قائمٌ في الرئيسية — بطاقةٌ في الشريط.
+/// لافتةٌ إعلانيّة — صورةٌ تُعرض في أعلى الرئيسية، تُدار من لوحة التحكّم.
+///
+/// **وهي غير `PromoSlot`.** تلك ظهورٌ مميَّزٌ لمزوّدٍ يطلبه بنفسه ويدفع ثمنه،
+/// فتُعرض بطاقتُه في شريط «مزوّدون مميّزون». وهذه مساحةٌ تبيعها المنصّة
+/// بصورةٍ يرفعها المسؤول: قد تكون لمزوّدٍ وقد تكون لحملةٍ من المنصّة نفسِها.
+///
+/// **والصورةُ وحدها.** لا عنوانَ ولا وصف: اللافتةُ تُصمَّم كاملةً خارج
+/// التطبيق، ونصٌّ نرسمه فوقها يقع على صورةٍ لا نعرف ما فيها.
+class PromoBanner {
+  const PromoBanner({
+    required this.id,
+    required this.imageUrl,
+    this.providerId = '',
+    this.providerName = '',
+  });
+
+  final String id;
+  final String imageUrl;
+
+  /// ما يُفتح بالضغط — ملفُّ المزوّد. ويُترك فارغاً فلا تُضغط اللافتة.
+  final String providerId;
+  final String providerName;
+
+  factory PromoBanner.fromMap(Map<String, dynamic> m) => PromoBanner(
+    id: m['id'] as String,
+    imageUrl: (m['image_url'] ?? '') as String,
+    providerId: (m['provider_id'] ?? '') as String,
+    providerName: (m['provider_name'] ?? '') as String,
+  );
+}
+
 class PromoSlot {
   const PromoSlot({
     required this.id,

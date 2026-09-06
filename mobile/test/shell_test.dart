@@ -37,17 +37,9 @@ void _phone(WidgetTester tester, {double height = 2340}) {
   addTearDown(tester.view.reset);
 }
 
-/// النصّ داخل البطاقات وحدها — لا في الشريط السفلي.
-///
-/// «خطة العرس» و«حجوزاتي» اسمان في مكانين: عنوانُ بطاقةٍ وبندُ تنقّل. وباحثٌ
-/// بالنصّ وحده يجد اثنين فيرمي، أو يجد الخطأ منهما فيقيس مكان الشريط.
-Finder _inCards(String text) =>
-    find.descendant(of: find.byType(PageView), matching: find.text(text));
-
-bool _onScreen(WidgetTester tester, Finder finder) {
-  final screen = Offset.zero & tester.view.physicalSize / tester.view.devicePixelRatio;
-  return screen.contains(tester.getCenter(finder));
-}
+// (وذهب من هنا `_inCards` و`_onScreen` — كانا يجدان نصّاً داخل البطاقتين
+// الكبيرتين ويسألان أهو في الشاشة أم خارجها. واللافتةُ الإعلانيّةُ صورةٌ لا
+// نصَّ فيها، فيُسأل موضعُ الشريط نفسِه.)
 
 // (وذهب من هنا `_card` و`_activeCategories` — مساعِدان كانا يجدان بطاقةَ
 // قسمٍ في شبكة الرئيسية ويقرآن أيُّها نشط. لا شبكةَ هناك الآن، ونظيرُهما
@@ -96,41 +88,29 @@ void main() {
     expect(tester.widget<GlassHeader>(find.byType(GlassHeader)).title, 'حسابي');
   });
 
-  testWidgets('بطاقتان كبيرتان تُمرَّران بالإبهام', (tester) async {
-    _phone(tester);
-    await tester.pumpWidget(_wrap(_session()));
-    await _settle(tester);
-    await tester.pumpAndSettle(const Duration(seconds: 2));
-
-    expect(find.byType(PageView), findsOneWidget);
-    // الأولى في الشاشة، والثانية مبنيّةٌ خارجها تُطلّ من الحافّة.
-    expect(_onScreen(tester, _inCards('خطة العرس')), isTrue);
-    expect(_onScreen(tester, _inCards('حجزان')), isFalse);
-
-    // ثمّ يمرّ الإبهام فتحلّ الثانية محلّها. والجرّ إلى اليمين تقدّمٌ في
-    // العربية لا رجوع.
+  testWidgets('**واللافتةُ الإعلانيّةُ تُمرَّر بالإبهام**', (tester) async {
+    // **وسقط هنا اختباران** كانا يقيسان البطاقتين الكبيرتين — «خطة العرس»
+    // و«حجوزاتي» — تمريرَهما بالإبهام، وفتحَ بطاقةِ الحجوزات لتبويبها.
+    // حُذفت البطاقتان وصارت المساحةُ للإعلانات بطلبِ صاحب المنصّة، وبابُ
+    // كلٍّ منهما قائمٌ في الشريط السفلي (ويحرسه «الضغط ينقل التبويب»).
     //
-    // ووجودُ النصّ وحده لا يثبت شيئاً: `PageView` يبني الصفحة المجاورة وإن
-    // كانت خارج الشاشة، فـ`findsOneWidget` تمرّ ولو لم يتحرّك شيء — وقد
-    // مرّت، وكانت البطاقة عند ‎−٣٢٠‎ من الحافة.
-    await _swipe(tester);
-    expect(_onScreen(tester, _inCards('حجزان')), isTrue);
-  });
-
-  testWidgets('وبطاقة الحجوزات تفتح تبويب الحجوزات', (tester) async {
-    // البطاقة تنقل التبويب ولا تفتح شاشةً فوقه: لو دفعت شاشةً جديدة لخرج
-    // المستخدم من الشريط السفلي كلّه وصار عليه زرُّ رجوع — وهو مغادرة لا
-    // انتقال.
+    // وبقي من ضمانِهما ما يبقى: **أنّ الشريطَ يُمرَّر**. والدورانُ التلقائيُّ
+    // وحدَه لا يكفي — من مدّ إصبعَه ينتظر أن ينتقل.
     _phone(tester);
     await tester.pumpWidget(_wrap(_session()));
     await _settle(tester);
-    await tester.pumpAndSettle(const Duration(seconds: 2));
 
+    int page() => tester
+        .widget<PageView>(find.byType(PageView))
+        .controller!
+        .page!
+        .round();
+    final before = page();
+
+    // والجرُّ إلى اليمين تقدّمٌ في العربية لا رجوع.
     await _swipe(tester);
-    await tester.tapAt(tester.getCenter(_inCards('حجزان')));
-    await tester.pumpAndSettle();
 
-    expect(tester.widget<GlassNavBar>(find.byType(GlassNavBar)).index, 1);
+    expect(page(), isNot(before), reason: 'لم تنتقل اللافتةُ بالإبهام');
   });
 
   // **وسقطت هنا أربعةُ اختبارات** كانت تقيس شبكةَ الأقسام في الرئيسية:
