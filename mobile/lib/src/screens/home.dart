@@ -24,7 +24,6 @@ class HomeScreen extends StatefulWidget {
     required this.session,
     required this.onGoTo,
     required this.onCategory,
-    required this.onSearch,
   });
 
   final Session session;
@@ -49,7 +48,6 @@ class HomeScreen extends StatefulWidget {
   /// يكتب «قاعة» في أوّل ما يراه. ولو لم يجد حقلاً في الرئيسية لَلَزِمه أن
   /// يعرف أن «استكشف» هي بابُ البحث — وهو لا يعرف. فالحقل هنا مدخل،
   /// والشاشةُ هناك هي التي تبحث فعلاً: حقلان يبحثان بشيفرتين يفترقان.
-  final void Function(String term) onSearch;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -112,11 +110,6 @@ class _HomeScreenState extends State<HomeScreen> {
           child: ListView(
             padding: EdgeInsets.only(top: glassHeaderTop(context), bottom: glassNavSpace),
             children: [
-              _pad(_Greeting(
-                session: widget.session,
-                onSearch: widget.onSearch,
-              )),
-              const SizedBox(height: Space.md),
               _HeroCards(
                 data: data,
                 onPlan: () => widget.onGoTo(3),
@@ -351,13 +344,12 @@ class _Categories extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
-          children: [
-            const Expanded(child: SectionTitle('ابحث عن خدمة')),
-            TextButton(onPressed: onExplore, child: const Text('الكل')),
-          ],
+        // **بلا عنوانٍ فوق الأقسام.** كان «ابحث عن خدمة» وتحته حقلُ بحثٍ
+        // يقول الشيءَ نفسَه، فحُذف الاثنان. والأقسامُ تُعرّف نفسَها.
+        Align(
+          alignment: AlignmentDirectional.centerEnd,
+          child: TextButton(onPressed: onExplore, child: const Text('الكل')),
         ),
-        const SizedBox(height: Space.sm),
         // شبكةٌ هنا لا صفٌّ أفقيّ — عكسَ شاشة التصفّح: هناك الأقسام مرشِّحٌ
         // فوق قائمة، وهنا هي المحتوى نفسه ولا شيء تحتها يُزاحمها.
         GridView.count(
@@ -391,74 +383,6 @@ class _Categories extends StatelessWidget {
                 onTap: () => onCategory(c),
               ),
           ],
-        ),
-      ],
-    );
-  }
-}
-
-// ── الترحيب والبحث ──────────────────────────────────────────────────────────
-//
-// **حقلُ بحثٍ في أوّل ما يُرى.** من فتح التطبيق يريد قاعةً يكتب «قاعة» —
-// ولو لم يجد حقلاً هنا لَلَزِمه أن يعرف أن «استكشف» هي بابُ البحث، وهو لا
-// يعرف. والحقلُ **مدخلٌ لا باحث**: يحمل ما كُتب إلى شاشة الاستكشاف فتبحث
-// هي. وحقلان يبحثان بشيفرتين يفترقان عند أوّل مرشِّحٍ يُضاف.
-class _Greeting extends StatefulWidget {
-  const _Greeting({required this.session, required this.onSearch});
-  final Session session;
-  final void Function(String term) onSearch;
-
-  @override
-  State<_Greeting> createState() => _GreetingState();
-}
-
-class _GreetingState extends State<_Greeting> {
-  final _term = TextEditingController();
-
-  @override
-  void dispose() {
-    _term.dispose();
-    super.dispose();
-  }
-
-  void _go() {
-    final term = _term.text.trim();
-    if (term.isEmpty) return;
-    widget.onSearch(term);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        const Text(
-          'مرحباً بك في فرحتي',
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.w700,
-            color: AppColors.ink,
-            fontFamilyFallback: arabicFallback,
-          ),
-        ),
-        const SizedBox(height: 2),
-        const Muted('كل ما تحتاجه لحفل زفافٍ مثالي، في مكانٍ واحد', size: 13),
-        const SizedBox(height: Space.md),
-        TextField(
-          controller: _term,
-          textInputAction: TextInputAction.search,
-          onSubmitted: (_) => _go(),
-          decoration: InputDecoration(
-            hintText: 'ابحث عن خدمة أو مقدّم خدمة',
-            prefixIcon: const Icon(Icons.search, size: 20, color: AppColors.muted),
-            // زرٌّ صريحٌ إلى جانب مفتاح البحث في لوحة المفاتيح: من يكتب
-            // بلوحةٍ لا مفتاحَ بحثٍ فيها كان يقف عند الحقل.
-            suffixIcon: IconButton(
-              onPressed: _go,
-              tooltip: 'ابحث',
-              icon: const Icon(Icons.arrow_back, size: 20),
-            ),
-          ),
         ),
       ],
     );
