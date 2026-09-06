@@ -542,4 +542,129 @@ void main() {
       expect(d.gradient, isNull);
     });
   });
+
+  // ==========================================================================
+  //  ٥) «خدماتٌ لك» — بطاقتان في السطر
+  // ==========================================================================
+
+  group('خدماتٌ لك', () {
+    Future<void> open(WidgetTester tester, {double width = 1080}) async {
+      _screen(tester, width: width, height: 3000);
+      await tester.pumpWidget(_wrap(CustomerShell(session: Session())));
+      await _settle(tester);
+      // القسمُ تحت الطيّة: يُنزل إليه لا يُفترض أنّه مرسوم.
+      await tester.dragFrom(
+        tester.getCenter(find.byType(GlassNavBar)) - const Offset(0, 300),
+        const Offset(0, -420),
+      );
+      await _settle(tester);
+      // **ولا يُقاس قسمٌ خارج الشاشة.** لو لم يبلغه التمريرُ لَمرّ اختبارُ
+      // الفيض فارغاً — لا فيضَ فيما لا يُرسم.
+      expect(find.byType(MediaThumb), findsWidgets,
+          reason: 'لم يبلغ التمريرُ «خدماتٌ لك»');
+    }
+
+    /// البطاقاتُ في مجموعاتٍ حسب سطرها — بتقارب المركز الرأسيّ.
+    List<List<Rect>> rows(WidgetTester tester) {
+      final boxes = find
+          .byType(MediaThumb)
+          .evaluate()
+          .map((e) => tester.getRect(find.byWidget(e.widget)))
+          .toList()
+        ..sort((a, b) => a.center.dy.compareTo(b.center.dy));
+      final out = <List<Rect>>[];
+      for (final r in boxes) {
+        if (out.isNotEmpty && (out.last.first.center.dy - r.center.dy).abs() < 8) {
+          out.last.add(r);
+        } else {
+          out.add([r]);
+        }
+      }
+      return out;
+    }
+
+    testWidgets('**بطاقتان في السطر لا واحدة**', (tester) async {
+      // **ويُقاس الرسمُ لا عددُ الأبناء.** صفٌّ فيه بطاقتان قد يُرسم واحدةً
+      // فوق أخرى لو ضاق، فالمقصودُ أن تقعا في سطرٍ واحدٍ فعلاً.
+      await open(tester);
+      final lines = rows(tester);
+      expect(lines, isNotEmpty, reason: 'لا بطاقاتِ خدماتٍ في الشاشة');
+      expect(lines.first.length, 2, reason: 'السطرُ الأوّل ليس فيه بطاقتان');
+      // وعرضُهما واحد: بطاقةٌ أعرضُ من جارتها تُقرأ صنفاً آخر.
+      expect((lines.first[0].width - lines.first[1].width).abs(), lessThan(1.0));
+    });
+
+    testWidgets('**وأربعٌ لا ثلاث — فلا تبقى خليّةٌ فارغة**', (tester) async {
+      await open(tester);
+      final lines = rows(tester);
+      expect(lines.length, greaterThanOrEqualTo(2));
+      expect(lines[0].length + lines[1].length, 4);
+    });
+
+    testWidgets('**والبطاقتان متساويتا الارتفاع في السطر**', (tester) async {
+      // اسمٌ في سطرين وجارُه في سطرٍ واحد يجعل البطاقتين متفاوتتين، فيتعرّج
+      // السطرُ وتبدو إحداهما ناقصة. و`IntrinsicHeight` يسوّيهما بأطولهما.
+      await open(tester);
+      final cards = find.byType(Card).evaluate().map((e) => tester.getRect(find.byWidget(e.widget))).toList();
+      final pairs = <List<Rect>>[];
+      for (final r in cards) {
+        if (pairs.isNotEmpty && (pairs.last.first.center.dy - r.center.dy).abs() < 8) {
+          pairs.last.add(r);
+        } else {
+          pairs.add([r]);
+        }
+      }
+      final full = pairs.where((p) => p.length == 2);
+      expect(full, isNotEmpty, reason: 'لا سطرَ فيه بطاقتان');
+      for (final p in full) {
+        expect((p[0].height - p[1].height).abs(), lessThan(0.5),
+            reason: 'بطاقتان في سطرٍ واحدٍ مختلفتا الارتفاع');
+      }
+    });
+
+    testWidgets('**وعلى كلّ بطاقةٍ قلبُ المفضّلة**', (tester) async {
+      await open(tester);
+      final hearts = find.descendant(
+        of: find.byType(Card),
+        matching: find.byIcon(Icons.favorite_border),
+      );
+      // أربعُ بطاقاتٍ فأربعةُ قلوب — لا واحدٌ على الأولى وحدها.
+      expect(hearts, findsNWidgets(4));
+    });
+
+    testWidgets('**والضغطُ عليه يحفظ ولا يفتح صفحةَ الخدمة**', (tester) async {
+      // **وهذا هو العطبُ الذي يقع بلا حارس:** البطاقةُ كلُّها تفتح الصفحة،
+      // فقلبٌ فوقها بلا حَلبةِ إيماءاتٍ خاصّةٍ به يُضغط فتُفتح الصفحةُ ولا
+      // يُحفظ شيء — والإصبعُ لا يفرّق.
+      await open(tester);
+      final heart = find
+          .descendant(
+            of: find.byType(Card),
+            matching: find.byIcon(Icons.favorite_border),
+          )
+          .first;
+      await tester.tap(heart);
+      await _settle(tester);
+
+      expect(find.byType(ServiceDetailScreen), findsNothing,
+          reason: 'الضغطةُ على القلب فتحت صفحةَ الخدمة');
+      // وامتلأ قلبٌ واحدٌ لا غير.
+      expect(
+        find.descendant(
+          of: find.byType(Card),
+          matching: find.byIcon(Icons.favorite),
+        ),
+        findsOneWidget,
+        reason: 'الضغطةُ لم تُبدّل القلب',
+      );
+    });
+
+    // **والشاشةُ الضيّقةُ هي التي تفيض لا الواسعة.**
+    for (final w in [960.0, 1080.0, 1200.0]) {
+      testWidgets('**لا تفيض عند عرض ${w ~/ 3} منطقيّاً**', (tester) async {
+        await open(tester, width: w);
+        expect(tester.takeException(), isNull);
+      });
+    }
+  });
 }

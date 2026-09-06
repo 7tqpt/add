@@ -7,6 +7,8 @@ import '../data/api.dart';
 import '../data/models.dart';
 import '../data/supabase.dart';
 import '../ui/kit.dart';
+import '../ui/media.dart';
+import '../ui/motion.dart';
 import 'provider_public.dart';
 import 'service_detail.dart';
 
@@ -23,7 +25,6 @@ class HomeScreen extends StatefulWidget {
     super.key,
     required this.session,
     required this.onGoTo,
-    required this.onCategory,
   });
 
   final Session session;
@@ -35,16 +36,10 @@ class HomeScreen extends StatefulWidget {
   /// وهو ليس انتقالاً بل مغادرة.
   final void Function(int index) onGoTo;
 
-  /// فتحُ الاستكشاف **على قسمٍ بعينه**.
-  ///
-  /// وهي غير `onGoTo(2)`: تلك تفتح التبويب بلا مرشِّح. وقد كانت بطاقاتُ
-  /// الأقسام كلُّها تناديها، فيضغط المستخدم «القاعات» فيجد كلَّ شيءٍ أمامه
-  /// وكأن ضغطته لم تقع.
-  final void Function(ServiceCategory category) onCategory;
-
-  // (وكان هنا `onSearch` لحقل بحثٍ في الرئيسية. حُذف: الحقلُ لم يكن يبحث —
-  // يُكتب فيه فيُفتح تبويبُ «استكشف» ويُعاد النصُّ إلى حقلِه هناك. بابٌ إلى
-  // حقلٍ آخرَ لا أكثر.)
+  // (وكان هنا `onSearch` لحقل بحثٍ في الرئيسية، ثمّ `onCategory` لبطاقات
+  // الأقسام. حُذفا لعلّةٍ واحدة: كلاهما بابُ عبورٍ إلى شاشة «استكشف» يعيد
+  // فيها المستخدمُ ما فعله هنا — يكتب في حقلٍ ليُنقل إلى حقلٍ آخر، ويضغط
+  // قسماً ليُفتح تبويبٌ فيه صفُّ الأقسام نفسُه.)
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -62,21 +57,22 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<_HomeData> _load() async {
     // نداءاتٌ متوازية لا متتابعة: ثلاثةُ طلباتٍ على شبكة جوالٍ يمنية،
     // وتتابعُها يجمع زمنها كلّه بلا سبب.
+    //
+    // (وكانت أربعةً: `Api.categories()` معها. ذهب النداءُ مع الشبكة التي
+    // كانت تعرضه — ولو بقي لَحُمّل على كلّ فتحةٍ للتطبيق ما لا يُرسم.)
     final results = await Future.wait([
       Api.myPlans(),
       widget.session.appUserId == null
           ? Future.value(<Booking>[])
           : Api.myBookings(widget.session.appUserId!),
-      Api.categories(),
-      // والإعلانات معها: نداءٌ رابعٌ في الحزمة نفسها لا خامسٌ بعدها. وفشلُه
+      // والإعلانات معها: نداءٌ ثالثٌ في الحزمة نفسها لا رابعٌ بعدها. وفشلُه
       // لا يُسقط الرئيسية — شريطٌ ينقص لا شاشةٌ حمراء.
       Api.activePromotions().catchError((_) => <PromoSlot>[]),
     ]);
     return _HomeData(
       plans: results[0] as List<WeddingPlan>,
       bookings: results[1] as List<Booking>,
-      categories: results[2] as List<ServiceCategory>,
-      promos: results[3] as List<PromoSlot>,
+      promos: results[2] as List<PromoSlot>,
     );
   }
 
@@ -113,12 +109,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 onBookings: () => widget.onGoTo(1),
               ),
               const SizedBox(height: Space.lg),
-              _pad(_Categories(
-                categories: data.categories,
-                onExplore: () => widget.onGoTo(2),
-                onCategory: widget.onCategory,
-              )),
-              const SizedBox(height: Space.md),
               if (data.promos.isNotEmpty) ...[
                 _pad(_Promoted(promos: data.promos)),
                 const SizedBox(height: Space.md),
@@ -140,12 +130,10 @@ class _HomeData {
   _HomeData({
     required this.plans,
     required this.bookings,
-    required this.categories,
     this.promos = const [],
   });
   final List<WeddingPlan> plans;
   final List<Booking> bookings;
-  final List<ServiceCategory> categories;
   final List<PromoSlot> promos;
 
   WeddingPlan? get plan => plans.isEmpty ? null : plans.first;
@@ -320,71 +308,14 @@ class _Dots extends StatelessWidget {
   );
 }
 
-// ── الأقسام ──────────────────────────────────────────────────────────────────
-class _Categories extends StatelessWidget {
-  const _Categories({
-    required this.categories,
-    required this.onExplore,
-    required this.onCategory,
-  });
-  final List<ServiceCategory> categories;
-
-  /// زرّ «الكل» فوق الشبكة — يفتح الاستكشاف بلا مرشِّح.
-  final VoidCallback onExplore;
-
-  /// بطاقةُ القسم — تفتح الاستكشاف مُرشَّحاً على قسمها.
-  final void Function(ServiceCategory category) onCategory;
-
-  @override
-  Widget build(BuildContext context) {
-    if (categories.isEmpty) return const SizedBox.shrink();
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        // **بلا عنوانٍ فوق الأقسام.** كان «ابحث عن خدمة» وتحته حقلُ بحثٍ
-        // يقول الشيءَ نفسَه، فحُذف الاثنان. والأقسامُ تُعرّف نفسَها.
-        Align(
-          alignment: AlignmentDirectional.centerEnd,
-          child: TextButton(onPressed: onExplore, child: const Text('الكل')),
-        ),
-        // شبكةٌ هنا لا صفٌّ أفقيّ — عكسَ شاشة التصفّح: هناك الأقسام مرشِّحٌ
-        // فوق قائمة، وهنا هي المحتوى نفسه ولا شيء تحتها يُزاحمها.
-        GridView.count(
-          crossAxisCount: 4,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          mainAxisSpacing: Space.sm,
-          crossAxisSpacing: Space.sm,
-          // ٧٦ عرضاً إلى ١٢٣ ارتفاعاً على شاشة ٣٦٠. وقد ضاقت ثلاث مرّاتٍ
-          // وقيست ثلاثاً: ٠٫٨٢ أفاضت ٧٫٣ بكسل، ثم ٠٫٧٠ أفاضت ٩٫٤ بعد أن كبُر
-          // قرصُ الأيقونة، ثم ٠٫٦٤ أفاضت ١٫٣ حين رُسمت بالخطّ العربي الحقيقي
-          // لا باحتياط الاختبار — وهذه الأخيرة كانت تقع على الأجهزة وحدها.
-          childAspectRatio: 0.62,
-          children: [
-            // الأقسام كلّها لا ثمانيةٌ منها: كان `take(8)` يقصّ أربعةً بلا
-            // أن يقول، فيظنّ المستخدم أن المنصّة لا تقدّم غيرها — وهي تقدّم.
-            for (final (i, c) in categories.indexed)
-              CategoryCard(
-                label: c.name,
-                icon: categoryIcon(c.slug),
-                imageUrl: Api.categoryImageUrl(c.imagePath),
-                tone: categoryTone(c.slug),
-                active: false,
-                // العرضُ للشبكة لا للبطاقة: عرضٌ ثابتٌ داخل خليةٍ أضيق يفيض.
-                width: null,
-                // دخولٌ متدرّجٌ صفّاً بعد صفّ — ثلاثون جزءاً من الثانية بين
-                // البطاقة وجارتها. وحدٌّ أعلاه لئلّا تنتظر الأخيرةُ طويلاً.
-                enterDelay: Duration(milliseconds: (i * 30).clamp(0, 420)),
-                // القسمُ المضغوط يُحمل معه — لا `onExplore` المجرّدة: تلك
-                // تُهمل أيَّ قسمٍ ضُغط وتفتح القائمة كلَّها.
-                onTap: () => onCategory(c),
-              ),
-          ],
-        ),
-      ],
-    );
-  }
-}
+// (وكانت هنا **شبكةُ الأقسام** — اثنتا عشرة بطاقةً تشغل الشاشة الأولى
+// كلَّها. حُذفت: الأقسامُ نفسُها صفٌّ في أعلى «استكشف»، وهي هناك مرشِّحٌ
+// يعمل — يُضغط القسمُ فتُرشَّح القائمةُ تحته في مكانها. وهنا كانت بابَ
+// عبورٍ إلى تلك الشاشة نفسِها، فيُضغط القسمُ لِيُفتح تبويبٌ آخرُ ويُعاد
+// اختيارُ القسم فيه.
+//
+// وذهب معها زرُّ «الكل» فوقها — وهو يفتح «استكشف» بلا مرشِّح، أي ما يفعله
+// تبويبُ «استكشف» في الشريط السفلي.)
 
 // ── خدماتٌ مقترحة ────────────────────────────────────────────────────────────
 class _Suggested extends StatefulWidget {
@@ -395,17 +326,66 @@ class _Suggested extends StatefulWidget {
 }
 
 class _SuggestedState extends State<_Suggested> {
+  /// كم خدمةً تُعرض — **أربعٌ: بطاقتان في سطرين**.
+  ///
+  /// وثلاثٌ تترك في السطر الثاني خليّةً فارغةً تُقرأ نقصاً.
+  static const _shown = 4;
+
   late final Future<List<ServiceItem>> _future = Api.services();
+
+  /// ما حُفظ في المفضّلة — تُقرأ مرّةً وتُبدَّل في المكان.
+  Set<String> _favourites = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _loadFavourites();
+  }
+
+  Future<void> _loadFavourites() async {
+    try {
+      final rows = await Api.myFavourites();
+      if (mounted) setState(() => _favourites = rows);
+    } catch (_) {
+      // المفضّلةُ زينةٌ لا شرط: فشلُ قراءتها لا يمنع عرضَ الخدمات، والقلبُ
+      // يبقى فارغاً حتى يُضغط.
+    }
+  }
+
+  /// التبديلُ يقع في الواجهة أوّلاً ثمّ يُرسَل.
+  ///
+  /// القلبُ يستجيب فوراً كما يتوقّع الإصبع، ويعود إن رفض الخادم — ونسخةٌ
+  /// واحدةٌ من هذا السلوك في «استكشف» ومثلُها هنا، لأنّ الحالةَ محليّةٌ لكلّ
+  /// شاشة.
+  Future<void> _toggleFavourite(String serviceId) async {
+    setState(() {
+      if (!_favourites.remove(serviceId)) _favourites.add(serviceId);
+    });
+    try {
+      await Api.toggleFavourite(serviceId);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        if (!_favourites.remove(serviceId)) _favourites.add(serviceId);
+      });
+      showMessage(context, messageOf(e));
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<List<ServiceItem>>(
       future: _future,
       builder: (context, snap) {
-        final items = snap.data ?? const <ServiceItem>[];
+        final all = snap.data ?? const <ServiceItem>[];
         // لا كتلةَ خطأٍ هنا ولا مؤشّر تحميل: هذا قسمٌ مكمّل، وعطبُه لا يجوز
         // أن يُفسد شاشةً بقيّتُها سليمة. يغيب بصمتٍ ويبقى ما فوقه.
-        if (items.isEmpty) return const SizedBox.shrink();
+        if (all.isEmpty) return const SizedBox.shrink();
+        // **والعددُ مقطوعٌ هنا مرّةً واحدة.** كان محدوداً في موضعين — شرطُ
+        // الحلقة وشرطُ البطاقة الثانية — فبدّلتُ أحدَهما في ضابطٍ سالبٍ
+        // فلم يتبدّل شيء: البطاقةُ الرابعة تأتي من الشرط الآخر. وحدٌّ في
+        // موضعين ليس حدّاً.
+        final items = all.take(_shown).toList();
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -416,47 +396,186 @@ class _SuggestedState extends State<_Suggested> {
               ],
             ),
             const SizedBox(height: Space.sm),
-            for (final item in items.take(3)) ...[
-              AppCard(
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => ServiceDetailScreen(serviceId: item.id)),
-                ),
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          item.title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.ink,
-                          ),
-                        ),
+            // **بطاقتان في السطر — وأربعٌ لا ثلاث.** الثلاثةُ تترك في السطر
+            // الثاني خليّةً فارغةً تُقرأ نقصاً.
+            //
+            // **و`IntrinsicHeight` لا نسبةَ أبعادٍ ثابتة.** شبكةٌ بنسبةٍ
+            // ثابتة تفيض حين يطول عنوانٌ أو يكبر خطُّ الجهاز — وقد ضاقت
+            // شبكةُ الأقسام ثلاث مرّاتٍ لهذا السبب قبل أن تُقاس. وهنا
+            // يأخذ السطرُ ارتفاعَ أطولِ بطاقتيه، فلا فيضَ أصلاً.
+            for (var i = 0; i < items.length; i += 2) ...[
+              IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(
+                      child: _SuggestedCard(
+                        item: items[i],
+                        isFavourite: _favourites.contains(items[i].id),
+                        onToggleFavourite: () => _toggleFavourite(items[i].id),
                       ),
-                      if (item.providerRating > 0) Rating(item.providerRating),
-                    ],
-                  ),
-                  const SizedBox(height: Space.xs),
-                  Muted('${item.providerName} · ${item.providerGovernorate}'),
-                  const SizedBox(height: Space.sm),
-                  Text(
-                    formatMoney(item.price),
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.accent,
                     ),
-                  ),
-                ],
+                    const SizedBox(width: Space.sm),
+                    // خليّةٌ فارغةٌ للفردِ الأخير — لا بطاقةٌ تتمدّد على
+                    // السطر كلِّه فتُقرأ صنفاً آخرَ من البطاقات.
+                    Expanded(
+                      child: i + 1 < items.length
+                          ? _SuggestedCard(
+                              item: items[i + 1],
+                              isFavourite: _favourites.contains(items[i + 1].id),
+                              onToggleFavourite: () =>
+                                  _toggleFavourite(items[i + 1].id),
+                            )
+                          : const SizedBox.shrink(),
+                    ),
+                  ],
+                ),
               ),
               const SizedBox(height: Space.sm),
             ],
           ],
         );
       },
+    );
+  }
+}
+
+/// بطاقةُ خدمةٍ في سطرٍ من بطاقتين — غلافٌ فوق، والاسمُ والسعرُ تحته.
+///
+/// **ولمَ ليست `ServiceListCard`.** تلك صفٌّ أفقيّ: غلافٌ ‎٧٦×٧٦‎ إلى جانب
+/// عمودٍ فيه الاسمُ والمزوّدُ والسعرُ والمسافةُ والقلب. وهي مبنيّةٌ لعرض
+/// الشاشة كاملاً؛ فلو حُشرت في نصفِه لَبقي للنصّ أقلُّ من ستّين بكسلاً.
+///
+/// وهذه قِطعةٌ لا صفّ: الغلافُ بعرض البطاقة، والنصُّ تحته في ثلاثة أسطرٍ
+/// قصيرة. والحشوةُ ‎٨‎ لا ‎١٦‎ كما في `AppCard` — ستّةَ عشرَ من كلّ جانبٍ
+/// تبتلع خُمسَ البطاقة.
+class _SuggestedCard extends StatelessWidget {
+  const _SuggestedCard({
+    required this.item,
+    required this.isFavourite,
+    required this.onToggleFavourite,
+  });
+  final ServiceItem item;
+  final bool isFavourite;
+  final VoidCallback onToggleFavourite;
+
+  @override
+  Widget build(BuildContext context) {
+    return Pressable(
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => ServiceDetailScreen(serviceId: item.id)),
+      ),
+      child: Card(
+        margin: EdgeInsets.zero,
+        child: Padding(
+          padding: const EdgeInsets.all(Space.sm),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Stack(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: AspectRatio(
+                      aspectRatio: 16 / 10,
+                      child: MediaThumb(url: Api.mediaUrl(item.coverPath)),
+                    ),
+                  ),
+                  // **على ركن الغلاف لا تحت الاسم.** البطاقةُ نصفُ شاشة،
+                  // والسطرُ الذي فيه الاسمُ لا يحتمل زرّاً ‎٤٠‎ بكسلاً إلى
+                  // جانبه. والركنُ الأقصى — يسارُ الأعلى في العربية —
+                  // موضعٌ تعوّدته الأصابع من كلّ تطبيقٍ فيه حفظ.
+                  PositionedDirectional(
+                    top: 4,
+                    end: 4,
+                    child: _HeartButton(
+                      isFavourite: isFavourite,
+                      onTap: onToggleFavourite,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: Space.sm),
+              // سطران للاسم: أسماءُ الخدمات جملٌ لا كلمات — «قاعة التاج —
+              // باقة شاملة» لا يكتمل في سطرٍ داخل نصف شاشة.
+              Text(
+                item.title,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 13,
+                  height: 1.3,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.ink,
+                  fontFamilyFallback: arabicFallback,
+                ),
+              ),
+              const SizedBox(height: 2),
+              // المزوّدُ وحده بلا محافظته: سطرٌ واحدٌ في مئةٍ وأربعين بكسلاً،
+              // والاسمان معاً يُقصّان فلا يُقرأ أيٌّ منهما.
+              Muted(item.providerName, size: 10.5),
+              const SizedBox(height: Space.xs),
+              // السعرُ والتقييم في سطرٍ واحد — وهما ما تُقارَن به البطاقتان.
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      formatMoney(item.price),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.accent,
+                        fontFamilyFallback: arabicFallback,
+                      ),
+                    ),
+                  ),
+                  if (item.providerRating > 0) Rating(item.providerRating, size: 10),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// قلبُ المفضّلة على ركن الغلاف.
+///
+/// **وقرصٌ أبيضُ تحته لا قلبٌ عارٍ.** الغلافُ صورةٌ لا يُعرف لونُها: قلبٌ
+/// نبيذيٌّ على قاعةٍ مظلمةٍ لا يُرى، وأبيضُ على كوشةٍ فاتحةٍ كذلك. فالقرصُ
+/// يعطيه أرضيّةً ثابتةً مهما كانت الصورة.
+///
+/// **ونبيذيٌّ لا أحمر.** أحمرُ الخطأ على خدمةٍ يُقرأ إنذاراً — وهو `accent`
+/// نفسُه في `ServiceListCard`، فلا يفترق القلبان بين شاشتين.
+class _HeartButton extends StatelessWidget {
+  const _HeartButton({required this.isFavourite, required this.onTap});
+  final bool isFavourite;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white.withValues(alpha: 0.86),
+      shape: const CircleBorder(),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        // **ومساحتُه الخاصّة تحته.** البطاقةُ كلُّها تفتح صفحةَ الخدمة،
+        // فقلبٌ بلا حَلبةِ إيماءاتٍ خاصّةٍ به يُضغط فتُفتح الصفحة ولا يُحفظ
+        // شيء.
+        child: Padding(
+          padding: const EdgeInsets.all(5),
+          child: Icon(
+            isFavourite ? Icons.favorite : Icons.favorite_border,
+            size: 17,
+            color: AppColors.accent,
+            semanticLabel: isFavourite ? 'أزل من المفضّلة' : 'أضف للمفضّلة',
+          ),
+        ),
+      ),
     );
   }
 }

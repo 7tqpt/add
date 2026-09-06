@@ -51,6 +51,85 @@ Future<void> _pickGovernorate(WidgetTester tester, String name) async {
 }
 
 void main() {
+  // ── صفُّ الأقسام ──────────────────────────────────────────────────────────
+  // انتقل هذان من `shell_test` حين حُذفت شبكةُ الأقسام من الرئيسية: صارت
+  // الأقسامُ في هذه الشاشة وحدها، فهنا موضعُ حراستها.
+  testWidgets('**الأقسام كلُّها تُعرض لا بعضها**', (tester) async {
+    // كان في الرئيسية `take(8)` يقصّ أربعةً بلا أن يقول، فيظنّ المستخدم أن
+    // المنصّة لا تقدّم غيرها — وهي تقدّم.
+    //
+    // **ولا تُعدّ البطاقاتُ المبنيّة.** كان الاختبارُ في الرئيسية يعدّها
+    // فتصحّ: الشبكةُ هناك تبني الاثنتي عشرة كلَّها. وهنا صفٌّ أفقيٌّ كسول لا
+    // يبني إلّا ما يُرى — ستّاً — فعدٌّ كهذا يقيس عرضَ الشاشة لا اكتمال
+    // القائمة، ويسقط لو صارت البطاقةُ أضيق. فتُمرَّر الصفُّ ويُجمع ما يظهر.
+    _phone(tester);
+    await _openExplore(tester);
+
+    final seen = <String>{};
+    void collect() => seen.addAll(tester
+        .widgetList<CategoryCard>(find.byType(CategoryCard))
+        .map((c) => c.label));
+
+    // **ويُمشى الصفُّ حتى آخره لا بسحبةٍ أو سحبتين.**
+    //
+    // جرّبتُ السحبَ أوّلاً فسقطتُ في اثنتين: سحبةٌ إلى اليسار لا تحرّكه أصلاً
+    // (الصفُّ عربيٌّ، أوّلُه في أقصى اليمين)، ثمّ سحبةٌ إلى اليمين بأربعمئةٍ
+    // تُحرّكه مرّةً واحدةً ثمّ تقف — لأنّ عرضَ الشاشة ‎٣٦٠‎، فالإصبعُ يخرج
+    // منها قبل أن تكتمل السحبة. وكِلا العطبين يُخرج «القائمةُ ناقصة» وهي
+    // كاملة.
+    final row = tester.state<ScrollableState>(find
+        // و`ancestor` لا `descendant`: الصفُّ يحوي البطاقةَ لا العكس.
+        .ancestor(
+            of: find.byType(CategoryCard).first, matching: find.byType(Scrollable))
+        .first);
+
+    collect();
+    for (var i = 0; i < 30 && row.position.pixels < row.position.maxScrollExtent; i++) {
+      row.position.jumpTo(
+        (row.position.pixels + 200).clamp(0.0, row.position.maxScrollExtent),
+      );
+      await _settle(tester);
+      collect();
+    }
+    // ولا يُصدَّق أنّ الصفَّ مُشي: يُسأل موضعُه. فلو وقف في أوّله لَخرج
+    // الاختبارُ يقول «القائمةُ ناقصة» وهو لم ينظر إلّا إلى أوّلها.
+    expect(row.position.pixels, row.position.maxScrollExtent,
+        reason: 'لم يبلغ الصفُّ آخرَه — فالمجموعُ بعضُه لا كلُّه');
+    expect(row.position.maxScrollExtent, greaterThan(0),
+        reason: 'صفٌّ لا يُمرَّر أصلاً — فالقياسُ على لا شيء');
+
+    expect(seen, containsAll(<String>[
+      'الكل',
+      'القاعات والخيام',
+      'الطبخ والضيافة',
+      'التصوير والإضاءة',
+      'الديكور والكوشة',
+      'الصوت والمعدات',
+      'الفنانين والفرق',
+      'الموية والطليع والخدمات المساندة',
+      'السيارات',
+      'الملبوسات',
+      'متعهدين الحفلات',
+      'التجميل والكوافير',
+      'الطباعة',
+    ]));
+  });
+
+  testWidgets('**ولا تبقى بطاقةٌ شفّافة بعد الدخول المتدرّج**', (tester) async {
+    // الحركة تدخل البطاقات تباعاً؛ فإن عَلِقت واحدةٌ عند الشفافية بقيت فجوةٌ
+    // في الصفّ بلا خطأٍ في أيّ سجلّ.
+    _phone(tester);
+    await _openExplore(tester);
+    final faded = find
+        .descendant(
+          of: find.byType(CategoryCard, skipOffstage: false),
+          matching: find.byType(AnimatedOpacity, skipOffstage: false),
+        )
+        .evaluate()
+        .where((e) => (e.widget as AnimatedOpacity).opacity < 1);
+    expect(faded, isEmpty);
+  });
+
   testWidgets('الاستكشاف يبدأ على الخدمات', (tester) async {
     _phone(tester);
     await _openExplore(tester);
