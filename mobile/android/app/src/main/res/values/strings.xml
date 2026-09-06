@@ -6,7 +6,12 @@
 
     <!-- قناة الإشعارات. المعرّف ثابتٌ يشير إليه بيانُ التطبيق، والاسم هو ما
          يراه المستخدم في إعدادات النظام — وبلا قناةٍ مُنشأة يضعها أندرويد في
-         قناةٍ اسمها «Miscellaneous». -->
-    <string name="default_notification_channel_id">farhati_default</string>
-    <string name="default_notification_channel_name">إشعارات فرحتي</string>
+         قناةٍ اسمها «Miscellaneous».
+
+         **والمعرّفُ الثاني لا الأوّل.** `farhati_default` أُنشئت بلا
+         `AudioAttributes`، وأندرويد لا يبدّل قناةً بعد إنشائها — فمن وصلته
+         صامتةً بقيت صامتةً مهما صُلّحت الشيفرة. والعلاجُ الوحيد معرّفٌ جديد،
+         والقديمُ يُحذف في `MainActivity`. -->
+    <string name="notification_channel_id">farhati_alerts</string>
+    <string name="notification_channel_name">إشعارات فرحتي</string>
 </resources>

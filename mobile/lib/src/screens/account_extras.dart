@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 
 import '../core/app_lock.dart';
 import '../core/i18n.dart';
+import '../core/notification_tone.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../core/geo.dart';
@@ -724,8 +725,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     InkWell(
                       key: const ValueKey('notification-sound'),
                       borderRadius: BorderRadius.circular(12),
-                      onTap: () =>
-                          AppSettings.openAppSettings(type: AppSettingsType.notification),
+                      // **شاشةُ القناة أوّلاً، وإعداداتُ التطبيق احتياطاً.**
+                      // الأولى تنزله على «الصوت» مباشرةً، والثانية تعرض
+                      // قائمةَ القنوات فيلزمه أن يعرف أيَّها يفتح.
+                      onTap: () async {
+                        if (await openNotificationTone()) return;
+                        await AppSettings.openAppSettings(
+                            type: AppSettingsType.notification);
+                      },
                       child: Padding(
                         padding: const EdgeInsets.symmetric(vertical: Space.sm),
                         child: Row(
