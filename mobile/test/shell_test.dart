@@ -49,27 +49,10 @@ bool _onScreen(WidgetTester tester, Finder finder) {
   return screen.contains(tester.getCenter(finder));
 }
 
-/// أسماء البطاقات النشطة في صفّ الأقسام.
-///
-/// و`skipOffstage: false` ضرورةٌ لا احتياط: الصفُّ أفقيٌّ فيه ثلاث عشرة
-/// بطاقة، وأكثرُها خارج الشاشة.
-/// بطاقةُ قسمٍ باسمها — **لا `find.text`**.
-///
-/// اسمُ القسم يُرسم سطرين: أصلٌ وتتمّة، فلا نصَّ واحدٌ فيه الاسمُ كاملاً.
-Finder _card(String label) => find.byWidgetPredicate(
-    (w) => w is CategoryCard && w.label == label,
-    description: 'بطاقة «$label»');
+// (وذهب من هنا `_card` و`_activeCategories` — مساعِدان كانا يجدان بطاقةَ
+// قسمٍ في شبكة الرئيسية ويقرآن أيُّها نشط. لا شبكةَ هناك الآن، ونظيرُهما
+// في `directory_test` حيث الأقسام.)
 
-List<String> _activeCategories(WidgetTester tester) => tester
-    .widgetList<CategoryCard>(find.byType(CategoryCard, skipOffstage: false))
-    .where((c) => c.active)
-    .map((c) => c.label)
-    .toList();
-
-/// انتظارٌ يسع تأخير وضع العرض.
-///
-/// `pumpAndSettle` وحدها لا تحرّك الساعة ما لم يُجدول إطار، وشاشةُ التحميل لا
-/// تجدول شيئاً — فالتأخيرُ لا ينقضي أبداً.
 Future<void> _settle(WidgetTester tester) async {
   await tester.pumpAndSettle();
   await tester.pump(const Duration(seconds: 1));

@@ -7,6 +7,8 @@ import '../data/api.dart';
 import '../data/models.dart';
 import '../data/supabase.dart';
 import '../ui/kit.dart';
+import '../ui/media.dart';
+import '../ui/motion.dart';
 import 'provider_public.dart';
 import 'service_detail.dart';
 
@@ -324,17 +326,66 @@ class _Suggested extends StatefulWidget {
 }
 
 class _SuggestedState extends State<_Suggested> {
+  /// كم خدمةً تُعرض — **أربعٌ: بطاقتان في سطرين**.
+  ///
+  /// وثلاثٌ تترك في السطر الثاني خليّةً فارغةً تُقرأ نقصاً.
+  static const _shown = 4;
+
   late final Future<List<ServiceItem>> _future = Api.services();
+
+  /// ما حُفظ في المفضّلة — تُقرأ مرّةً وتُبدَّل في المكان.
+  Set<String> _favourites = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _loadFavourites();
+  }
+
+  Future<void> _loadFavourites() async {
+    try {
+      final rows = await Api.myFavourites();
+      if (mounted) setState(() => _favourites = rows);
+    } catch (_) {
+      // المفضّلةُ زينةٌ لا شرط: فشلُ قراءتها لا يمنع عرضَ الخدمات، والقلبُ
+      // يبقى فارغاً حتى يُضغط.
+    }
+  }
+
+  /// التبديلُ يقع في الواجهة أوّلاً ثمّ يُرسَل.
+  ///
+  /// القلبُ يستجيب فوراً كما يتوقّع الإصبع، ويعود إن رفض الخادم — ونسخةٌ
+  /// واحدةٌ من هذا السلوك في «استكشف» ومثلُها هنا، لأنّ الحالةَ محليّةٌ لكلّ
+  /// شاشة.
+  Future<void> _toggleFavourite(String serviceId) async {
+    setState(() {
+      if (!_favourites.remove(serviceId)) _favourites.add(serviceId);
+    });
+    try {
+      await Api.toggleFavourite(serviceId);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        if (!_favourites.remove(serviceId)) _favourites.add(serviceId);
+      });
+      showMessage(context, messageOf(e));
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<List<ServiceItem>>(
       future: _future,
       builder: (context, snap) {
-        final items = snap.data ?? const <ServiceItem>[];
+        final all = snap.data ?? const <ServiceItem>[];
         // لا كتلةَ خطأٍ هنا ولا مؤشّر تحميل: هذا قسمٌ مكمّل، وعطبُه لا يجوز
         // أن يُفسد شاشةً بقيّتُها سليمة. يغيب بصمتٍ ويبقى ما فوقه.
-        if (items.isEmpty) return const SizedBox.shrink();
+        if (all.isEmpty) return const SizedBox.shrink();
+        // **والعددُ مقطوعٌ هنا مرّةً واحدة.** كان محدوداً في موضعين — شرطُ
+        // الحلقة وشرطُ البطاقة الثانية — فبدّلتُ أحدَهما في ضابطٍ سالبٍ
+        // فلم يتبدّل شيء: البطاقةُ الرابعة تأتي من الشرط الآخر. وحدٌّ في
+        // موضعين ليس حدّاً.
+        final items = all.take(_shown).toList();
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -345,47 +396,186 @@ class _SuggestedState extends State<_Suggested> {
               ],
             ),
             const SizedBox(height: Space.sm),
-            for (final item in items.take(3)) ...[
-              AppCard(
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => ServiceDetailScreen(serviceId: item.id)),
-                ),
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          item.title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.ink,
-                          ),
-                        ),
+            // **بطاقتان في السطر — وأربعٌ لا ثلاث.** الثلاثةُ تترك في السطر
+            // الثاني خليّةً فارغةً تُقرأ نقصاً.
+            //
+            // **و`IntrinsicHeight` لا نسبةَ أبعادٍ ثابتة.** شبكةٌ بنسبةٍ
+            // ثابتة تفيض حين يطول عنوانٌ أو يكبر خطُّ الجهاز — وقد ضاقت
+            // شبكةُ الأقسام ثلاث مرّاتٍ لهذا السبب قبل أن تُقاس. وهنا
+            // يأخذ السطرُ ارتفاعَ أطولِ بطاقتيه، فلا فيضَ أصلاً.
+            for (var i = 0; i < items.length; i += 2) ...[
+              IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(
+                      child: _SuggestedCard(
+                        item: items[i],
+                        isFavourite: _favourites.contains(items[i].id),
+                        onToggleFavourite: () => _toggleFavourite(items[i].id),
                       ),
-                      if (item.providerRating > 0) Rating(item.providerRating),
-                    ],
-                  ),
-                  const SizedBox(height: Space.xs),
-                  Muted('${item.providerName} · ${item.providerGovernorate}'),
-                  const SizedBox(height: Space.sm),
-                  Text(
-                    formatMoney(item.price),
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.accent,
                     ),
-                  ),
-                ],
+                    const SizedBox(width: Space.sm),
+                    // خليّةٌ فارغةٌ للفردِ الأخير — لا بطاقةٌ تتمدّد على
+                    // السطر كلِّه فتُقرأ صنفاً آخرَ من البطاقات.
+                    Expanded(
+                      child: i + 1 < items.length
+                          ? _SuggestedCard(
+                              item: items[i + 1],
+                              isFavourite: _favourites.contains(items[i + 1].id),
+                              onToggleFavourite: () =>
+                                  _toggleFavourite(items[i + 1].id),
+                            )
+                          : const SizedBox.shrink(),
+                    ),
+                  ],
+                ),
               ),
               const SizedBox(height: Space.sm),
             ],
           ],
         );
       },
+    );
+  }
+}
+
+/// بطاقةُ خدمةٍ في سطرٍ من بطاقتين — غلافٌ فوق، والاسمُ والسعرُ تحته.
+///
+/// **ولمَ ليست `ServiceListCard`.** تلك صفٌّ أفقيّ: غلافٌ ‎٧٦×٧٦‎ إلى جانب
+/// عمودٍ فيه الاسمُ والمزوّدُ والسعرُ والمسافةُ والقلب. وهي مبنيّةٌ لعرض
+/// الشاشة كاملاً؛ فلو حُشرت في نصفِه لَبقي للنصّ أقلُّ من ستّين بكسلاً.
+///
+/// وهذه قِطعةٌ لا صفّ: الغلافُ بعرض البطاقة، والنصُّ تحته في ثلاثة أسطرٍ
+/// قصيرة. والحشوةُ ‎٨‎ لا ‎١٦‎ كما في `AppCard` — ستّةَ عشرَ من كلّ جانبٍ
+/// تبتلع خُمسَ البطاقة.
+class _SuggestedCard extends StatelessWidget {
+  const _SuggestedCard({
+    required this.item,
+    required this.isFavourite,
+    required this.onToggleFavourite,
+  });
+  final ServiceItem item;
+  final bool isFavourite;
+  final VoidCallback onToggleFavourite;
+
+  @override
+  Widget build(BuildContext context) {
+    return Pressable(
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => ServiceDetailScreen(serviceId: item.id)),
+      ),
+      child: Card(
+        margin: EdgeInsets.zero,
+        child: Padding(
+          padding: const EdgeInsets.all(Space.sm),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Stack(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: AspectRatio(
+                      aspectRatio: 16 / 10,
+                      child: MediaThumb(url: Api.mediaUrl(item.coverPath)),
+                    ),
+                  ),
+                  // **على ركن الغلاف لا تحت الاسم.** البطاقةُ نصفُ شاشة،
+                  // والسطرُ الذي فيه الاسمُ لا يحتمل زرّاً ‎٤٠‎ بكسلاً إلى
+                  // جانبه. والركنُ الأقصى — يسارُ الأعلى في العربية —
+                  // موضعٌ تعوّدته الأصابع من كلّ تطبيقٍ فيه حفظ.
+                  PositionedDirectional(
+                    top: 4,
+                    end: 4,
+                    child: _HeartButton(
+                      isFavourite: isFavourite,
+                      onTap: onToggleFavourite,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: Space.sm),
+              // سطران للاسم: أسماءُ الخدمات جملٌ لا كلمات — «قاعة التاج —
+              // باقة شاملة» لا يكتمل في سطرٍ داخل نصف شاشة.
+              Text(
+                item.title,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 13,
+                  height: 1.3,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.ink,
+                  fontFamilyFallback: arabicFallback,
+                ),
+              ),
+              const SizedBox(height: 2),
+              // المزوّدُ وحده بلا محافظته: سطرٌ واحدٌ في مئةٍ وأربعين بكسلاً،
+              // والاسمان معاً يُقصّان فلا يُقرأ أيٌّ منهما.
+              Muted(item.providerName, size: 10.5),
+              const SizedBox(height: Space.xs),
+              // السعرُ والتقييم في سطرٍ واحد — وهما ما تُقارَن به البطاقتان.
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      formatMoney(item.price),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.accent,
+                        fontFamilyFallback: arabicFallback,
+                      ),
+                    ),
+                  ),
+                  if (item.providerRating > 0) Rating(item.providerRating, size: 10),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// قلبُ المفضّلة على ركن الغلاف.
+///
+/// **وقرصٌ أبيضُ تحته لا قلبٌ عارٍ.** الغلافُ صورةٌ لا يُعرف لونُها: قلبٌ
+/// نبيذيٌّ على قاعةٍ مظلمةٍ لا يُرى، وأبيضُ على كوشةٍ فاتحةٍ كذلك. فالقرصُ
+/// يعطيه أرضيّةً ثابتةً مهما كانت الصورة.
+///
+/// **ونبيذيٌّ لا أحمر.** أحمرُ الخطأ على خدمةٍ يُقرأ إنذاراً — وهو `accent`
+/// نفسُه في `ServiceListCard`، فلا يفترق القلبان بين شاشتين.
+class _HeartButton extends StatelessWidget {
+  const _HeartButton({required this.isFavourite, required this.onTap});
+  final bool isFavourite;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white.withValues(alpha: 0.86),
+      shape: const CircleBorder(),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        // **ومساحتُه الخاصّة تحته.** البطاقةُ كلُّها تفتح صفحةَ الخدمة،
+        // فقلبٌ بلا حَلبةِ إيماءاتٍ خاصّةٍ به يُضغط فتُفتح الصفحة ولا يُحفظ
+        // شيء.
+        child: Padding(
+          padding: const EdgeInsets.all(5),
+          child: Icon(
+            isFavourite ? Icons.favorite : Icons.favorite_border,
+            size: 17,
+            color: AppColors.accent,
+            semanticLabel: isFavourite ? 'أزل من المفضّلة' : 'أضف للمفضّلة',
+          ),
+        ),
+      ),
     );
   }
 }
