@@ -44,24 +44,17 @@ class _CustomerShellState extends State<CustomerShell> {
   /// تعرف أن التبويب سيُفتح الآن وعلى أيّ شيء.
   String? _category;
 
-  /// نصُّ بحثٍ قادمٌ من الرئيسية إلى تبويب الاستكشاف.
-  String? _search;
-
   void _goTo(int i) => setState(() {
     _index = i;
     // التنقّل من الشريط السفلي — أو من زرّ «الكل» في الرئيسية — يفتح
     // الاستكشاف بلا مرشِّح. ولولا المسحُ هنا لبقي قسمُ ضغطةٍ سابقة عالقاً،
     // فيضغط «استكشف» ويجد قائمةً مقصوصةً بلا سبب.
+    //
+    // (وكان معه نصُّ بحثٍ يأتي من حقلٍ في الرئيسية — حُذف الحقلُ لأنّه
+    // يكرّر بحثَ شاشة الاستكشاف، فذهب النصُّ معه.)
     _category = null;
-    _search = null;
   });
 
-  /// البحثُ من الرئيسية: يفتح الاستكشاف على النصّ لا على شاشةٍ فارغة.
-  void _openSearch(String term) => setState(() {
-    _search = term;
-    _category = null;
-    _index = 2;
-  });
 
   /// فتحُ الاستكشاف مُرشَّحاً على قسمٍ بعينه.
   void _openCategory(ServiceCategory c) => setState(() {
@@ -153,10 +146,9 @@ class _CustomerShellState extends State<CustomerShell> {
         session: widget.session,
         onGoTo: _goTo,
         onCategory: _openCategory,
-        onSearch: _openSearch,
       ),
       MyBookingsScreen(session: widget.session),
-      ExploreScreen(categoryId: _category, search: _search),
+      ExploreScreen(categoryId: _category),
       PlanScreen(session: widget.session),
       AccountScreen(session: widget.session),
     ];

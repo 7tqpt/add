@@ -38,6 +38,16 @@ Widget _wrap(Widget child) => MaterialApp(
       home: Directionality(textDirection: TextDirection.rtl, child: child),
     );
 
+/// نبضٌ حتى تسكن الشاشة — والنبضةُ الوسطى للمؤقّتات لا للحركة.
+///
+/// `pumpAndSettle` لا تُقدّم الساعةَ إلّا ما دام إطارٌ مجدولاً، ومؤقّتُ قراءةٍ
+/// لا يجدول شيئاً حتى يحين. فتُدسّ نبضةُ ثانيةٍ بينهما.
+Future<void> _settle(WidgetTester tester) async {
+  await tester.pumpAndSettle();
+  await tester.pump(const Duration(seconds: 1));
+  await tester.pumpAndSettle();
+}
+
 void _screen(WidgetTester tester, {double width = 1080, double height = 2400}) {
   tester.view.physicalSize = Size(width, height);
   tester.view.devicePixelRatio = 3.0;
@@ -274,8 +284,11 @@ void main() {
       // الأخرى.
       _screen(tester);
       await tester.pumpWidget(_wrap(CustomerShell(session: Session())));
-      await tester.pump();
-      await tester.pump(const Duration(seconds: 1));
+      // **ولا يُكتفى بنبضتين.** الرئيسيةُ قائمةٌ كسولة: ما نزل تحت الطيّة لا
+      // يُبنى أصلاً. فلمّا حُذف حقلُ البحث والترحيب صعد ما تحتهما إلى داخل
+      // الشاشة، فبدأ قراءةً مؤجَّلةً بمؤقّتٍ يُنشأ في آخر نبضة ولا يجد ما
+      // يُشغّله — فسقط الاختبارُ بـ«مؤقّتٌ معلّق» وهو لا يقيس مؤقّتاً.
+      await _settle(tester);
 
       // **وتُقرأ الرموزُ المرسومةُ تحت الشريط نفسِه** لا قائمةُ الإعدادات:
       // `GlassNavItem` صنفُ بياناتٍ لا عنصرُ شجرة، وقائمةٌ صحيحةٌ قد تُرسم

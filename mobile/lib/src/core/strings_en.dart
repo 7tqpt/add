@@ -85,8 +85,6 @@ const Map<String, String> englishStrings = {
   'إنشاء الخطة': 'Create plan',
   'إيقاف': 'Stop',
   'ابحث': 'Search',
-  'ابحث عن خدمة': 'Search for a service',
-  'ابحث عن خدمة أو مقدّم خدمة': 'Search for a service or provider',
   'ابحث عن…': 'Search…',
   'اختر المحافظة': 'Choose a governorate',
   'كل المحافظات': 'All governorates',
