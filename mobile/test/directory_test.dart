@@ -38,6 +38,18 @@ Future<void> _openExplore(WidgetTester tester) async {
   await _settle(tester);
 }
 
+/// يختار محافظةً من الورقة المنسدلة.
+///
+/// **وكانت شريحةً تُضغط مباشرةً.** صارت المحافظاتُ زرّاً يُفتح على ورقة، فلا
+/// شريحةَ باسم محافظةٍ في الشجرة أصلاً.
+Future<void> _pickGovernorate(WidgetTester tester, String name) async {
+  await tester.tap(find.byKey(const ValueKey('governorate-field')));
+  await _settle(tester);
+  // `.last` لأنّ الاسمَ قد يكون مكتوباً في بطاقةٍ خلف الورقة كذلك.
+  await tester.tap(find.text(name).last);
+  await _settle(tester);
+}
+
 void main() {
   testWidgets('الاستكشاف يبدأ على الخدمات', (tester) async {
     _phone(tester);
@@ -128,11 +140,7 @@ void main() {
     final before = tester.widgetList<ServiceListCard>(find.byType(ServiceListCard)).length;
     expect(before, greaterThan(1));
 
-    await tester.tap(find.descendant(
-      of: find.byType(PickChip),
-      matching: find.text('عدن'),
-    ));
-    await _settle(tester);
+    await _pickGovernorate(tester, 'عدن');
 
     final cards = tester.widgetList<ServiceListCard>(find.byType(ServiceListCard)).toList();
     expect(cards, isNotEmpty);
