@@ -23,7 +23,6 @@ class HomeScreen extends StatefulWidget {
     super.key,
     required this.session,
     required this.onGoTo,
-    required this.onCategory,
   });
 
   final Session session;
@@ -35,16 +34,10 @@ class HomeScreen extends StatefulWidget {
   /// وهو ليس انتقالاً بل مغادرة.
   final void Function(int index) onGoTo;
 
-  /// فتحُ الاستكشاف **على قسمٍ بعينه**.
-  ///
-  /// وهي غير `onGoTo(2)`: تلك تفتح التبويب بلا مرشِّح. وقد كانت بطاقاتُ
-  /// الأقسام كلُّها تناديها، فيضغط المستخدم «القاعات» فيجد كلَّ شيءٍ أمامه
-  /// وكأن ضغطته لم تقع.
-  final void Function(ServiceCategory category) onCategory;
-
-  // (وكان هنا `onSearch` لحقل بحثٍ في الرئيسية. حُذف: الحقلُ لم يكن يبحث —
-  // يُكتب فيه فيُفتح تبويبُ «استكشف» ويُعاد النصُّ إلى حقلِه هناك. بابٌ إلى
-  // حقلٍ آخرَ لا أكثر.)
+  // (وكان هنا `onSearch` لحقل بحثٍ في الرئيسية، ثمّ `onCategory` لبطاقات
+  // الأقسام. حُذفا لعلّةٍ واحدة: كلاهما بابُ عبورٍ إلى شاشة «استكشف» يعيد
+  // فيها المستخدمُ ما فعله هنا — يكتب في حقلٍ ليُنقل إلى حقلٍ آخر، ويضغط
+  // قسماً ليُفتح تبويبٌ فيه صفُّ الأقسام نفسُه.)
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -62,21 +55,22 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<_HomeData> _load() async {
     // نداءاتٌ متوازية لا متتابعة: ثلاثةُ طلباتٍ على شبكة جوالٍ يمنية،
     // وتتابعُها يجمع زمنها كلّه بلا سبب.
+    //
+    // (وكانت أربعةً: `Api.categories()` معها. ذهب النداءُ مع الشبكة التي
+    // كانت تعرضه — ولو بقي لَحُمّل على كلّ فتحةٍ للتطبيق ما لا يُرسم.)
     final results = await Future.wait([
       Api.myPlans(),
       widget.session.appUserId == null
           ? Future.value(<Booking>[])
           : Api.myBookings(widget.session.appUserId!),
-      Api.categories(),
-      // والإعلانات معها: نداءٌ رابعٌ في الحزمة نفسها لا خامسٌ بعدها. وفشلُه
+      // والإعلانات معها: نداءٌ ثالثٌ في الحزمة نفسها لا رابعٌ بعدها. وفشلُه
       // لا يُسقط الرئيسية — شريطٌ ينقص لا شاشةٌ حمراء.
       Api.activePromotions().catchError((_) => <PromoSlot>[]),
     ]);
     return _HomeData(
       plans: results[0] as List<WeddingPlan>,
       bookings: results[1] as List<Booking>,
-      categories: results[2] as List<ServiceCategory>,
-      promos: results[3] as List<PromoSlot>,
+      promos: results[2] as List<PromoSlot>,
     );
   }
 
@@ -113,12 +107,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 onBookings: () => widget.onGoTo(1),
               ),
               const SizedBox(height: Space.lg),
-              _pad(_Categories(
-                categories: data.categories,
-                onExplore: () => widget.onGoTo(2),
-                onCategory: widget.onCategory,
-              )),
-              const SizedBox(height: Space.md),
               if (data.promos.isNotEmpty) ...[
                 _pad(_Promoted(promos: data.promos)),
                 const SizedBox(height: Space.md),
@@ -140,12 +128,10 @@ class _HomeData {
   _HomeData({
     required this.plans,
     required this.bookings,
-    required this.categories,
     this.promos = const [],
   });
   final List<WeddingPlan> plans;
   final List<Booking> bookings;
-  final List<ServiceCategory> categories;
   final List<PromoSlot> promos;
 
   WeddingPlan? get plan => plans.isEmpty ? null : plans.first;
@@ -320,71 +306,14 @@ class _Dots extends StatelessWidget {
   );
 }
 
-// ── الأقسام ──────────────────────────────────────────────────────────────────
-class _Categories extends StatelessWidget {
-  const _Categories({
-    required this.categories,
-    required this.onExplore,
-    required this.onCategory,
-  });
-  final List<ServiceCategory> categories;
-
-  /// زرّ «الكل» فوق الشبكة — يفتح الاستكشاف بلا مرشِّح.
-  final VoidCallback onExplore;
-
-  /// بطاقةُ القسم — تفتح الاستكشاف مُرشَّحاً على قسمها.
-  final void Function(ServiceCategory category) onCategory;
-
-  @override
-  Widget build(BuildContext context) {
-    if (categories.isEmpty) return const SizedBox.shrink();
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        // **بلا عنوانٍ فوق الأقسام.** كان «ابحث عن خدمة» وتحته حقلُ بحثٍ
-        // يقول الشيءَ نفسَه، فحُذف الاثنان. والأقسامُ تُعرّف نفسَها.
-        Align(
-          alignment: AlignmentDirectional.centerEnd,
-          child: TextButton(onPressed: onExplore, child: const Text('الكل')),
-        ),
-        // شبكةٌ هنا لا صفٌّ أفقيّ — عكسَ شاشة التصفّح: هناك الأقسام مرشِّحٌ
-        // فوق قائمة، وهنا هي المحتوى نفسه ولا شيء تحتها يُزاحمها.
-        GridView.count(
-          crossAxisCount: 4,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          mainAxisSpacing: Space.sm,
-          crossAxisSpacing: Space.sm,
-          // ٧٦ عرضاً إلى ١٢٣ ارتفاعاً على شاشة ٣٦٠. وقد ضاقت ثلاث مرّاتٍ
-          // وقيست ثلاثاً: ٠٫٨٢ أفاضت ٧٫٣ بكسل، ثم ٠٫٧٠ أفاضت ٩٫٤ بعد أن كبُر
-          // قرصُ الأيقونة، ثم ٠٫٦٤ أفاضت ١٫٣ حين رُسمت بالخطّ العربي الحقيقي
-          // لا باحتياط الاختبار — وهذه الأخيرة كانت تقع على الأجهزة وحدها.
-          childAspectRatio: 0.62,
-          children: [
-            // الأقسام كلّها لا ثمانيةٌ منها: كان `take(8)` يقصّ أربعةً بلا
-            // أن يقول، فيظنّ المستخدم أن المنصّة لا تقدّم غيرها — وهي تقدّم.
-            for (final (i, c) in categories.indexed)
-              CategoryCard(
-                label: c.name,
-                icon: categoryIcon(c.slug),
-                imageUrl: Api.categoryImageUrl(c.imagePath),
-                tone: categoryTone(c.slug),
-                active: false,
-                // العرضُ للشبكة لا للبطاقة: عرضٌ ثابتٌ داخل خليةٍ أضيق يفيض.
-                width: null,
-                // دخولٌ متدرّجٌ صفّاً بعد صفّ — ثلاثون جزءاً من الثانية بين
-                // البطاقة وجارتها. وحدٌّ أعلاه لئلّا تنتظر الأخيرةُ طويلاً.
-                enterDelay: Duration(milliseconds: (i * 30).clamp(0, 420)),
-                // القسمُ المضغوط يُحمل معه — لا `onExplore` المجرّدة: تلك
-                // تُهمل أيَّ قسمٍ ضُغط وتفتح القائمة كلَّها.
-                onTap: () => onCategory(c),
-              ),
-          ],
-        ),
-      ],
-    );
-  }
-}
+// (وكانت هنا **شبكةُ الأقسام** — اثنتا عشرة بطاقةً تشغل الشاشة الأولى
+// كلَّها. حُذفت: الأقسامُ نفسُها صفٌّ في أعلى «استكشف»، وهي هناك مرشِّحٌ
+// يعمل — يُضغط القسمُ فتُرشَّح القائمةُ تحته في مكانها. وهنا كانت بابَ
+// عبورٍ إلى تلك الشاشة نفسِها، فيُضغط القسمُ لِيُفتح تبويبٌ آخرُ ويُعاد
+// اختيارُ القسم فيه.
+//
+// وذهب معها زرُّ «الكل» فوقها — وهو يفتح «استكشف» بلا مرشِّح، أي ما يفعله
+// تبويبُ «استكشف» في الشريط السفلي.)
 
 // ── خدماتٌ مقترحة ────────────────────────────────────────────────────────────
 class _Suggested extends StatefulWidget {

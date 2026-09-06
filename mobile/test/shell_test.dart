@@ -85,7 +85,7 @@ Future<void> _swipe(WidgetTester tester) async {
 void main() {
   testWidgets('خمسة بنودٍ بالترتيب المطلوب', (tester) async {
     await tester.pumpWidget(_wrap(_session()));
-    await tester.pump(const Duration(seconds: 1));
+    await _settle(tester);
 
     final bar = tester.widget<GlassNavBar>(find.byType(GlassNavBar));
     expect(
@@ -96,7 +96,7 @@ void main() {
 
   testWidgets('الرئيسية هي المفتوحة أوّلاً', (tester) async {
     await tester.pumpWidget(_wrap(_session()));
-    await tester.pump(const Duration(seconds: 1));
+    await _settle(tester);
     expect(tester.widget<GlassNavBar>(find.byType(GlassNavBar)).index, 0);
     // العنوان في الشريط الزجاجي يتبع التبويب المفتوح.
     expect(tester.widget<GlassHeader>(find.byType(GlassHeader)).title, 'الرئيسية');
@@ -104,7 +104,7 @@ void main() {
 
   testWidgets('الضغط ينقل التبويب ويغيّر العنوان', (tester) async {
     await tester.pumpWidget(_wrap(_session()));
-    await tester.pump(const Duration(seconds: 1));
+    await _settle(tester);
 
     await tester.tap(find.text('حسابي').last);
     await tester.pumpAndSettle();
@@ -116,7 +116,7 @@ void main() {
   testWidgets('بطاقتان كبيرتان تُمرَّران بالإبهام', (tester) async {
     _phone(tester);
     await tester.pumpWidget(_wrap(_session()));
-    await tester.pump(const Duration(seconds: 1));
+    await _settle(tester);
     await tester.pumpAndSettle(const Duration(seconds: 2));
 
     expect(find.byType(PageView), findsOneWidget);
@@ -140,7 +140,7 @@ void main() {
     // انتقال.
     _phone(tester);
     await tester.pumpWidget(_wrap(_session()));
-    await tester.pump(const Duration(seconds: 1));
+    await _settle(tester);
     await tester.pumpAndSettle(const Duration(seconds: 2));
 
     await _swipe(tester);
@@ -150,88 +150,23 @@ void main() {
     expect(tester.widget<GlassNavBar>(find.byType(GlassNavBar)).index, 1);
   });
 
-  testWidgets('الرئيسية تعرض الأقسام كلّها لا بعضها', (tester) async {
-    // كان `take(8)` يقصّ أربعةً بلا أن يقول، فيظنّ المستخدم أن المنصّة لا
-    // تقدّم غيرها — وهي تقدّم. وهذا ما رآه على جهازه.
-    tester.view.physicalSize = const Size(1080, 3000);
-    tester.view.devicePixelRatio = 3.0;
-    addTearDown(tester.view.reset);
-    await tester.pumpWidget(_wrap(_session()));
-    await tester.pump(const Duration(seconds: 1));
-    await tester.pumpAndSettle(const Duration(seconds: 2));
-    expect(find.byType(CategoryCard, skipOffstage: false), findsNWidgets(12));
-  });
-
-  testWidgets('وبطاقة القسم تفتح الاستكشاف **على قسمها**', (tester) async {
-    // **وهذا ما أبلغ عنه المستخدم:** كانت البطاقات كلُّها تنادي `onGoTo(2)`،
-    // فالقسمُ المضغوط يُرمى ويُفتح الاستكشاف بكل شيء. فيضغط «الطبخ» فيجد
-    // القاعات والتصوير والسيارات أمامه — وضغطتُه وقعت ولم يقع أثرها.
-    tester.view.physicalSize = const Size(1080, 3000);
-    tester.view.devicePixelRatio = 3.0;
-    addTearDown(tester.view.reset);
-
-    await tester.pumpWidget(_wrap(_session()));
-    await tester.pump(const Duration(seconds: 1));
-    await tester.pumpAndSettle(const Duration(seconds: 2));
-
-    await tester.tap(_card('الطبخ والضيافة'));
-    await _settle(tester);
-
-    expect(tester.widget<GlassNavBar>(find.byType(GlassNavBar)).index, 2);
-    // القائمة مقصورةٌ على القسم: خدمتُه وحدها دون سواها.
-    expect(find.text('مندي وحنيذ لـ300 شخص'), findsOneWidget);
-    expect(find.text('قاعة التاج — باقة شاملة'), findsNothing);
-    // والمرشِّح فوقها يقول أيُّ قسمٍ هذا — وإلا بدت قائمةً ناقصةً بلا سبب.
-    expect(_activeCategories(tester), ['الطبخ والضيافة']);
-  });
-
-  testWidgets('و«استكشف» من الشريط تفتحه بلا مرشِّح', (tester) async {
-    // القسم يبقى في القشرة بعد الضغط، فلو لم يُمسح عند التنقّل العاديّ لظلّت
-    // القائمة مقصوصةً على قسمٍ ضُغط قبل دقيقة — بلا ما يدلّ على ذلك.
-    tester.view.physicalSize = const Size(1080, 3000);
-    tester.view.devicePixelRatio = 3.0;
-    addTearDown(tester.view.reset);
-
-    await tester.pumpWidget(_wrap(_session()));
-    await tester.pump(const Duration(seconds: 1));
-    await tester.pumpAndSettle(const Duration(seconds: 2));
-
-    await tester.tap(_card('الطبخ والضيافة'));
-    await _settle(tester);
-    await tester.tap(find.text('استكشف').last);
-    await _settle(tester);
-
-    expect(find.text('قاعة التاج — باقة شاملة'), findsOneWidget);
-    expect(_activeCategories(tester), ['الكل']);
-  });
-
-  testWidgets('ولا تبقى بطاقةٌ شفّافة بعد الدخول المتدرّج', (tester) async {
-    // الحركة تدخل البطاقات تباعاً؛ فإن عَلِقت واحدةٌ عند الشفافية بقيت
-    // خليّةٌ فارغة في الشبكة بلا خطأٍ في أي سجلّ.
-    tester.view.physicalSize = const Size(1080, 3000);
-    tester.view.devicePixelRatio = 3.0;
-    addTearDown(tester.view.reset);
-    await tester.pumpWidget(_wrap(_session()));
-    await tester.pump(const Duration(seconds: 1));
-    await tester.pumpAndSettle(const Duration(seconds: 2));
-    // داخل بطاقات الأقسام وحدها: شريط الإشعارات في القشرة يحمل
-    // `AnimatedOpacity` بشفافية صفر وهو مختبئ — وهو شفافٌ بحقّ، فباحثٌ
-    // بالنوع وحده يجده ويسقط الاختبار على عيبٍ لا وجود له.
-    final faded = find
-        .descendant(
-          of: find.byType(CategoryCard, skipOffstage: false),
-          matching: find.byType(AnimatedOpacity, skipOffstage: false),
-        )
-        .evaluate()
-        .where((e) => (e.widget as AnimatedOpacity).opacity < 1);
-    expect(faded, isEmpty);
-  });
+  // **وسقطت هنا أربعةُ اختبارات** كانت تقيس شبكةَ الأقسام في الرئيسية:
+  // «الأقسام كلُّها لا بعضها»، و«بطاقةُ القسم تفتح الاستكشاف على قسمها»،
+  // و«استكشف من الشريط تفتحه بلا مرشِّح»، و«لا تبقى بطاقةٌ شفّافة».
+  //
+  // حُذفت الشبكةُ لأنّها تكرّر صفَّ الأقسام في «استكشف» — وهو هناك مرشِّحٌ
+  // يعمل في مكانه، وكانت هنا بابَ عبورٍ إليه.
+  //
+  // **ولم تُرمَ ضماناتُها.** انتقل ما بقي منه معنىً إلى `directory_test`
+  // حيث الأقسامُ الآن: «الأقسام كلُّها تُعرض» و«لا تبقى بطاقةٌ شفّافة بعد
+  // الدخول المتدرّج». وذهب الآخران مع ما كانا يقيسانه: لا بابَ من الرئيسية
+  // إلى قسمٍ بعينه، فلا مرشِّحَ يُحمل بين الشاشتين ولا مسحَ يُنسى.
 
   testWidgets('المحتوى يمرّ تحت الزجاج', (tester) async {
     // `extendBody` هو ما يعطي التمويهَ ما يموّهه. ولولا `glassNavSpace` في
     // حشوة القوائم لاختفت آخرُ بطاقةٍ خلف الشريط.
     await tester.pumpWidget(_wrap(_session()));
-    await tester.pump(const Duration(seconds: 1));
+    await _settle(tester);
     expect(tester.widget<Scaffold>(find.byType(Scaffold).first).extendBody, isTrue);
     expect(glassNavSpace, greaterThan(66));
     // والأعلى كذلك: الشريط في `Stack` لا في خانة `appBar`، فيمرّ المحتوى

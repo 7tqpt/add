@@ -96,7 +96,7 @@ class _Sheet extends StatelessWidget {
                         child: SizedBox(
                           key: ValueKey('cell$i'),
                           width: _w,
-                          height: 420,
+                          height: 700,
                           child: OverflowBox(
                             alignment: Alignment.topCenter,
                             maxHeight: 844,
@@ -141,13 +141,13 @@ void main() {
   setUpAll(_loadFonts);
 
   testWidgets('الحالتان', (tester) async {
-    tester.view.physicalSize = const Size(2600, 1560);
+    tester.view.physicalSize = const Size(2600, 2420);
     tester.view.devicePixelRatio = 3.0;
     addTearDown(tester.view.reset);
 
     await tester.pumpWidget(_wrap(_Sheet(cells: [
-      (label: 'أعلى القائمة — بلا سطح', screen: CustomerShell(session: Session())),
-      (label: 'بعد التمرير — زجاجٌ وشعرة', screen: CustomerShell(session: Session())),
+      (label: 'الرئيسية بعد حذف الأقسام', screen: CustomerShell(session: Session())),
+      (label: 'وبعد التمرير', screen: CustomerShell(session: Session())),
     ])));
     await _settle(tester);
 
@@ -173,6 +173,6 @@ void main() {
     expect(scroller.position.pixels, greaterThan(100),
         reason: 'لم تمرّ القائمةُ — والصورةُ تقول إنّها مرّت');
 
-    await _shoot(tester, find.byKey(const ValueKey('shot')), '/tmp/header_after.png');
+    await _shoot(tester, find.byKey(const ValueKey('shot')), '/tmp/home_after.png');
   });
 }
