@@ -119,22 +119,13 @@ class _ProviderShellState extends State<ProviderShell> {
           _openFrom(data);
           _countAlerts();
         },
-        child: Stack(
-          children: [
-            pages[_index],
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              child: GlassHeader(
-                title: titles[_index],
-                actions: [
-                  ChatIconButton(unread: _unread, onTap: _openChats),
-                  BellIconButton(unread: _alerts, onTap: _openAlerts),
-                ],
-              ),
-            ),
-          ],
+        child: GlassHeaderHost(
+          title: titles[_index],
+          tab: _index,
+          // الجرسُ في أوّل الشريط — أقصى اليمين — والرسائلُ في آخره.
+          start: BellIconButton(unread: _alerts, onTap: _openAlerts),
+          end: ChatIconButton(unread: _unread, onTap: _openChats),
+          child: pages[_index],
         ),
       ),
       bottomNavigationBar: NavigationBar(
