@@ -95,7 +95,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             const Padding(padding: EdgeInsets.all(Space.lg), child: SectionTitle('نوع المستند')),
-            for (final entry in documentTypes)
+            for (final entry in documentTypes())
               ListTile(
                 leading: const Icon(Icons.description_outlined, color: AppColors.accent),
                 title: Text(entry.label),

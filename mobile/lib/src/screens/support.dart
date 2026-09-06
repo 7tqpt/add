@@ -97,7 +97,7 @@ class _SupportScreenState extends State<SupportScreen> {
             spacing: Space.sm,
             runSpacing: Space.sm,
             children: [
-              for (final c in ticketCategories)
+              for (final c in ticketCategories())
                 PickChip(
                   label: c.label,
                   active: _category == c.value,

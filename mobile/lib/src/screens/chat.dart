@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../core/i18n.dart';
 import '../core/format.dart';
 import '../core/theme.dart';
 import '../data/api.dart';
@@ -54,13 +55,13 @@ class _ChatScreenState extends State<ChatScreen> {
   final _scroll = ScrollController();
   StreamSubscription<List<ChatMessage>>? _live;
 
-  List<ChatMessage> _messages = const [];
+  List<ChatMessage> _messages = [];
   bool _loading = true;
   bool _sending = false;
   String? _error;
 
   late final VoiceRecorder _recorder = widget.recorder ?? DeviceVoiceRecorder();
-  late final AttachmentPicker _picker = widget.picker ?? const DeviceAttachmentPicker();
+  late final AttachmentPicker _picker = widget.picker ?? DeviceAttachmentPicker();
 
   /// جارٍ التسجيل — والثواني تُعرض للمستخدم.
   bool _recording = false;
@@ -92,7 +93,7 @@ class _ChatScreenState extends State<ChatScreen> {
   /// ممّا تتأخّر النبضةُ عنها.
   void _watchPresence() {
     _askPresence();
-    _seenTick = Timer.periodic(const Duration(seconds: 30), (_) => _askPresence());
+    _seenTick = Timer.periodic(Duration(seconds: 30), (_) => _askPresence());
   }
 
   Future<void> _askPresence() async {
@@ -222,11 +223,11 @@ class _ChatScreenState extends State<ChatScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            for (final (value, icon, label) in const [
-              ('gallery', Icons.photo_library_outlined, 'صورة من المعرض'),
-              ('camera', Icons.photo_camera_outlined, 'التقاط صورة'),
-              ('video', Icons.videocam_outlined, 'تصوير مقطع'),
-              ('file', Icons.attach_file, 'ملف PDF'),
+            for (final (value, icon, label) in [
+              ('gallery', Icons.photo_library_outlined, tr('صورة من المعرض')),
+              ('camera', Icons.photo_camera_outlined, tr('التقاط صورة')),
+              ('video', Icons.videocam_outlined, tr('تصوير مقطع')),
+              ('file', Icons.attach_file, tr('ملف PDF')),
             ])
               ListTile(
                 leading: Icon(icon, color: AppColors.accent),
@@ -265,7 +266,7 @@ class _ChatScreenState extends State<ChatScreen> {
     try {
       if (!await _recorder.hasPermission()) {
         if (mounted) {
-          showMessage(context, 'لم يُسمح للتطبيق بالميكروفون. افتح إعدادات التطبيق واسمح به.');
+          showMessage(context, tr('لم يُسمح للتطبيق بالميكروفون. افتح إعدادات التطبيق واسمح به.'));
         }
         return;
       }
@@ -314,7 +315,7 @@ class _ChatScreenState extends State<ChatScreen> {
     try {
       final clip = await _recorder.stop();
       if (clip == null) {
-        if (mounted) showMessage(context, 'التسجيل قصيرٌ جداً.');
+        if (mounted) showMessage(context, tr('التسجيل قصيرٌ جداً.'));
         return;
       }
       await _sendAttachment(PickedAttachment(
@@ -419,9 +420,9 @@ class _ChatScreenState extends State<ChatScreen> {
     if (_loading) return const LoadingBlock();
     if (_error != null) return ErrorBlock(message: _error!, onRetry: _open);
     if (_messages.isEmpty) {
-      return const EmptyBlock(
-        title: 'ابدأ الحديث',
-        description: 'اسأل عن الموعد والسعر وما تشمله الخدمة قبل أن تحجز.',
+      return EmptyBlock(
+        title: tr('ابدأ الحديث'),
+        description: tr('اسأل عن الموعد والسعر وما تشمله الخدمة قبل أن تحجز.'),
       );
     }
 
@@ -597,7 +598,7 @@ class _Composer extends StatelessWidget {
                 children: [
                   IconButton(
                     onPressed: busy ? null : onAttach,
-                    tooltip: 'أرفق',
+                    tooltip: tr('أرفق'),
                     icon: const Icon(Icons.add_circle_outline, size: 24),
                     color: AppColors.accent,
                   ),
@@ -610,8 +611,8 @@ class _Composer extends StatelessWidget {
                       maxLines: 5,
                       textInputAction: TextInputAction.newline,
                       keyboardType: TextInputType.multiline,
-                      decoration: const InputDecoration(
-                        hintText: 'اكتب رسالتك…',
+                      decoration: InputDecoration(
+                        hintText: tr('اكتب رسالتك…'),
                         isDense: true,
                       ),
                     ),
@@ -622,13 +623,13 @@ class _Composer extends StatelessWidget {
                   // يتحرّك تحت الإبهام فيُضغط غيرُ المقصود.
                   IconButton(
                     onPressed: busy ? null : onRecord,
-                    tooltip: 'سجّل رسالة صوتية',
+                    tooltip: tr('سجّل رسالة صوتية'),
                     icon: const Icon(Icons.mic_none_rounded, size: 24),
                     color: AppColors.accent,
                   ),
                   IconButton.filled(
                     onPressed: busy ? null : onSend,
-                    tooltip: 'أرسل',
+                    tooltip: tr('أرسل'),
                     icon: const Icon(Icons.send_rounded, size: 20),
                   ),
                 ],
@@ -659,7 +660,7 @@ class _RecordingBar extends StatelessWidget {
         // الشاشة فيضيع.
         IconButton(
           onPressed: onCancel,
-          tooltip: 'ألغِ التسجيل',
+          tooltip: tr('ألغِ التسجيل'),
           icon: const Icon(Icons.delete_outline, size: 22),
           color: AppColors.critical,
         ),
@@ -674,7 +675,7 @@ class _RecordingBar extends StatelessWidget {
         const SizedBox(width: Space.sm),
         Expanded(
           child: Text(
-            'يسجّل… ${formatClock(Duration(seconds: seconds))}',
+            trf('يسجّل… {0}', [formatClock(Duration(seconds: seconds))]),
             style: const TextStyle(
               fontSize: 14,
               color: AppColors.ink,
@@ -684,7 +685,7 @@ class _RecordingBar extends StatelessWidget {
         ),
         IconButton.filled(
           onPressed: onStop,
-          tooltip: 'أرسل التسجيل',
+          tooltip: tr('أرسل التسجيل'),
           icon: const Icon(Icons.send_rounded, size: 20),
         ),
       ],
@@ -719,12 +720,12 @@ class _AttachmentState extends State<_Attachment> {
     switch (m.attachment!) {
       case ChatAttachment.image:
         openImageViewer(context, url: url,
-            title: m.attachmentName.isEmpty ? 'صورة' : m.attachmentName);
+            title: m.attachmentName.isEmpty ? tr('صورة') : m.attachmentName);
       case ChatAttachment.video:
         openVideoViewer(context, url: url);
       case ChatAttachment.file:
         openPdfViewer(context, url: url,
-            name: m.attachmentName.isEmpty ? 'ملف' : m.attachmentName);
+            name: m.attachmentName.isEmpty ? tr('ملف') : m.attachmentName);
       case ChatAttachment.audio:
         // الصوتُ يُسمع في مكانه؛ لا شاشةَ له.
         break;
@@ -826,7 +827,7 @@ class _AttachmentState extends State<_Attachment> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          m.attachmentName.isEmpty ? 'ملف' : m.attachmentName,
+                          m.attachmentName.isEmpty ? tr('ملف') : m.attachmentName,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(

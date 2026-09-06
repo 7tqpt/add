@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../core/i18n.dart';
 import '../core/format.dart';
 import '../core/theme.dart';
 import '../data/api.dart';
@@ -51,7 +52,7 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('المحادثات')),
+      appBar: AppBar(title: Text(tr('المحادثات'))),
       body: FutureBuilder<List<Conversation>>(
         future: _future,
         builder: (context, snap) {
@@ -61,9 +62,9 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
           }
           final rows = snap.data ?? const <Conversation>[];
           if (rows.isEmpty) {
-            return const EmptyBlock(
-              title: 'لا محادثات بعد',
-              description: 'افتح خدمةً واضغط «راسل مقدّم الخدمة» لتسأل قبل أن تحجز.',
+            return EmptyBlock(
+              title: tr('لا محادثات بعد'),
+              description: tr('افتح خدمةً واضغط «راسل مقدّم الخدمة» لتسأل قبل أن تحجز.'),
             );
           }
           return RefreshIndicator(
@@ -100,7 +101,7 @@ class _Row extends StatelessWidget {
         child: Text(
           // أوّلُ حرفٍ من الاسم بدل أيقونةٍ واحدة للجميع: الصفُّ يُمسح بالعين،
           // وعشرةُ صفوفٍ بالأيقونة نفسها تُقرأ كتلةً.
-          c.otherName.isEmpty ? '؟' : c.otherName.characters.first,
+          c.otherName.isEmpty ? tr('؟') : c.otherName.characters.first,
           style: const TextStyle(
             fontSize: 17,
             fontWeight: FontWeight.w600,
@@ -142,7 +143,7 @@ class _Row extends StatelessWidget {
                 // «أنت: …» أمام كلامي: بلا هذه الكلمة يبدو آخرُ ما قلتُه أنا
                 // وكأنه ردٌّ منه، فأنتظر جواباً وصل ولم يصل.
                 c.lastMessageSender == c.mySide
-                    ? 'أنت: ${c.lastMessageBody}'
+                    ? trf('أنت: {0}', [c.lastMessageBody])
                     : c.lastMessageBody,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,

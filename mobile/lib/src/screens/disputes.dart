@@ -453,7 +453,7 @@ class _OpenSheetState extends State<_OpenSheet> {
               spacing: Space.sm,
               runSpacing: Space.sm,
               children: [
-                for (final c in disputeCategories)
+                for (final c in disputeCategories())
                   PickChip(
                     label: c.label,
                     active: _category == c.value,

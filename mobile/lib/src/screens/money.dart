@@ -5,6 +5,7 @@
 // والاحتساب. وفصلُهما في ملفّين يجعل تنسيقَ المبالغ يفترق بينهما مع الوقت.
 import 'package:flutter/material.dart';
 
+import '../core/i18n.dart';
 import '../core/format.dart';
 import '../core/session.dart';
 import '../core/theme.dart';
@@ -44,25 +45,25 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
       future: _future,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const LoadingBlock();
+          return LoadingBlock();
         }
         if (snapshot.hasError) {
           return ErrorBlock(message: messageOf(snapshot.error!), onRetry: _load);
         }
-        final list = snapshot.data ?? const <Invoice>[];
+        final list = snapshot.data ?? <Invoice>[];
         if (list.isEmpty) {
-          return const EmptyBlock(
-            title: 'لا فواتير بعد',
-            description: 'تصدر الفاتورة حين يؤكّد مقدّم الخدمة حجزك.',
+          return EmptyBlock(
+            title: tr('لا فواتير بعد'),
+            description: tr('تصدر الفاتورة حين يؤكّد مقدّم الخدمة حجزك.'),
           );
         }
         return RefreshIndicator(
           onRefresh: () async => _load(),
           child: ListView.builder(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(16),
             itemCount: list.length,
             itemBuilder: (context, i) => Padding(
-              padding: const EdgeInsets.only(bottom: 12),
+              padding: EdgeInsets.only(bottom: 12),
               child: _InvoiceCard(invoice: list[i]),
             ),
           ),
@@ -89,18 +90,18 @@ class _InvoiceCard extends StatelessWidget {
                 // رقمٌ لاتينيٌّ في نصٍّ عربي: يُقلب اتّجاهُه وحده وإلّا قُرئ
                 // معكوساً — و«INV-2026-A1B2» ليس نصّاً عربياً.
                 textDirection: TextDirection.ltr,
-                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
               ),
             ),
             StatusBadge(
-              invoice.status == 'paid' ? 'مدفوعة' : 'صادرة',
+              invoice.status == 'paid' ? tr('مدفوعة') : tr('صادرة'),
               color: invoice.status == 'paid' ? AppColors.good : AppColors.ink2,
             ),
           ],
         ),
-        const SizedBox(height: 8),
-        KeyValue('الإجمالي', formatMoney(invoice.total)),
-        KeyValue('صدرت في', formatDay(invoice.issuedAt)),
+        SizedBox(height: 8),
+        KeyValue(tr('الإجمالي'), formatMoney(invoice.total)),
+        KeyValue(tr('صدرت في'), formatDay(invoice.issuedAt)),
       ],
     );
   }
@@ -137,16 +138,16 @@ class _EarningsScreenState extends State<EarningsScreen> {
       future: _future,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const LoadingBlock();
+          return LoadingBlock();
         }
         if (snapshot.hasError) {
           return ErrorBlock(message: messageOf(snapshot.error!), onRetry: _load);
         }
-        final list = snapshot.data ?? const <Settlement>[];
+        final list = snapshot.data ?? <Settlement>[];
         if (list.isEmpty) {
-          return const EmptyBlock(
-            title: 'لا مستحقّات بعد',
-            description: 'تُحتسب بعد تنفيذ الحجوزات وقبض مبالغها.',
+          return EmptyBlock(
+            title: tr('لا مستحقّات بعد'),
+            description: tr('تُحتسب بعد تنفيذ الحجوزات وقبض مبالغها.'),
           );
         }
 
@@ -159,27 +160,27 @@ class _EarningsScreenState extends State<EarningsScreen> {
         return RefreshIndicator(
           onRefresh: () async => _load(),
           child: ListView(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(16),
             children: [
               AppCard(
                 children: [
-                  const SectionTitle('غير المصروف'),
-                  const SizedBox(height: 6),
+                  SectionTitle(tr('غير المصروف')),
+                  SizedBox(height: 6),
                   Text(
                     formatMoney(due),
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.good),
                   ),
-                  const SizedBox(height: 4),
-                  const Muted('يُصرف بعد اعتماد الإدارة للتسوية.'),
+                  SizedBox(height: 4),
+                  Muted(tr('يُصرف بعد اعتماد الإدارة للتسوية.')),
                 ],
               ),
-              const SizedBox(height: 16),
-              const SectionTitle('التسويات'),
-              const SizedBox(height: 8),
+              SizedBox(height: 16),
+              SectionTitle(tr('التسويات')),
+              SizedBox(height: 8),
               for (final s in list) ...[
                 _SettlementCard(settlement: s),
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
               ],
             ],
           ),
@@ -194,11 +195,12 @@ class _SettlementCard extends StatelessWidget {
 
   final Settlement settlement;
 
-  static const _labels = {
-    'pending': 'قيد المراجعة',
-    'approved': 'معتمَدة',
-    'paid': 'مصروفة',
-    'on_hold': 'موقوفة',
+  /// حالُ التسوية — دالّةٌ لا ثابت، للسبب نفسِه في `ticketCategories`.
+  static Map<String, String> get _labels => {
+    'pending': tr('قيد المراجعة'),
+    'approved': tr('معتمَدة'),
+    'paid': tr('مصروفة'),
+    'on_hold': tr('موقوفة'),
   };
 
   @override
@@ -227,9 +229,9 @@ class _SettlementCard extends StatelessWidget {
         const SizedBox(height: 8),
         // الثلاثة معاً لا الصافي وحده: من رأى صافياً أقلّ ممّا حسب سأل عن
         // الفرق، ووجودُ العمولة مكتوبةً يجيبه قبل أن يسأل.
-        KeyValue('المقبوض', formatMoney(settlement.gross)),
-        KeyValue('عمولة المنصّة', formatMoney(settlement.commission)),
-        KeyValue('صافي مستحقّك', formatMoney(settlement.net)),
+        KeyValue(tr('المقبوض'), formatMoney(settlement.gross)),
+        KeyValue(tr('عمولة المنصّة'), formatMoney(settlement.commission)),
+        KeyValue(tr('صافي مستحقّك'), formatMoney(settlement.net)),
       ],
     );
   }

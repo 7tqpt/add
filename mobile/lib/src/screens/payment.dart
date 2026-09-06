@@ -1,6 +1,7 @@
 import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 
+import '../core/i18n.dart';
 import '../core/format.dart';
 import '../core/theme.dart';
 import '../data/api.dart';
@@ -96,7 +97,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
   Future<void> _submit() async {
     final method = _method;
     if (method == null) {
-      setState(() => _error = 'اختر الوسيلة التي حوّلت بها.');
+      setState(() => _error = tr('اختر الوسيلة التي حوّلت بها.'));
       return;
     }
     setState(() {
@@ -111,7 +112,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
         senderRef: _senderRef.text.trim(),
       );
       if (!mounted) return;
-      showMessage(context, 'وصلنا إبلاغُك — تؤكّده الإدارة بعد مطابقة الحوالة.');
+      showMessage(context, tr('وصلنا إبلاغُك — تؤكّده الإدارة بعد مطابقة الحوالة.'));
       _senderRef.clear();
       _reload();
     } catch (e) {
@@ -124,7 +125,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(widget.kind == 'deposit' ? 'دفع العربون' : 'إكمال المبلغ')),
+      appBar: AppBar(title: Text(widget.kind == 'deposit' ? tr('دفع العربون') : tr('إكمال المبلغ'))),
       body: ListView(
         padding: const EdgeInsets.all(Space.lg),
         children: [
@@ -141,9 +142,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
               // إلى رقمٍ لا وجود له فقَدَ ماله. فيُقال الحال ويُوجَّه إلى
               // الدعم.
               if (s == null || !s.any) {
-                return const EmptyBlock(
-                  title: 'لم تُضبط وسائل التحويل بعد',
-                  description: 'راسل الدعم لإتمام الدفع — ولا تحوّل إلى رقمٍ غير معلن هنا.',
+                return EmptyBlock(
+                  title: tr('لم تُضبط وسائل التحويل بعد'),
+                  description: tr('راسل الدعم لإتمام الدفع — ولا تحوّل إلى رقمٍ غير معلن هنا.'),
                 );
               }
               return Column(
@@ -159,12 +160,12 @@ class _PaymentScreenState extends State<PaymentScreen> {
                   const SizedBox(height: Space.md),
                   AppCard(
                     children: [
-                      const SectionTitle('أبلغنا بالحوالة'),
+                      SectionTitle(tr('أبلغنا بالحوالة')),
                       const SizedBox(height: Space.sm),
-                      const Text(
-                        'بعد التحويل اكتب الرقم الذي حوّلت منه — يُسرّع مطابقة '
-                        'حوالتك في كشف الحساب.',
-                        style: TextStyle(height: 1.7, fontSize: 13),
+                      Text(
+                        tr('بعد التحويل اكتب الرقم الذي حوّلت منه — يُسرّع مطابقة '
+                            'حوالتك في كشف الحساب.'),
+                        style: const TextStyle(height: 1.7, fontSize: 13),
                       ),
                       const SizedBox(height: Space.md),
                       // **ويملأ نفسه من محافظك المحفوظة.** كان يُكتب مع كل
@@ -175,10 +176,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
                         keyboardType: TextInputType.text,
                         textDirection: TextDirection.ltr,
                         decoration: InputDecoration(
-                          labelText: 'رقمك أو رقم عملية التحويل (اختياري)',
+                          labelText: tr('رقمك أو رقم عملية التحويل (اختياري)'),
                           hintText: '77xxxxxxx',
                           suffixIcon: IconButton(
-                            tooltip: 'من محافظي',
+                            tooltip: tr('من محافظي'),
                             icon: const Icon(Icons.wallet_outlined, size: 22),
                             onPressed: _pickWallet,
                           ),
@@ -199,11 +200,11 @@ class _PaymentScreenState extends State<PaymentScreen> {
                       FilledButton.icon(
                         onPressed: _busy ? null : _submit,
                         icon: const Icon(Icons.receipt_long_outlined, size: 19),
-                        label: const Text('حوّلتُ المبلغ — أبلغ الإدارة'),
+                        label: Text(tr('حوّلتُ المبلغ — أبلغ الإدارة')),
                       ),
                       const SizedBox(height: Space.sm),
-                      const Muted(
-                        'لا يُحتسب المبلغ في حجزك حتى تؤكّده الإدارة.',
+                      Muted(
+                        tr('لا يُحتسب المبلغ في حجزك حتى تؤكّده الإدارة.'),
                         size: 11,
                       ),
                     ],
@@ -240,11 +241,11 @@ class _Due extends StatelessWidget {
         ),
       ),
       const SizedBox(height: Space.xs),
-      Muted(kind == 'deposit' ? 'العربون المستحقّ' : 'باقي المبلغ'),
+      Muted(kind == 'deposit' ? tr('العربون المستحقّ') : tr('باقي المبلغ')),
       const SizedBox(height: Space.md),
-      KeyValue('إجمالي الحجز', formatMoney(booking.totalPrice)),
-      KeyValue('المدفوع', formatMoney(booking.paidAmount)),
-      KeyValue('رقم الحجز', booking.reference),
+      KeyValue(tr('إجمالي الحجز'), formatMoney(booking.totalPrice)),
+      KeyValue(tr('المدفوع'), formatMoney(booking.paidAmount)),
+      KeyValue(tr('رقم الحجز'), booking.reference),
     ],
   );
 }
@@ -288,8 +289,8 @@ class _Pending extends StatelessWidget {
                   ),
                   if (p.isPending) ...[
                     const SizedBox(height: Space.sm),
-                    const Muted(
-                      'بانتظار مطابقة الإدارة للحوالة. يصلك إشعارٌ حين تُؤكَّد.',
+                    Muted(
+                      tr('بانتظار مطابقة الإدارة للحوالة. يصلك إشعارٌ حين تُؤكَّد.'),
                       size: 11,
                     ),
                   ],
@@ -315,11 +316,11 @@ class _Where extends StatelessWidget {
   @override
   Widget build(BuildContext context) => AppCard(
     children: [
-      const SectionTitle('حوّل إلى'),
+      SectionTitle(tr('حوّل إلى')),
       const SizedBox(height: Space.sm),
-      if (settings.jawali.isNotEmpty) _Line(label: 'جوالي', value: settings.jawali),
-      if (settings.kuraimi.isNotEmpty) _Line(label: 'الكريمي', value: settings.kuraimi),
-      if (settings.bank.isNotEmpty) _Line(label: 'حوالة بنكية', value: settings.bank),
+      if (settings.jawali.isNotEmpty) _Line(label: tr('جوالي'), value: settings.jawali),
+      if (settings.kuraimi.isNotEmpty) _Line(label: tr('الكريمي'), value: settings.kuraimi),
+      if (settings.bank.isNotEmpty) _Line(label: tr('حوالة بنكية'), value: settings.bank),
       if (settings.note.isNotEmpty) ...[
         const SizedBox(height: Space.sm),
         Text(settings.note, style: const TextStyle(fontSize: 12.5, height: 1.7)),
@@ -354,9 +355,9 @@ class _Line extends StatelessWidget {
         IconButton(
           onPressed: () async {
             await Clipboard.setData(ClipboardData(text: value));
-            if (context.mounted) showMessage(context, 'نُسخ $label');
+            if (context.mounted) showMessage(context, trf('نُسخ {0}', [label]));
           },
-          tooltip: 'نسخ',
+          tooltip: tr('نسخ'),
           visualDensity: VisualDensity.compact,
           icon: const Icon(Icons.copy_rounded, size: 18, color: AppColors.accent),
         ),
@@ -375,13 +376,13 @@ class _Methods extends StatelessWidget {
   Widget build(BuildContext context) {
     // لا تُعرض وسيلةٌ لم يُضبط لها رقم: اختيارُها يعني حوالةً إلى العدم.
     final options = <({String value, String label})>[
-      if (settings.jawali.isNotEmpty) (value: 'jawali', label: 'جوالي'),
-      if (settings.kuraimi.isNotEmpty) (value: 'kuraimi', label: 'الكريمي'),
-      if (settings.bank.isNotEmpty) (value: 'bank_transfer', label: 'حوالة بنكية'),
+      if (settings.jawali.isNotEmpty) (value: 'jawali', label: tr('جوالي')),
+      if (settings.kuraimi.isNotEmpty) (value: 'kuraimi', label: tr('الكريمي')),
+      if (settings.bank.isNotEmpty) (value: 'bank_transfer', label: tr('حوالة بنكية')),
     ];
     return AppCard(
       children: [
-        const SectionTitle('بأيّ وسيلة حوّلت؟'),
+        SectionTitle(tr('بأيّ وسيلة حوّلت؟')),
         const SizedBox(height: Space.sm),
         Wrap(
           spacing: Space.sm,
@@ -401,10 +402,10 @@ class _Methods extends StatelessWidget {
 }
 
 String paymentStatusLabel(String s) => switch (s) {
-  'paid' => 'مؤكَّدة',
-  'failed' => 'لم تُقبل',
-  'refunded' => 'مُستردّة',
-  _ => 'قيد التأكيد',
+  'paid' => tr('مؤكَّدة'),
+  'failed' => tr('لم تُقبل'),
+  'refunded' => tr('مُستردّة'),
+  _ => tr('قيد التأكيد'),
 };
 
 Color paymentStatusColor(String s) => switch (s) {
@@ -415,10 +416,10 @@ Color paymentStatusColor(String s) => switch (s) {
 };
 
 String paymentMethodLabel(String m) => switch (m) {
-  'jawali' => 'جوالي',
-  'kuraimi' => 'الكريمي',
-  'bank_transfer' => 'حوالة بنكية',
-  'cash_wallet' => 'محفظة نقدية',
-  'card' => 'بطاقة',
-  _ => 'محفظة',
+  'jawali' => tr('جوالي'),
+  'kuraimi' => tr('الكريمي'),
+  'bank_transfer' => tr('حوالة بنكية'),
+  'cash_wallet' => tr('محفظة نقدية'),
+  'card' => tr('بطاقة'),
+  _ => tr('محفظة'),
 };

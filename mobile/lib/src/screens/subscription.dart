@@ -5,6 +5,7 @@
 // طريقان للمال يعنيان خانتين تُنسى إحداهما.
 import 'package:flutter/material.dart';
 
+import '../core/i18n.dart';
 import '../core/format.dart';
 import '../core/session.dart';
 import '../core/theme.dart';
@@ -71,7 +72,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       context: context,
       isScrollControlled: true,
       builder: (_) => _TransferSheet(
-        title: 'ظهور مميز $days ${days == 1 ? 'يوماً' : 'أيام'}',
+        title: trf('ظهور مميز {0}', [formatCount(days, dayForms)]),
         amount: pay.promoDaily * days,
         settings: pay,
         send: (method, ref) =>
@@ -87,7 +88,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       context: context,
       isScrollControlled: true,
       builder: (sheetContext) => _TransferSheet(
-        title: 'اشتراك ${plan.name}',
+        title: trf('اشتراك {0}', [plan.name]),
         amount: plan.price,
         settings: pay,
         send: (method, ref) =>
@@ -122,7 +123,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                 ErrorBlock(message: _error!, onRetry: _load),
                 const SizedBox(height: 12),
               ],
-              const SectionTitle('الباقات'),
+              SectionTitle(tr('الباقات')),
               const SizedBox(height: 8),
               for (final plan in plans) ...[
                 _PlanCard(
@@ -138,7 +139,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
               // يعرف الثاني.
               if (pay.promoDaily > 0) ...[
                 const SizedBox(height: 8),
-                const SectionTitle('الظهور المميز'),
+                SectionTitle(tr('الظهور المميز')),
                 const SizedBox(height: 8),
                 _PromoCard(
                   daily: pay.promoDaily,
@@ -179,7 +180,7 @@ class _Current extends StatelessWidget {
               ),
             ),
             StatusBadge(
-              pending ? 'قيد التأكيد' : 'فعّال',
+              pending ? tr('قيد التأكيد') : tr('فعّال'),
               color: pending ? AppColors.warning : AppColors.good,
             ),
           ],
@@ -187,8 +188,8 @@ class _Current extends StatelessWidget {
         const SizedBox(height: 8),
         Muted(
           pending
-              ? 'وصلت حوالتك ولم تُؤكَّد بعد. يُفعَّل اشتراكك فور مراجعتها.'
-              : 'فعّال حتى ${formatDay(sub.endsAt)}.',
+              ? tr('وصلت حوالتك ولم تُؤكَّد بعد. يُفعَّل اشتراكك فور مراجعتها.')
+              : trf('فعّال حتى {0}.', [formatDay(sub.endsAt)]),
         ),
       ],
     );
@@ -219,7 +220,10 @@ class _PlanCard extends StatelessWidget {
                   style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
             ),
             Text(
-              plan.free ? 'مجّانية' : '${formatMoney(plan.price)} / ${plan.days} يوماً',
+              plan.free
+                  ? tr('مجّانية')
+                  : trf('{0} / {1}',
+                      [formatMoney(plan.price), formatCount(plan.days, dayForms)]),
               style: const TextStyle(fontSize: 12, color: AppColors.ink2),
             ),
           ],
@@ -240,11 +244,11 @@ class _PlanCard extends StatelessWidget {
           ),
         const SizedBox(height: 10),
         if (current)
-          const StatusBadge('باقتك الحالية', color: AppColors.good)
+          StatusBadge(tr('باقتك الحالية'), color: AppColors.good)
         else
           FilledButton(
             onPressed: busy ? null : onPick,
-            child: Text(plan.free ? 'فعّلها' : 'اشترك'),
+            child: Text(plan.free ? tr('فعّلها') : tr('اشترك')),
           ),
       ],
     );
@@ -289,7 +293,7 @@ class _TransferSheetState extends State<_TransferSheet> {
 
   Future<void> _send() async {
     if (_method == null) {
-      setState(() => _error = 'اختر الوسيلة التي حوّلت بها.');
+      setState(() => _error = tr('اختر الوسيلة التي حوّلت بها.'));
       return;
     }
     setState(() {
@@ -326,15 +330,15 @@ class _TransferSheetState extends State<_TransferSheet> {
             Text(widget.title,
                 style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
             const SizedBox(height: 4),
-            Muted('المبلغ ${formatMoney(widget.amount)}.'),
+            Muted(trf('المبلغ {0}.', [formatMoney(widget.amount)])),
             const SizedBox(height: 12),
             if (_methods.isEmpty)
-              const EmptyBlock(
-                title: 'لم تُضبط وسائل التحويل بعد',
-                description: 'راسل الدعم — ولا تحوّل إلى رقمٍ غير معلن هنا.',
+              EmptyBlock(
+                title: tr('لم تُضبط وسائل التحويل بعد'),
+                description: tr('راسل الدعم — ولا تحوّل إلى رقمٍ غير معلن هنا.'),
               )
             else ...[
-              const SectionTitle('حوّل إلى'),
+              SectionTitle(tr('حوّل إلى')),
               const SizedBox(height: 6),
               for (final (key, value) in _methods)
                 Padding(
@@ -346,7 +350,7 @@ class _TransferSheetState extends State<_TransferSheet> {
                 Muted(widget.settings.note),
               ],
               const SizedBox(height: 14),
-              const SectionTitle('حوّلتُ بـ'),
+              SectionTitle(tr('حوّلتُ بـ')),
               const SizedBox(height: 6),
               Wrap(
                 spacing: 8,
@@ -362,8 +366,8 @@ class _TransferSheetState extends State<_TransferSheet> {
               const SizedBox(height: 12),
               TextField(
                 controller: _ref,
-                decoration: const InputDecoration(
-                  labelText: 'رقم المحوِّل (اختياري)',
+                decoration: InputDecoration(
+                  labelText: tr('رقم المحوِّل (اختياري)'),
                   hintText: '77xxxxxxx',
                 ),
               ),
@@ -375,7 +379,7 @@ class _TransferSheetState extends State<_TransferSheet> {
               const SizedBox(height: 12),
               FilledButton(
                 onPressed: _busy ? null : _send,
-                child: Text(_busy ? 'يُرسل…' : 'حوّلتُ المبلغ — أبلغ الإدارة'),
+                child: Text(_busy ? tr('يُرسل…') : tr('حوّلتُ المبلغ — أبلغ الإدارة')),
               ),
             ],
           ],
@@ -401,12 +405,12 @@ class _PromoCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return AppCard(
       children: [
-        const Text(
-          'ملفّك في مقدّمة الرئيسية',
+        Text(
+          tr('ملفّك في مقدّمة الرئيسية'),
           style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
         ),
         const SizedBox(height: 6),
-        Muted('يراك من يفتح التطبيق قبل غيرك. ${formatMoney(daily)} لليوم.'),
+        Muted(trf('يراك من يفتح التطبيق قبل غيرك. {0} لليوم.', [formatMoney(daily)])),
         const SizedBox(height: 12),
         Wrap(
           spacing: 8,
@@ -415,7 +419,8 @@ class _PromoCard extends StatelessWidget {
             for (final days in _spans)
               OutlinedButton(
                 onPressed: () => onPick(days),
-                child: Text('$days أيام — ${formatMoney(daily * days)}'),
+                child: Text(trf('{0} — {1}',
+                    [formatCount(days, dayForms), formatMoney(daily * days)])),
               ),
           ],
         ),
