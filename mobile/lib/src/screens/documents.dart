@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../core/i18n.dart';
 import '../core/format.dart';
 import '../core/session.dart';
 import '../core/theme.dart';
@@ -63,7 +64,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
     // حدّ الحاوية عشرة ميغابايت، ورفضُها يصل رسالةً غامضة بعد رفعٍ طويل على
     // شبكةٍ بطيئة. الفحص هنا يوفّر ذلك كلّه.
     if (bytes.lengthInBytes > 10 * 1024 * 1024) {
-      if (mounted) showMessage(context, 'الملف أكبر من 10 ميغابايت — اختر نسخةً أصغر.');
+      if (mounted) showMessage(context, tr('الملف أكبر من 10 ميغابايت — اختر نسخةً أصغر.'));
       return;
     }
 
@@ -76,7 +77,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
         bytes: bytes,
       );
       if (!mounted) return;
-      showMessage(context, 'رُفع المستند — تراجعه الإدارة.');
+      showMessage(context, tr('رُفع المستند — تراجعه الإدارة.'));
       _reload();
     } catch (e) {
       if (mounted) showMessage(context, messageOf(e));
@@ -94,7 +95,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Padding(padding: EdgeInsets.all(Space.lg), child: SectionTitle('نوع المستند')),
+            Padding(padding: EdgeInsets.all(Space.lg), child: SectionTitle(tr('نوع المستند'))),
             for (final entry in documentTypes())
               ListTile(
                 leading: const Icon(Icons.description_outlined, color: AppColors.accent),
@@ -115,15 +116,15 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Padding(padding: EdgeInsets.all(Space.lg), child: SectionTitle('من أين؟')),
+            Padding(padding: EdgeInsets.all(Space.lg), child: SectionTitle(tr('من أين؟'))),
             ListTile(
               leading: const Icon(Icons.photo_camera_outlined, color: AppColors.accent),
-              title: const Text('التقط صورة'),
+              title: Text(tr('التقط صورة')),
               onTap: () => Navigator.of(context).pop(ImageSource.camera),
             ),
             ListTile(
               leading: const Icon(Icons.photo_library_outlined, color: AppColors.accent),
-              title: const Text('من المعرض'),
+              title: Text(tr('من المعرض')),
               onTap: () => Navigator.of(context).pop(ImageSource.gallery),
             ),
             const SizedBox(height: Space.md),
@@ -137,7 +138,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('مستندات التوثيق')),
+      appBar: AppBar(title: Text(tr('مستندات التوثيق'))),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _busy ? null : _pickType,
         icon: _busy
@@ -147,7 +148,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
                 child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
               )
             : const Icon(Icons.upload_file),
-        label: Text(_busy ? 'جارٍ الرفع…' : 'رفع مستند'),
+        label: Text(_busy ? tr('جارٍ الرفع…') : tr('رفع مستند')),
       ),
       body: FutureBuilder<List<ProviderDocument>>(
         future: _future,
@@ -160,24 +161,24 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
           return ListView(
             padding: const EdgeInsets.fromLTRB(Space.lg, Space.lg, Space.lg, 96),
             children: [
-              const AppCard(
+              AppCard(
                 children: [
-                  SectionTitle('ما المطلوب'),
+                  SectionTitle(tr('ما المطلوب')),
                   SizedBox(height: Space.sm),
                   Text(
-                    'صوّر هويتك الشخصية، والسجل التجاري إن وُجد. الصور خاصّة '
-                    'لا يراها إلا فريق التوثيق، ولا تظهر للعملاء إطلاقاً.',
-                    style: TextStyle(height: 1.7),
+                    tr('صوّر هويتك الشخصية، والسجل التجاري إن وُجد. الصور خاصّة '
+                        'لا يراها إلا فريق التوثيق، ولا تظهر للعملاء إطلاقاً.'),
+                    style: const TextStyle(height: 1.7),
                   ),
                 ],
               ),
               const SizedBox(height: Space.md),
               if (rows.isEmpty)
-                const Padding(
+                Padding(
                   padding: EdgeInsets.only(top: Space.xl),
                   child: EmptyBlock(
-                    title: 'لم ترفع شيئاً بعد',
-                    description: 'صوّر هويتك ليبدأ فريق التوثيق مراجعة ملفك.',
+                    title: tr('لم ترفع شيئاً بعد'),
+                    description: tr('صوّر هويتك ليبدأ فريق التوثيق مراجعة ملفك.'),
                   ),
                 )
               else

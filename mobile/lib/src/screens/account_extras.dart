@@ -25,11 +25,13 @@ import '../ui/kit.dart';
 import '../ui/share_button.dart';
 
 /// اسمُ وسيلة التحويل كما تُعرض.
-const paymentMethodNames = {
-  'jawali': 'محفظة جوالي',
-  'kuraimi': 'الكريمي',
-  'bank': 'حساب بنكي',
-  'cash': 'نقداً',
+/// **ودالّةٌ لا ثابت:** الثابتُ يُحسب مرّةً عند تحميل التطبيق، فلو بدّل
+/// المستخدمُ اللغةَ بقيت الأسماءُ باللغة الأولى حتى يُغلقه ويفتحه.
+Map<String, String> paymentMethodNames() => {
+  'jawali': tr('محفظة جوالي'),
+  'kuraimi': tr('الكريمي'),
+  'bank': tr('حساب بنكي'),
+  'cash': tr('نقداً'),
 };
 
 // ============================================================================
@@ -72,8 +74,8 @@ class _AddressesScreenState extends State<AddressesScreen> {
     final yes = await confirmDanger(
       context,
       title: tr('حذف العنوان؟'),
-      body: 'سيُحذف «${a.label.isEmpty ? a.details : a.label}» من عناوينك. '
-          'والحجوزاتُ التي كُتب فيها لا تتأثّر.',
+      body: trf('سيُحذف «{0}» من عناوينك. والحجوزاتُ التي كُتب فيها لا تتأثّر.',
+          [a.label.isEmpty ? a.details : a.label]),
       confirm: tr('حذف'),
     );
     if (yes != true) return;
@@ -340,8 +342,8 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
     final yes = await confirmDanger(
       context,
       title: tr('حذف الوسيلة؟'),
-      body: 'سيُحذف «${m.accountRef}» من طرق دفعك. '
-          'والحوالاتُ التي أُبلغ بها لا تتأثّر.',
+      body: trf('سيُحذف «{0}» من طرق دفعك. والحوالاتُ التي أُبلغ بها لا تتأثّر.',
+          [m.accountRef]),
       confirm: tr('حذف'),
     );
     if (yes != true) return;
@@ -391,7 +393,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                     children: [
                       Expanded(
                         child: Text(
-                          paymentMethodNames[m.method] ?? m.method,
+                          paymentMethodNames()[m.method] ?? m.method,
                           style: const TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w600,
@@ -508,7 +510,7 @@ class _PaymentSheetState extends State<_PaymentSheet> {
           spacing: Space.sm,
           runSpacing: Space.sm,
           children: [
-            for (final e in paymentMethodNames.entries)
+            for (final e in paymentMethodNames().entries)
               PickChip(
                 label: e.value,
                 active: _method == e.key,
@@ -740,13 +742,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             const Icon(Icons.music_note_outlined,
                                 size: 20, color: AppColors.accent),
                             const SizedBox(width: Space.md),
-                            const Expanded(
+                            Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text('نغمة الإشعار'),
+                                  Text(tr('نغمة الإشعار')),
                                   SizedBox(height: 2),
-                                  Muted('اختر النغمة والاهتزاز من إعدادات جهازك',
+                                  Muted(tr('اختر النغمة والاهتزاز من إعدادات جهازك'),
                                       size: 11),
                                 ],
                               ),
@@ -945,7 +947,8 @@ class _LegalLink extends StatelessWidget {
           mode: LaunchMode.externalApplication,
         );
         if (!ok && context.mounted) {
-          showMessage(context, 'تعذّر فتح الرابط — افتح $url في متصفّحك.');
+          showMessage(context,
+              trf('تعذّر فتح الرابط — افتح {0} في متصفّحك.', [url]));
         }
       },
       child: Padding(

@@ -59,6 +59,14 @@ const _translated = <String>[
   'lib/src/screens/notifications.dart',
   'lib/src/screens/conversations.dart',
   'lib/src/screens/chat.dart',
+  'lib/src/screens/account_extras.dart',
+  'lib/src/screens/service_detail.dart',
+  'lib/src/screens/plan.dart',
+  'lib/src/screens/plan_editor.dart',
+  'lib/src/screens/disputes.dart',
+  'lib/src/screens/support.dart',
+  'lib/src/screens/ticket.dart',
+  'lib/src/screens/documents.dart',
 ];
 
 // ── مستخرِجُ النصوص ─────────────────────────────────────────────────────────
@@ -75,7 +83,7 @@ class _Literal {
   /// ما بين علامتَي الاقتباس.
   final String text;
 
-  /// آخرُ ما قبل علامة الفتح — تُعرف منه المناداة.
+  /// ما قبل علامة الفتح — تُعرف منه المناداة.
   final String before;
 
   final int line;
@@ -133,9 +141,17 @@ List<_Literal> _literals(String source) {
         } else {
           i++;
           while (i < source.length && source[i] != q) {
-            // والهروبُ يُتخطّى بحرفه: `'it\'s'` ليست نصّين.
+            // **والهروبُ يُفكّ لا يُقشَّر.** كان يُكتب الحرفُ الذي بعد
+            // الشرطة كما هو، فصار `\n` حرفَ «n» — والمفتاحُ في المعجم فيه
+            // سطرٌ جديدٌ حقيقيّ، فلا يتطابقان. وأخرجه الحارسُ على نفسه:
+            // طلب ترجمةً لنصٍّ موجودٍ في المعجم.
             if (source[i] == r'\' && i + 1 < source.length) {
-              buffer.write(source[i + 1]);
+              buffer.write(switch (source[i + 1]) {
+                'n' => '\n',
+                't' => '\t',
+                'r' => '\r',
+                final other => other,
+              });
               i += 2;
               continue;
             }
@@ -162,7 +178,10 @@ List<_Literal> _literals(String source) {
         break;
       }
 
-      final from = start - 8 < 0 ? 0 : start - 8;
+      // **وسِعةُ النظر ٤٨ لا ٨.** كانت ثمانيةً فخرجت منها `tr(` متبوعةً
+      // بسطرٍ جديدٍ وحشوةٍ عميقة — فقيل عن نصٍّ ملفوفٍ إنّه عارٍ، وطُلبت له
+      // ترجمةٌ موجودةٌ أصلاً. والفراغُ يُطرح قبل الموازنة فلا تضرّ السعة.
+      final from = start - 48 < 0 ? 0 : start - 48;
       out.add(_Literal(buffer.toString(), source.substring(from, start), startLine));
       continue;
     }
@@ -455,7 +474,7 @@ void main() {
 }
 
 /// أقلُّ ما بلغته التغطية — يُرفع مع كلّ دفعة، ولا يُنزَل.
-const coverageFloor = 447;
+const coverageFloor = 600;
 
 /// كم نصّاً عربيّاً أُعفي من الترجمة — واحدٌ اليوم: `' و'` أداةُ التقسيم.
 const exemptionsCeiling = 1;
@@ -464,4 +483,4 @@ const exemptionsCeiling = 1;
 ///
 /// بدأ ٢٢٥ حين كُتب هذا الملفّ: معجمٌ سبق النداءَ فتفرّقا. وكلُّ شاشةٍ
 /// تُترجَم تُنقصه، فحين يبلغ الصفرَ تكون الترجمةُ قد تمّت.
-const deadEntriesCeiling = 114;
+const deadEntriesCeiling = 82;

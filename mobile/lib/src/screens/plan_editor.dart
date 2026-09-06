@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../core/i18n.dart';
 import '../core/format.dart';
 import '../core/session.dart';
 import '../core/theme.dart';
@@ -22,7 +23,7 @@ class PlanEditorScreen extends StatefulWidget {
 }
 
 class _PlanEditorScreenState extends State<PlanEditorScreen> {
-  late final _title = TextEditingController(text: widget.plan?.title ?? 'خطة العرس');
+  late final _title = TextEditingController(text: widget.plan?.title ?? tr('خطة العرس'));
   late final _guests = TextEditingController(
     text: widget.plan == null ? '' : widget.plan!.guestsCount.toString(),
   );
@@ -68,7 +69,7 @@ class _PlanEditorScreenState extends State<PlanEditorScreen> {
     final budget = num.tryParse(_budget.text.trim()) ?? 0;
 
     if (_title.text.trim().isEmpty || _date == null || _governorate == null) {
-      setState(() => _error = 'اكتب اسم الخطة، واختر تاريخ العرس ومحافظته.');
+      setState(() => _error = tr('اكتب اسم الخطة، واختر تاريخ العرس ومحافظته.'));
       return;
     }
 
@@ -97,7 +98,7 @@ class _PlanEditorScreenState extends State<PlanEditorScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(widget.plan == null ? 'خطة جديدة' : 'تعديل الخطة')),
+      appBar: AppBar(title: Text(widget.plan == null ? tr('خطة جديدة') : tr('تعديل الخطة'))),
       body: ListView(
         padding: const EdgeInsets.all(Space.lg),
         children: [
@@ -105,9 +106,9 @@ class _PlanEditorScreenState extends State<PlanEditorScreen> {
             children: [
               TextField(
                 controller: _title,
-                decoration: const InputDecoration(
-                  labelText: 'اسم الخطة',
-                  hintText: 'عرس أحمد ومريم',
+                decoration: InputDecoration(
+                  labelText: tr('اسم الخطة'),
+                  hintText: tr('عرس أحمد ومريم'),
                 ),
               ),
               const SizedBox(height: Space.md),
@@ -116,7 +117,7 @@ class _PlanEditorScreenState extends State<PlanEditorScreen> {
                 icon: const Icon(Icons.calendar_today_outlined, size: 20),
                 label: Text(
                   _date == null
-                      ? 'اختر تاريخ العرس'
+                      ? tr('اختر تاريخ العرس')
                       : formatDate(_date!.toIso8601String().substring(0, 10)),
                 ),
               ),
@@ -125,20 +126,20 @@ class _PlanEditorScreenState extends State<PlanEditorScreen> {
                 controller: _guests,
                 keyboardType: TextInputType.number,
                 textDirection: TextDirection.ltr,
-                decoration: const InputDecoration(labelText: 'عدد الضيوف'),
+                decoration: InputDecoration(labelText: tr('عدد الضيوف')),
               ),
               const SizedBox(height: Space.md),
               TextField(
                 controller: _budget,
                 keyboardType: TextInputType.number,
                 textDirection: TextDirection.ltr,
-                decoration: const InputDecoration(
-                  labelText: 'الميزانية (ر.ي)',
+                decoration: InputDecoration(
+                  labelText: tr('الميزانية (ر.ي)'),
                   hintText: '2000000',
                 ),
               ),
               const SizedBox(height: Space.lg),
-              const Align(alignment: AlignmentDirectional.centerStart, child: Muted('المحافظة')),
+              Align(alignment: AlignmentDirectional.centerStart, child: Muted(tr('المحافظة'))),
               const SizedBox(height: Space.sm),
               FutureBuilder<List<Governorate>>(
                 future: _governorates,
@@ -169,7 +170,7 @@ class _PlanEditorScreenState extends State<PlanEditorScreen> {
               const SizedBox(height: Space.lg),
               FilledButton(
                 onPressed: _busy ? null : _save,
-                child: Text(widget.plan == null ? 'إنشاء الخطة' : 'حفظ'),
+                child: Text(widget.plan == null ? tr('إنشاء الخطة') : tr('حفظ')),
               ),
             ],
           ),
