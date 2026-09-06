@@ -50,6 +50,10 @@ class _PublicProviderScreenState extends State<PublicProviderScreen> {
   late Future<List<ServiceMedia>> _gallery;
   bool _busy = false;
 
+  /// حضورُ صاحب الملفّ. خارج `_future` عن قصد: لو دخل فيها لَما ظهر الملفُّ
+  /// حتى يصل سطرٌ زينة — ولو سقط نداؤه لَسقط الملفُّ كلُّه معه.
+  DateTime? _seen;
+
   @override
   void initState() {
     super.initState();
@@ -57,6 +61,9 @@ class _PublicProviderScreenState extends State<PublicProviderScreen> {
   }
 
   void _load() {
+    Api.providerPresence(widget.providerId).then((at) {
+      if (mounted) setState(() => _seen = at);
+    });
     // ثلاثةٌ متوازية لا متتابعة: شبكةُ الجوال هنا ليست سخيّة، وتتابعُها يجمع
     // زمنها كلَّه بلا سبب.
     _future = Api.provider(widget.providerId);
@@ -155,7 +162,7 @@ class _PublicProviderScreenState extends State<PublicProviderScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      _Head(provider: p),
+                      _Head(provider: p, lastSeen: _seen),
                       _pad(
                         Padding(
                           padding: const EdgeInsets.only(top: Space.lg, bottom: Space.md),
@@ -209,8 +216,11 @@ class _PublicProviderScreenState extends State<PublicProviderScreen> {
 
 /// الغلافُ والشعارُ والاسمُ وعلامتُه، ثم ثلاثةُ أرقام.
 class _Head extends StatelessWidget {
-  const _Head({required this.provider});
+  const _Head({required this.provider, this.lastSeen});
   final PublicProvider provider;
+
+  /// آخرُ ظهورٍ لصاحب الملفّ — يصل بعد الملفّ نفسِه فلا يؤخّره.
+  final DateTime? lastSeen;
 
   /// ارتفاع الغلاف، ومقدارُ ما يطلّ به الشعار عليه.
   static const double _cover = 148;
@@ -296,6 +306,12 @@ class _Head extends StatelessWidget {
                   ],
                 ],
               ),
+              // وحضورُه تحت محافظته: من يرى «متّصل الآن» قبل أن يضغط «راسل
+              // مقدّم الخدمة» يعرف أنّ سؤاله سيُقرأ اليوم لا بعد أسبوع.
+              if (lastSeen != null) ...[
+                const SizedBox(height: 5),
+                PresenceLine(lastSeen: lastSeen, center: true),
+              ],
               const SizedBox(height: Space.lg),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: Space.lg),

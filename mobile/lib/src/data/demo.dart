@@ -1814,15 +1814,25 @@ final demoSettlements = [
 /// ولا شبكةَ في الاختبارات أصلاً، فيُرسم مكانُ الصورة سطحاً باهتاً. والمقصودُ
 /// من وجودهما هنا الهندسةُ لا الصورة: أن يُقاس مقاسُ اللافتة وتمريرُها
 /// ونقاطُها بلا خادم.
+// وثلاثُ شرائحَ من حملتين: الأولى حملةٌ بصورتين — شريحتان تحملان وجهةً
+// واحدةً وكلماتٍ واحدة، ومعرّفاهما `#1` و`#2` من المعرّف نفسِه.
 const demoBanners = [
   PromoBanner(
-    id: 'banner-1',
+    id: 'banner-1#1',
     imageUrl: 'https://example.invalid/banners/1.jpg',
+    headline: 'قاعةُ التاج — خصمُ ٢٠٪ لحجوزات رمضان',
     providerId: 'p1',
     providerName: 'قاعة التاج الملكي',
   ),
-  // والثانيةُ بلا وجهة: حملةٌ من المنصّة نفسِها لا لمزوّدٍ بعينه.
-  PromoBanner(id: 'banner-2', imageUrl: 'https://example.invalid/banners/2.jpg'),
+  PromoBanner(
+    id: 'banner-1#2',
+    imageUrl: 'https://example.invalid/banners/1b.jpg',
+    headline: 'قاعةُ التاج — خصمُ ٢٠٪ لحجوزات رمضان',
+    providerId: 'p1',
+    providerName: 'قاعة التاج الملكي',
+  ),
+  // والثالثةُ بلا وجهةٍ ولا كلمات: حملةٌ من المنصّة نفسِها، وصورةٌ تكفي.
+  PromoBanner(id: 'banner-2#1', imageUrl: 'https://example.invalid/banners/2.jpg'),
 ];
 
 const demoPromos = [
@@ -1845,3 +1855,12 @@ void demoRequestPromotion(int days) {
 }
 
 void demoResetPromo() => demoPromoPending = false;
+
+/// ── الحضور ────────────────────────────────────────────────────────────────
+///
+/// والحالتان مختلفتان عن قصد: المحادثةُ تُظهر «متّصل الآن» والملفُّ العامّ
+/// يُظهر «آخر ظهور منذ سبع دقائق» — فيرى من يبني بلا قاعدةٍ الفرعين كليهما.
+DateTime demoConversationPresence() => DateTime.now();
+
+DateTime demoProviderPresence() =>
+    DateTime.now().subtract(const Duration(minutes: 7));

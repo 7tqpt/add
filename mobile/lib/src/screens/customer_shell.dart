@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../ui/alert_banner.dart';
 import '../ui/kit.dart';
 
+import '../core/presence.dart';
 import '../core/push.dart';
 import '../core/session.dart';
 import '../data/api.dart';
@@ -36,6 +37,14 @@ class _CustomerShellState extends State<CustomerShell> {
     // الدفع يبدأ من القشرة لا من الإقلاع: القشرة لا تُبنى إلّا بعد تسجيل
     // الدخول وإكمال الملف، والرمز يُنسب إلى حسابٍ فلا معنى لتسجيله قبله.
     Push.start(onOpened: (data) => _openFrom(data));
+    // ونبضةُ الحضور للسبب نفسِه: تكتب في صفِّ مستخدم، ولا صفَّ لمن لم يدخل.
+    Presence.start();
+  }
+
+  @override
+  void dispose() {
+    Presence.stop();
+    super.dispose();
   }
 
   void _goTo(int i) => setState(() => _index = i);

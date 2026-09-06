@@ -155,16 +155,28 @@ export function clickRate(promotion: Promotion): number | null {
 const BANNER_BUCKET = 'ad-banners'
 
 export interface NewBanner {
-  file: File
+  /** صورةٌ أو أكثر. كلٌّ منها شريحةٌ تُمرَّر في التطبيق، وكلُّها لحملةٍ واحدة. */
+  files: File[]
   starts_at: string
   ends_at: string
+  /** كلمات الإعلان — تُكتب فوق الصور كلِّها. تُترك فارغةً فلا يُكتب شيء. */
+  headline?: string
   /** المزوّد الذي تُفتح صفحته بالضغط. يُترك فارغاً فلا تُضغط اللافتة. */
   provider_id?: string
   amount?: number
 }
 
+/** أقصى ما يُقبل في حملةٍ واحدة — والدالّة في القاعدة تعيد ثماني شرائح. */
+export const MAX_BANNER_IMAGES = 6
+
 /**
- * يرفع صورة اللافتة ثمّ يكتب صفّها.
+ * يرفع صورَ اللافتة ثمّ يكتب صفّها.
+ *
+ * **وصفٌّ واحدٌ لِما كثُرت صورُه:** الحملةُ بثلاث صورٍ صفٌّ واحد بمصفوفةٍ من
+ * ثلاثة روابط، لا ثلاثةُ صفوف. فمدّتُها ووجهتُها وكلماتُها واحدة، ولو كانت
+ * صفوفاً لَوجب تعديلُ ثلاثةٍ كلَّما تبدّل تاريخُ الانتهاء — ولَظهرت في
+ * القائمة ثلاثَ حملاتٍ لصاحبٍ اشترى واحدة. والتطبيقُ يفرشها شرائحَ عند
+ * القراءة.
  *
  * **والصورة أوّلاً والصفّ بعدها:** لو كُتب الصفّ أوّلاً ثمّ فشل الرفع لظهرت
  * في التطبيق لافتةٌ بلا صورة — مستطيلٌ رماديٌّ بعرض الشاشة في أعلى الرئيسية.
@@ -179,6 +191,10 @@ export async function createBanner(banner: NewBanner): Promise<void> {
   const startsAt = new Date(banner.starts_at)
   const endsAt = new Date(banner.ends_at)
   if (!(endsAt > startsAt)) throw new Error('نهاية الحملة يجب أن تكون بعد بدايتها.')
+  if (banner.files.length < 1) throw new Error('اللافتة تحتاج صورةً واحدةً على الأقل.')
+  if (banner.files.length > MAX_BANNER_IMAGES) {
+    throw new Error(`أقصى عددٍ للصور في الحملة الواحدة ${MAX_BANNER_IMAGES}.`)
+  }
 
   const status: PromotionStatus = startsAt <= new Date() ? 'active' : 'scheduled'
 
@@ -202,20 +218,42 @@ export async function createBanner(banner: NewBanner): Promise<void> {
   }
 
   const client = requireSupabase()
-  const extension = banner.file.name.split('.').pop()?.toLowerCase() || 'jpg'
-  const path = `home/${Date.now()}.${extension}`
+  const stamp = Date.now()
+  const paths: string[] = []
 
-  const { error: uploadError } = await client.storage
-    .from(BANNER_BUCKET)
-    .upload(path, banner.file, { contentType: banner.file.type })
-  if (uploadError) throw uploadError
+  // **وكلُّ ما رُفع يُنظَّف إن تعثّر شيءٌ بعده** — لا ما فشل وحدَه. صورةٌ
+  // ثالثةٌ تسقط بعد نجاح اثنتين تترك ملفّين يتيمين في الحاوية لا صفَّ لهما،
+  // ولا شيءَ في اللوحة يدلّ عليهما بعد ذلك.
+  const sweep = () =>
+    paths.length
+      ? client.storage.from(BANNER_BUCKET).remove(paths).catch(() => undefined)
+      : Promise.resolve()
 
-  const image_url = client.storage.from(BANNER_BUCKET).getPublicUrl(path).data.publicUrl
+  const image_urls: string[] = []
+  for (const [index, file] of banner.files.entries()) {
+    const extension = file.name.split('.').pop()?.toLowerCase() || 'jpg'
+    const path = `home/${stamp}-${index + 1}.${extension}`
+
+    const { error: uploadError } = await client.storage
+      .from(BANNER_BUCKET)
+      .upload(path, file, { contentType: file.type })
+    if (uploadError) {
+      await sweep()
+      throw uploadError
+    }
+
+    paths.push(path)
+    image_urls.push(client.storage.from(BANNER_BUCKET).getPublicUrl(path).data.publicUrl)
+  }
 
   const { error } = await client.from('promotions').insert({
     kind: 'banner',
     placement: 'home',
-    image_url,
+    // والعمودُ القديم يُملأ بالأولى كذلك: تقاريرُ وشاشاتٌ تقرأ `image_url`
+    // وحدَه، ولا يجوز أن تراها فارغةً لأنّ الصور صارت مصفوفة.
+    image_url: image_urls[0],
+    image_urls,
+    headline: banner.headline?.trim() || '',
     provider_id: banner.provider_id || null,
     amount: banner.amount ?? 0,
     status,
@@ -223,19 +261,21 @@ export async function createBanner(banner: NewBanner): Promise<void> {
     ends_at: endsAt.toISOString(),
   })
   if (error) {
-    // الصفّ لم يُكتب، فالصورة ملفٌّ يتيمٌ في الحاوية: يُحذف ولا يُترك.
-    await client.storage.from(BANNER_BUCKET).remove([path]).catch(() => undefined)
+    // الصفّ لم يُكتب، فالصورُ ملفّاتٌ يتيمةٌ في الحاوية: تُحذف ولا تُترك.
+    await sweep()
     throw error
   }
 
   await recordAudit({
     action: 'promotion.banner',
     entity: 'promotion',
-    entityId: path,
+    entityId: paths[0],
     entityLabel: 'لافتة إعلانية — الرئيسية',
     details: {
       from: startsAt.toISOString().slice(0, 10),
       to: endsAt.toISOString().slice(0, 10),
+      images: paths.length,
+      ...(banner.headline?.trim() ? { headline: banner.headline.trim() } : {}),
       ...(banner.amount ? { amount: banner.amount } : {}),
     },
   })

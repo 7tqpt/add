@@ -854,6 +854,50 @@ class Api {
     await db.rpc('api_forget_push_token', params: {'p_token': token});
   }
 
+  // ----- الحضور -----
+
+  /// نبضةُ «أنا هنا» — تكتب `last_seen_at` لصاحب الجلسة.
+  ///
+  /// **وكلُّ نداءات الحضور الثلاثة صامتةُ الفشل.** والسبب واحد: هذه دوالُّ
+  /// تُضاف إلى القاعدة بيد صاحبها في محرّر SQL، والتطبيقُ يصل الأجهزةَ من
+  /// متجرٍ قبل ذلك أو بعده. ففي النافذة التي بينهما تكون الدالّةُ غيرَ موجودة
+  /// — ويجب أن يغيب حينَها سطرُ «متّصل الآن» لا أن تسقط الدردشةُ كلُّها من
+  /// أجل سطرٍ زينة.
+  static Future<void> touchPresence() async {
+    if (!isSupabaseConfigured) return;
+    try {
+      await db.rpc('api_touch_presence');
+    } catch (_) {}
+  }
+
+  /// آخرُ ظهورٍ للطرف الآخر في محادثة — و`null` لمن لا ظهورَ له بعد.
+  static Future<DateTime?> conversationPresence(String conversationId) async {
+    if (!isSupabaseConfigured) return demoDelay(demoConversationPresence());
+    try {
+      final v = await db.rpc(
+        'api_conversation_presence',
+        params: {'p_conversation_id': conversationId},
+      );
+      return v == null ? null : DateTime.tryParse(v as String)?.toLocal();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// آخرُ ظهورٍ لمزوّدٍ — لملفّه العامّ.
+  static Future<DateTime?> providerPresence(String providerId) async {
+    if (!isSupabaseConfigured) return demoDelay(demoProviderPresence());
+    try {
+      final v = await db.rpc(
+        'api_provider_presence',
+        params: {'p_provider_id': providerId},
+      );
+      return v == null ? null : DateTime.tryParse(v as String)?.toLocal();
+    } catch (_) {
+      return null;
+    }
+  }
+
   // ----- المحادثة -----
 
   /// محادثاتي مرتّبةً بالأحدث.

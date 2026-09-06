@@ -16,10 +16,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:aras/src/core/app_lock.dart';
 import 'package:aras/src/core/app_version.dart';
 import 'package:aras/src/core/session.dart';
+import 'package:aras/src/data/models.dart';
 import 'package:aras/src/core/theme.dart';
 import 'package:aras/src/screens/account.dart';
 import 'package:aras/src/screens/account_extras.dart';
 import 'package:aras/src/screens/customer_shell.dart';
+import 'package:aras/src/screens/home.dart';
 import 'package:aras/src/screens/lock.dart';
 import 'package:aras/src/screens/service_detail.dart';
 import 'package:aras/src/ui/kit.dart';
@@ -720,6 +722,115 @@ void main() {
       await tester.pumpWidget(const SizedBox.shrink());
       await tester.pump(const Duration(seconds: 10));
       expect(tester.takeException(), isNull);
+    });
+
+    // ── كلماتُ الإعلان ──────────────────────────────────────────────────
+    //
+    // وكانت الصورةُ وحدَها تحمل نصَّها، فكلُّ تبديلِ كلمةٍ يحتاج مصمّماً
+    // يعيد الصورة.
+
+    testWidgets('**وكلماتُها تُكتب فوقها**', (tester) async {
+      await open(tester);
+      expect(
+        find.descendant(
+          of: find.byType(PageView),
+          matching: find.text('قاعةُ التاج — خصمُ ٢٠٪ لحجوزات رمضان'),
+        ),
+        findsWidgets,
+      );
+    });
+
+    testWidgets('**وتحتها ستارٌ يجعلها تُقرأ على أيّ صورة**', (tester) async {
+      // **والستارُ شرطٌ لا زينة.** الصورةُ من صاحب الإعلان ولا نعرف
+      // ألوانها: أبيضُ على سماءٍ بيضاءَ في صورةِ قاعةٍ نهاراً لا يُقرأ.
+      await open(tester);
+
+      final text = find.text('قاعةُ التاج — خصمُ ٢٠٪ لحجوزات رمضان').first;
+      // والستارُ أخٌ للنصّ في الكومة لا جدٌّ له: يُطلب من البطاقة التي
+      // تضمّهما، لا من سلسلةِ آباء النصّ.
+      final card = find.ancestor(of: text, matching: find.byType(BannerCard)).first;
+      final scrims = tester
+          .widgetList<DecoratedBox>(
+            find.descendant(of: card, matching: find.byType(DecoratedBox)),
+          )
+          .map((d) => d.decoration)
+          .whereType<BoxDecoration>()
+          .where((d) => d.gradient != null);
+
+      expect(scrims, isNotEmpty, reason: 'لا ستارَ تحت الكلمات');
+
+      // والنصُّ أبيضُ على غامق، لا العكس.
+      final style = tester.widget<Text>(text).style!;
+      expect(style.color, Colors.white);
+    });
+
+    testWidgets('**ولافتةٌ بلا كلماتٍ لا يُظلَّم نصفُها بلا سبب**', (tester) async {
+      // الثالثةُ في وضع العرض بلا كلمات: ستارٌ يُرسم فوقها يبتلع من الصورة
+      // ثلثَها ولا يُظهر حرفاً.
+      const bare = PromoBanner(id: 'b#1', imageUrl: 'https://example.invalid/x.jpg');
+      await tester.pumpWidget(
+        _wrap(const Scaffold(body: SizedBox(height: 196, child: BannerCard(banner: bare)))),
+      );
+      await tester.pump();
+
+      final gradients = tester
+          .widgetList<DecoratedBox>(find.byType(DecoratedBox))
+          .map((d) => d.decoration)
+          .whereType<BoxDecoration>()
+          .where((d) => d.gradient != null);
+      expect(gradients, isEmpty);
+    });
+
+    testWidgets('**وحملةٌ بصورتين شريحتان لا واحدة**', (tester) async {
+      // «أريد أن أضع أكثر من صورةٍ في الإعلان» — والقاعدةُ تفرشها شرائح،
+      // فحملتان (إحداهما بصورتين) ثلاثُ شرائح.
+      await open(tester);
+      final pages = tester.widget<PageView>(find.byType(PageView));
+      // و`estimatedChildCount` لا `childCount` بعد قولبة: الشريطُ يُبنى
+      // بقائمةِ أبناءٍ فمندوبُه `SliverChildListDelegate`، والقولبةُ إلى
+      // `Builder` تسقط — وهي عيبٌ في القياس لا في المقيس.
+      expect(pages.childrenDelegate.estimatedChildCount, 3);
+    });
+
+    // **وهذا الاختبارُ جاء من ضابطٍ لم يسقط.** كُسر `PromoBanner.fromMap`
+    // عمداً — تُهمِل الكلماتِ الواصلةَ من القاعدة — فبقيت الحزمةُ خضراء:
+    // وضعُ العرض يبني الطرازَ ثابتاً ولا يمرّ بـ`fromMap` قطّ. أي أنّ كلَّ
+    // ما بين القاعدة والشاشة كان بلا حارس.
+    test('والطرازُ يقرأ ما يصل من القاعدة', () {
+      final banner = PromoBanner.fromMap(const {
+        'id': 'abc#2',
+        'image_url': 'https://example.invalid/2.jpg',
+        'headline': 'خصمُ ٢٠٪',
+        'provider_id': 'p1',
+        'provider_name': 'قاعة التاج',
+      });
+
+      expect(banner.id, 'abc#2');
+      expect(banner.imageUrl, 'https://example.invalid/2.jpg');
+      expect(banner.headline, 'خصمُ ٢٠٪');
+      expect(banner.providerId, 'p1');
+      expect(banner.providerName, 'قاعة التاج');
+    });
+
+    test('وما نقص من الصفّ لا يُسقط الطراز', () {
+      // حملةٌ قديمةٌ كُتبت قبل عمود الكلمات: صفٌّ بلا `headline`. ولو رمى
+      // الطرازُ لَسقطت الرئيسيةُ كلُّها على لافتةٍ واحدةٍ ناقصة.
+      final banner = PromoBanner.fromMap(const {
+        'id': 'old#1',
+        'image_url': 'https://example.invalid/old.jpg',
+      });
+
+      expect(banner.headline, isEmpty);
+      expect(banner.providerId, isEmpty);
+    });
+
+    testWidgets('**وكلماتٌ طويلةٌ تُقصّ ولا تبتلع الصورة**', (tester) async {
+      await open(tester);
+      final text = tester.widget<Text>(
+        find.text('قاعةُ التاج — خصمُ ٢٠٪ لحجوزات رمضان').first,
+      );
+      expect(text.maxLines, 2);
+      expect(text.overflow, TextOverflow.ellipsis);
     });
   });
 }

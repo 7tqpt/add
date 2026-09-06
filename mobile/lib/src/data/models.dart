@@ -1347,12 +1347,19 @@ class PromoBanner {
   const PromoBanner({
     required this.id,
     required this.imageUrl,
+    this.headline = '',
     this.providerId = '',
     this.providerName = '',
   });
 
+  /// معرّفُ الشريحة لا معرّفُ الحملة: حملةٌ بثلاث صورٍ ثلاثُ شرائحَ
+  /// معرّفاتُها `<uuid>#1` و`#2` و`#3` — تُميَّز كلٌّ عن أختها.
   final String id;
+
   final String imageUrl;
+
+  /// كلماتُ الإعلان — تُكتب فوق الصورة. وتُترك فارغةً فلا يُكتب شيء.
+  final String headline;
 
   /// ما يُفتح بالضغط — ملفُّ المزوّد. ويُترك فارغاً فلا تُضغط اللافتة.
   final String providerId;
@@ -1361,6 +1368,7 @@ class PromoBanner {
   factory PromoBanner.fromMap(Map<String, dynamic> m) => PromoBanner(
     id: m['id'] as String,
     imageUrl: (m['image_url'] ?? '') as String,
+    headline: (m['headline'] ?? '') as String,
     providerId: (m['provider_id'] ?? '') as String,
     providerName: (m['provider_name'] ?? '') as String,
   );

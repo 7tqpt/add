@@ -25,6 +25,15 @@ begin;
 --
 --  ومنفصلةٌ عن `category-images`: حدُّ الحجم هنا أوسع (اللافتةُ صورةٌ عريضة
 --  لا أيقونةُ قسم)، وحذفُ صورِ حملةٍ منتهيةٍ لا يجوز أن يقترب من صور الأقسام.
+--
+--  **وكان المجالُ هنا `growth` فمنع الجميع.** لا وجودَ لمجالٍ بهذا الاسم:
+--  المجالاتُ تسعةٌ — bookings، directory، catalog، finance، trust، support،
+--  ops، settings، admins — و`area_level` تُرجع `'none'` لِما ليس منها. فكانت
+--  السياسةُ الأربعُ تُرجع «لا» لكلّ الأدوار، **المالكُ فيها**، ولا يستطيع
+--  أحدٌ رفعَ صورةِ لافتةٍ ألبتّة: `new row violates row-level security policy`.
+--
+--  والصوابُ `finance` — وهو المجالُ الذي يحرس جدولَ `promotions` نفسَه في
+--  `roles.sql`. فالصورةُ وصفُّها شيءٌ واحد، فمفتاحُهما واحد.
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values ('ad-banners', 'ad-banners', true, 2097152,
         array['image/jpeg', 'image/png', 'image/webp'])
@@ -41,18 +50,40 @@ create policy ad_banners_public_read on storage.objects
 drop policy if exists ad_banners_admin_insert on storage.objects;
 create policy ad_banners_admin_insert on storage.objects
   for insert to authenticated
-  with check (bucket_id = 'ad-banners' and public.can_write_area('growth'));
+  with check (bucket_id = 'ad-banners' and public.can_write_area('finance'));
 
 drop policy if exists ad_banners_admin_update on storage.objects;
 create policy ad_banners_admin_update on storage.objects
   for update to authenticated
-  using (bucket_id = 'ad-banners' and public.can_write_area('growth'))
-  with check (bucket_id = 'ad-banners' and public.can_write_area('growth'));
+  using (bucket_id = 'ad-banners' and public.can_write_area('finance'))
+  with check (bucket_id = 'ad-banners' and public.can_write_area('finance'));
 
 drop policy if exists ad_banners_admin_delete on storage.objects;
 create policy ad_banners_admin_delete on storage.objects
   for delete to authenticated
-  using (bucket_id = 'ad-banners' and public.can_write_area('growth'));
+  using (bucket_id = 'ad-banners' and public.can_write_area('finance'));
+
+-- ----------------------------------------------------------------------------
+--  صورٌ عدّة للّافتة الواحدة، وكلماتٌ تُكتب فوقها
+-- ----------------------------------------------------------------------------
+--
+--  `image_url` عمودٌ واحد، وصاحبُ المنصّة يريد للحملة الواحدة عدّةَ صور.
+--  فيُضاف `image_urls`، **ويبقى القديمُ كما هو**: صفوفٌ كُتبت بعمودٍ واحد
+--  لا يجوز أن تختفي لأنّ العمودَ تبدّل. والدالّةُ أدناه تقرأ الاثنين.
+--
+--  و`headline` كلماتُ الإعلان. وكانت الصورةُ وحدَها تحمل نصَّها — أي أنّ كلَّ
+--  تبديلِ كلمةٍ يحتاج مصمّماً يعيد الصورة.
+alter table public.promotions
+  add column if not exists image_urls text[] not null default '{}';
+
+alter table public.promotions
+  add column if not exists headline text not null default '';
+
+-- والقديمُ يُنقل مرّةً واحدة: صفٌّ له صورةٌ ولا مصفوفة.
+update public.promotions
+   set image_urls = array[image_url]
+ where coalesce(image_url, '') <> ''
+   and coalesce(array_length(image_urls, 1), 0) = 0;
 
 -- ----------------------------------------------------------------------------
 --  ما يقرؤه التطبيق
@@ -64,26 +95,44 @@ create policy ad_banners_admin_delete on storage.objects
 --
 --  والاسمُ الظاهرُ من المزوّد إن كان لها مزوّد: اللافتةُ قد تكون حملةً من
 --  المنصّة نفسِها فلا وجهةَ لها ولا اسم.
+--  **وصورةٌ واحدةٌ في كلّ صفٍّ يُعاد لا مصفوفةٌ في صفّ.** اللافتةُ في الشاشة
+--  شريحةٌ تُمرَّر، فحملةٌ بثلاث صورٍ ثلاثُ شرائح — تحمل كلُّها وجهةَ الحملة
+--  نفسَها وكلماتِها. ولو أُعيدت المصفوفةُ كما هي لَاحتاج التطبيقُ أن يفرشها
+--  بنفسه، وهو عملٌ يقع في مكانٍ واحدٍ ها هنا أو في كلّ شاشةٍ تقرأ لافتة.
+--
+--  والمعرّفُ يحمل رقمَ الصورة معه (`<uuid>#2`): ثلاثُ شرائحَ بمعرّفٍ واحد
+--  تلتبس على أيّ قائمةٍ تُميّز عناصرَها بالمعرّف.
+drop function if exists public.api_active_banners();
+
 create or replace function public.api_active_banners()
 returns table (
-  id uuid, image_url text, provider_id uuid, provider_name text, ends_at timestamptz
+  id text, image_url text, headline text,
+  provider_id uuid, provider_name text, ends_at timestamptz
 )
 language sql stable security definer set search_path = public as $$
-  select pr.id,
-         pr.image_url,
+  select pr.id::text || '#' || img.ord::text,
+         img.url,
+         pr.headline,
          pr.provider_id,
          coalesce(p.business_name, ''),
          pr.ends_at
     from public.promotions pr
     left join public.service_providers p
            on p.id = pr.provider_id and p.status = 'verified'
+    cross join lateral unnest(
+      -- والمصفوفةُ إن كانت، وإلّا فالعمودُ القديم: صفوفٌ كُتبت قبل هذا
+      -- التعديل تبقى تُعرض كما كانت.
+      case when coalesce(array_length(pr.image_urls, 1), 0) > 0
+           then pr.image_urls
+           else array[pr.image_url] end
+    ) with ordinality as img(url, ord)
    where pr.kind = 'banner'
      and pr.placement = 'home'
      and pr.status = 'active'
      and now() between pr.starts_at and pr.ends_at
-     and coalesce(pr.image_url, '') <> ''
-   order by pr.starts_at desc
-   limit 6
+     and coalesce(img.url, '') <> ''
+   order by pr.starts_at desc, img.ord
+   limit 8
 $$;
 
 grant execute on function public.api_active_banners() to anon, authenticated;
@@ -154,4 +203,21 @@ union all
 select 'شريط المميّزين يقتصر على featured',
        case when (select prosrc from pg_proc where proname = 'api_active_promotions')
                  like '%kind = ''featured''%'
-            then 'نعم' else 'لا' end;
+            then 'نعم' else 'لا' end
+union all
+select 'عمودا الصور والكلمات',
+       case when (select count(*) from information_schema.columns
+                   where table_schema = 'public' and table_name = 'promotions'
+                     and column_name in ('image_urls', 'headline')) = 2
+            then 'موجودان' else 'ناقصان' end
+-- **وهذا السطرُ هو الذي كان سيكشف العلّة.** سياساتُ السلّة كانت على مجالٍ
+-- اسمُه `growth` ولا وجودَ له في `admin_areas`، فمنعت الجميعَ بلا خطأٍ في
+-- التنفيذ — ولا يظهر ذلك إلّا حين يحاول إنسانٌ رفعَ صورةٍ فيُردّ.
+union all
+select 'مجالُ صلاحيةِ اللافتات معرَّفٌ في الأدوار',
+       case when exists (select 1 from public.admin_areas where area = 'finance')
+            then 'نعم' else 'لا — لن يرفع أحدٌ صورة' end
+union all
+select 'ومن يملك الكتابةَ فيه',
+       (select count(distinct role)::text from public.admin_areas
+         where area = 'finance' and level = 'write');
