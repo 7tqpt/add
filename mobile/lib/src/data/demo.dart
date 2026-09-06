@@ -1845,3 +1845,12 @@ void demoRequestPromotion(int days) {
 }
 
 void demoResetPromo() => demoPromoPending = false;
+
+/// ── الحضور ────────────────────────────────────────────────────────────────
+///
+/// والحالتان مختلفتان عن قصد: المحادثةُ تُظهر «متّصل الآن» والملفُّ العامّ
+/// يُظهر «آخر ظهور منذ سبع دقائق» — فيرى من يبني بلا قاعدةٍ الفرعين كليهما.
+DateTime demoConversationPresence() => DateTime.now();
+
+DateTime demoProviderPresence() =>
+    DateTime.now().subtract(const Duration(minutes: 7));

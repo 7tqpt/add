@@ -4,6 +4,8 @@ import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
 
+import '../core/format.dart' show formatRelative;
+import '../core/presence.dart';
 import '../core/theme.dart';
 import '../data/supabase.dart' show offlineMessage;
 import 'motion.dart';
@@ -690,6 +692,64 @@ class Muted extends StatelessWidget {
     overflow: maxLines == null ? null : TextOverflow.ellipsis,
     style: TextStyle(fontSize: size, color: AppColors.muted),
   );
+}
+
+/// «متّصل الآن» أو «آخر ظهور منذ ٣ ساعات».
+///
+/// **ولا يُكتب «غير متّصل» أبداً.** عبارةٌ نافيةٌ تحت اسم صاحب القاعة تقول
+/// للعميل «لن يردّ» — وهو قد يردّ بعد دقيقة. و«آخر ظهور منذ ٣ ساعات» تقول
+/// الشيء نفسه بلا حكم، وتزيد عليه ما ينفع: كم انتظر.
+///
+/// ومن لا ظهورَ له مسجَّلٌ بعدُ لا يُرسم له سطرٌ أصلاً. فالبديل — «آخر ظهور
+/// غير معروف» — سطرٌ يشغل مكاناً ولا يحمل خبراً، وهو حالُ كلِّ مستخدمٍ لم
+/// يفتح التطبيق منذ إضافة النبضة.
+class PresenceLine extends StatelessWidget {
+  const PresenceLine({super.key, required this.lastSeen, this.size = 12, this.center = false});
+
+  final DateTime? lastSeen;
+  final double size;
+
+  /// يُتوسَّط تحت اسمٍ متوسَّط — كما في الملفّ العامّ.
+  final bool center;
+
+  @override
+  Widget build(BuildContext context) {
+    final seen = lastSeen;
+    if (seen == null) return const SizedBox.shrink();
+
+    if (Presence.isOnline(seen)) {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: center ? MainAxisAlignment.center : MainAxisAlignment.start,
+        children: [
+          // النقطةُ زينةٌ تسبق الخبر لا تحملُه: من لا يميّز الأخضرَ يقرأ
+          // «متّصل الآن» كاملةً بجوارها.
+          Container(
+            width: 7,
+            height: 7,
+            decoration: const BoxDecoration(color: AppColors.good, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 5),
+          Text(
+            'متّصل الآن',
+            style: TextStyle(
+              fontSize: size,
+              color: AppColors.good,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      );
+    }
+
+    return Text(
+      'آخر ظهور ${formatRelative(seen.toIso8601String())}',
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      textAlign: center ? TextAlign.center : TextAlign.start,
+      style: TextStyle(fontSize: size, color: AppColors.muted),
+    );
+  }
 }
 
 /// تقييمٌ بنجمة وعدد.

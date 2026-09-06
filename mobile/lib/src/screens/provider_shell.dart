@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../core/presence.dart';
 import '../core/push.dart';
 import '../core/session.dart';
 import '../data/api.dart';
@@ -32,6 +33,15 @@ class _ProviderShellState extends State<ProviderShell> {
     _countUnread();
     _countAlerts();
     Push.start(onOpened: (data) => _openFrom(data));
+    // ونبضةُ الحضور: هنا آكدُ منها في قشرة العميل — «متّصل الآن» تحت اسم
+    // القاعة هي ما يجعل العميل يسأل بدل أن ينصرف.
+    Presence.start();
+  }
+
+  @override
+  void dispose() {
+    Presence.stop();
+    super.dispose();
   }
 
   /// صاحبُ القاعة أحوجُ إلى هذه الحبّة من العميل: العميل يفتح التطبيق ليسأل،

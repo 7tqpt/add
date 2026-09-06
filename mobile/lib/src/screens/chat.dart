@@ -72,10 +72,33 @@ class _ChatScreenState extends State<ChatScreen> {
   Timer? _tick;
   StreamSubscription<Object>? _failure;
 
+  /// آخرُ ظهورٍ للطرف الآخر — `null` قبل أن يصل الجواب، ولمن لا ظهورَ له.
+  DateTime? _seen;
+  Timer? _seenTick;
+
   @override
   void initState() {
     super.initState();
     _open();
+    _watchPresence();
+  }
+
+  /// حضورُ الطرف الآخر — يُسأل عند الفتح ثم كلَّ نصف دقيقة.
+  ///
+  /// **وسؤالٌ متكرّرٌ لا بثّ.** البثّ هنا يعني اشتراكاً في صفِّ `app_users`
+  /// للطرف الآخر — وهو صفٌّ لا تسمح سياساتُ الأمان بقراءته أصلاً، فالحضورُ
+  /// يمرّ بدالّةٍ تُخرج الطابعَ الزمنيّ وحدَه دون بقيّة الصفّ. ونصفُ الدقيقة
+  /// أدقُّ من النبضة نفسها (دقيقة)، فلا يتأخّر «متّصل الآن» عن الحقيقة أكثرَ
+  /// ممّا تتأخّر النبضةُ عنها.
+  void _watchPresence() {
+    _askPresence();
+    _seenTick = Timer.periodic(const Duration(seconds: 30), (_) => _askPresence());
+  }
+
+  Future<void> _askPresence() async {
+    final at = await Api.conversationPresence(widget.conversationId);
+    if (!mounted) return;
+    setState(() => _seen = at);
   }
 
   Future<void> _open() async {
@@ -146,6 +169,7 @@ class _ChatScreenState extends State<ChatScreen> {
   void dispose() {
     _live?.cancel();
     _tick?.cancel();
+    _seenTick?.cancel();
     _failure?.cancel();
     _recorder.dispose();
     _input.dispose();
@@ -357,7 +381,19 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(widget.otherName)),
+      appBar: AppBar(
+        // الاسمُ وتحته الحضور. و`titleSpacing` يبقى كما هو: العمودُ يملأ
+        // ارتفاع الشريط ولا يزيده — `PresenceLine` سطرٌ واحدٌ باثني عشر.
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(widget.otherName, maxLines: 1, overflow: TextOverflow.ellipsis),
+            PresenceLine(lastSeen: _seen, size: 11.5),
+          ],
+        ),
+      ),
       body: Column(
         children: [
           Expanded(child: _body()),
