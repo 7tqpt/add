@@ -1792,24 +1792,25 @@ class BadgeIconButton extends StatelessWidget {
       IconButton(
         onPressed: onTap,
         tooltip: tooltip,
-        // قرصٌ شفّافٌ تحت الأيقونة: هذا موضع الزجاجيّة — لا في لون الرمز.
-        // فاللون مقيسٌ (‏`ink2`‏ يعطي ‎٧٫٥٨:١‎ على الزجاج و‎٤٫٥٥‎ حين تمرّ
-        // البطاقة الزرقاء تحته)، والشكلُ حرّ.
-        style: IconButton.styleFrom(
-          backgroundColor: Colors.white.withValues(alpha: 0.55),
-          shape: CircleBorder(side: BorderSide(color: Colors.white.withValues(alpha: 0.8))),
-          foregroundColor: AppColors.ink2,
-        ),
-        icon: Icon(icon, size: 20),
+        // **ولا قرصَ أبيضَ تحتها.** كان تحت كلّ رمزٍ قرصٌ شفّافٌ يقول
+        // «زجاج»، فصار في الشريط قرصان وحبّتا عددٍ في ستٍّ وتسعين بكسلاً —
+        // أربعةُ أشكالٍ متجاورةٍ تُقرأ ضجيجاً. والزجاجيّةُ موضعُها السطحُ
+        // نفسُه لا ما تحت كل رمز.
+        //
+        // واللون كما هو مقيسٌ: `ink2` على أرضيّة الصفحة ‎٩٫٥٨:١‎، وعلى
+        // الزجاج حين تمرّ البطاقةُ النبيذيّة تحته ‎٧٫٣٧:١‎ — والقياسُ في
+        // `header_test.dart` يُحسب لا يُنقل.
+        style: IconButton.styleFrom(foregroundColor: AppColors.ink2),
+        icon: Icon(icon, size: 23),
       ),
       if (count > 0)
         // على ركن الرمز لا على حافّة الزرّ: صندوق `IconButton` ‎٤٨‎ بكسلاً
-        // والرمز ‎٢٢‎ في وسطه، فحبّةٌ عند الحافّة تطفو على بُعد أحد عشر بكسلاً
+        // والرمز ‎٢٣‎ في وسطه، فحبّةٌ عند الحافّة تطفو على بُعد أحد عشر بكسلاً
         // منه — تُقرأ عائمةً لا تابعةً له، وتزدحم بجارتها حين يكون في الشريط
         // زرّان. وقد رُئي ذلك في الرسم لا في الشيفرة.
         Positioned(
-          top: 5,
-          left: 5,
+          top: 7,
+          left: 7,
           child: IgnorePointer(child: UnreadDot(count: count)),
         ),
     ],
@@ -1851,88 +1852,204 @@ class BellIconButton extends StatelessWidget {
 /// نظيرُ `glassNavSpace` في الأعلى: الشريط يطفو والمحتوى يمرّ **تحته**، وهذا
 /// هو ما يعطي التمويهَ ما يموّهه. فبلا هذه المسافة تبدأ أولُ بطاقةٍ خلف
 /// الزجاج ولا تُقرأ.
+///
+/// **وهذه المسافةُ شرطُ سلامةٍ لا ذوق.** الشريطُ بلا سطحٍ ما دامت الشاشةُ في
+/// أعلاها، فلو بدأ المحتوى تحته مباشرةً لَوقع الرمزُ الحبريُّ على أوّل بطاقةٍ
+/// نبيذيّةٍ بلا زجاجٍ يفصله — وهو ما يجعله غيرَ مقروء. فما دام أوّلُ محتوىً
+/// يبدأ **بعد** الشريط، فما خلفه أرضيّةُ الصفحة وحدها.
 const double glassHeaderBar = 56;
-const double glassHeaderSpace = glassHeaderBar + Space.sm + Space.md;
+const double glassHeaderSpace = glassHeaderBar + Space.sm;
 
 /// المسافة الكاملة من أعلى الشاشة: شريط الحالة ثم الزجاج.
 double glassHeaderTop(BuildContext context) =>
     MediaQuery.paddingOf(context).top + glassHeaderSpace;
 
-/// شريطٌ علويٌّ زجاجيٌّ يطفو فوق المحتوى.
+/// شريطٌ علويٌّ ممتدٌّ إلى الحافّة، يظهر سطحُه حين يمرّ المحتوى تحته.
 ///
-/// **والأيقونات ليست بيضاء** — كما في الشريط السفلي، وللسبب نفسه مقيساً:
-/// الزجاج أبيض بشفافية ‎٠٫٧٢‎ والصفحة `#F4F7FC`، فما يظهر خلفه ‎#FCFDFE‎.
-/// والأبيض عليه يعطي **‎١٫٠٢:١‎** — أي لا شيء. وحتى حين تمرّ بطاقةُ الخطة
-/// الزرقاء تحته فيصير ‎#BDC6E3‎، يبقى الأبيض عند ‎١٫٧٠:١‎.
+/// **وكان بطاقةً عائمة** — مقصوصةً بزاويةِ ‎٢٤‎ ولها ظلٌّ وحدٌّ أبيض، وتحت كلّ
+/// أيقونةٍ فيها قرصٌ شفّاف. وعابها ثلاثةُ أشياء:
 ///
-/// وأزرقُ العلامة نفسه لا يصلح للأيقونات هنا: ‎٦٫٥٧:١‎ فوق الصفحة، لكنه يهبط
-/// إلى **‎٣٫٩٥:١‎** حين تمرّ البطاقة الزرقاء تحته — وهو ما يقع في الشاشة
-/// الأولى كلَّما مُرِّرت. فالحبر ‎#0B1220‎ للعنوان و`ink2` للأيقونات: ‎١٨٫٣٦‎
-/// و‎٧٫٥٨‎ فوق الصفحة، و‎١١٫٠٣‎ و‎٤٫٥٥‎ فوق البطاقة.
+///   ١. أنّها **سطحٌ ثابت**: زجاجُها هو هو سواءٌ كان تحته فراغٌ أو محتوى، فلا
+///      يقول للعين أين هي من الصفحة. والرأسُ الذي يتغيّر بالتمرير هو ما
+///      يُميّز التطبيقات المصقولة.
+///   ٢. أنّ **القرصَ تحت كل رمزٍ ضجيج**: قرصان وحبّتا عددٍ في ستٍّ وتسعين
+///      بكسلاً.
+///   ٣. أنّ **عنوانَها ١٧ بوزن ٦٠٠** — خجولٌ في موضعٍ هو مرساةُ الشاشة.
 ///
-/// والزجاجيّةُ تبقى حيث تُرى: التمويه، والحدُّ الأبيض الرقيق، والزوايا، وقرصٌ
-/// شفّافٌ تحت كل أيقونة.
+/// فصار: ممتدّاً من حافّةٍ إلى حافّة، بلا سطحٍ ما دامت الشاشةُ في أعلاها، ثمّ
+/// زجاجٌ وشعرةٌ تفصله حين يمرّ المحتوى تحته.
+///
+/// **والألوان مقيسةٌ لا مذوقة** — و`header_test.dart` يحسبها ولا ينقلها:
+/// الحبرُ ‎#2A1119‎ للعنوان على أرضيّة الصفحة ‎١٦٫٢:١‎، و`ink2` للأيقونات
+/// ‎٩٫٥٨:١‎. وحين تمرّ البطاقةُ النبيذيّةُ تحت الزجاج (أبيضُ ‎٠٫٨٢‎ فوق
+/// ‎#7B0F2E‎) يبقى العنوانُ عند ‎١٢٫٣‎ و`ink2` عند ‎٧٫٣٧‎.
+///
+/// **ولا حاجةَ به إلى `AppBar`:** خانةُ `Scaffold.appBar` تحجز ارتفاعَها
+/// وتدفع المحتوى تحتها، فلا يمرّ شيءٌ خلف الزجاج ولا يجد التمويهُ ما يموّهه.
 class GlassHeader extends StatelessWidget {
-  const GlassHeader({super.key, required this.title, this.actions = const []});
+  const GlassHeader({
+    super.key,
+    required this.title,
+    this.start,
+    this.end,
+    this.scrolled = false,
+  });
 
   final String title;
-  final List<Widget> actions;
+
+  /// ما يقع في **أوّل** الشريط — وهو في العربية أقصى اليمين.
+  final Widget? start;
+
+  /// وما يقع في آخره — أقصى اليسار.
+  final Widget? end;
+
+  /// هل مرّ المحتوى تحته؟ فيظهر السطحُ والشعرة.
+  final bool scrolled;
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      bottom: false,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(Space.md, Space.sm, Space.md, 0),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(24),
-          child: BackdropFilter(
-            // التمويه هو ما يجعله زجاجاً لا لوناً شفّافاً: بدونه يُرى ما تحته
-            // كما هو، فيبدو الشريط ورقةً باهتة لا سطحاً.
-            filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-            child: Container(
-              height: glassHeaderBar,
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.72),
-                borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.75), width: 1),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.ink.withValues(alpha: 0.10),
-                    blurRadius: 24,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
+    final top = MediaQuery.paddingOf(context).top;
+    return ClipRect(
+      child: BackdropFilter(
+        // التمويه هو ما يجعله زجاجاً لا لوناً شفّافاً: بدونه يُرى ما تحته
+        // كما هو، فيبدو الشريط ورقةً باهتة لا سطحاً.
+        //
+        // **ويُطفأ إطفاءً حين لا سطحَ له.** كتبتُه أوّلاً يعمل في الحالتين
+        // بحجّة أنّ تبديلَ المرشِّح يعيد بناءَ طبقةٍ ثقيلة. ثمّ رأيتُ في
+        // الرسم شريطاً **أفتحَ من الصفحة** وهو بلا سطحٍ أصلاً: `BackdropFilter`
+        // يأخذ ما خلفه من داخل قصّه وحده، وعند حافّة القصّ يخلط اللونَ
+        // بالشفافيّة فيبيضّ الطرف. والقديمُ كان يخفيه تحت سطحٍ أبيضَ دائم.
+        //
+        // فـ`sigma` صفرٌ في السكون: لا مزجَ ولا حافّةَ تبيضّ. والتبديلُ يقع
+        // مرّتين في التمريرة لا في كلّ إطار.
+        filter: ImageFilter.blur(
+          sigmaX: scrolled ? 20 : 0,
+          sigmaY: scrolled ? 20 : 0,
+        ),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          curve: Curves.easeOut,
+          padding: EdgeInsets.only(top: top),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: scrolled ? 0.82 : 0),
+            // **والشعرةُ موجودةٌ في الحالتين، شفّافةً في إحداهما.** حدٌّ يظهر
+            // ويختفي يزيد ارتفاعَ الشريط بكسلاً ويُنقصه، فيقفز المحتوى تحته
+            // مع كل تمريرة.
+            border: Border(
+              bottom: BorderSide(
+                color: scrolled ? AppColors.hairline : Colors.transparent,
               ),
-              child: Row(
-                children: [
-                  const SizedBox(width: Space.lg),
-                  Expanded(
-                    child: Text(
-                      title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.ink,
-                        fontFamilyFallback: arabicFallback,
-                      ),
+            ),
+          ),
+          child: SizedBox(
+            height: glassHeaderBar,
+            // **طبقاتٌ لا صفّ.** العنوانُ مطلوبٌ في وسط الشريط، والصفُّ يضعه
+            // في وسط ما بقي من عرضٍ بعد الأيقونات — فيميل كلّما اختلف عددُها
+            // بين الجانبين. وهنا يُعلَّق العنوانُ في وسط الشريط نفسِه،
+            // والأيقونتان فوقه على الطرفين.
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                Padding(
+                  // ‎٥٦‎ على الجانبين: عرضُ الأيقونة ‎٤٨‎ ثمّ فُرجة. فالعنوانُ
+                  // الطويل يُقصّ قبل أن يزحف تحت رمزٍ فيصير غيرَ مقروء.
+                  padding: const EdgeInsets.symmetric(horizontal: 56),
+                  child: Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 19,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.ink,
+                      fontFamilyFallback: arabicFallback,
                     ),
                   ),
-                  ...actions,
-                  // ‎١٢‎ لا ‎٤‎: الشريط مقصوصٌ بزاويةٍ نصفُ قطرها ‎٢٤‎، وأقصى
-                  // أيقونةٍ تقع في منحنى الزاوية — فحبّةُ عددها تُقصّ. رُئي
-                  // في الرسم مكبَّراً لا في الشيفرة.
-                  const SizedBox(width: Space.md),
-                ],
-              ),
+                ),
+                if (start != null)
+                  PositionedDirectional(start: Space.xs, child: start!),
+                if (end != null)
+                  PositionedDirectional(end: Space.xs, child: end!),
+              ],
             ),
           ),
         ),
       ),
     );
   }
+}
+
+/// الشاشةُ ورأسُها معاً — والرأسُ يصغي لتمريرها.
+///
+/// **ولمَ لا يُترك لكلّ قشرةٍ أن تبنيَ الكومةَ بيدها:** لأنّ الإصغاءَ للتمرير
+/// شرطٌ في الرأس الآن، ولو كُتب في قشرتين لَافترقا عند أوّل تعديل — وقد وقع
+/// هذا في هذا الملفّ نفسِه أكثرَ من مرّة.
+class GlassHeaderHost extends StatefulWidget {
+  const GlassHeaderHost({
+    super.key,
+    required this.title,
+    required this.tab,
+    required this.child,
+    this.start,
+    this.end,
+  });
+
+  final String title;
+  final Widget? start;
+  final Widget? end;
+
+  /// التبويبُ المفتوح — يُعاد الرأسُ إلى حاله كلّما تبدّل.
+  final int tab;
+
+  final Widget child;
+
+  @override
+  State<GlassHeaderHost> createState() => _GlassHeaderHostState();
+}
+
+class _GlassHeaderHostState extends State<GlassHeaderHost> {
+  bool _under = false;
+
+  bool _onScroll(ScrollNotification n) {
+    // **الرأسيُّ وحده.** في الرئيسية صفُّ أقسامٍ أفقيٌّ وبطاقاتٌ تُمرَّر
+    // بالإبهام، وكلاهما يبثّ إشعاراتِ تمرير — فلولا هذا الشرطُ لَظهر
+    // الزجاجُ لمن مرّر بطاقةً وهو في أعلى الشاشة.
+    if (n.metrics.axis != Axis.vertical) return false;
+    final under = n.metrics.pixels > 2;
+    if (under != _under) setState(() => _under = under);
+    return false;
+  }
+
+  @override
+  void didUpdateWidget(GlassHeaderHost old) {
+    super.didUpdateWidget(old);
+    // **وتبديلُ التبويب يعيده إلى حاله.** الشاشةُ الجديدة تُبنى عند الصفر
+    // ولا تبثّ إشعارَ تمريرٍ أصلاً — فلولا هذا لَبقي الزجاجُ والشعرةُ فوق
+    // شاشةٍ لم تُمرَّر، ولا شيءَ يزيلهما حتى يمرّرها صاحبُها ويعود.
+    if (old.tab != widget.tab) _under = false;
+  }
+
+  @override
+  Widget build(BuildContext context) => NotificationListener<ScrollNotification>(
+        onNotification: _onScroll,
+        child: Stack(
+          children: [
+            widget.child,
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: GlassHeader(
+                title: widget.title,
+                start: widget.start,
+                end: widget.end,
+                scrolled: _under,
+              ),
+            ),
+          ],
+        ),
+      );
 }
 
 /// يشقّ اسمَ القسم عند أوّل واوٍ مبتدئةٍ كلمةً: أصلٌ وتتمّة.

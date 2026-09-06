@@ -158,9 +158,10 @@ class _CustomerShellState extends State<CustomerShell> {
       // ولذلك تُنهي كل قائمةٍ محتواها بمسافة `glassNavSpace`، وإلا اختفت آخرُ
       // بطاقةٍ فيها خلف الزجاج.
       extendBody: true,
-      // الشريط العلوي في `Stack` لا في خانة `appBar`: خانة Scaffold تحجز
+      // الشريط العلوي في كومةٍ لا في خانة `appBar`: خانة Scaffold تحجز
       // ارتفاعها وتدفع المحتوى تحتها، فلا يمرّ شيءٌ خلف الزجاج ولا يجد
       // التمويهُ ما يموّهه. وهنا يطفو فوقه كما يطفو الشريط السفلي.
+      // و`GlassHeaderHost` هي التي تبني الكومة، وهي التي تصغي للتمرير.
       body: AlertBanner(
         // الحمولةُ نفسها التي يفتح بها إشعارُ شريط النظام: طريقٌ واحد لِما
         // يقع أمام المستخدم ولِما يصله وهو خارج التطبيق، فلا يفترقان عند
@@ -169,22 +170,13 @@ class _CustomerShellState extends State<CustomerShell> {
           _openFrom(data);
           _countAlerts();
         },
-        child: Stack(
-          children: [
-            pages[_index],
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              child: GlassHeader(
-                title: titles[_index],
-                actions: [
-                  ChatIconButton(unread: _unread, onTap: _openChats),
-                  BellIconButton(unread: _alerts, onTap: _openAlerts),
-                ],
-              ),
-            ),
-          ],
+        child: GlassHeaderHost(
+          title: titles[_index],
+          tab: _index,
+          // الجرسُ في أوّل الشريط — أقصى اليمين — والرسائلُ في آخره.
+          start: BellIconButton(unread: _alerts, onTap: _openAlerts),
+          end: ChatIconButton(unread: _unread, onTap: _openChats),
+          child: pages[_index],
         ),
       ),
       bottomNavigationBar: GlassNavBar(
