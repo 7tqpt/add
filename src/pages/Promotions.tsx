@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Ban, Search } from 'lucide-react'
+import { Ban, ImagePlus, Megaphone, Search } from 'lucide-react'
 import { Badge, type Tone } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Card, CardBody, CardHeader } from '@/components/ui/Card'
@@ -26,6 +26,7 @@ import {
   PROMOTION_STATUS_LABEL,
   cancelPromotion,
   clickRate,
+  createBanner,
   listPromotions,
   listSubscriptionPlans,
   setSubscriptionPlanActive,
@@ -53,6 +54,7 @@ export function PromotionsPage() {
   return (
     <div className="flex flex-col gap-5">
       <SubscriptionPlans onToast={setToast} />
+      <NewBannerCard onToast={setToast} />
       <Campaigns onToast={setToast} />
       {toast ? <Toast message={toast} /> : null}
     </div>
@@ -147,6 +149,181 @@ function SubscriptionPlans({ onToast }: { onToast: (message: string) => void }) 
 }
 
 // ---------------------------------------------------------------------------
+
+/** حدُّ سلّة اللافتات في القاعدة — ميجابايتان. */
+const MAX_BANNER_BYTES = 2 * 1024 * 1024
+
+/** يوم بصيغة `yyyy-mm-dd` كما يقبلها حقل التاريخ. */
+function isoDay(offsetDays: number): string {
+  const day = new Date()
+  day.setDate(day.getDate() + offsetDays)
+  return day.toISOString().slice(0, 10)
+}
+
+/**
+ * إنشاء لافتة إعلانية لأعلى الرئيسية في التطبيق.
+ *
+ * **والمساحة هي التي كانت لبطاقتَي «خطة العرس» و«حجوزاتي»** — فما يُرفع هنا
+ * يقع في أوّل ما تراه العين حين يُفتح التطبيق.
+ *
+ * والصورة عريضة: البطاقة في الجوال ‎٣١٧×١٩٦‎ تقريباً، فنسبةُ ‎١٦:١٠‎ تملؤها
+ * بلا قصٍّ يبتلع نصفَ التصميم.
+ */
+function NewBannerCard({ onToast }: { onToast: (message: string) => void }) {
+  const { canWrite } = useAuth()
+  const input = useRef<HTMLInputElement>(null)
+  const [file, setFile] = useState<File | null>(null)
+  const [preview, setPreview] = useState<string | null>(null)
+  const [startsAt, setStartsAt] = useState(isoDay(0))
+  const [endsAt, setEndsAt] = useState(isoDay(30))
+  const [providerId, setProviderId] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [tooBig, setTooBig] = useState(false)
+
+  // الرابط المؤقّت للمعاينة يُلغى مع الملفّ: تركُه يُبقي الصورة في الذاكرة.
+  useEffect(() => {
+    if (!file) {
+      setPreview(null)
+      return
+    }
+    const url = URL.createObjectURL(file)
+    setPreview(url)
+    return () => URL.revokeObjectURL(url)
+  }, [file])
+
+  function choose(picked: File | undefined) {
+    if (!picked) return
+    if (picked.size > MAX_BANNER_BYTES) {
+      setTooBig(true)
+      return
+    }
+    setTooBig(false)
+    setFile(picked)
+  }
+
+  async function submit() {
+    if (!file) return
+    setBusy(true)
+    try {
+      await createBanner({
+        file,
+        starts_at: startsAt,
+        // آخرُ اليوم لا أوّلُه: من كتب «تنتهي ٣٠ يونيو» يقصد أن تُعرض ذلك
+        // اليوم كلَّه، لا أن تختفي في منتصف ليلته الأولى.
+        ends_at: `${endsAt}T23:59:59`,
+        provider_id: providerId.trim() || undefined,
+      })
+      onToast('نُشرت اللافتة.')
+      setFile(null)
+      setProviderId('')
+    } catch (cause) {
+      onToast(errorText(cause, 'تعذّر نشر اللافتة.'))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader
+        title={
+          <span className="flex items-center gap-2">
+            <Megaphone className="size-4" />
+            لافتة إعلانية جديدة
+          </span>
+        }
+        subtitle="تُعرض في أعلى الرئيسية في التطبيق، وتُمرَّر مع غيرها كل ثلاث ثوانٍ."
+      />
+      <CardBody className="flex flex-col gap-4">
+        <div className="flex flex-wrap items-start gap-4">
+          <div className="flex h-[124px] w-[198px] shrink-0 items-center justify-center overflow-hidden rounded-xl border border-hairline bg-surface-2">
+            {preview ? (
+              <img src={preview} alt="معاينة اللافتة" className="h-full w-full object-cover" />
+            ) : (
+              <span className="text-[11px] text-muted">مقاسها في الجوال</span>
+            )}
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <button
+              type="button"
+              disabled={!canWrite || busy}
+              onClick={() => input.current?.click()}
+              className="flex items-center gap-1.5 rounded-lg border border-hairline px-2.5 py-1 text-xs text-ink-2 transition hover:border-accent hover:text-accent disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <ImagePlus className="size-3.5" />
+              {file ? 'استبدل الصورة' : 'اختر صورة'}
+            </button>
+            <p className="max-w-[22rem] text-[11px] leading-5 text-muted">
+              صورةٌ عريضة بنسبة ‎١٦:١٠‎ تقريباً (‎١٢٨٠×٨٠٠‎ مثلاً)، بحدٍّ أقصى
+              ميجابايتان. والنصُّ داخل الصورة: التطبيق لا يكتب فوقها شيئاً
+              سوى شارة «إعلان».
+            </p>
+            {tooBig ? (
+              <p className="text-[11px] leading-5 text-critical">
+                الصورة أكبر من ميجابايتين. اختر صورةً أصغر.
+              </p>
+            ) : null}
+          </div>
+        </div>
+
+        <input
+          ref={input}
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          className="hidden"
+          onChange={(event) => {
+            choose(event.target.files?.[0])
+            // يُفرَّغ ليقبل اختيار الملفّ نفسه مرّةً ثانية بعد فشل.
+            event.target.value = ''
+          }}
+        />
+
+        <div className="grid gap-3 sm:grid-cols-3">
+          <Field label="تبدأ">
+            {(id) => (
+              <Input
+                id={id}
+                type="date"
+                value={startsAt}
+                onChange={(event) => setStartsAt(event.target.value)}
+              />
+            )}
+          </Field>
+          <Field label="تنتهي">
+            {(id) => (
+              <Input
+                id={id}
+                type="date"
+                value={endsAt}
+                onChange={(event) => setEndsAt(event.target.value)}
+              />
+            )}
+          </Field>
+          <Field
+            label="معرّف المزوّد (اختياري)"
+            hint="تُفتح صفحته بالضغط على اللافتة. ويُترك فارغاً فلا تُضغط."
+          >
+            {(id) => (
+              <Input
+                id={id}
+                value={providerId}
+                onChange={(event) => setProviderId(event.target.value)}
+                placeholder="uuid"
+              />
+            )}
+          </Field>
+        </div>
+
+        <div className="flex justify-start">
+          <Button onClick={submit} disabled={!canWrite || busy || !file}>
+            {busy ? 'يُنشر…' : 'انشر اللافتة'}
+          </Button>
+        </div>
+      </CardBody>
+    </Card>
+  )
+}
 
 function Campaigns({ onToast }: { onToast: (message: string) => void }) {
   const { canWrite } = useAuth()

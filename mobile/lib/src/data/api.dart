@@ -1772,6 +1772,21 @@ class Api {
         .toList();
   }
 
+  /// اللافتاتُ الإعلانيّة الجارية لأعلى الرئيسية.
+  ///
+  /// **وفشلُها لا يُسقط الشاشة.** مساحةٌ إعلانيّةٌ تغيب أهونُ من رئيسيّةٍ
+  /// حمراء — ومن يفتح التطبيق لا يفتحه للإعلان.
+  static Future<List<PromoBanner>> activeBanners() async {
+    if (!isSupabaseConfigured) return demoDelay(demoBanners);
+    final rows = await db.rpc('api_active_banners') as List<dynamic>;
+    return rows
+        .map((r) => PromoBanner.fromMap(Map<String, dynamic>.from(r as Map)))
+        // ولافتةٌ بلا صورةٍ تُسقَط: الخادمُ يُسقطها كذلك، وحارسان على مساحةٍ
+        // فارغةٍ في أعلى الشاشة خيرٌ من واحد.
+        .where((b) => b.imageUrl.isNotEmpty)
+        .toList();
+  }
+
   /// يطلب مقدّمُ الخدمة ظهوراً مميزاً لمدّة. لا يظهر حتى تُؤكَّد حوالته.
   static Future<void> requestPromotion({
     required int days,

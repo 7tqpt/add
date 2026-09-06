@@ -146,6 +146,100 @@ export function clickRate(promotion: Promotion): number | null {
   return promotion.impressions === 0 ? null : promotion.clicks / promotion.impressions
 }
 
+// ---------------------------------------------------------------------------
+// اللافتات الإعلانية — مساحة أعلى الرئيسية
+// ---------------------------------------------------------------------------
+
+/** الحاوية عامّة، فلا توقيعَ ينتهي ولا نداءَ شبكة لكل لافتة في التطبيق. */
+const BANNER_BUCKET = 'ad-banners'
+
+export interface NewBanner {
+  file: File
+  starts_at: string
+  ends_at: string
+  /** المزوّد الذي تُفتح صفحته بالضغط. يُترك فارغاً فلا تُضغط اللافتة. */
+  provider_id?: string
+  amount?: number
+}
+
+/**
+ * يرفع صورة اللافتة ثمّ يكتب صفّها.
+ *
+ * **والصورة أوّلاً والصفّ بعدها:** لو كُتب الصفّ أوّلاً ثمّ فشل الرفع لظهرت
+ * في التطبيق لافتةٌ بلا صورة — مستطيلٌ رماديٌّ بعرض الشاشة في أعلى الرئيسية.
+ *
+ * **واسم الملفّ يحمل ختم الوقت:** الحاوية عامّة والروابط تُخزَّن في ذاكرة
+ * المتصفّح والوسطاء، فاسمٌ يتكرّر يعني لافتةً قديمةً تبقى معروضةً أياماً.
+ *
+ * **والحالة تُحسب لا تُسأل:** حملةٌ تبدأ اليوم تُكتب `active` فتظهر فوراً،
+ * وما بدايتُه غداً يُكتب `scheduled` ويرفعه `expire_promotions` في موعده.
+ */
+export async function createBanner(banner: NewBanner): Promise<void> {
+  const startsAt = new Date(banner.starts_at)
+  const endsAt = new Date(banner.ends_at)
+  if (!(endsAt > startsAt)) throw new Error('نهاية الحملة يجب أن تكون بعد بدايتها.')
+
+  const status: PromotionStatus = startsAt <= new Date() ? 'active' : 'scheduled'
+
+  if (!isSupabaseConfigured) {
+    demoPromotions.unshift({
+      id: `banner-${Date.now()}`,
+      provider_id: banner.provider_id ?? '',
+      provider_name: '',
+      kind: 'banner',
+      placement: 'home',
+      category_name: '',
+      amount: banner.amount ?? 0,
+      status,
+      impressions: 0,
+      clicks: 0,
+      starts_at: startsAt.toISOString(),
+      ends_at: endsAt.toISOString(),
+    })
+    await delay(null, 200)
+    return
+  }
+
+  const client = requireSupabase()
+  const extension = banner.file.name.split('.').pop()?.toLowerCase() || 'jpg'
+  const path = `home/${Date.now()}.${extension}`
+
+  const { error: uploadError } = await client.storage
+    .from(BANNER_BUCKET)
+    .upload(path, banner.file, { contentType: banner.file.type })
+  if (uploadError) throw uploadError
+
+  const image_url = client.storage.from(BANNER_BUCKET).getPublicUrl(path).data.publicUrl
+
+  const { error } = await client.from('promotions').insert({
+    kind: 'banner',
+    placement: 'home',
+    image_url,
+    provider_id: banner.provider_id || null,
+    amount: banner.amount ?? 0,
+    status,
+    starts_at: startsAt.toISOString(),
+    ends_at: endsAt.toISOString(),
+  })
+  if (error) {
+    // الصفّ لم يُكتب، فالصورة ملفٌّ يتيمٌ في الحاوية: يُحذف ولا يُترك.
+    await client.storage.from(BANNER_BUCKET).remove([path]).catch(() => undefined)
+    throw error
+  }
+
+  await recordAudit({
+    action: 'promotion.banner',
+    entity: 'promotion',
+    entityId: path,
+    entityLabel: 'لافتة إعلانية — الرئيسية',
+    details: {
+      from: startsAt.toISOString().slice(0, 10),
+      to: endsAt.toISOString().slice(0, 10),
+      ...(banner.amount ? { amount: banner.amount } : {}),
+    },
+  })
+}
+
 export const PROMOTION_KIND_LABEL: Record<PromotionKind, string> = {
   featured: 'إبراز في النتائج',
   banner: 'لافتة إعلانية',
