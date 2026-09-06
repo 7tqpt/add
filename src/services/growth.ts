@@ -2,6 +2,7 @@ import { requireSupabase } from '@/lib/supabase'
 import type {
   Paged,
   Promotion,
+  ServiceProvider,
   PromotionKind,
   PromotionStatus,
   SubscriptionPlan,
@@ -236,6 +237,79 @@ export async function createBanner(banner: NewBanner): Promise<void> {
       from: startsAt.toISOString().slice(0, 10),
       to: endsAt.toISOString().slice(0, 10),
       ...(banner.amount ? { amount: banner.amount } : {}),
+    },
+  })
+}
+
+/**
+ * يضع مزوّداً في شريط «مزوّدون مميّزون» **من اللوحة مباشرة**.
+ *
+ * **والمسار الأصلي غيرُ هذا:** المزوّد يطلب من تطبيقه (`api_request_promotion`)
+ * فتُنشأ دفعةٌ معلّقة وإعلانٌ `scheduled`، ثمّ يُفعَّل حين تُؤكَّد حوالته. وذاك
+ * هو البيع.
+ *
+ * وهذا وضعٌ يدويّ لِما لا حوالةَ فيه: تعويضٌ عن عطل، أو اتّفاقٌ خارج النظام،
+ * أو حملةٌ تفتحها المنصّة لمزوّدٍ تختاره. **ولذلك لا `payment_id` له** — ولو
+ * رُبط بدفعةٍ لَظهر في الحسابات دخلاً لم يصل.
+ *
+ * **والمزوّد يجب أن يكون موثَّقاً:** `api_active_promotions` تُسقط غيرَ
+ * الموثَّق أصلاً، فلو كُتب صفٌّ لمزوّدٍ معلّقٍ لَبقي في الجدول ولم يظهر في
+ * التطبيق — ولا شيءَ يقول لك لماذا.
+ */
+export async function featureProvider(input: {
+  provider: ServiceProvider
+  days: number
+  amount?: number
+}): Promise<void> {
+  if (input.days < 1 || input.days > 90) throw new Error('المدّة من يومٍ إلى تسعين.')
+  if (input.provider.status !== 'verified') {
+    throw new Error('لا يظهر في الشريط إلّا مزوّدٌ موثَّق.')
+  }
+
+  const startsAt = new Date()
+  const endsAt = new Date(startsAt.getTime() + input.days * 24 * 60 * 60 * 1000)
+
+  if (!isSupabaseConfigured) {
+    demoPromotions.unshift({
+      id: `featured-${Date.now()}`,
+      provider_id: input.provider.id,
+      provider_name: input.provider.business_name,
+      kind: 'featured',
+      placement: 'home',
+      category_name: '',
+      amount: input.amount ?? 0,
+      status: 'active',
+      impressions: 0,
+      clicks: 0,
+      starts_at: startsAt.toISOString(),
+      ends_at: endsAt.toISOString(),
+    })
+    await delay(null, 200)
+    return
+  }
+
+  const { error } = await requireSupabase().from('promotions').insert({
+    provider_id: input.provider.id,
+    provider_name: input.provider.business_name,
+    kind: 'featured',
+    placement: 'home',
+    amount: input.amount ?? 0,
+    // يبدأ الآن، فيُكتب `active` ويظهر فوراً — ولا شيءَ ينتظره.
+    status: 'active',
+    starts_at: startsAt.toISOString(),
+    ends_at: endsAt.toISOString(),
+  })
+  if (error) throw error
+
+  await recordAudit({
+    action: 'promotion.feature',
+    entity: 'promotion',
+    entityId: input.provider.id,
+    entityLabel: `ظهور مميز — ${input.provider.business_name}`,
+    details: {
+      days: input.days,
+      to: endsAt.toISOString().slice(0, 10),
+      ...(input.amount ? { amount: input.amount } : { note: 'بلا مقابل' }),
     },
   })
 }
