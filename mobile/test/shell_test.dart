@@ -53,6 +53,13 @@ bool _onScreen(WidgetTester tester, Finder finder) {
 ///
 /// و`skipOffstage: false` ضرورةٌ لا احتياط: الصفُّ أفقيٌّ فيه ثلاث عشرة
 /// بطاقة، وأكثرُها خارج الشاشة.
+/// بطاقةُ قسمٍ باسمها — **لا `find.text`**.
+///
+/// اسمُ القسم يُرسم سطرين: أصلٌ وتتمّة، فلا نصَّ واحدٌ فيه الاسمُ كاملاً.
+Finder _card(String label) => find.byWidgetPredicate(
+    (w) => w is CategoryCard && w.label == label,
+    description: 'بطاقة «$label»');
+
 List<String> _activeCategories(WidgetTester tester) => tester
     .widgetList<CategoryCard>(find.byType(CategoryCard, skipOffstage: false))
     .where((c) => c.active)
@@ -167,7 +174,7 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
     await tester.pumpAndSettle(const Duration(seconds: 2));
 
-    await tester.tap(find.text('الطبخ والضيافة'));
+    await tester.tap(_card('الطبخ والضيافة'));
     await _settle(tester);
 
     expect(tester.widget<GlassNavBar>(find.byType(GlassNavBar)).index, 2);
@@ -189,7 +196,7 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
     await tester.pumpAndSettle(const Duration(seconds: 2));
 
-    await tester.tap(find.text('الطبخ والضيافة'));
+    await tester.tap(_card('الطبخ والضيافة'));
     await _settle(tester);
     await tester.tap(find.text('استكشف').last);
     await _settle(tester);
