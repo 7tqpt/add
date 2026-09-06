@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../core/format.dart';
 import '../core/session.dart';
+import '../core/i18n.dart';
 import '../core/theme.dart';
 import '../data/api.dart';
 import '../data/models.dart';
@@ -349,11 +350,11 @@ class BannerCard extends StatelessWidget {
                 color: AppColors.ink.withValues(alpha: 0.55),
                 borderRadius: BorderRadius.circular(6),
               ),
-              child: const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                 child: Text(
-                  'إعلان',
-                  style: TextStyle(
+                  tr('إعلان'),
+                  style: const TextStyle(
                     fontSize: 10,
                     color: Colors.white,
                     fontFamilyFallback: arabicFallback,
@@ -496,8 +497,8 @@ class _SuggestedState extends State<_Suggested> {
           children: [
             Row(
               children: [
-                const Expanded(child: SectionTitle('خدماتٌ لك')),
-                TextButton(onPressed: widget.onExplore, child: const Text('المزيد')),
+                Expanded(child: SectionTitle(tr('خدماتٌ لك'))),
+                TextButton(onPressed: widget.onExplore, child: Text(tr('المزيد'))),
               ],
             ),
             const SizedBox(height: Space.sm),
@@ -677,7 +678,8 @@ class _HeartButton extends StatelessWidget {
             isFavourite ? Icons.favorite : Icons.favorite_border,
             size: 17,
             color: AppColors.accent,
-            semanticLabel: isFavourite ? 'أزل من المفضّلة' : 'أضف للمفضّلة',
+            semanticLabel:
+                isFavourite ? tr('أزل من المفضّلة') : tr('أضف للمفضّلة'),
           ),
         ),
       ),
@@ -701,16 +703,16 @@ class _Promoted extends StatelessWidget {
       children: [
         Row(
           children: [
-            const Expanded(child: SectionTitle('مزوّدون مميّزون')),
+            Expanded(child: SectionTitle(tr('مزوّدون مميّزون'))),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
                 color: AppColors.muted.withValues(alpha: Tint.chip),
                 borderRadius: BorderRadius.circular(4),
               ),
-              child: const Text(
-                'إعلان',
-                style: TextStyle(fontSize: 10, color: AppColors.muted),
+              child: Text(
+                tr('إعلان'),
+                style: const TextStyle(fontSize: 10, color: AppColors.muted),
               ),
             ),
           ],

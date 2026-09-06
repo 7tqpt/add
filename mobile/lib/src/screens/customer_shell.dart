@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../ui/alert_banner.dart';
 import '../ui/kit.dart';
 
+import '../core/i18n.dart';
 import '../core/presence.dart';
 import '../core/push.dart';
 import '../core/session.dart';
@@ -134,7 +135,13 @@ class _CustomerShellState extends State<CustomerShell> {
   Widget build(BuildContext context) {
     // الترتيب: الرئيسية أوّلاً — وهي في العربية أقصى اليمين، أوّلُ ما يقع
     // عليه الإبهام. وحسابي آخراً: أقلُّها فتحاً وأبعدُها عن الوسط.
-    final titles = ['الرئيسية', 'حجوزاتي', 'استكشف', 'خطة العرس', 'حسابي'];
+    final titles = [
+      tr('الرئيسية'),
+      tr('حجوزاتي'),
+      tr('استكشف'),
+      tr('خطة العرس'),
+      tr('حسابي'),
+    ];
     final pages = [
       HomeScreen(session: widget.session, onGoTo: _goTo),
       MyBookingsScreen(session: widget.session),
@@ -172,10 +179,10 @@ class _CustomerShellState extends State<CustomerShell> {
       bottomNavigationBar: GlassNavBar(
         index: _index,
         onSelect: _goTo,
-        items: const [
-          GlassNavItem(label: 'الرئيسية', icon: Icons.home_outlined, activeIcon: Icons.home),
+        items: [
+          GlassNavItem(label: tr('الرئيسية'), icon: Icons.home_outlined, activeIcon: Icons.home),
           GlassNavItem(
-            label: 'حجوزاتي',
+            label: tr('حجوزاتي'),
             // **وقائمةُ حجوزاتٍ لا تقويم.** كان تقويماً، و«خطة العرس»
             // تقويمٌ آخرُ يجاوره في الشريط نفسِه — أيقونتان متشابهتان في
             // أربعةٍ وعشرين بكسلاً، فيضغط صاحبُها إحداهما يقصد الأخرى.
@@ -183,18 +190,18 @@ class _CustomerShellState extends State<CustomerShell> {
             icon: Icons.receipt_long_outlined,
             activeIcon: Icons.receipt_long,
           ),
-          GlassNavItem(label: 'استكشف', icon: Icons.search_outlined, activeIcon: Icons.search),
+          GlassNavItem(label: tr('استكشف'), icon: Icons.search_outlined, activeIcon: Icons.search),
           // دفترٌ لا قلب: القلب صار للمفضّلة — يُضغط على الخدمة فتُحفظ،
           // وتُفتح من «حسابي». ورمزٌ واحد لمعنيين يجعل المستخدم يضغط
           // «خطة العرس» يبحث عمّا حفظه.
           GlassNavItem(
-            label: 'خطة العرس',
+            label: tr('خطة العرس'),
             // وخطةُ العرس قائمةُ مهامٍّ تُشطَب واحدةً واحدة — وهذا ما
             // تعرضه الشاشةُ فعلاً: مهامُّ ونسبةُ إنجاز.
             icon: Icons.fact_check_outlined,
             activeIcon: Icons.fact_check,
           ),
-          GlassNavItem(label: 'حسابي', icon: Icons.person_outline, activeIcon: Icons.person),
+          GlassNavItem(label: tr('حسابي'), icon: Icons.person_outline, activeIcon: Icons.person),
         ],
       ),
     );

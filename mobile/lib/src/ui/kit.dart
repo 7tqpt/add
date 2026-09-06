@@ -5,6 +5,7 @@ import 'dart:ui' show ImageFilter;
 import 'package:flutter/material.dart';
 
 import '../core/format.dart' show formatRelative;
+import '../core/i18n.dart';
 import '../core/presence.dart';
 import '../core/theme.dart';
 import '../data/supabase.dart' show offlineMessage;
@@ -202,7 +203,7 @@ Future<bool?> confirmDanger(
     actions: [
       TextButton(
         onPressed: () => Navigator.of(dialogContext).pop(false),
-        child: const Text('إلغاء'),
+        child: Text(tr('إلغاء')),
       ),
       FilledButton(
         onPressed: () => Navigator.of(dialogContext).pop(true),
@@ -731,7 +732,7 @@ class PresenceLine extends StatelessWidget {
           ),
           const SizedBox(width: 5),
           Text(
-            'متّصل الآن',
+            tr('متّصل الآن'),
             style: TextStyle(
               fontSize: size,
               color: AppColors.good,
@@ -743,7 +744,7 @@ class PresenceLine extends StatelessWidget {
     }
 
     return Text(
-      'آخر ظهور ${formatRelative(seen.toIso8601String())}',
+      trf('آخر ظهور {0}', [formatRelative(seen.toIso8601String())]),
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
       textAlign: center ? TextAlign.center : TextAlign.start,
@@ -824,12 +825,17 @@ class VerifiedMark extends StatelessWidget {
   const VerifiedMark({
     super.key,
     this.size = 18,
-    this.tooltip = 'مزوّد موثَّق',
+    this.tooltip,
     this.color = verifiedBlue,
   });
 
   final double size;
-  final String tooltip;
+
+  /// نصُّ التلميح — يُترك فارغاً فيكون «مزوّد موثَّق».
+  ///
+  /// **وفارغاً لا نصّاً افتراضيّاً:** المُنشئُ `const` فلا تُنادى
+  /// فيه `tr()`، والنداءُ يقع عند البناء حيث تُعرف لغةُ الشاشة.
+  final String? tooltip;
 
   /// **ويُمرَّر ليُسأل عنه.** لونٌ محبوسٌ في رسّامٍ خاصٍّ لا يُقاس إلّا
   /// بقراءة البكسلات، فيُخرَج إلى حيث يُقرأ.
@@ -837,7 +843,7 @@ class VerifiedMark extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Tooltip(
-    message: tooltip,
+    message: tooltip ?? tr('مزوّد موثَّق'),
     child: SizedBox(
       width: size,
       height: size,
@@ -919,7 +925,7 @@ class ProviderAvatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final url = imageUrl;
-    final letter = name.trim().isEmpty ? '؟' : name.trim().characters.first;
+    final letter = name.trim().isEmpty ? tr('؟') : name.trim().characters.first;
     return Container(
       width: size + ring * 2,
       height: size + ring * 2,
@@ -1156,14 +1162,15 @@ class _SpinnerPainter extends CustomPainter {
 class LoadingBlock extends StatefulWidget {
   const LoadingBlock({
     super.key,
-    this.label = 'جارٍ التحميل…',
+    this.label,
     this.delay = const Duration(milliseconds: 220),
     this.color = AppColors.accent,
     this.tint = AppColors.gold,
     this.labelColor,
   });
 
-  final String label;
+  /// السطرُ تحت الدوّار — يُترك فارغاً فيكون «جارٍ التحميل…».
+  final String? label;
   final Color color;
   final Color tint;
 
@@ -1224,10 +1231,10 @@ class _LoadingBlockState extends State<LoadingBlock> {
             BrandSpinner(color: widget.color, tint: widget.tint),
             const SizedBox(height: Space.md),
             if (widget.labelColor == null)
-              Muted(widget.label)
+              Muted(widget.label ?? tr('جارٍ التحميل…'))
             else
               Text(
-                widget.label,
+                widget.label ?? tr('جارٍ التحميل…'),
                 style: TextStyle(fontSize: 12, color: widget.labelColor),
               ),
           ],
@@ -1302,7 +1309,7 @@ class ErrorBlock extends StatelessWidget {
             ),
             if (onRetry != null) ...[
               const SizedBox(height: Space.lg),
-              OutlinedButton(onPressed: onRetry, child: const Text('إعادة المحاولة')),
+              OutlinedButton(onPressed: onRetry, child: Text(tr('إعادة المحاولة'))),
             ],
             if (technical != null && technical.isNotEmpty) ...[
               const SizedBox(height: Space.md),
@@ -1313,7 +1320,7 @@ class ErrorBlock extends StatelessWidget {
                   key: const ValueKey('error-details'),
                   tilePadding: EdgeInsets.zero,
                   childrenPadding: EdgeInsets.zero,
-                  title: const Muted('تفاصيل تقنية', size: 11),
+                  title: Muted(tr('تفاصيل تقنية'), size: 11),
                   children: [
                     SelectableText(
                       technical,
@@ -1357,8 +1364,8 @@ class ErrorBlock extends StatelessWidget {
             ),
           ),
           const SizedBox(height: Space.lg),
-          const Text(
-            'لا يوجد اتصال بالإنترنت',
+          Text(
+            tr('لا يوجد اتصال بالإنترنت'),
             key: ValueKey('offline-title'),
             textAlign: TextAlign.center,
             style: TextStyle(
@@ -1368,10 +1375,10 @@ class ErrorBlock extends StatelessWidget {
             ),
           ),
           const SizedBox(height: Space.sm),
-          const Text(
+          Text(
             // **ويُقال ما يُفعل لا ما وقع فقط.** «لا يوجد اتصال» خبرٌ،
             // و«شغّل البيانات أو الواي‑فاي» عملٌ يُفعل الآن.
-            'شغّل بيانات الجوال أو الواي‑فاي، ثم أعد المحاولة.',
+            tr('شغّل بيانات الجوال أو الواي‑فاي، ثم أعد المحاولة.'),
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 13, height: 1.7, color: AppColors.muted),
           ),
@@ -1379,7 +1386,7 @@ class ErrorBlock extends StatelessWidget {
             const SizedBox(height: Space.lg),
             FilledButton(
               onPressed: onRetry,
-              child: const Text('إعادة المحاولة'),
+              child: Text(tr('إعادة المحاولة')),
             ),
           ],
         ],
@@ -1886,7 +1893,7 @@ class ChatIconButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) => BadgeIconButton(
     icon: Icons.forum_outlined,
-    tooltip: 'المحادثات',
+    tooltip: tr('المحادثات'),
     count: unread,
     onTap: onTap,
   );
@@ -1901,7 +1908,7 @@ class BellIconButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) => BadgeIconButton(
     icon: Icons.notifications_none_rounded,
-    tooltip: 'الإشعارات',
+    tooltip: tr('الإشعارات'),
     count: unread,
     onTap: onTap,
   );
@@ -2128,6 +2135,8 @@ class _GlassHeaderHostState extends State<GlassHeaderHost> {
 /// في الموضع صفر أبداً. كشفه ضابطٌ سالبٌ لم يسقط.)
 ({String head, String tail}) splitCategoryLabel(String label) {
   final clean = label.trim();
+  // أداةُ تقسيمٍ لا نصُّ واجهة: تُشقُّ بها أسماءُ الأقسام الآتيةُ من
+  // القاعدة، وهي عربيّةٌ أبداً مهما كانت لغةُ الشاشة. i18n-ignore
   final at = clean.indexOf(' و');
   if (at < 2) return (head: clean, tail: '');
   final tail = clean.substring(at + 1).trim();
