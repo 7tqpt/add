@@ -11,6 +11,12 @@ import '../ui/service_card.dart';
 import 'provider_public.dart';
 import 'service_detail.dart';
 
+/// حدُّ حقلٍ كاملُ الاستدارة — يُشارك بين الحالتين فلا يختلف رقمٌ عن رقم.
+final _pill = OutlineInputBorder(
+  borderRadius: BorderRadius.circular(999),
+  borderSide: const BorderSide(color: AppColors.hairline),
+);
+
 class ExploreScreen extends StatefulWidget {
   const ExploreScreen({super.key, this.categoryId, this.search});
 
@@ -248,64 +254,73 @@ class _ExploreScreenState extends State<ExploreScreen> {
               _applied = v;
               _reload();
             },
-            decoration: const InputDecoration(
-              hintText: 'ابحث عن قاعة، مصوّر، طبّاخ…',
-              prefixIcon: Icon(Icons.search, size: 20),
+            // **نصٌّ قصيرٌ وقرصٌ كاملُ الاستدارة.**
+            //
+            // كان «ابحث عن قاعة، مصوّر، طبّاخ…» — وهو أطولُ من الحقل على
+            // شاشة الجوال فيُقصّ إلى «…ابحث عن قاعة، مصوّر، طبا». رأيتُه في
+            // لقطةٍ من جهازٍ حقيقيّ. والمقصوصُ يُقرأ عطباً لا اقتراحاً.
+            decoration: InputDecoration(
+              hintText: 'ابحث عن…',
+              prefixIcon: const Icon(Icons.search, size: 20),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+              enabledBorder: _pill,
+              focusedBorder: _pill.copyWith(
+                borderSide: const BorderSide(color: AppColors.accent, width: 1.5),
+              ),
             ),
           ),
         ),
-        // المحافظات شرائحُ في صفٍّ يُمرَّر: اثنتان وعشرون محافظةً في قائمةٍ
-        // منسدلة تعني ضغطتين ونافذةً تغطّي النتائج، وفي صفٍّ تعني ضغطةً واحدة.
-        SizedBox(
-          height: 40,
-          child: FutureBuilder<List<Governorate>>(
-            future: _governorates,
-            builder: (context, snap) {
-              final list = snap.data ?? const <Governorate>[];
-              if (list.isEmpty) return const SizedBox.shrink();
-              return ListView(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: Space.lg),
-                children: [
-                  // **«الأقربُ إليّ» أوّلَ الصفّ ولا يظهر بلا نقطة.**
-                  //
-                  // وهو مع المحافظات لا فوقها: كلاهما يقول «أين»، والفرقُ أنّ
-                  // المحافظةَ تقصُّ والقربَ يرتّب. ومن اختار «عدن» ثمّ رفعه
-                  // رأى العدنيّين مرتّبين بالقرب — لا صنعاء.
-                  if (_myPoint != null) ...[
-                    PickChip(
-                      key: const ValueKey('nearest-chip'),
-                      label: 'الأقرب إليّ',
-                      active: _nearest,
-                      onTap: () {
-                        _nearest = !_nearest;
+        // **المحافظاتُ قائمةٌ منسدلةٌ لا صفٌّ يُمرَّر.**
+        //
+        // كان صفَّ شرائحَ يُسحَب، وكان يعمل — لكنّ **لا شيء فيه يقول إنّ خلفه
+        // ستّ عشرة محافظةً أخرى**. من لا يعرف أنّ الصفَّ يُسحَب يرى ثلاثاً
+        // فيظنّها كلَّ ما في المنصّة. والزرُّ المغلقُ يقول العدد بذاته: اسمٌ
+        // واحدٌ وسهمٌ لأسفل، ومن ضغطه رأى العشرين كلَّها في ورقةٍ واحدة.
+        //
+        // وهو سطرٌ واحدٌ بدل صفٍّ بارتفاع أربعين، فيصعد ما تحته.
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: Space.lg),
+          child: Row(
+            children: [
+              Expanded(
+                child: FutureBuilder<List<Governorate>>(
+                  future: _governorates,
+                  builder: (context, snap) {
+                    final list = snap.data ?? const <Governorate>[];
+                    return _GovernorateField(
+                      value: _governorate,
+                      // **ويبقى ظاهراً وإن لم تصل القائمةُ بعد.** لو غاب حتى
+                      // تصل لَقفز ما تحته حين تصل — وقفزةٌ في أوّل ثانيةٍ من
+                      // الشاشة تُقرأ عطباً.
+                      enabled: list.isNotEmpty,
+                      options: list.map((g) => g.name).toList(),
+                      onPick: (name) {
+                        _governorate = name;
                         _reload();
                       },
-                    ),
-                    const SizedBox(width: Space.sm),
-                  ],
-                  PickChip(
-                    label: 'كل المحافظات',
-                    active: _governorate == null,
-                    onTap: () {
-                      _governorate = null;
-                      _reload();
-                    },
-                  ),
-                  for (final g in list) ...[
-                    const SizedBox(width: Space.sm),
-                    PickChip(
-                      label: g.name,
-                      active: _governorate == g.name,
-                      onTap: () {
-                        _governorate = g.name;
-                        _reload();
-                      },
-                    ),
-                  ],
-                ],
-              );
-            },
+                    );
+                  },
+                ),
+              ),
+              // **«الأقربُ إليّ» بجانبها لا فوقها، ولا يظهر بلا نقطة.**
+              //
+              // كلاهما يقول «أين»، والفرقُ أنّ المحافظةَ تقصُّ والقربَ يرتّب.
+              // ومن اختار «عدن» ثمّ رفعه رأى العدنيّين مرتّبين بالقرب — لا
+              // صنعاء.
+              if (_myPoint != null) ...[
+                const SizedBox(width: Space.sm),
+                PickChip(
+                  key: const ValueKey('nearest-chip'),
+                  label: 'الأقرب إليّ',
+                  active: _nearest,
+                  onTap: () {
+                    _nearest = !_nearest;
+                    _reload();
+                  },
+                ),
+              ],
+            ],
           ),
         ),
         const SizedBox(height: Space.sm),
@@ -613,4 +628,155 @@ class _ProviderRow extends StatelessWidget {
       ],
     );
   }
+}
+
+/// حقلُ اختيار المحافظة — زرٌّ مغلقٌ يُفتح على ورقةٍ فيها الكلّ.
+///
+/// **ولمَ ورقةٌ لا قائمةُ `DropdownButton`.** المحافظاتُ عشرون، وقائمةُ
+/// المادّة تنبثق فوق موضع الزرّ فتغطّي النتائج وتقصّ نفسَها عند حافّة
+/// الشاشة. والورقةُ من الأسفل تفتح بمقدار ما تحتاج، وتُسحَب بالإبهام حيث
+/// هو — لا حيث الزرّ.
+class _GovernorateField extends StatelessWidget {
+  const _GovernorateField({
+    required this.value,
+    required this.options,
+    required this.onPick,
+    required this.enabled,
+  });
+
+  /// المحافظة المختارة، أو `null` لـ«كل المحافظات».
+  final String? value;
+  final List<String> options;
+  final ValueChanged<String?> onPick;
+
+  /// أتُفتح الورقةُ عند الضغط؟ — لا تُفتح قبل أن تصل القائمة.
+  final bool enabled;
+
+  static const _all = 'كل المحافظات';
+
+  @override
+  Widget build(BuildContext context) {
+    final chosen = value != null;
+    return InkWell(
+      key: const ValueKey('governorate-field'),
+      borderRadius: BorderRadius.circular(12),
+      onTap: enabled ? () => _open(context) : null,
+      child: Container(
+        height: 48,
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          border: Border.all(
+            // **والمختارُ يُعرف من مغلقها.** لو بقي الإطارُ واحداً لَما عرف
+            // أحدٌ أنّ النتائج مقصوصةٌ على محافظةٍ إلّا بقراءة السطر.
+            color: chosen ? AppColors.accent : AppColors.hairline,
+            width: chosen ? 1.5 : 1,
+          ),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.place_outlined, size: 19, color: AppColors.accent),
+            const SizedBox(width: Space.sm),
+            Expanded(
+              child: Text(
+                value ?? _all,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: chosen ? FontWeight.w600 : FontWeight.normal,
+                  color: chosen ? AppColors.accent : AppColors.ink,
+                  fontFamilyFallback: arabicFallback,
+                ),
+              ),
+            ),
+            const Icon(Icons.keyboard_arrow_down_rounded,
+                size: 22, color: AppColors.muted),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _open(BuildContext context) async {
+    final picked = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      // **وتُقصَر على ثلاثة أرباع الشاشة.** ورقةٌ تملأ الشاشة تُقرأ صفحةً
+      // جديدةً لا اختياراً، ويضيع أنّ خلفها نتائجَ تنتظر.
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.sizeOf(context).height * 0.75,
+      ),
+      builder: (sheet) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: Space.sm),
+            // مقبضٌ صغير: يقول إنّ الورقةَ تُسحَب لتُغلق.
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.hairline,
+                borderRadius: BorderRadius.circular(999),
+              ),
+            ),
+            const Padding(
+              padding: EdgeInsets.all(Space.lg),
+              child: Text('اختر المحافظة',
+                  style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.ink,
+                      fontFamilyFallback: arabicFallback)),
+            ),
+            Flexible(
+              child: ListView(
+                shrinkWrap: true,
+                children: [
+                  _row(sheet, _all, value == null),
+                  for (final g in options) _row(sheet, g, value == g),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    // **والفراغُ إغلاقٌ لا اختيار.** من سحب الورقةَ ولم يختر شيئاً لا يُبدَّل
+    // له مرشِّحُه — و`null` هنا يعني «أُغلقت»، لا «كل المحافظات».
+    if (picked == null) return;
+    onPick(picked == _all ? null : picked);
+  }
+
+  Widget _row(BuildContext sheet, String label, bool active) => InkWell(
+        onTap: () => Navigator.pop(sheet, label),
+        child: Container(
+          height: 48,
+          padding: const EdgeInsets.symmetric(horizontal: Space.lg),
+          color: active ? AppColors.accent.withValues(alpha: 0.08) : null,
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: active ? FontWeight.w600 : FontWeight.normal,
+                    color: active ? AppColors.accent : AppColors.ink,
+                    fontFamilyFallback: arabicFallback,
+                  ),
+                ),
+              ),
+              if (active)
+                const Icon(Icons.check_rounded, size: 18, color: AppColors.accent),
+            ],
+          ),
+        ),
+      );
 }
