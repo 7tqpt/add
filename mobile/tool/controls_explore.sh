@@ -68,6 +68,10 @@ control "ب) يعود الحدُّ مربّعاً فلا يشبه ما طُلب"
              '  borderRadius: BorderRadius.circular(12),
   borderSide: const BorderSide(color: AppColors.hairline),'
 
+control "ب٢) يعود الشعارُ إلى يمين الحقل" \
+  sub "$EXP" '              suffixIcon: const Icon(Icons.search, size: 20),' \
+             '              prefixIcon: const Icon(Icons.search, size: 20),'
+
 # ── مرشِّحُ المحافظات ──────────────────────────────────────────────────────
 
 control "ج) المغلقُ لا يكتب المختارَ فلا يُعرف أنّ النتائج مقصوصة" \

@@ -261,7 +261,12 @@ class _ExploreScreenState extends State<ExploreScreen> {
             // لقطةٍ من جهازٍ حقيقيّ. والمقصوصُ يُقرأ عطباً لا اقتراحاً.
             decoration: InputDecoration(
               hintText: 'ابحث عن…',
-              prefixIcon: const Icon(Icons.search, size: 20),
+              // **والشعارُ في الطرف الأيسر — `suffixIcon` لا `prefixIcon`.**
+              //
+              // و`prefixIcon` تضعه في **بداية** الحقل، والبدايةُ في العربيّة
+              // يمينٌ لا يسار. فيُطلب الطرفُ الآخرُ صراحةً، ويبدأ النصُّ من
+              // الحافّة اليمنى كما يبدأ السطرُ العربيُّ منها.
+              suffixIcon: const Icon(Icons.search, size: 20),
               contentPadding:
                   const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
               enabledBorder: _pill,

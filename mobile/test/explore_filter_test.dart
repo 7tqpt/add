@@ -64,6 +64,23 @@ void main() {
       expect(hint, startsWith('ابحث عن'));
     });
 
+    testWidgets('**وشعارُه في الطرف الأيسر**', (tester) async {
+      // **ويُقاس بالموضع لا باسم المعامل.** `prefixIcon` تضعه يميناً في
+      // العربيّة و`suffixIcon` يساراً — والاسمُ وحده لا يقول ذلك لمن يقرأ،
+      // وقد يُبدَّل الاتّجاهُ يوماً. فيُقاس أين رُسم فعلاً.
+      await _open(tester);
+      final field = tester.renderObject<RenderBox>(find.byType(TextField).first);
+      final left = field.localToGlobal(Offset.zero).dx;
+      final right = left + field.size.width;
+
+      final icon = tester.renderObject<RenderBox>(find.descendant(
+          of: find.byType(TextField).first, matching: find.byIcon(Icons.search)));
+      final ix = icon.localToGlobal(Offset.zero).dx + icon.size.width / 2;
+
+      expect(ix, lessThan((left + right) / 2),
+          reason: 'الشعارُ في يمين الحقل لا يساره: $ix في [$left, $right]');
+    });
+
     testWidgets('**وحدُّه قرصٌ كاملُ الاستدارة**', (tester) async {
       await _open(tester);
       final d = tester
