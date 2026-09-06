@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Ban, ImagePlus, Megaphone, Search, Star } from 'lucide-react'
+import { Ban, ImagePlus, Megaphone, Search, Star, X } from 'lucide-react'
 import { Badge, type Tone } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Card, CardBody, CardHeader } from '@/components/ui/Card'
@@ -29,6 +29,7 @@ import type {
 } from '@/lib/types'
 import { listProviders } from '@/services/directory'
 import {
+  MAX_BANNER_IMAGES,
   PROMOTION_KIND_LABEL,
   PROMOTION_STATUS_LABEL,
   cancelPromotion,
@@ -358,50 +359,66 @@ function isoDay(offsetDays: number): string {
 function NewBannerCard({ onToast }: { onToast: (message: string) => void }) {
   const { canWrite } = useAuth()
   const input = useRef<HTMLInputElement>(null)
-  const [file, setFile] = useState<File | null>(null)
-  const [preview, setPreview] = useState<string | null>(null)
+  const [files, setFiles] = useState<File[]>([])
+  const [previews, setPreviews] = useState<string[]>([])
+  const [headline, setHeadline] = useState('')
   const [startsAt, setStartsAt] = useState(isoDay(0))
   const [endsAt, setEndsAt] = useState(isoDay(30))
   const [provider, setProvider] = useState<ServiceProvider | null>(null)
   const [busy, setBusy] = useState(false)
-  const [tooBig, setTooBig] = useState(false)
+  const [rejected, setRejected] = useState('')
 
-  // الرابط المؤقّت للمعاينة يُلغى مع الملفّ: تركُه يُبقي الصورة في الذاكرة.
+  // روابط المعاينة تُلغى مع الملفّات: تركُها يُبقي الصور كلَّها في الذاكرة.
   useEffect(() => {
-    if (!file) {
-      setPreview(null)
-      return
-    }
-    const url = URL.createObjectURL(file)
-    setPreview(url)
-    return () => URL.revokeObjectURL(url)
-  }, [file])
+    const urls = files.map((file) => URL.createObjectURL(file))
+    setPreviews(urls)
+    return () => urls.forEach((url) => URL.revokeObjectURL(url))
+  }, [files])
 
-  function choose(picked: File | undefined) {
-    if (!picked) return
-    if (picked.size > MAX_BANNER_BYTES) {
-      setTooBig(true)
-      return
-    }
-    setTooBig(false)
-    setFile(picked)
+  function choose(picked: FileList | null) {
+    if (!picked || picked.length === 0) return
+    const incoming = Array.from(picked)
+
+    const tooBig = incoming.filter((file) => file.size > MAX_BANNER_BYTES)
+    const room = MAX_BANNER_IMAGES - files.length
+    const fitting = incoming.filter((file) => file.size <= MAX_BANNER_BYTES).slice(0, room)
+
+    // **ويُقال ما رُفض ولماذا، لا يُبتلع صامتاً.** من اختار خمس صورٍ فدخلت
+    // ثلاثٌ بلا كلمةٍ يظنّ أنّ الخمسَ دخلت، ويكتشف النقصَ في جوّال زبونه.
+    const notes: string[] = []
+    if (tooBig.length) notes.push(`${tooBig.length} أكبر من ميجابايتين`)
+    const overflow = incoming.length - tooBig.length - fitting.length
+    if (overflow > 0) notes.push(`${overflow} تجاوزت حدَّ ${MAX_BANNER_IMAGES} صور`)
+    setRejected(notes.length ? `لم تُضَف: ${notes.join('، ')}.` : '')
+
+    if (fitting.length) setFiles((current) => [...current, ...fitting])
+  }
+
+  function drop(index: number) {
+    setFiles((current) => current.filter((_, i) => i !== index))
+    setRejected('')
   }
 
   async function submit() {
-    if (!file) return
+    if (files.length === 0) return
     setBusy(true)
     try {
       await createBanner({
-        file,
+        files,
+        headline,
         starts_at: startsAt,
         // آخرُ اليوم لا أوّلُه: من كتب «تنتهي ٣٠ يونيو» يقصد أن تُعرض ذلك
         // اليوم كلَّه، لا أن تختفي في منتصف ليلته الأولى.
         ends_at: `${endsAt}T23:59:59`,
         provider_id: provider?.id,
       })
-      onToast('نُشرت اللافتة.')
-      setFile(null)
+      onToast(
+        files.length > 1 ? `نُشرت اللافتة بـ${files.length} صور.` : 'نُشرت اللافتة.',
+      )
+      setFiles([])
+      setHeadline('')
       setProvider(null)
+      setRejected('')
     } catch (cause) {
       onToast(errorText(cause, 'تعذّر نشر اللافتة.'))
     } finally {
@@ -422,9 +439,27 @@ function NewBannerCard({ onToast }: { onToast: (message: string) => void }) {
       />
       <CardBody className="flex flex-col gap-4">
         <div className="flex flex-wrap items-start gap-4">
-          <div className="flex h-[124px] w-[198px] shrink-0 items-center justify-center overflow-hidden rounded-xl border border-hairline bg-surface-2">
-            {preview ? (
-              <img src={preview} alt="معاينة اللافتة" className="h-full w-full object-cover" />
+          {/* المعاينة كما تظهر في الجوال: الصورة الأولى وفوقها الكلمات
+              بالستار نفسِه الذي يرسمه التطبيق — فما يُرى هنا هو ما يُرى هناك. */}
+          <div className="relative flex h-[124px] w-[198px] shrink-0 items-center justify-center overflow-hidden rounded-xl border border-hairline bg-surface-2">
+            {previews[0] ? (
+              <>
+                <img src={previews[0]} alt="معاينة اللافتة" className="h-full w-full object-cover" />
+                {headline.trim() ? (
+                  <>
+                    <span
+                      aria-hidden
+                      className="pointer-events-none absolute inset-0 bg-gradient-to-t from-ink/80 via-ink/30 to-transparent"
+                    />
+                    <span className="absolute inset-x-2.5 bottom-2 line-clamp-2 text-[12px] font-bold leading-snug text-white">
+                      {headline.trim()}
+                    </span>
+                  </>
+                ) : null}
+                <span className="absolute start-1.5 top-1.5 rounded-md bg-ink/55 px-1.5 py-0.5 text-[9px] text-white">
+                  إعلان
+                </span>
+              </>
             ) : (
               <span className="text-[11px] text-muted">مقاسها في الجوال</span>
             )}
@@ -433,37 +468,78 @@ function NewBannerCard({ onToast }: { onToast: (message: string) => void }) {
           <div className="flex flex-col gap-1.5">
             <button
               type="button"
-              disabled={!canWrite || busy}
+              disabled={!canWrite || busy || files.length >= MAX_BANNER_IMAGES}
               onClick={() => input.current?.click()}
               className="flex items-center gap-1.5 rounded-lg border border-hairline px-2.5 py-1 text-xs text-ink-2 transition hover:border-accent hover:text-accent disabled:cursor-not-allowed disabled:opacity-50"
             >
               <ImagePlus className="size-3.5" />
-              {file ? 'استبدل الصورة' : 'اختر صورة'}
+              {files.length ? 'أضف صوراً' : 'اختر صوراً'}
             </button>
             <p className="max-w-[22rem] text-[11px] leading-5 text-muted">
               صورةٌ عريضة بنسبة ‎١٦:١٠‎ تقريباً (‎١٢٨٠×٨٠٠‎ مثلاً)، بحدٍّ أقصى
-              ميجابايتان. والنصُّ داخل الصورة: التطبيق لا يكتب فوقها شيئاً
-              سوى شارة «إعلان».
+              ميجابايتان لكلٍّ. ولك أن تختار حتى {MAX_BANNER_IMAGES} صورٍ للحملة
+              الواحدة — تُمرَّر شريحةً بعد شريحة، وتحمل كلُّها الكلماتِ
+              والوجهةَ نفسَها.
             </p>
-            {tooBig ? (
-              <p className="text-[11px] leading-5 text-critical">
-                الصورة أكبر من ميجابايتين. اختر صورةً أصغر.
-              </p>
+            {rejected ? (
+              <p className="text-[11px] leading-5 text-critical">{rejected}</p>
             ) : null}
           </div>
         </div>
 
+        {/* شريطُ الصور المختارة — وكلٌّ تُنزع وحدَها. */}
+        {previews.length > 1 ? (
+          <div className="flex flex-wrap gap-2">
+            {previews.map((url, index) => (
+              <div
+                key={url}
+                className="relative h-[52px] w-[84px] overflow-hidden rounded-lg border border-hairline"
+              >
+                <img src={url} alt="" className="h-full w-full object-cover" />
+                <span className="absolute bottom-0 start-0 bg-ink/65 px-1 text-[9px] text-white">
+                  {index + 1}
+                </span>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => drop(index)}
+                  aria-label={`انزع الصورة ${index + 1}`}
+                  className="absolute end-0.5 top-0.5 rounded-full bg-ink/70 p-0.5 text-white transition hover:bg-critical disabled:opacity-50"
+                >
+                  <X className="size-3" />
+                </button>
+              </div>
+            ))}
+          </div>
+        ) : null}
+
         <input
           ref={input}
           type="file"
+          multiple
           accept="image/jpeg,image/png,image/webp"
           className="hidden"
           onChange={(event) => {
-            choose(event.target.files?.[0])
-            // يُفرَّغ ليقبل اختيار الملفّ نفسه مرّةً ثانية بعد فشل.
+            choose(event.target.files)
+            // يُفرَّغ ليقبل اختيار الملفّ نفسه مرّةً ثانية بعد نزعه.
             event.target.value = ''
           }}
         />
+
+        <Field
+          label="كلمات الإعلان (اختياري)"
+          hint="تُكتب فوق الصور كلِّها في أسفلها. وتُترك فارغةً فلا يُكتب شيء."
+        >
+          {(id) => (
+            <Input
+              id={id}
+              value={headline}
+              maxLength={70}
+              placeholder="خصمُ ٢٠٪ على حجوزات رمضان"
+              onChange={(event) => setHeadline(event.target.value)}
+            />
+          )}
+        </Field>
 
         <div className="grid gap-3 sm:grid-cols-3">
           <Field label="تبدأ">
@@ -500,7 +576,7 @@ function NewBannerCard({ onToast }: { onToast: (message: string) => void }) {
         </div>
 
         <div className="flex justify-start">
-          <Button onClick={submit} disabled={!canWrite || busy || !file}>
+          <Button onClick={submit} disabled={!canWrite || busy || files.length === 0}>
             {busy ? 'يُنشر…' : 'انشر اللافتة'}
           </Button>
         </div>

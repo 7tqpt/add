@@ -262,7 +262,7 @@ class _BannersState extends State<_Banners> {
               for (final banner in widget.banners)
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 6),
-                  child: _BannerCard(banner: banner),
+                  child: BannerCard(banner: banner),
                 ),
             ],
           ),
@@ -277,8 +277,8 @@ class _BannersState extends State<_Banners> {
   }
 }
 
-class _BannerCard extends StatelessWidget {
-  const _BannerCard({required this.banner});
+class BannerCard extends StatelessWidget {
+  const BannerCard({super.key, required this.banner});
   final PromoBanner banner;
 
   @override
@@ -294,6 +294,51 @@ class _BannerCard extends StatelessWidget {
           // `image_url`، واللافتةُ قد تُرفع في سلّةٍ خاصّةٍ بها أو تأتي من
           // خارج المنصّة أصلاً — فلا يُفترض لها موضعُ تخزينٍ واحد.
           MediaThumb(url: banner.imageUrl.isEmpty ? null : banner.imageUrl),
+
+          // كلماتُ الإعلان — وتحتها ستارٌ متدرّج.
+          //
+          // **والستارُ شرطٌ لا زينة.** الصورةُ تأتي من صاحب الإعلان ولا
+          // نعرف ألوانها: نصٌّ أبيضُ على سماءٍ بيضاءَ في صورةِ قاعةٍ نهاراً
+          // لا يُقرأ حرفاً منه. والتدرّجُ يضمن أرضيّةً غامقةً تحت الكلمات
+          // مهما كانت الصورة، ويترك أعلاها كما هو.
+          if (banner.headline.isNotEmpty)
+            Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.bottomCenter,
+                    end: Alignment.topCenter,
+                    colors: [
+                      AppColors.ink.withValues(alpha: 0.82),
+                      AppColors.ink.withValues(alpha: 0.34),
+                      Colors.transparent,
+                    ],
+                    stops: const [0, 0.36, 0.62],
+                  ),
+                ),
+              ),
+            ),
+          if (banner.headline.isNotEmpty)
+            PositionedDirectional(
+              start: 14,
+              end: 14,
+              bottom: 12,
+              child: Text(
+                banner.headline,
+                // سطران وقصٌّ بعدهما: اللافتةُ مساحةٌ ثابتةٌ، ونصٌّ طويلٌ
+                // يزحف عليها حتى يغطّي الصورةَ التي دُفع ثمنُها.
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  height: 1.35,
+                  color: Colors.white,
+                  fontFamilyFallback: arabicFallback,
+                ),
+              ),
+            ),
+
           // شارةُ «إعلان» على ركنٍ أعلى: صغيرةٌ لا تبتلع الصورة، ومقروءةٌ
           // على أيّ صورةٍ لأنّ لها أرضيّتَها.
           PositionedDirectional(
