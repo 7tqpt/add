@@ -83,7 +83,10 @@ void main() {
     _phone(tester);
     await _openExplore(tester);
 
-    await tester.tap(find.text('الطبخ والضيافة').first);
+    await tester.tap(find.byWidgetPredicate(
+        (w) => w is CategoryCard && w.label == 'الطبخ والضيافة',
+        // الاسمُ يُرسم سطرين — أصلاً وتتمّةً — فلا `find.text` به.
+        description: 'بطاقة الطبخ').first);
     await _settle(tester);
     await tester.tap(find.text('مقدّمو الخدمة'));
     await _settle(tester);

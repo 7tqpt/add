@@ -156,6 +156,45 @@ control "و٢) السطرُ لا يحمل رقمَ البناء فلا تُعر�
   sub "$VER" "String get appVersionLabel => 'الإصدار \$appVersionName (\$appBuild)';" \
              "String get appVersionLabel => 'الإصدار \$appVersionName';"
 
+# ── بطاقةُ القسم ─────────────────────────────────────────────────────────
+
+control "ز٢) الاسمُ لا يُشقّ فيعود لفّاً في ثلاثة أسطرٍ متساوية" \
+  sub "$KIT" "  final at = clean.indexOf(' و');" '  final at = -1;'
+
+control "ح٢) يُشقّ عند واوٍ في وسط كلمةٍ لا في أوّلها" \
+  sub "$KIT" "  final at = clean.indexOf(' و');" "  final at = clean.indexOf('و');"
+
+control "ط٢) تتمّةٌ من حرفٍ تُقبل فيخرج سطرٌ لا يقول شيئاً" \
+  sub "$KIT" '  if (tail.length < 3) return (head: clean, tail: '"''"');' ''
+
+control "ي٢) أصلٌ من حرفٍ واحدٍ يُشقّ فيخرج سطرٌ لا يقول شيئاً" \
+  sub "$KIT" '  if (at < 2) return (head: clean, tail: '"''"');' \
+             '  if (at < 0) return (head: clean, tail: '"''"');'
+
+control "ك٢) أرضيّةُ البطاقة تعود مصبوغةً بلون القسم" \
+  sub "$KIT" '                  color: Colors.white,
+                  border: Border.all(' \
+             '                  gradient: LinearGradient(colors: [
+                    Colors.white,
+                    tone.withValues(alpha: 0.12),
+                  ]),
+                  border: Border.all('
+
+control "ل٢) الأصلُ يُلفّ سطرين وله تتمّةٌ تحته" \
+  sub "$KIT" '          maxLines: parts.tail.isEmpty ? 2 : 1,' '          maxLines: 2,'
+
+control "م٢) الحشوةُ تعود اثني عشرَ فتفيض على شاشة ٣٢٠" \
+  sub "$KIT" '                  vertical: Space.sm,
+                ),' \
+             '                  vertical: Space.md,
+                ),'
+
+control "ن٢) القرصُ يكبر فيفيض ما تحته" \
+  sub "$KIT" '                      width: 34,
+                      height: 34,' \
+             '                      width: 48,
+                      height: 48,'
+
 echo
 echo "== الحصيلة: $pass سقطت، $fail لم تسقط =="
 [ "$fail" -eq 0 ]

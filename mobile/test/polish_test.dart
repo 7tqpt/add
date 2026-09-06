@@ -346,4 +346,187 @@ void main() {
       expect(sizes, containsAll(<double>[13, 40]));
     });
   });
+
+  // ==========================================================================
+  //  ٥) بطاقةُ القسم: أرضيّةٌ بيضاء، وقرصٌ زجاجيّ، والأقراصُ في خطٍّ مستقيم
+  // ==========================================================================
+
+  group('اسمُ القسم يُشقّ', () {
+    test('**عند أوّل واو — أصلٌ غامقٌ وتتمّةٌ تحته**', () {
+      expect(splitCategoryLabel('القاعات والخيام'),
+          (head: 'القاعات', tail: 'والخيام'));
+      expect(splitCategoryLabel('الطبخ والضيافة'),
+          (head: 'الطبخ', tail: 'والضيافة'));
+      expect(splitCategoryLabel('الموية والطليع والخدمات المساندة'),
+          (head: 'الموية', tail: 'والطليع والخدمات المساندة'));
+    });
+
+    test('ولا يُشقّ ما لا واوَ فيه', () {
+      expect(splitCategoryLabel('السيارات'), (head: 'السيارات', tail: ''));
+      expect(splitCategoryLabel('الكل'), (head: 'الكل', tail: ''));
+      expect(splitCategoryLabel('منظمي الحفلات'),
+          (head: 'منظمي الحفلات', tail: ''));
+    });
+
+    test('**ولا يُترك أصلٌ من حرفٍ ولا تتمّةٌ من حرفين**', () {
+      // **أصلٌ من حرفٍ واحد.** «و وكذا» تُشقّ إلى «و» فوق «وكذا» — سطرٌ
+      // أعلاه لا يقول شيئاً. وكان الشرطُ `at <= 0` يُراد به «واوٌ في أوّل
+      // الاسم» وهو ميّتٌ: الاسمُ يُقلَّم قبله فلا يبدأ بفراغ. كشفه ضابطٌ
+      // سالبٌ كسرتُه فلم يسقط شيء.
+      expect(splitCategoryLabel('و وكذا'), (head: 'و وكذا', tail: ''));
+      expect(splitCategoryLabel(' وكذا'), (head: 'وكذا', tail: ''));
+      // تتمّةٌ من حرفين: سطرٌ لا يقول شيئاً، فيبقى الاسمُ كما هو.
+      expect(splitCategoryLabel('شيء وا'), (head: 'شيء وا', tail: ''));
+    });
+  });
+
+  group('بطاقةُ القسم', () {
+    // البطاقاتُ الاثنتا عشرةَ بأسمائها الحقيقيّة — وفيها أطولُ اسمٍ في
+    // البذرة، وهو الذي يفيض إن فاض شيء.
+    const names = [
+      ('halls', 'القاعات والخيام'),
+      ('catering', 'الطبخ والضيافة'),
+      ('artists', 'الفنانين والفرق'),
+      ('sound', 'الصوت والمعدات'),
+      ('photography', 'التصوير والإضاءة'),
+      ('support', 'الموية والطليع والخدمات المساندة'),
+      ('cars', 'السيارات'),
+      ('attire', 'الملبوسات'),
+      ('planners', 'منظمي الحفلات'),
+      ('beauty', 'التجميل والكوافير'),
+      ('decor', 'الديكور والورود'),
+      ('printing', 'الطباعة والدعوات'),
+      // **أصلٌ طويلٌ وله تتمّة** — وليس في البذرة اليوم مثلُه، فلولاه لَبقي
+      // شرطُ «سطرٌ واحدٌ للأصل ما دامت له تتمّة» بلا قياس: كسرتُه فلم يسقط
+      // شيء. وأصلٌ يُلفّ سطرين فوق تتمّةٍ من سطرين يفيض على شاشة ٣٢٠.
+      ('planners', 'منظمي الحفلات والمناسبات'),
+    ];
+
+    Widget grid() => Padding(
+          padding: const EdgeInsets.all(Space.lg),
+          child: GridView.count(
+            crossAxisCount: 4,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            mainAxisSpacing: Space.sm,
+            crossAxisSpacing: Space.sm,
+            // النسبةُ نفسُها المكتوبةُ في `home.dart` — ولو بُدّلت هناك
+            // وحدها لَبقي هذا الاختبار يقيس هندسةً غيرَ التي تُعرض.
+            childAspectRatio: 0.62,
+            children: [
+              for (final (slug, name) in names)
+                CategoryCard(
+                  label: name,
+                  icon: categoryIcon(slug),
+                  tone: categoryTone(slug),
+                  active: false,
+                  width: null,
+                  onTap: () {},
+                ),
+            ],
+          ),
+        );
+
+    // **والشاشةُ الضيّقةُ هي التي تفيض لا الواسعة.** ٣٢٠ منطقيّاً أضيقُ ما
+    // يُباع، والخليةُ فيه ٦٦ عرضاً لا ٧٦ — فيلتفّ الاسمُ أكثرَ ويطول.
+    for (final w in [960.0, 1080.0, 1200.0]) {
+      testWidgets('**لا تفيض عند عرض ${w ~/ 3} منطقيّاً**', (tester) async {
+        _screen(tester, width: w);
+        await tester.pumpWidget(_wrap(Scaffold(body: grid())));
+        await tester.pump(const Duration(milliseconds: 600));
+        expect(tester.takeException(), isNull);
+      });
+    }
+
+    testWidgets('**والأقراصُ كلُّها في خطٍّ واحدٍ داخل الصفّ**',
+        (tester) async {
+      _screen(tester);
+      await tester.pumpWidget(_wrap(Scaffold(body: grid())));
+      await tester.pump(const Duration(milliseconds: 600));
+
+      // القرصُ هو أوّلُ `Container` مربّعٍ ٣٤×٣٤ في كلّ بطاقة.
+      //
+      // **والصفُّ يُعرف بترتيب البطاقة لا بقربها من جارتها.** جمعتُها أوّلاً
+      // بتقريب الإحداثيّ الرأسيّ، فكانت بطاقةٌ تنزل عن صفّها فتصير مجموعةً
+      // وحدها — والفرقُ في مجموعةٍ من واحدةٍ صفرٌ دائماً، فيمرّ الاختبار
+      // وهو لا يقيس شيئاً. كشفه ضابطٌ سالبٌ كسرتُه فلم يسقط.
+      final tops = <int, List<double>>{};
+      var i = 0;
+      for (final e in tester.widgetList<CategoryCard>(find.byType(CategoryCard))) {
+        final card = find.byWidget(e);
+        final disc = find
+            .descendant(of: card, matching: find.byType(Container))
+            .evaluate()
+            .map((el) => el.renderObject!)
+            .whereType<RenderBox>()
+            .firstWhere((r) => r.size.width == 34 && r.size.height == 34);
+        tops.putIfAbsent(i++ ~/ 4, () => []).add(disc.localToGlobal(Offset.zero).dy);
+      }
+      expect(tops, isNotEmpty);
+      for (final row in tops.values) {
+        // **الفرقُ صفرٌ لا «قريبٌ من صفر».** لو تبع القرصُ طولَ الاسم
+        // لَاختلف بين «السيارات» و«الموية والطليع…» في الصفّ الواحد.
+        expect(row.reduce((a, b) => a > b ? a : b) - row.reduce((a, b) => a < b ? a : b),
+            0.0);
+      }
+    });
+
+    testWidgets('**وأصلُ الاسمِ سطرٌ واحدٌ ما دامت له تتمّة**', (tester) async {
+      // **والقرصُ وحدَه لا يكفي دليلاً.** هو أوّلُ ما في العمود فلا يتحرّك
+      // مهما فعل الاسمُ تحته — قِستُه فبقي في مكانه حتى مع كسر الحدّ.
+      //
+      // **وموضعُ التتمّة لا يصلح دليلاً كذلك.** جرّبتُه فسقط: أعلى التتمّة
+      // يختلف بكسلٍ واحدٍ بين «القاعات» و«منظمي الحفلات» في الشيفرة
+      // الصحيحة نفسِها — لأنّ ارتفاع السطر يتبع حروفَه. فاختبارُ تساوٍ
+      // تامٍّ كان يمرّ بالمصادفة لا بالصحّة.
+      //
+      // فيُقاس ما يقوله الحدُّ بعينه: **ارتفاعُ الأصل**. سطرٌ واحدٌ عند
+      // ١١٫٥ في ١٫٢٥ نحوُ ١٥، وسطران نحوُ ٣٠ — والعشرون بينهما بمنأى عن
+      // الاثنين، لا رقمٌ مضبوطٌ على النتيجة.
+      _screen(tester, width: 960);
+      await tester.pumpWidget(_wrap(Scaffold(body: grid())));
+      await tester.pump(const Duration(milliseconds: 600));
+
+      var measured = 0;
+      for (final e in tester.widgetList<CategoryCard>(find.byType(CategoryCard))) {
+        final parts = splitCategoryLabel(e.label);
+        if (parts.tail.isEmpty) continue; // بلا تتمّة: سطران مسموحان
+        final head = find
+            .descendant(of: find.byWidget(e), matching: find.byType(Text))
+            .evaluate()
+            .firstWhere((el) => (el.widget as Text).data == parts.head);
+        measured++;
+        expect((head.renderObject! as RenderBox).size.height, lessThan(20.0),
+            reason: 'أصلُ «${e.label}» لُفّ سطرين وتحته تتمّة');
+      }
+      // **وأنّ شيئاً قِيس أصلاً** — وإلّا مرّ الاختبارُ بلا حلقةٍ تدور.
+      expect(measured, greaterThan(4));
+    });
+
+    testWidgets('**وأرضيّتُها بيضاءُ لا مصبوغةٌ بلون القسم**', (tester) async {
+      _screen(tester);
+      await tester.pumpWidget(_wrap(Scaffold(
+        body: Center(
+          child: CategoryCard(
+            label: 'القاعات والخيام',
+            icon: categoryIcon('halls'),
+            tone: categoryTone('halls'),
+            active: false,
+            onTap: () {},
+          ),
+        ),
+      )));
+      await tester.pump(const Duration(milliseconds: 600));
+
+      final box = tester
+          .widgetList<AnimatedContainer>(find.descendant(
+              of: find.byType(CategoryCard),
+              matching: find.byType(AnimatedContainer)))
+          .first;
+      final d = box.decoration! as BoxDecoration;
+      expect(d.color, Colors.white);
+      // ولا تدرّجَ يصبغها: التدرّجُ كان يملأ البطاقة كلَّها بلون القسم.
+      expect(d.gradient, isNull);
+    });
+  });
 }

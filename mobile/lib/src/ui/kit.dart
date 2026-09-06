@@ -1499,51 +1499,65 @@ class _CategoryCardState extends State<CategoryCard> {
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 160),
                 width: widget.width,
+                // **والحشوةُ الرأسيّةُ ثمانيةٌ لا اثنا عشر.** الخليّةُ على
+                // شاشة ٣٢٠ — وهي أضيقُ ما يُباع — ستٌّ وستّون عرضاً ومئةٌ
+                // وستّةٌ ارتفاعاً، و«الموية والطليع والخدمات المساندة» يملؤها
+                // ويفيض بكسلاً ونصفاً. قِستُه بالاختبار عند ٣٢٠ لا بالنظر
+                // على ٣٦٠ حيث لا يقع.
                 padding: const EdgeInsets.symmetric(
                   horizontal: Space.sm,
-                  vertical: Space.md,
+                  vertical: Space.sm,
                 ),
                 decoration: BoxDecoration(
-                  // زجاجٌ مصبوغ: تدرّجٌ من أبيضَ شبه صافٍ إلى صبغةٍ خفيفة،
-                  // فيبدو السطح ذا عمقٍ لا لوحةً مسطّحة.
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.white.withValues(alpha: 0.96),
-                      tone.withValues(alpha: active ? 0.16 : 0.07),
-                    ],
-                  ),
+                  // أرضيّةٌ بيضاء لا مصبوغة. والصبغةُ كانت تملأ البطاقة كلَّها
+                  // فيصير الصفُّ ثمانيةَ ألوانٍ متجاورة، تتزاحم فلا يبرز
+                  // منها لون. واللونُ الآن في القرص وحده، والبياضُ حوله يخدمه.
+                  color: Colors.white,
                   border: Border.all(
-                    color: tone.withValues(alpha: active ? 0.55 : 0.18),
+                    color: active
+                        ? tone.withValues(alpha: 0.55)
+                        : AppColors.hairline,
                     width: active ? 1.5 : 1,
                   ),
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(16),
                   boxShadow: [
                     // ظلٌّ يُغلق عند الضغط فتبدو البطاقة وقد غاصت في مكانها.
                     BoxShadow(
-                      color: tone.withValues(alpha: _down ? 0.10 : 0.18),
-                      blurRadius: _down ? 4 : 12,
-                      offset: Offset(0, _down ? 1 : 5),
+                      color: AppColors.ink.withValues(alpha: _down ? 0.03 : 0.05),
+                      blurRadius: _down ? 4 : 10,
+                      offset: Offset(0, _down ? 1 : 3),
                     ),
                   ],
                 ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    // قرصٌ زجاجيّ: ضوءٌ أبيضُ من أعلى ينحدر إلى صبغة القسم،
+                    // وحافّةٌ رقيقةٌ بلونه، وظلٌّ مصبوغٌ تحته. وهو أصغرُ من
+                    // سابقه — ٣٤ لا ٣٦ — لأنّ البياضَ حوله صار يحمله.
                     Container(
-                      width: 36,
-                      height: 36,
+                      width: 34,
+                      height: 34,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
                           colors: [
-                            tone.withValues(alpha: active ? 0.26 : 0.15),
-                            tone.withValues(alpha: active ? 0.14 : 0.07),
+                            Colors.white.withValues(alpha: 0.95),
+                            tone.withValues(alpha: active ? 0.28 : 0.16),
                           ],
                         ),
+                        border: Border.all(
+                          color: tone.withValues(alpha: active ? 0.42 : 0.22),
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: tone.withValues(alpha: 0.14),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
                       ),
                       child: _CategoryGlyph(
                         imageUrl: widget.imageUrl,
@@ -1552,22 +1566,7 @@ class _CategoryCardState extends State<CategoryCard> {
                       ),
                     ),
                     const SizedBox(height: Space.sm),
-                    // ثلاثة أسطرٍ بحدٍّ أقصى ثم قصٌّ. وثلاثةٌ لا سطران: أطولُ
-                    // اسمٍ في البذرة — «الموية والطليع والخدمات المساندة» —
-                    // يُقصّ عند سطرين فيضيع آخره، ويكتمل عند ثلاثة.
-                    Text(
-                      widget.label,
-                      maxLines: 3,
-                      overflow: TextOverflow.ellipsis,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 11.5,
-                        height: 1.35,
-                        fontWeight: active ? FontWeight.w600 : FontWeight.w500,
-                        color: active ? tone : AppColors.ink,
-                        fontFamilyFallback: arabicFallback,
-                      ),
-                    ),
+                    _CategoryLabel(label: widget.label, active: active, tone: tone),
                   ],
                 ),
               ),
@@ -1936,6 +1935,85 @@ class GlassHeader extends StatelessWidget {
   }
 }
 
+/// يشقّ اسمَ القسم عند أوّل واوٍ مبتدئةٍ كلمةً: أصلٌ وتتمّة.
+///
+/// **ولمَ يُشقّ أصلاً.** أسماءُ الأقسام متفاوتةُ الطول — «السيارات» و«الموية
+/// والطليع والخدمات المساندة» — وكانت تُلفّ في ثلاثة أسطرٍ متساوية الحجم،
+/// فيبتلع الطويلُ بطاقتَه ولا يُقرأ منه المهمّ إلّا بالتأمّل. والمهمّ هو ما
+/// قبل الواو: «القاعات»، «التصوير»، «الطبخ». فيُكتب غامقاً في سطرٍ واحد،
+/// وتُكتب التتمّةُ تحته أهدأَ وأصغر.
+///
+/// **ولا يُشقّ ما لا ينفع شقُّه.** أصلٌ من حرفٍ واحدٍ لا يقول شيئاً، وكذلك
+/// تتمّةٌ من حرفين — فيُترك الاسمُ في الحالتين كما هو.
+///
+/// (وكان الحدُّ الأوّلُ `at <= 0` يُراد به «واوٌ في أوّل الاسم». وهو شرطٌ
+/// **ميّت**: الاسمُ يُقلَّم قبله، فلا يبدأ بفراغٍ، فلا يقع الفراغُ المطلوبُ
+/// في الموضع صفر أبداً. كشفه ضابطٌ سالبٌ لم يسقط.)
+({String head, String tail}) splitCategoryLabel(String label) {
+  final clean = label.trim();
+  final at = clean.indexOf(' و');
+  if (at < 2) return (head: clean, tail: '');
+  final tail = clean.substring(at + 1).trim();
+  if (tail.length < 3) return (head: clean, tail: '');
+  return (head: clean.substring(0, at).trim(), tail: tail);
+}
+
+/// اسمُ القسم: أصلُه غامقاً وتتمّتُه تحته.
+class _CategoryLabel extends StatelessWidget {
+  const _CategoryLabel({
+    required this.label,
+    required this.active,
+    required this.tone,
+  });
+
+  final String label;
+  final bool active;
+  final Color tone;
+
+  @override
+  Widget build(BuildContext context) {
+    final parts = splitCategoryLabel(label);
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // **سطرٌ واحدٌ للأصل ما دامت له تتمّة.** ولو لُفّ في سطرين لَنزلت
+        // التتمّةُ في بطاقةٍ دون جارتها فتعرّج الصفُّ.
+        //
+        // **وسطران إن لم تكن له تتمّة.** «منظمي الحفلات» لا واوَ فيه فيبقى
+        // كلَّه في الأصل، وسطرٌ واحدٌ يقصّه إلى «منظمي ال…» — رأيتُه في
+        // اللقطة. ولا صفَّ يتعرّج بذلك: ما تحته لا شيء.
+        Text(
+          parts.head,
+          maxLines: parts.tail.isEmpty ? 2 : 1,
+          overflow: TextOverflow.ellipsis,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 11.5,
+            height: 1.25,
+            fontWeight: FontWeight.w700,
+            color: active ? tone : AppColors.ink,
+            fontFamilyFallback: arabicFallback,
+          ),
+        ),
+        if (parts.tail.isNotEmpty)
+          Text(
+            parts.tail,
+            // سطران للتتمّة: «والطليع والخدمات المساندة» لا يكتمل في سطر.
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 10,
+              height: 1.3,
+              color: active ? tone.withValues(alpha: 0.85) : AppColors.muted,
+              fontFamilyFallback: arabicFallback,
+            ),
+          ),
+      ],
+    );
+  }
+}
+
 /// ما داخل دائرة بطاقة القسم: صورتُه إن كانت، وإلّا أيقونتُه.
 class _CategoryGlyph extends StatelessWidget {
   const _CategoryGlyph({
@@ -1951,14 +2029,16 @@ class _CategoryGlyph extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final url = imageUrl;
-    final fallback = Icon(icon, size: 19, color: tone);
+    final fallback = Icon(icon, size: 17, color: tone);
     if (url == null || url.isEmpty) return fallback;
 
+    // والصورةُ بمقاس القرص — ٣٤ لا ٣٦ بعد تصغيره. وحافّةُ القرص تُزيحها
+    // فتُرسم اثنين وثلاثين وتُحيط بها الحلقةُ المصبوغة، وهو المقصود.
     return ClipOval(
       child: Image.network(
         url,
-        width: 36,
-        height: 36,
+        width: 34,
+        height: 34,
         fit: BoxFit.cover,
         // **والعودةُ إلى الأيقونة عند الفشل لا مربّعٌ مكسور.** الشاشةُ الأولى
         // تُفتح على شبكةٍ يمنيّةٍ قد تنقطع، ومن رآها اثنتي عشرة أيقونةَ خطأٍ
