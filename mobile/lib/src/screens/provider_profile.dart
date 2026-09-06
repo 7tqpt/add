@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../core/i18n.dart';
 import '../core/format.dart';
 import '../core/geo.dart';
 import '../core/session.dart';
@@ -68,9 +69,9 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen> {
   Future<void> _confirmSignOut() async {
     final yes = await confirmDanger(
       context,
-      title: 'تسجيل الخروج؟',
-      body: 'ستحتاج إلى بريدك وكلمة مرورك للدخول مرّةً أخرى.',
-      confirm: 'خروج',
+      title: tr('تسجيل الخروج؟'),
+      body: tr('ستحتاج إلى بريدك وكلمة مرورك للدخول مرّةً أخرى.'),
+      confirm: tr('خروج'),
     );
     if (yes == true) widget.session.signOut();
   }
@@ -94,18 +95,18 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen> {
             padding: EdgeInsets.fromLTRB(
               Space.lg, glassHeaderTop(context), Space.lg, glassNavSpace),
             children: [
-              const AppCard(
+              AppCard(
                 children: [
-                  SectionTitle('لا ملف مقدّم خدمة'),
+                  SectionTitle(tr('لا ملف مقدّم خدمة')),
                   SizedBox(height: Space.sm),
-                  Text('لم تُقدّم طلباً بعد.'),
+                  Text(tr('لم تُقدّم طلباً بعد.')),
                 ],
               ),
               const SizedBox(height: Space.md),
               OutlinedButton.icon(
                 onPressed: () => widget.session.switchTo(provider: false),
                 icon: const Icon(Icons.swap_horiz, size: 20),
-                label: const Text('العودة إلى وضع العميل'),
+                label: Text(tr('العودة إلى وضع العميل')),
               ),
             ],
           );
@@ -134,8 +135,8 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen> {
               // قيد المراجعة لا يستقبل حجزاً واحداً، وهو أوّلُ ما يجب أن يعرفه
               // حين يفتح شاشته.
               footer: switch (p.status) {
-                'pending' => const _HeaderNote(
-                  'طلبك قيد المراجعة — لن تستقبل حجوزات حتى تُقبل مستنداتك.',
+                'pending' => _HeaderNote(
+                  tr('طلبك قيد المراجعة — لن تستقبل حجوزات حتى تُقبل مستنداتك.'),
                 ),
                 'rejected' when p.rejectionReason.isNotEmpty =>
                   _HeaderNote(p.rejectionReason),
@@ -149,7 +150,7 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen> {
                 // واجهته قبل أن يعدّلها، ومن رآها عرف ما ينقصها.
                 MenuRow(
                   icon: Icons.visibility_outlined,
-                  label: 'ملفّي كما يراه العميل',
+                  label: tr('ملفّي كما يراه العميل'),
                   onTap: () => Navigator.of(context).push(
                     MaterialPageRoute(
                       builder: (_) =>
@@ -159,12 +160,12 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen> {
                 ),
                 MenuRow(
                   icon: Icons.edit_outlined,
-                  label: 'تعديل الاسم والتعريف',
+                  label: tr('تعديل الاسم والتعريف'),
                   onTap: () => _edit(p),
                 ),
                 MenuRow(
                   icon: Icons.badge_outlined,
-                  label: 'مستندات التوثيق',
+                  label: tr('مستندات التوثيق'),
                   onTap: () => Navigator.of(context).push(
                     MaterialPageRoute(
                       builder: (_) => DocumentsScreen(session: widget.session),
@@ -177,15 +178,15 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen> {
 
                 MenuRow(
                   icon: Icons.workspace_premium_outlined,
-                  label: 'الباقات والاشتراك',
+                  label: tr('الباقات والاشتراك'),
                   onTap: () => _push(
-                    'اشتراكك', SubscriptionScreen(session: widget.session)),
+                    tr('اشتراكك'), SubscriptionScreen(session: widget.session)),
                 ),
                 MenuRow(
                   icon: Icons.account_balance_wallet_outlined,
-                  label: 'مستحقّاتي',
+                  label: tr('مستحقّاتي'),
                   onTap: () => _push(
-                    'مستحقّاتي', EarningsScreen(session: widget.session)),
+                    tr('مستحقّاتي'), EarningsScreen(session: widget.session)),
                   last: true,
                 ),
 
@@ -193,7 +194,7 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen> {
 
                 MenuRow(
                   icon: Icons.support_agent_outlined,
-                  label: 'الدعم',
+                  label: tr('الدعم'),
                   onTap: () => Navigator.of(context).push(
                     MaterialPageRoute(
                       builder: (_) => SupportScreen(session: widget.session),
@@ -202,7 +203,7 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen> {
                 ),
                 MenuRow(
                   icon: Icons.swap_horiz,
-                  label: 'العودة إلى وضع العميل',
+                  label: tr('العودة إلى وضع العميل'),
                   onTap: () => widget.session.switchTo(provider: false),
                 ),
                 // **ويُسأل عن الخروج هنا كما يُسأل عنه في «حسابي».** كانت
@@ -210,7 +211,7 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen> {
                 // وكلمته — والسؤالُ أرخص من ذلك، والشاشتان تتبعان عادةً واحدة.
                 MenuRow(
                   icon: Icons.logout_rounded,
-                  label: 'تسجيل الخروج',
+                  label: tr('تسجيل الخروج'),
                   tone: AppColors.critical,
                   onTap: () => _confirmSignOut(),
                   last: true,
@@ -225,11 +226,11 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen> {
               padding: const EdgeInsets.fromLTRB(Space.lg, Space.lg, Space.lg, 0),
               child: AppCard(
                 children: [
-                  const SectionTitle('أرقامك'),
-                  KeyValue('التقييم', p.rating > 0 ? '${p.rating}' : 'لا تقييم بعد'),
-                  KeyValue('عدد التقييمات', formatNumber(p.reviewsCount)),
-                  KeyValue('حجوزات منفّذة', formatNumber(p.completedBookings)),
-                  KeyValue('إجمالي الأرباح', formatMoney(p.totalEarnings)),
+                  SectionTitle(tr('أرقامك')),
+                  KeyValue(tr('التقييم'), p.rating > 0 ? '${p.rating}' : tr('لا تقييم بعد')),
+                  KeyValue(tr('عدد التقييمات'), formatNumber(p.reviewsCount)),
+                  KeyValue(tr('حجوزات منفّذة'), formatNumber(p.completedBookings)),
+                  KeyValue(tr('إجمالي الأرباح'), formatMoney(p.totalEarnings)),
                 ],
               ),
             ),
@@ -241,7 +242,7 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen> {
               Center(
                 child: TextButton(
                   onPressed: _approveInDemo,
-                  child: const Text('(تجريبي) محاكاة قبول الإدارة'),
+                  child: Text(tr('(تجريبي) محاكاة قبول الإدارة')),
                 ),
               ),
 
@@ -322,12 +323,12 @@ class _LogoState extends State<_Logo> {
           children: [
             ListTile(
               leading: const Icon(Icons.photo_camera_outlined, color: AppColors.accent),
-              title: const Text('التقاط صورة'),
+              title: Text(tr('التقاط صورة')),
               onTap: () => Navigator.of(sheet).pop(ImageSource.camera),
             ),
             ListTile(
               leading: const Icon(Icons.photo_library_outlined, color: AppColors.accent),
-              title: const Text('اختيار من المعرض'),
+              title: Text(tr('اختيار من المعرض')),
               onTap: () => Navigator.of(sheet).pop(ImageSource.gallery),
             ),
             const SizedBox(height: Space.sm),
@@ -363,7 +364,7 @@ class _LogoState extends State<_Logo> {
       );
       await Api.updateProviderProfile(providerId: widget.profile.id, logoPath: path);
       if (!mounted) return;
-      showMessage(context, 'حُفظ الشعار');
+      showMessage(context, tr('حُفظ الشعار'));
       widget.onDone();
     } catch (e) {
       if (mounted) showMessage(context, messageOf(e));
@@ -447,7 +448,7 @@ class _ProfileEditorState extends State<_ProfileEditor> {
   Future<void> _save() async {
     final name = _name.text.trim();
     if (name.length < 2) {
-      setState(() => _error = 'اكتب اسم محلّك أو قاعتك.');
+      setState(() => _error = tr('اكتب اسم محلّك أو قاعتك.'));
       return;
     }
     setState(() {
@@ -486,31 +487,31 @@ class _ProfileEditorState extends State<_ProfileEditor> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,
           children: [
-            const SectionTitle('ملفّي'),
+            SectionTitle(tr('ملفّي')),
             const SizedBox(height: Space.lg),
             TextField(
               controller: _name,
-              decoration: const InputDecoration(
-                labelText: 'اسم المحل أو القاعة',
-                hintText: 'قاعة التاج',
+              decoration: InputDecoration(
+                labelText: tr('اسم المحل أو القاعة'),
+                hintText: tr('قاعة التاج'),
               ),
             ),
             const SizedBox(height: Space.md),
             TextField(
               controller: _bio,
               maxLines: 4,
-              decoration: const InputDecoration(
-                labelText: 'التعريف',
-                hintText: 'ما الذي تقدّمه؟ ومنذ متى؟ وما الذي يميّزك؟',
+              decoration: InputDecoration(
+                labelText: tr('التعريف'),
+                hintText: tr('ما الذي تقدّمه؟ ومنذ متى؟ وما الذي يميّزك؟'),
               ),
             ),
             const SizedBox(height: Space.sm),
-            const Muted(
-              'هذا ما يقرؤه العميل في صفحتك قبل أن يحجز.',
+            Muted(
+              tr('هذا ما يقرؤه العميل في صفحتك قبل أن يحجز.'),
               size: 11,
             ),
             const SizedBox(height: Space.lg),
-            const SectionTitle('موقع محلّك'),
+            SectionTitle(tr('موقع محلّك')),
             const SizedBox(height: Space.sm),
             LocationRow(
               point: _point,
@@ -521,8 +522,8 @@ class _ProfileEditorState extends State<_ProfileEditor> {
             // **ولماذا يضعه أصلاً:** العميلُ يرتّب البحث بـ«الأقرب إليّ»، ومن
             // لا نقطةَ له يظهر بعد من وضعها. ومن في السنينة لا يعبر المدينة
             // إلى سعوان ليلةَ العرس وهو يجد مثلَه قريباً.
-            const Muted(
-              'يُرتَّب بحث العميل بالأقرب إليه. ومن لم يضع موقعه يظهر بعد من وضعه.',
+            Muted(
+              tr('يُرتَّب بحث العميل بالأقرب إليه. ومن لم يضع موقعه يظهر بعد من وضعه.'),
               size: 11,
             ),
             if (_error != null) ...[
@@ -533,11 +534,11 @@ class _ProfileEditorState extends State<_ProfileEditor> {
               ),
             ],
             const SizedBox(height: Space.lg),
-            FilledButton(onPressed: _busy ? null : _save, child: const Text('حفظ')),
+            FilledButton(onPressed: _busy ? null : _save, child: Text(tr('حفظ'))),
             const SizedBox(height: Space.sm),
             TextButton(
               onPressed: _busy ? null : () => Navigator.of(context).pop(false),
-              child: const Text('إلغاء'),
+              child: Text(tr('إلغاء')),
             ),
           ],
         ),

@@ -8,6 +8,7 @@
 // فالشاشة تقول أيُّهما بلونه ونصّه، ولا تعرض زرّاً لا يعمل.
 import 'package:flutter/material.dart';
 
+import '../core/i18n.dart';
 import '../core/format.dart';
 import '../core/session.dart';
 import '../data/supabase.dart' show messageOf;
@@ -59,7 +60,7 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
     if (day.isBefore(DateTime(today.year, today.month, today.day))) return;
 
     if (mark != null && mark.byBooking) {
-      showMessage(context, 'هذا اليوم محجوز: ${mark.note}');
+      showMessage(context, trf('هذا اليوم محجوز: {0}', [mark.note]));
       return;
     }
 
@@ -98,24 +99,24 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('إغلاق ${formatDay(day)}',
+            Text(trf('إغلاق {0}', [formatDay(day)]),
                 style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
             const SizedBox(height: 4),
-            const Muted('لن يستطيع أحد أن يحجزك في هذا اليوم. والسبب لك وحدك — لا يراه العميل.'),
+            Muted(tr('لن يستطيع أحد أن يحجزك في هذا اليوم. والسبب لك وحدك — لا يراه العميل.')),
             const SizedBox(height: 12),
             TextField(
               controller: controller,
               autofocus: true,
-              decoration: const InputDecoration(
-                labelText: 'السبب (اختياري)',
-                hintText: 'سفر، مناسبة عائلية، صيانة…',
+              decoration: InputDecoration(
+                labelText: tr('السبب (اختياري)'),
+                hintText: tr('سفر، مناسبة عائلية، صيانة…'),
               ),
               onSubmitted: (v) => Navigator.of(sheetContext).pop(v),
             ),
             const SizedBox(height: 12),
             FilledButton(
               onPressed: () => Navigator.of(sheetContext).pop(controller.text),
-              child: const Text('أغلق اليوم'),
+              child: Text(tr('أغلق اليوم')),
             ),
           ],
         ),
@@ -178,7 +179,7 @@ class _MonthBar extends StatelessWidget {
         IconButton(
           onPressed: () => onShift(-1),
           icon: const Icon(Icons.chevron_right),
-          tooltip: 'الشهر السابق',
+          tooltip: tr('الشهر السابق'),
         ),
         Expanded(
           child: Text(
@@ -190,7 +191,7 @@ class _MonthBar extends StatelessWidget {
         IconButton(
           onPressed: () => onShift(1),
           icon: const Icon(Icons.chevron_left),
-          tooltip: 'الشهر التالي',
+          tooltip: tr('الشهر التالي'),
         ),
       ],
     );
@@ -214,7 +215,7 @@ class _Grid extends StatelessWidget {
     final cells = <Widget>[];
 
     for (var i = 0; i < lead; i++) {
-      cells.add(const SizedBox.shrink());
+      cells.add(SizedBox.shrink());
     }
     for (var d = 1; d <= days; d++) {
       final day = DateTime(month.year, month.month, d);
@@ -234,9 +235,9 @@ class _Grid extends StatelessWidget {
     return AppCard(
       children: [
         Row(
-          children: const [
-            _Head('سبت'), _Head('أحد'), _Head('اثنين'), _Head('ثلاثاء'),
-            _Head('أربعاء'), _Head('خميس'), _Head('جمعة'),
+          children: [
+            _Head(tr('سبت')), _Head(tr('أحد')), _Head(tr('اثنين')), _Head(tr('ثلاثاء')),
+            _Head(tr('أربعاء')), _Head(tr('خميس')), _Head(tr('جمعة')),
           ],
         ),
         const SizedBox(height: 8),
@@ -332,11 +333,11 @@ class _Legend extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        _Dot(color: AppColors.good, label: 'متاح'),
+        _Dot(color: AppColors.good, label: tr('متاح')),
         const SizedBox(width: 16),
-        _Dot(color: AppColors.booked, label: 'محجوز'),
+        _Dot(color: AppColors.booked, label: tr('محجوز')),
         const SizedBox(width: 16),
-        _Dot(color: AppColors.critical, label: 'أغلقتَه'),
+        _Dot(color: AppColors.critical, label: tr('أغلقتَه')),
       ],
     );
   }
@@ -373,14 +374,14 @@ class _Closed extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (marks.isEmpty) {
-      return const EmptyBlock(
-        title: 'شهرٌ مفتوحٌ كلُّه',
-        description: 'اضغط أيَّ يومٍ لتغلقه إن كان عندك ارتباط.',
+      return EmptyBlock(
+        title: tr('شهرٌ مفتوحٌ كلُّه'),
+        description: tr('اضغط أيَّ يومٍ لتغلقه إن كان عندك ارتباط.'),
       );
     }
     return AppCard(
       children: [
-        const SectionTitle('الأيام المغلقة'),
+        SectionTitle(tr('الأيام المغلقة')),
         const SizedBox(height: 8),
         for (final mark in marks)
           ListTile(
@@ -392,10 +393,10 @@ class _Closed extends StatelessWidget {
             title: Text(formatDay(mark.day), style: const TextStyle(fontSize: 13)),
             subtitle: Text(mark.note, style: const TextStyle(fontSize: 12)),
             trailing: mark.byBooking
-                ? const Text('حجز', style: TextStyle(fontSize: 11, color: AppColors.muted))
+                ? Text(tr('حجز'), style: TextStyle(fontSize: 11, color: AppColors.muted))
                 : TextButton(
                     onPressed: () => onTap(mark.day, mark),
-                    child: const Text('افتحه'),
+                    child: Text(tr('افتحه')),
                   ),
           ),
       ],
