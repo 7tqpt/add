@@ -390,6 +390,42 @@ List<Booking> demoBookings = [
     depositAmount: 54000,
     paidAmount: 180000,
   ),
+  // **وهذه حالةٌ لم تكن في العرض وهي أكثرُ ما يقع:** وافق المزوّد ولم يصل
+  // العربونُ بعد. وبدونها لا تُرى المرحلةُ الثالثةُ جاريةً، ولا يُرى زرُّ
+  // «ادفع العربون» في وضع العرض أصلاً — فيخرج التطبيقُ التجريبيُّ بلا بابٍ
+  // إلى الدفع.
+  Booking(
+    id: 'b4',
+    reference: 'BK-2026-000517',
+    userName: 'أحمد الشرعبي',
+    providerName: 'زفّة الأصايل',
+    serviceTitle: 'زفّة وفرقة شعبيّة',
+    eventDate: _day(28),
+    eventTime: '21:00',
+    address: 'حي السنينة — صنعاء',
+    guestsCount: 400,
+    status: BookingStatus.confirmed,
+    totalPrice: 150000,
+    depositAmount: 45000,
+    paidAmount: 0,
+  ),
+  // واعتذارُ المزوّد — لتُرى السكّةُ مقطوعةً حمراءَ لا ماضيةً كأنّ شيئاً لم
+  // يقع.
+  Booking(
+    id: 'b5',
+    reference: 'BK-2026-000088',
+    userName: 'أحمد الشرعبي',
+    providerName: 'قاعة اللؤلؤة',
+    serviceTitle: 'قاعة اللؤلؤة — باقة مصغّرة',
+    eventDate: _day(-12),
+    eventTime: '19:30',
+    address: 'شارع حدّة — صنعاء',
+    guestsCount: 200,
+    status: BookingStatus.rejected,
+    totalPrice: 300000,
+    depositAmount: 90000,
+    paidAmount: 0,
+  ),
 ];
 
 List<WeddingPlan> demoPlans = [

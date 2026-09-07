@@ -40,7 +40,11 @@ Future<void> _settle(WidgetTester tester) async {
   await tester.pumpAndSettle();
 }
 
-void _phone(WidgetTester tester, {double height = 3600}) {
+/// **والطولُ يتبع عددَ حجوزات العرض.** كان ‎٣٦٠٠‎ ويكفي لثلاثة، ثمّ زِيد
+/// حجزٌ موافَقٌ عليه بلا عربونٍ وآخرُ معتُذر عنه — فوقعت بطاقتُهما خارج
+/// الشاشة، و`find` لا يرى ما لم يُرسم. فسقط اختباران يبحثان عن زرّ الدفع
+/// **وهو موجودٌ سليم**.
+void _phone(WidgetTester tester, {double height = 9000}) {
   tester.view.physicalSize = Size(1080, height);
   tester.view.devicePixelRatio = 3.0;
   addTearDown(tester.view.reset);
