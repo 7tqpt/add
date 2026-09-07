@@ -105,5 +105,24 @@ run "ح) شارةٌ فارغةٌ لمن لا قسمَ له" sub "$H" \
   "                    if (promo.category.isNotEmpty) ...[" \
   "                    if (true) ...["
 
+# ── اسمُ صاحب الإعلان ────────────────────────────────────────────────────────
+
+# ط) اللافتةُ تعود بلا اسم — صورةٌ وكلماتٌ لا تقول لمن هي.
+run "ط) لافتةٌ لا تقول لمن هي" sub "$H" \
+  "                  if (banner.providerName.isNotEmpty) ...[" \
+  "                  if (false) ...["
+
+# ي) الاسمُ يعلو العرضَ في العين — والعرضُ هو ما يوقفها.
+run "ي) الاسمُ أكبرُ من العرض" sub "$H" \
+  "                        fontSize: 12,
+                        fontWeight: FontWeight.w600," \
+  "                        fontSize: 18,
+                        fontWeight: FontWeight.w600,"
+
+# ك) الستارُ يتبع الكلماتِ وحدَها — فاسمٌ بلا عرضٍ يُكتب على الصورة عارياً.
+run "ك) ستارٌ للكلمات وحدَها" sub "$H" \
+  "    final hasText = banner.headline.isNotEmpty || banner.providerName.isNotEmpty;" \
+  "    final hasText = banner.headline.isNotEmpty;"
+
 echo; echo "== الحصيلة: $PASS سقطت، $FAIL لم تسقط =="
 [ "$FAIL" -eq 0 ]

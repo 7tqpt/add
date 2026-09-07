@@ -95,6 +95,11 @@ update public.promotions
 --
 --  والاسمُ الظاهرُ من المزوّد إن كان لها مزوّد: اللافتةُ قد تكون حملةً من
 --  المنصّة نفسِها فلا وجهةَ لها ولا اسم.
+--
+--  **و`business_name` مبدَؤه فراغٌ لا NULL.** من سجّل مزوّداً باسمه ولم يكتب
+--  اسمَ منشأةٍ يُقرأ اسمُه **فارغاً** في كلّ موضعٍ يعرضه — لا NULL يُمسَك
+--  بـ`coalesce` بل نصٌّ فارغٌ يمرّ منها. فيُقلَب بـ`nullif` أوّلاً، ويُرجَع
+--  إلى `full_name` وهو `not null` بلا مبدأ.
 --  **وصورةٌ واحدةٌ في كلّ صفٍّ يُعاد لا مصفوفةٌ في صفّ.** اللافتةُ في الشاشة
 --  شريحةٌ تُمرَّر، فحملةٌ بثلاث صورٍ ثلاثُ شرائح — تحمل كلُّها وجهةَ الحملة
 --  نفسَها وكلماتِها. ولو أُعيدت المصفوفةُ كما هي لَاحتاج التطبيقُ أن يفرشها
@@ -114,7 +119,7 @@ language sql stable security definer set search_path = public as $$
          img.url,
          pr.headline,
          pr.provider_id,
-         coalesce(p.business_name, ''),
+         coalesce(nullif(p.business_name, ''), p.full_name, ''),
          pr.ends_at
     from public.promotions pr
     left join public.service_providers p
@@ -162,7 +167,9 @@ returns table (
   ends_at timestamptz
 )
 language sql stable security definer set search_path = public as $$
-  select pr.id, pr.provider_id, p.business_name, p.logo_path,
+  select pr.id, pr.provider_id,
+         coalesce(nullif(p.business_name, ''), p.full_name),
+         p.logo_path,
          p.governorate, p.rating,
          (p.verified_at is not null),
          coalesce(

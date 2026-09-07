@@ -738,6 +738,67 @@ void main() {
       expect(find.byType(BannerCard), findsNothing);
     });
 
+    testWidgets('**واللافتةُ تقول لمن هي**', (tester) async {
+      // كانت صورةً وكلماتٍ ولا اسمَ فيها. ومن أُعجب بالعرض لم يجد اسماً
+      // يبحث عنه — ولا يُغني عنه أنّ ضغطَها يفتح صفحته: الإصبعُ يتردّد
+      // قبل أن يضغط ما لا يعرف صاحبَه.
+      await open(tester);
+      expect(
+        find.descendant(
+          of: find.byType(PageView),
+          matching: find.text('قاعة التاج الملكي'),
+        ),
+        findsWidgets,
+      );
+    });
+
+    testWidgets('**والاسمُ دونَ العرض في العين لا فوقه**', (tester) async {
+      await open(tester);
+      final headline =
+          tester.widget<Text>(find.text('قاعةُ التاج — خصمُ ٢٠٪ لحجوزات رمضان').first);
+      final name = tester.widget<Text>(find.descendant(
+        of: find.byType(PageView),
+        matching: find.text('قاعة التاج الملكي'),
+      ).first);
+
+      // العرضُ هو ما يوقف العين، والاسمُ جوابُ سؤالٍ يأتي بعده.
+      expect(name.style!.fontSize!, lessThan(headline.style!.fontSize!));
+      expect(
+        tester.getCenter(find.text('قاعة التاج الملكي').first).dy,
+        greaterThan(tester
+            .getCenter(find.text('قاعةُ التاج — خصمُ ٢٠٪ لحجوزات رمضان').first)
+            .dy),
+        reason: 'الاسمُ فوق العرض',
+      );
+    });
+
+    testWidgets('**ولافتةٌ باسمٍ بلا كلماتٍ لها ستارٌ كذلك**', (tester) async {
+      // وكان الستارُ يتبع الكلماتِ وحدَها، فاسمٌ بلا عرضٍ يُكتب على الصورة
+      // عارياً فلا يُقرأ.
+      _screen(tester, height: 3000);
+      await tester.pumpWidget(_wrap(const Scaffold(
+        body: SizedBox(
+          height: 196,
+          child: BannerCard(
+            banner: PromoBanner(
+              id: 'b#1',
+              imageUrl: 'https://example.invalid/x.jpg',
+              providerId: 'p1',
+              providerName: 'قاعة التاج الملكي',
+            ),
+          ),
+        ),
+      )));
+      await tester.pump();
+
+      final gradients = tester
+          .widgetList<DecoratedBox>(find.byType(DecoratedBox))
+          .map((d) => d.decoration)
+          .whereType<BoxDecoration>()
+          .where((d) => d.gradient != null);
+      expect(gradients, isNotEmpty, reason: 'اسمٌ بلا ستار');
+    });
+
     testWidgets('**ولا شارةَ «إعلان» في الشاشة كلِّها**', (tester) async {
       // شالها صاحبُ المنصّة عن اللافتة وعن شريط «مزوّدون مميّزون» معاً.
       // ويُسأل عن الشاشة كلِّها لا عن الشريط وحدَه: كانت في موضعين.
@@ -750,8 +811,9 @@ void main() {
       // يسأله: ماذا يقدّم هذا؟ وثانيه: أموثَّقٌ هو؟
       await open(tester);
 
+      // والمرساةُ القسمُ لا الاسم: الاسمُ في اللافتة كذلك.
       final strip = find.ancestor(
-        of: find.text('قاعة التاج الملكي'),
+        of: find.text('قاعات أفراح'),
         matching: find.byType(AppCard),
       );
       expect(strip, findsWidgets, reason: 'لا بطاقةَ لمزوّدٍ مميَّز');
@@ -772,12 +834,23 @@ void main() {
       // كان ‎١٢‎ والمحافظةُ ‎١١‎: فرقُ بكسلٍ واحدٍ لا يقول أيّهما العنوان.
       await open(tester);
 
-      final name = tester.widget<Text>(find.text('قاعة التاج الملكي').first);
+      // **ومن البطاقة لا من الشاشة.** الاسمُ نفسُه صار في موضعين — على
+      // اللافتة وفي البطاقة — فسؤالٌ مطلقٌ يلتقط أوّلَهما في الشجرة ويقيس
+      // خطَّ اللافتة وهو يظنّه خطَّ البطاقة. (وقد وقع.)
+      final card = find.ancestor(
+        of: find.text('قاعات أفراح'),
+        matching: find.byType(AppCard),
+      );
+      final name = tester.widget<Text>(
+        find.descendant(of: card.first, matching: find.text('قاعة التاج الملكي')),
+      );
       expect(name.style!.fontSize, greaterThanOrEqualTo(13));
       expect(name.style!.fontWeight, FontWeight.w700);
 
       // ويُقاس بالفرق لا بحدٍّ: المقصودُ أن يتقدّم الاسمُ على ما تحته.
-      final place = tester.widget<Text>(find.text('أمانة العاصمة').first);
+      final place = tester.widget<Text>(
+        find.descendant(of: card.first, matching: find.text('أمانة العاصمة')),
+      );
       expect(name.style!.fontSize! - place.style!.fontSize!,
           greaterThanOrEqualTo(2),
           reason: 'الاسمُ والمحافظةُ في حجمٍ واحدٍ تقريباً');

@@ -285,6 +285,10 @@ class BannerCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // والستارُ يُرسم لأيّهما وُجد — لا للكلمات وحدَها: لافتةٌ بلا كلماتٍ
+    // ولها اسمٌ كانت تكتبه على الصورة عاريةً فلا يُقرأ.
+    final hasText = banner.headline.isNotEmpty || banner.providerName.isNotEmpty;
+
     // نصفُ القطر ‎٢٢‎ — هو نصفُ قطر البطاقة الكبيرة، فلا تُقرأ اللافتةُ
     // جسماً غريباً عن الشاشة.
     final card = ClipRRect(
@@ -297,13 +301,13 @@ class BannerCard extends StatelessWidget {
           // خارج المنصّة أصلاً — فلا يُفترض لها موضعُ تخزينٍ واحد.
           MediaThumb(url: banner.imageUrl.isEmpty ? null : banner.imageUrl),
 
-          // كلماتُ الإعلان — وتحتها ستارٌ متدرّج.
+          // كلماتُ الإعلان واسمُ صاحبها — وتحتهما ستارٌ متدرّج.
           //
           // **والستارُ شرطٌ لا زينة.** الصورةُ تأتي من صاحب الإعلان ولا
           // نعرف ألوانها: نصٌّ أبيضُ على سماءٍ بيضاءَ في صورةِ قاعةٍ نهاراً
           // لا يُقرأ حرفاً منه. والتدرّجُ يضمن أرضيّةً غامقةً تحت الكلمات
           // مهما كانت الصورة، ويترك أعلاها كما هو.
-          if (banner.headline.isNotEmpty)
+          if (hasText)
             Positioned.fill(
               child: DecoratedBox(
                 decoration: BoxDecoration(
@@ -320,24 +324,56 @@ class BannerCard extends StatelessWidget {
                 ),
               ),
             ),
-          if (banner.headline.isNotEmpty)
+          if (hasText)
             PositionedDirectional(
               start: 14,
               end: 14,
               bottom: 12,
-              child: Text(
-                banner.headline,
-                // سطران وقصٌّ بعدهما: اللافتةُ مساحةٌ ثابتةٌ، ونصٌّ طويلٌ
-                // يزحف عليها حتى يغطّي الصورةَ التي دُفع ثمنُها.
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  height: 1.35,
-                  color: Colors.white,
-                  fontFamilyFallback: arabicFallback,
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (banner.headline.isNotEmpty)
+                    Text(
+                      banner.headline,
+                      // سطران وقصٌّ بعدهما: اللافتةُ مساحةٌ ثابتةٌ، ونصٌّ
+                      // طويلٌ يزحف عليها حتى يغطّي الصورةَ التي دُفع ثمنُها.
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        height: 1.35,
+                        color: Colors.white,
+                        fontFamilyFallback: arabicFallback,
+                      ),
+                    ),
+                  // **واسمُ صاحبِ الإعلان.**
+                  //
+                  // كانت اللافتةُ صورةً وكلماتٍ ولا تقول لمن هي. ومن رآها
+                  // أُعجب بها لم يجد اسماً يبحث عنه — ولا يُغني عنه أن
+                  // ضغطَها يفتح صفحته: **الإصبعُ يتردّد قبل أن يضغط ما لا
+                  // يعرف صاحبَه.**
+                  //
+                  // وتحت الكلمات لا فوقها: العرضُ هو ما يوقف العين، والاسمُ
+                  // جوابُ سؤالٍ يأتي بعده.
+                  if (banner.providerName.isNotEmpty) ...[
+                    if (banner.headline.isNotEmpty) const SizedBox(height: 3),
+                    Text(
+                      banner.providerName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        // أبيضُ خافتٌ لا أبيضُ صريح: الاسمُ دونَ العرض في
+                        // الترتيب، ولو تساويا لَتنافسا على العين.
+                        color: Colors.white.withValues(alpha: 0.88),
+                        fontFamilyFallback: arabicFallback,
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
 
