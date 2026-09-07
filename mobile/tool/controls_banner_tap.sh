@@ -7,8 +7,9 @@ command -v flutter >/dev/null || { echo "لا flutter في المسار"; exit 1
 
 SUITE=test/polish_test.dart
 H=lib/src/screens/home.dart
-BACKUP=$(mktemp -d); cp "$H" "$BACKUP/home.dart"
-restore() { cp "$BACKUP/home.dart" "$H"; }
+D=lib/src/data/demo.dart
+BACKUP=$(mktemp -d); cp "$H" "$BACKUP/home.dart"; cp "$D" "$BACKUP/demo.dart"
+restore() { cp "$BACKUP/home.dart" "$H"; cp "$BACKUP/demo.dart" "$D"; }
 trap 'restore; rm -rf "$BACKUP"' EXIT
 PASS=0; FAIL=0
 
@@ -124,5 +125,42 @@ run "ك) ستارٌ للكلمات وحدَها" sub "$H" \
   "    final hasText = banner.headline.isNotEmpty || banner.providerName.isNotEmpty;" \
   "    final hasText = banner.headline.isNotEmpty;"
 
+# ── معلِنٌ ليس مزوّداً ───────────────────────────────────────────────────────
+#
+# محلٌّ خارج المنصّة لا حسابَ له اشترى مساحة. لا اسمَ في القاعدة يُؤخذ منه،
+# فيُكتب بيدٍ في اللوحة ويهبط إلى `promotions.advertiser`.
+
+# ل) الاسمُ المكتوبُ بيدٍ يسقط من بيانات العرض — وهي المرآةُ الوحيدةُ التي
+#    يُرى فيها هذا البابُ في حزمةٍ لا قاعدةَ لها.
+run "ل) معلِنٌ غيرُ مسجَّلٍ يعود بلا اسم" sub "$D" \
+  "    id: 'banner-2#1',
+    imageUrl: 'https://example.invalid/banners/2.jpg',
+    providerName: 'مطابع الصفوة',
+  )," \
+  "    id: 'banner-2#1',
+    imageUrl: 'https://example.invalid/banners/2.jpg',
+  ),"
+
+# م) الاسمُ يُقرأ وعداً بصفحة: من له اسمٌ يُفترض أنّ له حساباً، فتُبتلع
+#    ضغطتُه وتبقى الصورةُ مقفلةً دونه.
+run "م) اسمٌ بلا حسابٍ تُبتلع ضغطتُه" sub "$H" \
+  "        if (banner.imageUrl.isNotEmpty) {
+          openImageViewer(context, url: banner.imageUrl);
+        }" \
+  "        if (banner.imageUrl.isNotEmpty && banner.providerName.isEmpty) {
+          openImageViewer(context, url: banner.imageUrl);
+        }"
+
 echo; echo "== الحصيلة: $PASS سقطت، $FAIL لم تسقط =="
+
+# وهذا الشرطُ خارجَ العدّ عمداً: حزمةُ فلاتر لا ترى القاعدة، فسندُ
+# `advertiser` لا يُكسر ولا يُقاس بها. يُقرأ الملفُّ قراءةً.
+echo; echo "== خارجَ الحزمة =="
+if grep -q "nullif(pr.advertiser, '')" ../supabase/banners.sql; then
+  echo "✓ سندُ اسم المعلِن قائمٌ في banners.sql"
+else
+  echo "✗ سندُ اسم المعلِن سقط من banners.sql — اللافتةُ تعود صامتة"
+  FAIL=$((FAIL+1))
+fi
+
 [ "$FAIL" -eq 0 ]

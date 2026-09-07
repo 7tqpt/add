@@ -79,6 +79,20 @@ alter table public.promotions
 alter table public.promotions
   add column if not exists headline text not null default '';
 
+-- ----------------------------------------------------------------------------
+--  واسمُ المعلِن — لِمن ليس مزوّداً مسجَّلاً
+-- ----------------------------------------------------------------------------
+--
+--  **وهذه ثغرةٌ لا زينة.** اسمُ صاحب اللافتة كان يُؤخذ من `provider_id` وحدَه.
+--  فمن باع مساحةً إعلانيّةً لمحلٍّ خارج المنصّة — وهو أصلُ بيع الإعلانات —
+--  لا يجد مزوّداً يربطه، فتخرج اللافتةُ **بلا اسمٍ ألبتّة**، ولا سبيلَ إلى
+--  كتابته بيدٍ.
+--
+--  فحقلٌ نصّيّ. والمزوّدُ المسجَّل يبقى أَولى: اسمُه يتبدّل في مكانٍ واحدٍ
+--  فتتبعه لافتاتُه، ونصٌّ يُنسخ في كلّ لافتةٍ يعتّق عند أوّل تغيير.
+alter table public.promotions
+  add column if not exists advertiser text not null default '';
+
 -- والقديمُ يُنقل مرّةً واحدة: صفٌّ له صورةٌ ولا مصفوفة.
 update public.promotions
    set image_urls = array[image_url]
@@ -119,7 +133,9 @@ language sql stable security definer set search_path = public as $$
          img.url,
          pr.headline,
          pr.provider_id,
-         coalesce(nullif(p.business_name, ''), p.full_name, ''),
+         -- المزوّدُ المسجَّل أوّلاً، ثمّ الاسمُ المكتوب بيدٍ، ثمّ فراغ.
+         coalesce(nullif(p.business_name, ''), p.full_name,
+                  nullif(pr.advertiser, ''), ''),
          pr.ends_at
     from public.promotions pr
     left join public.service_providers p
@@ -243,11 +259,11 @@ select 'شريط المميّزين يقتصر على featured',
                  like '%kind = ''featured''%'
             then 'نعم' else 'لا' end
 union all
-select 'عمودا الصور والكلمات',
+select 'أعمدة الصور والكلمات واسم المعلِن',
        case when (select count(*) from information_schema.columns
                    where table_schema = 'public' and table_name = 'promotions'
-                     and column_name in ('image_urls', 'headline')) = 2
-            then 'موجودان' else 'ناقصان' end
+                     and column_name in ('image_urls', 'headline', 'advertiser')) = 3
+            then 'موجودة' else 'ناقصة' end
 -- **وهذا السطرُ هو الذي كان سيكشف العلّة.** سياساتُ السلّة كانت على مجالٍ
 -- اسمُه `growth` ولا وجودَ له في `admin_areas`، فمنعت الجميعَ بلا خطأٍ في
 -- التنفيذ — ولا يظهر ذلك إلّا حين يحاول إنسانٌ رفعَ صورةٍ فيُردّ.

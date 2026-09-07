@@ -1831,8 +1831,13 @@ const demoBanners = [
     providerId: 'p1',
     providerName: 'قاعة التاج الملكي',
   ),
-  // والثالثةُ بلا وجهةٍ ولا كلمات: حملةٌ من المنصّة نفسِها، وصورةٌ تكفي.
-  PromoBanner(id: 'banner-2#1', imageUrl: 'https://example.invalid/banners/2.jpg'),
+  // والثالثةُ لمعلِنٍ **ليس مزوّداً مسجَّلاً** — محلٌّ خارج المنصّة اشترى
+  // مساحة. واسمُه مكتوبٌ بيدٍ في اللوحة، ولا صفحةَ تُفتح بالضغط.
+  PromoBanner(
+    id: 'banner-2#1',
+    imageUrl: 'https://example.invalid/banners/2.jpg',
+    providerName: 'مطابع الصفوة',
+  ),
 ];
 
 const demoPromos = [

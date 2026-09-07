@@ -161,6 +161,13 @@ export interface NewBanner {
   ends_at: string
   /** كلمات الإعلان — تُكتب فوق الصور كلِّها. تُترك فارغةً فلا يُكتب شيء. */
   headline?: string
+  /**
+   * اسم المعلِن حين لا يكون مزوّداً مسجَّلاً — محلٌّ خارج المنصّة اشترى مساحة.
+   *
+   * **ويُتجاهل إن اختير مزوّد:** اسمه يتبدّل في مكانٍ واحد فتتبعه لافتاته،
+   * ونصٌّ يُنسخ هنا يعتّق عند أوّل تغيير.
+   */
+  advertiser?: string
   /** المزوّد الذي تُفتح صفحته بالضغط. يُترك فارغاً فلا تُضغط اللافتة. */
   provider_id?: string
   amount?: number
@@ -254,6 +261,7 @@ export async function createBanner(banner: NewBanner): Promise<void> {
     image_url: image_urls[0],
     image_urls,
     headline: banner.headline?.trim() || '',
+    advertiser: banner.provider_id ? '' : (banner.advertiser?.trim() || ''),
     provider_id: banner.provider_id || null,
     amount: banner.amount ?? 0,
     status,

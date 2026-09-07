@@ -738,6 +738,54 @@ void main() {
       expect(find.byType(BannerCard), findsNothing);
     });
 
+    testWidgets('**واسمُ معلِنٍ ليس مزوّداً يُكتب ويُقرأ**', (tester) async {
+      // **وهذا هو البابُ الذي سأل عنه صاحبُ المنصّة ثلاثاً.** لافتتُه لمحلٍّ
+      // خارج المنصّة لا حسابَ له، فلا اسمَ في القاعدة يُؤخذ منه — فكانت
+      // تُعرض صامتةً بلا اسم. صار في اللوحة حقلُ «اسم المعلِن» يُكتب بيد،
+      // فيهبط إلى `advertiser` ويُقرأ في `providerName` كأيِّ اسم.
+      //
+      // وهي **الثالثةُ** في الشريط، و`PageView` لا تبني ما لم يُعرض بعد —
+      // فيُدار الشريطُ إليها بمؤقّته نفسِه لا بيدٍ خارجة عنه.
+      await open(tester);
+      for (var i = 0; i < 3; i++) {
+        if (find.text('مطابع الصفوة').evaluate().isNotEmpty) break;
+        await tester.pump(const Duration(seconds: 3));
+        await tester.pumpAndSettle();
+      }
+      expect(
+        find.descendant(
+          of: find.byType(PageView),
+          matching: find.text('مطابع الصفوة'),
+        ),
+        findsWidgets,
+        reason: 'لافتةُ معلِنٍ غيرِ مسجَّلٍ بلا اسم',
+      );
+    });
+
+    testWidgets('**ولافتةُ معلِنٍ باسمٍ بلا وجهةٍ تفتح صورتَها**', (tester) async {
+      // والاسمُ لا يصنع وجهة: لا صفحةَ لمن لا حسابَ له. فالضغطةُ تفتح
+      // الصورةَ ملءَ الشاشة — وإلّا صار الاسمُ وعداً بصفحةٍ لا تأتي.
+      _screen(tester, height: 3000);
+      await tester.pumpWidget(_wrap(const Scaffold(
+        body: SizedBox(
+          height: 196,
+          child: BannerCard(
+            banner: PromoBanner(
+              id: 'b#1',
+              imageUrl: 'https://example.invalid/x.jpg',
+              providerName: 'مطابع الصفوة',
+            ),
+          ),
+        ),
+      )));
+      await _settle(tester);
+
+      expect(find.text('مطابع الصفوة'), findsOneWidget);
+      await tester.tap(find.byType(BannerCard));
+      await _settle(tester);
+      expect(find.byType(BannerCard), findsNothing, reason: 'ضغطةٌ لا تفتح شيئاً');
+    });
+
     testWidgets('**واللافتةُ تقول لمن هي**', (tester) async {
       // كانت صورةً وكلماتٍ ولا اسمَ فيها. ومن أُعجب بالعرض لم يجد اسماً
       // يبحث عنه — ولا يُغني عنه أنّ ضغطَها يفتح صفحته: الإصبعُ يتردّد
