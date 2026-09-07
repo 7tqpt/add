@@ -574,10 +574,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _loading = true;
   bool _busy = false;
 
+  /// أمُعفىً التطبيقُ من تقييد البطّاريّة. ومبدؤه `true`: لا يُنبَّه أحدٌ
+  /// قبل أن يُسأل الجهازُ ويردّ.
+  bool _batteryOk = true;
+
   @override
   void initState() {
     super.initState();
     _load();
+    _probeBattery();
+  }
+
+  /// **ويُسأل عند كلِّ عودةٍ إلى الشاشة لا مرّةً واحدة:** من فتح الإعدادات
+  /// ورفع القيدَ يرجع فيجد التحذيرَ كما هو، فيظنّ أنّه لم يُجدِ.
+  Future<void> _probeBattery() async {
+    final ok = await batteryProbe();
+    if (mounted) setState(() => _batteryOk = ok);
   }
 
   Future<void> _load() async {
@@ -761,6 +773,60 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ],
                 ),
+
+                // ── تقييدُ البطّاريّة ──────────────────────────────────────
+                //
+                // **ولا يُعرض إلّا لمن يقع عليه.** من جهازُه غيرُ مقيِّدٍ لا
+                // يحتاج صفّاً يقول له «كلُّ شيءٍ سليم» — وصفوفُ الطمأنة تُدرَّب
+                // العينُ على تخطّيها، فتُتخطّى معها التحذيراتُ الحقيقيّة.
+                if (!_batteryOk) ...[
+                  const SizedBox(height: Space.sm),
+                  AppCard(
+                    children: [
+                      InkWell(
+                        key: const ValueKey('battery-restriction'),
+                        borderRadius: BorderRadius.circular(12),
+                        onTap: () async {
+                          if (!await batterySettingsOpener()) {
+                            await AppSettings.openAppSettings(
+                                type: AppSettingsType.batteryOptimization);
+                          }
+                          // ويُعاد السؤالُ عند العودة، فالتحذيرُ يغيب متى رُفع
+                          // القيد.
+                          await _probeBattery();
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: Space.sm),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.battery_alert_outlined,
+                                  size: 20, color: AppColors.warning),
+                              const SizedBox(width: Space.md),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(tr('جهازك يقيّد التطبيق في الخلفيّة')),
+                                    SizedBox(height: 2),
+                                    // **ويُقال ما يقع لا «حسّن الأداء».** من
+                                    // لا يعرف الأثرَ لا يمضي في ثلاث شاشاتِ
+                                    // إعدادات.
+                                    Muted(
+                                        tr('فقد يتأخّر إشعارُ الحجز أو لا يصل والتطبيق مغلق. '
+                                            'اسمح له بالعمل بلا قيدٍ من إعدادات البطّاريّة.'),
+                                        size: 11),
+                                  ],
+                                ),
+                              ),
+                              const Icon(Icons.open_in_new,
+                                  size: 16, color: AppColors.muted),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
 
                 const SizedBox(height: Space.lg),
                 SectionTitle(tr('قفل التطبيق')),

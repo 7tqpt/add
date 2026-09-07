@@ -85,3 +85,39 @@ left join public.app_users u on u.id = n.user_id
 left join public.service_providers p on p.id = n.provider_id
 order by n.created_at desc
 limit 10;
+
+-- ----------------------------------------------------------------------------
+-- ملحق ٢: آخرُ حجزٍ — أكُتب إشعارُه، ولمن، وله جهاز؟
+-- ----------------------------------------------------------------------------
+--
+-- **وهذا يفرّق بين ثلاث علل يخلطها من يقول «لا يصلني إشعار»:**
+--
+--   • «لا إشعار» في العمود الأوّل  ← العلّةُ في القاعدة: الدالّةُ لم تكتبه،
+--     والغالبُ أنّ نسخةً قديمةً من `api_create_booking` هي التي تعمل.
+--   • «أجهزته = 0»                 ← العلّةُ في الجهاز: التطبيقُ لم يسجّل
+--     رمزَه — لم يُؤذَن له بالإشعارات، أو لا Firebase في الحزمة.
+--   • كلاهما سليمٌ ولا يصل شيء    ← العلّةُ في الجهاز لا هنا: تقييدُ
+--     البطّاريّة، أو قناةٌ أُسكتت. وفي التطبيق صفٌّ يفتح كليهما.
+--
+-- ولا يُقرأ عمودُ «أجهزته» للمزوّد إلّا بعد أن يفتح التطبيقَ مرّةً بحسابه.
+with last_booking as (
+  select * from public.bookings order by created_at desc limit 1
+)
+select
+  b.reference as الحجز,
+  b.status as الحال,
+  (select count(*) from public.notifications n
+    where n.provider_id = b.provider_id and n.kind = 'booking'
+      and n.created_at >= b.created_at) as "إشعار المزوّد",
+  (select count(*) from public.user_devices d
+    join public.service_providers p on p.user_id = d.user_id
+   where p.id = b.provider_id and d.push_token is not null and d.push_enabled)
+    as "أجهزة المزوّد",
+  (select count(*) from public.notifications n
+    where n.user_id = b.user_id and n.kind = 'booking'
+      and n.created_at >= b.created_at) as "إشعار العميل",
+  (select count(*) from public.user_devices d
+   where d.user_id = b.user_id and d.push_token is not null and d.push_enabled)
+    as "أجهزة العميل",
+  b.created_at as "وقت الحجز"
+from last_booking b;

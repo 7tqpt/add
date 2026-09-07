@@ -348,6 +348,7 @@ List<Booking> demoBookings = [
   Booking(
     id: 'b1',
     reference: 'BK-2026-000318',
+    createdAt: _at(200),
     userName: 'أحمد الشرعبي',
     providerName: 'قاعة التاج',
     serviceTitle: 'قاعة التاج — باقة شاملة',
@@ -363,6 +364,7 @@ List<Booking> demoBookings = [
   Booking(
     id: 'b2',
     reference: 'BK-2026-000402',
+    createdAt: _at(48),
     userName: 'أحمد الشرعبي',
     providerName: 'مطبخ الأصالة',
     serviceTitle: 'مندي وحنيذ لـ300 شخص',
@@ -378,6 +380,7 @@ List<Booking> demoBookings = [
   Booking(
     id: 'b3',
     reference: 'BK-2026-000155',
+    createdAt: _at(900),
     userName: 'أحمد الشرعبي',
     providerName: 'استوديو السعادة',
     serviceTitle: 'تصوير فيديو وفوتوغرافي',
@@ -397,6 +400,7 @@ List<Booking> demoBookings = [
   Booking(
     id: 'b4',
     reference: 'BK-2026-000517',
+    createdAt: _at(2),
     userName: 'أحمد الشرعبي',
     providerName: 'زفّة الأصايل',
     serviceTitle: 'زفّة وفرقة شعبيّة',
@@ -414,6 +418,7 @@ List<Booking> demoBookings = [
   Booking(
     id: 'b5',
     reference: 'BK-2026-000088',
+    createdAt: _at(400),
     userName: 'أحمد الشرعبي',
     providerName: 'قاعة اللؤلؤة',
     serviceTitle: 'قاعة اللؤلؤة — باقة مصغّرة',
@@ -649,6 +654,7 @@ void demoApproveProvider() {
     Booking(
       id: 'r1',
       reference: 'BK-2026-000511',
+      createdAt: _at(30),
       userName: 'سالم باحميد',
       providerName: p.businessName,
       serviceTitle: 'حجز ${p.businessName}',
@@ -664,6 +670,7 @@ void demoApproveProvider() {
     Booking(
       id: 'r2',
       reference: 'BK-2026-000524',
+      createdAt: _at(1),
       userName: 'هدى المقطري',
       providerName: p.businessName,
       serviceTitle: 'حجز ${p.businessName}',
