@@ -10,6 +10,7 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../core/i18n.dart';
 import '../core/geo.dart';
 import 'kit.dart';
 
@@ -21,6 +22,6 @@ Future<void> openMap(BuildContext context, GeoPoint point) async {
   // **والإحداثيّتان في الرسالة عمداً:** من لا تطبيقَ خرائطَ في جهازه يستطيع
   // نسخهما وإرسالهما، وهو خيرٌ من «تعذّر» مجرّدة.
   if (!ok && context.mounted) {
-    showMessage(context, 'تعذّر فتح الخرائط — الموقع: ${point.text}');
+    showMessage(context, trf('تعذّر فتح الخرائط — الموقع: {0}', [point.text]));
   }
 }

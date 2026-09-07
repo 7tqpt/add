@@ -6,6 +6,8 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:path_provider/path_provider.dart';
 import 'package:record/record.dart';
 
+import 'i18n.dart';
+
 /// مقطعٌ صوتيٌّ سُجِّل، ببايتاته ومدّته.
 class VoiceClip {
   const VoiceClip({required this.bytes, required this.seconds});
@@ -140,7 +142,7 @@ class DeviceVoiceRecorder implements VoiceRecorder {
       // ولا نتركه ممسكاً بالميكروفون: الشاشة ستخرج من حالة التسجيل، فلو بقي
       // المُسجِّل عاملاً لظلّ الميكروفون مشغولاً وفشل كلُّ تسجيلٍ بعده.
       await cancel();
-      throw const VoiceFailure('تعذّر إنهاء التسجيل. جرّب مرّةً أخرى.');
+      throw VoiceFailure(tr('تعذّر إنهاء التسجيل. جرّب مرّةً أخرى.'));
     } finally {
       _stopListening();
     }
@@ -156,7 +158,7 @@ class DeviceVoiceRecorder implements VoiceRecorder {
     } catch (_) {
       // ملفٌّ لم يُكتب — وهو ما كان يقع بالمسار النسبيّ. ويبقى الحارس بعد
       // إصلاحه: قرصٌ ممتلئ يعطي النتيجة نفسها.
-      throw const VoiceFailure('لم يُحفظ التسجيل. جرّب مرّةً أخرى.');
+      throw VoiceFailure(tr('لم يُحفظ التسجيل. جرّب مرّةً أخرى.'));
     }
     if (bytes.isEmpty) return null;
 

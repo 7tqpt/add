@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 
+import '../core/i18n.dart';
 import '../core/format.dart';
 import '../core/theme.dart';
 import 'kit.dart';
@@ -135,8 +136,8 @@ class _VideoBoxState extends State<VideoBox> {
       return _Frame(
         child: Center(
           child: _failed || widget.url == null
-              ? const Muted('تعذّر تشغيل المقطع')
-              : const CircularProgressIndicator(color: AppColors.accent),
+              ? Muted(tr('تعذّر تشغيل المقطع'))
+              : CircularProgressIndicator(color: AppColors.accent),
         ),
       );
     }
@@ -162,11 +163,11 @@ class _VideoBoxState extends State<VideoBox> {
               valueListenable: c,
               builder: (context, value, _) => AnimatedOpacity(
                 opacity: value.isPlaying ? 0 : 1,
-                duration: const Duration(milliseconds: 200),
+                duration: Duration(milliseconds: 200),
                 child: Container(
                   color: AppColors.ink.withValues(alpha: 0.28),
                   alignment: Alignment.center,
-                  child: const CircleAvatar(
+                  child: CircleAvatar(
                     radius: 26,
                     backgroundColor: Colors.white,
                     child: Icon(Icons.play_arrow_rounded, color: AppColors.accent, size: 30),
@@ -214,10 +215,11 @@ class _Frame extends StatelessWidget {
 ///
 /// وشريطٌ لا إطار: الصوت بلا صورة، وإطارٌ أسود فارغٌ بحجم الفيديو يوحي بعطب.
 class AudioBar extends StatefulWidget {
-  const AudioBar({super.key, required this.url, this.seconds = 0, this.label = 'مقطع صوتي'});
+  const AudioBar({super.key, required this.url, this.seconds = 0, this.label});
   final String? url;
   final int seconds;
-  final String label;
+  /// السطرُ إلى جانب الشريط — يُترك فارغاً فيكون «مقطع صوتي».
+  final String? label;
 
   @override
   State<AudioBar> createState() => _AudioBarState();
@@ -274,8 +276,8 @@ class _AudioBarState extends State<AudioBar> {
                 Expanded(
                   child: Muted(
                     _failed || widget.url == null
-                        ? 'تعذّر تشغيل المقطع'
-                        : 'جارٍ تجهيز المقطع…',
+                        ? tr('تعذّر تشغيل المقطع')
+                        : tr('جارٍ تجهيز المقطع…'),
                   ),
                 ),
                 if (widget.seconds > 0) Muted(formatSeconds(widget.seconds), size: 11),
@@ -287,7 +289,7 @@ class _AudioBarState extends State<AudioBar> {
                 children: [
                   IconButton(
                     onPressed: () => value.isPlaying ? c.pause() : c.play(),
-                    tooltip: value.isPlaying ? 'إيقاف' : 'تشغيل',
+                    tooltip: value.isPlaying ? tr('إيقاف') : tr('تشغيل'),
                     icon: Icon(
                       value.isPlaying
                           ? Icons.pause_circle_filled_rounded
@@ -301,7 +303,7 @@ class _AudioBarState extends State<AudioBar> {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         Text(
-                          widget.label,
+                          widget.label ?? tr('مقطع صوتي'),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(fontSize: 13, color: AppColors.ink),

@@ -21,6 +21,7 @@
 // يُشارَك هو ما تراه أصلاً في صفحة الخدمة العامّة.
 library;
 
+import '../core/i18n.dart';
 import '../data/models.dart';
 import 'format.dart';
 
@@ -61,7 +62,7 @@ bool isShareUrlValid(String url) {
 
 /// سطرُ الدعوة — أو لا شيء إن لم يكن ثَمّ رابطٌ صالح.
 String _invite(String url) =>
-    isShareUrlValid(url) ? '\n\nحمّل تطبيق فرحتي:\n${url.trim()}' : '';
+    isShareUrlValid(url) ? trf('\n\nحمّل تطبيق فرحتي:\n{0}', [url.trim()]) : '';
 
 /// يقصّ النصَّ عند حدٍّ بلا أن يقطع كلمةً في نصفها.
 String _clip(String text, int max) {
@@ -126,8 +127,8 @@ String shareTextForProvider({
 /// **وهذه تُشارَك بلا سياق**، فتقول ما هو التطبيق لا اسمَه وحده: من يصله
 /// «فرحتي» ورابطٌ لا يعرف أيَشتري به أم يقرأ.
 String shareTextForApp({required String url}) {
-  const pitch = 'فرحتي — كل خدمات زفافك في مكان واحد.\n'
-      'قاعات، تصوير، تجميل، ضيافة… تحجز من جوالك.';
+  final pitch = tr('فرحتي — كل خدمات زفافك في مكان واحد.\n'
+      'قاعات، تصوير، تجميل، ضيافة… تحجز من جوالك.');
   final invite = _invite(url);
   // **وبلا رابطٍ لا معنى لمشاركة التطبيق أصلاً**، فيُعاد نصٌّ فارغٌ ويُخفي
   // الزرَّ من يعرضه. ومشاركةُ الخدمة تبقى نافعةً بلا رابط (اسمٌ وسعرٌ ومقدّم).

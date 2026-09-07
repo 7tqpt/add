@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../core/i18n.dart';
 import '../core/format.dart';
 import '../core/theme.dart';
 import '../core/share.dart';
@@ -140,9 +141,9 @@ class _PublicProviderScreenState extends State<PublicProviderScreen> {
           // غيرُ الموثَّق لا يُفتح ملفُّه: سياسةُ القراءة تُخفيه فتعود القراءة
           // فارغة. والرسالة تقول ما وقع بلا أن تقول عن أحدٍ إنه مرفوض.
           if (p == null) {
-            return const EmptyBlock(
-              title: 'الملفّ غير متاح',
-              description: 'قد يكون مقدّم الخدمة قد أوقف عرضه أو لم تُوثّقه الإدارة بعد.',
+            return EmptyBlock(
+              title: tr('الملفّ غير متاح'),
+              description: tr('قد يكون مقدّم الخدمة قد أوقف عرضه أو لم تُوثّقه الإدارة بعد.'),
             );
           }
 
@@ -169,7 +170,7 @@ class _PublicProviderScreenState extends State<PublicProviderScreen> {
                           child: FilledButton.icon(
                             onPressed: _busy ? null : () => _message(p),
                             icon: const Icon(Icons.forum_outlined, size: 19),
-                            label: Text('راسل ${p.businessName}'),
+                            label: Text(trf('راسل {0}', [p.businessName])),
                           ),
                         ),
                       ),
@@ -302,7 +303,7 @@ class _Head extends StatelessWidget {
                   ],
                   if (p.isFeatured) ...[
                     const SizedBox(width: Space.sm),
-                    const StatusBadge('مميّز', color: AppColors.warning),
+                    StatusBadge(tr('مميّز'), color: AppColors.warning),
                   ],
                 ],
               ),
@@ -366,21 +367,21 @@ class _Stats extends StatelessWidget {
           children: [
             _Cell(
               value: p.rating > 0 ? '${p.rating}' : '—',
-              label: 'التقييم',
+              label: tr('التقييم'),
               icon: Icons.star_rounded,
               tone: AppColors.warning,
             ),
             const _Divider(),
             _Cell(
               value: formatNumber(p.completedBookings),
-              label: 'حجزاً منفَّذاً',
+              label: tr('حجزاً منفَّذاً'),
               icon: Icons.verified_outlined,
               tone: AppColors.good,
             ),
             const _Divider(),
             _Cell(
               value: formatNumber(p.reviewsCount),
-              label: 'تقييماً',
+              label: tr('تقييماً'),
               icon: Icons.forum_outlined,
               tone: AppColors.accent,
             ),
@@ -459,9 +460,9 @@ class _Services extends StatelessWidget {
         }
         final rows = snap.data ?? const <ServiceItem>[];
         if (rows.isEmpty) {
-          return const EmptyBlock(
-            title: 'لا خدمات معروضة الآن',
-            description: 'راسله لتسأل عمّا يقدّمه.',
+          return EmptyBlock(
+            title: tr('لا خدمات معروضة الآن'),
+            description: tr('راسله لتسأل عمّا يقدّمه.'),
           );
         }
         return Column(
@@ -504,8 +505,8 @@ class _Reviews extends StatelessWidget {
           children: [
             Row(
               children: [
-                const Expanded(child: SectionTitle('آراء العملاء')),
-                if (total > rows.length) Muted('من ${formatNumber(total)}'),
+                Expanded(child: SectionTitle(tr('آراء العملاء'))),
+                if (total > rows.length) Muted(trf('من {0}', [formatNumber(total)])),
               ],
             ),
             const SizedBox(height: Space.sm),
@@ -518,7 +519,7 @@ class _Reviews extends StatelessWidget {
                       const SizedBox(width: Space.sm),
                       Expanded(
                         child: Text(
-                          r.userName.isEmpty ? 'عميل' : r.userName,
+                          r.userName.isEmpty ? tr('عميل') : r.userName,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
@@ -561,7 +562,7 @@ class _ProviderTabs extends StatelessWidget implements PreferredSizeWidget {
     // أرضيّةٌ صريحة: الشريط يثبت والمحتوى يمرّ تحته، وبلا أرضيّةٍ يُقرأ
     // النصّان فوق بعضهما.
     color: AppColors.page,
-    child: const TabBar(
+    child: TabBar(
       labelColor: AppColors.accent,
       unselectedLabelColor: AppColors.muted,
       indicatorColor: AppColors.accent,
@@ -576,10 +577,10 @@ class _ProviderTabs extends StatelessWidget implements PreferredSizeWidget {
         fontFamilyFallback: arabicFallback,
       ),
       tabs: [
-        Tab(text: 'النبذة'),
-        Tab(text: 'الخدمات'),
-        Tab(text: 'الصور'),
-        Tab(text: 'التقييمات'),
+        Tab(text: tr('النبذة')),
+        Tab(text: tr('الخدمات')),
+        Tab(text: tr('الصور')),
+        Tab(text: tr('التقييمات')),
       ],
     ),
   );
@@ -617,14 +618,14 @@ class _About extends StatelessWidget {
           const SizedBox(height: Space.md),
         ],
         if (p.bio.isEmpty)
-          const EmptyBlock(
-            title: 'لا نبذة بعد',
-            description: 'لم يكتب مقدّم الخدمة تعريفاً بعد. تصفّح خدماته أو راسله.',
+          EmptyBlock(
+            title: tr('لا نبذة بعد'),
+            description: tr('لم يكتب مقدّم الخدمة تعريفاً بعد. تصفّح خدماته أو راسله.'),
           )
         else
           AppCard(
             children: [
-              const SectionTitle('عن المزوّد'),
+              SectionTitle(tr('عن المزوّد')),
               const SizedBox(height: Space.sm),
               Text(p.bio, style: const TextStyle(height: 1.9, fontSize: 14)),
               if (p.categories.isNotEmpty) ...[
@@ -640,7 +641,7 @@ class _About extends StatelessWidget {
               // يحجز ولا يحجز.
               if (alsoServes.isNotEmpty) ...[
                 const SizedBox(height: Space.sm),
-                Muted('يخدم أيضاً: ${alsoServes.join(' · ')}', size: 11),
+                Muted(trf('يخدم أيضاً: {0}', [alsoServes.join(' · ')]), size: 11),
               ],
             ],
           ),
@@ -662,11 +663,11 @@ class _Gallery extends StatelessWidget {
         if (snap.connectionState != ConnectionState.done) return const LoadingBlock();
         final items = snap.data ?? const <ServiceMedia>[];
         if (items.isEmpty) {
-          return const _TabList(
+          return _TabList(
             children: [
               EmptyBlock(
-                title: 'لا صور بعد',
-                description: 'لم يرفع مقدّم الخدمة صوراً لخدماته بعد.',
+                title: tr('لا صور بعد'),
+                description: tr('لم يرفع مقدّم الخدمة صوراً لخدماته بعد.'),
               ),
             ],
           );
@@ -706,14 +707,14 @@ class _LocationCard extends StatelessWidget {
           children: [
             const Icon(Icons.place_outlined, size: 20, color: AppColors.accent),
             const SizedBox(width: Space.sm),
-            const Expanded(child: SectionTitle('موقع المحلّ')),
+            Expanded(child: SectionTitle(tr('موقع المحلّ'))),
           ],
         ),
         const SizedBox(height: Space.sm),
         Text(
           provider.governorate.isEmpty
-              ? 'حدّده مقدّم الخدمة على الخريطة.'
-              : '${provider.governorate} — حدّده مقدّم الخدمة على الخريطة.',
+              ? tr('حدّده مقدّم الخدمة على الخريطة.')
+              : trf('{0} — حدّده مقدّم الخدمة على الخريطة.', [provider.governorate]),
           style: const TextStyle(height: 1.8, fontSize: 13.5, color: AppColors.ink2),
         ),
         const SizedBox(height: Space.md),
@@ -721,7 +722,7 @@ class _LocationCard extends StatelessWidget {
           key: const ValueKey('open-provider-map'),
           onPressed: () => openMap(context, point),
           icon: const Icon(Icons.map_outlined, size: 18),
-          label: const Text('افتح في الخرائط'),
+          label: Text(tr('افتح في الخرائط')),
         ),
       ],
     );
