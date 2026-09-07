@@ -26,6 +26,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:aras/src/core/format.dart';
 import 'package:aras/src/core/i18n.dart';
 import 'package:aras/src/core/strings_en.dart';
 
@@ -250,6 +251,9 @@ bool _excused(List<String> lines, _Literal lit) {
 
 void main() {
 
+  // أسماءُ الشهور تحتاج تهيئةَ `intl` — كما في إقلاع التطبيق.
+  setUpAll(initFormatting);
+
   tearDown(() => appLocale.value = AppLocale.ar);
 
   // ==========================================================================
@@ -294,6 +298,71 @@ void main() {
 
     test('ونائبٌ لم يُعطَ يبقى كما هو ولا يرمي', () {
       expect(trf('{0} و{1}', ['أ']), 'أ و{1}');
+    });
+  });
+
+  // ==========================================================================
+  //  **صيغُ العدد — تتفرّع باللغة لا بالمعجم**
+  // ==========================================================================
+  //
+  //  العربيّةُ أربعُ صيغ والإنجليزيّةُ صيغتان، فلا يُبنى الجسرُ بينهما
+  //  بمدخلٍ في معجم: «يومين» تُختار للاثنين بقاعدةٍ عربيّة، وترجمتُها
+  //  `two days` تصحّ صدفةً — ثمّ تنكسر عند أوّل معدودٍ لا يطّرد.
+  group('صيغُ العدد', () {
+    test('**العربيّةُ أربعٌ: مفردٌ ومثنّىً وجمعُ قلّةٍ وتمييز**', () {
+      appLocale.value = AppLocale.ar;
+      expect(formatCount(1, dayForms), 'يوم');
+      // والمثنّى يسقط معه العدد: «يومين» لا «2 يومين».
+      expect(formatCount(2, dayForms), 'يومين');
+      expect(formatCount(3, dayForms), '3 أيام');
+      expect(formatCount(10, dayForms), '10 أيام');
+      // وأحدَ عشرَ فصاعداً تمييزٌ مفردٌ منصوب.
+      expect(formatCount(11, dayForms), '11 يوماً');
+    });
+
+    test('**والإنجليزيّةُ صيغتان — والعددُ يظهر مع الجمع وحده**', () {
+      appLocale.value = AppLocale.en;
+      expect(formatCount(1, dayForms), 'one day');
+      // **وهذه هي الحالةُ التي تكشف الخطأ.** لو مرّ العددُ بالفرع العربيّ
+      // لَخرج من صيغة المثنّى، ولَما ظهر الرقم.
+      expect(formatCount(2, dayForms), '2 days');
+      expect(formatCount(3, dayForms), '3 days');
+      expect(formatCount(11, dayForms), '11 days');
+    });
+
+    test('ولكلّ معدودٍ صيغتاه في الإنجليزيّة', () {
+      appLocale.value = AppLocale.en;
+      expect(formatCount(1, guestForms), 'one guest');
+      expect(formatCount(5, guestForms), '5 guests');
+      expect(formatCount(1, bookingForms), 'one booking');
+      expect(formatCount(2, bookingForms), '2 bookings');
+    });
+
+    test('**و«منذ» تصير لاحقةً لا سابقة**', () {
+      // «منذ ٣ ساعات» في العربيّة، و«3 hours ago» في الإنجليزيّة: الحرفُ
+      // يتقدّم هناك ويتأخّر هنا. ولو لُصق بالجمع لَخرجت «ago 3 hours».
+      final past = DateTime.now().subtract(const Duration(hours: 3)).toIso8601String();
+
+      appLocale.value = AppLocale.ar;
+      expect(formatRelative(past), 'منذ 3 ساعات');
+
+      appLocale.value = AppLocale.en;
+      expect(formatRelative(past), '3 hours ago');
+    });
+
+    test('وما بعدُ يبقى سابقةً في اللغتين', () {
+      final soon = DateTime.now().add(const Duration(hours: 5)).toIso8601String();
+      appLocale.value = AppLocale.en;
+      expect(formatRelative(soon), 'in 5 hours');
+    });
+
+    test('**واسمُ الشهر من `intl` لا من المعجم**', () {
+      // اثنا عشرَ اسماً وأسماءُ الأيّام معها — بياناتُ لغةٍ تحملها الحزمةُ
+      // كاملةً ومراجَعة، ونسخُها بأيدينا بابُ خطأٍ لا فائدةَ فيه.
+      appLocale.value = AppLocale.ar;
+      expect(formatDate('2026-09-10'), '10 سبتمبر 2026');
+      appLocale.value = AppLocale.en;
+      expect(formatDate('2026-09-10'), '10 September 2026');
     });
   });
 
@@ -493,7 +562,7 @@ void main() {
 }
 
 /// أقلُّ ما بلغته التغطية — يُرفع مع كلّ دفعة، ولا يُنزَل.
-const coverageFloor = 817;
+const coverageFloor = 832;
 
 /// كم نصّاً عربيّاً أُعفي من الترجمة — واحدٌ اليوم: `' و'` أداةُ التقسيم.
 const exemptionsCeiling = 1;
