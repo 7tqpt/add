@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../core/i18n.dart';
 import '../core/format.dart';
 import '../core/theme.dart';
 import '../data/api.dart';
@@ -38,19 +39,19 @@ class _TicketScreenState extends State<TicketScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('إغلاق التذكرة'),
-        content: const Text(
-          'أغلقها إن حُلّت مشكلتك. تبقى المحادثة محفوظة، ويمكنك فتح تذكرة جديدة متى شئت.',
+        title: Text(tr('إغلاق التذكرة')),
+        content: Text(
+          tr('أغلقها إن حُلّت مشكلتك. تبقى المحادثة محفوظة، ويمكنك فتح تذكرة جديدة متى شئت.'),
           style: TextStyle(height: 1.7),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('تراجع'),
+            child: Text(tr('تراجع')),
           ),
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('أغلقها'),
+            child: Text(tr('أغلقها')),
           ),
         ],
       ),
@@ -62,7 +63,7 @@ class _TicketScreenState extends State<TicketScreen> {
       await Api.closeTicket(widget.ticket.id);
       if (!mounted) return;
       setState(() => _status = 'closed');
-      showMessage(context, 'أُغلقت التذكرة.');
+      showMessage(context, tr('أُغلقت التذكرة.'));
     } catch (e) {
       if (mounted) showMessage(context, messageOf(e));
     } finally {
@@ -123,7 +124,7 @@ class _TicketScreenState extends State<TicketScreen> {
       appBar: AppBar(
         title: Text(widget.ticket.subject, maxLines: 1),
         actions: [
-          if (!_closed) TextButton(onPressed: _busy ? null : _close, child: const Text('إغلاق')),
+          if (!_closed) TextButton(onPressed: _busy ? null : _close, child: Text(tr('إغلاق'))),
         ],
       ),
       body: Column(
@@ -199,13 +200,13 @@ class _TicketScreenState extends State<TicketScreen> {
             // المغلقة لا تُستقبل ردوداً — القاعدة ترفضها. وعرضُ حقلٍ يكتب فيه
             // المستخدم ثم يُرفض ما كتبه أسوأ من ألّا يُعرض.
             child: _closed
-                ? const Center(child: Muted('التذكرة مغلقة — افتح تذكرة جديدة إن عادت المشكلة.'))
+                ? Center(child: Muted(tr('التذكرة مغلقة — افتح تذكرة جديدة إن عادت المشكلة.')))
                 : Row(
                     children: [
                       Expanded(
                         child: TextField(
                           controller: _reply,
-                          decoration: const InputDecoration(hintText: 'اكتب ردّك…'),
+                          decoration: InputDecoration(hintText: tr('اكتب ردّك…')),
                         ),
                       ),
                       const SizedBox(width: Space.sm),

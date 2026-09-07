@@ -2,6 +2,7 @@ import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart' show parseHttpDate;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../core/i18n.dart';
 import '../core/format.dart';
 
 /// رابط المشروع ومفتاحه — يُمرَّران عند البناء لا في الشيفرة:
@@ -44,7 +45,7 @@ Future<Duration?> clockSkew() async {
     // نقطةُ الصحّة لا تحتاج رمزاً ولا تكتب شيئاً — وردُّها يحمل الترويسة.
     final res = await http
         .get(Uri.parse('$supabaseUrl/auth/v1/health'), headers: {'apikey': supabaseAnonKey})
-        .timeout(const Duration(seconds: 8));
+        .timeout(Duration(seconds: 8));
     final date = res.headers['date'];
     if (date == null) return null;
     final server = parseHttpDate(date).toUtc();
@@ -65,8 +66,8 @@ String? clockSkewLabel(Duration? skew) {
       ? formatCount(seconds.abs() ~/ 60, minuteForms)
       : formatCount(seconds.abs(), secondForms);
   return seconds > 0
-      ? 'ساعةُ جوالك **تسبق** الخادم بـ$amount.'
-      : 'ساعةُ جوالك **متأخّرة** عن الخادم بـ$amount.';
+      ? trf('ساعةُ جوالك **تسبق** الخادم بـ{0}.', [amount])
+      : trf('ساعةُ جوالك **متأخّرة** عن الخادم بـ{0}.', [amount]);
 }
 
 /// رمزُ الخطأ كما جاء من الخادم، إن كان له رمز.
@@ -96,7 +97,9 @@ const offlineCode = 'OFFLINE';
 /// وتُقارَن بها `ErrorBlock` لتعرض وجهَ الانقطاع بدل وجه العطب. وهذا يجعل
 /// كلَّ شاشةٍ تمرّ بـ`messageOf` تعرفه بلا أن تُبدَّل واحدةً واحدة — وهنّ
 /// أربعٌ وثلاثون.
-const offlineMessage = 'لا يوجد اتصال بالإنترنت.';
+/// **ودالّةٌ لا ثابت:** تُنادى `tr` عند القراءة لا عند تحميل التطبيق،
+/// فيتبدّل النصُّ بتبدّل اللغة.
+String get offlineMessage => tr('لا يوجد اتصال بالإنترنت.');
 
 /// أعطبُ الطلبِ انقطاعُ شبكةٍ لا ردٌّ من خادم؟
 ///
@@ -175,11 +178,11 @@ String messageOf(Object error) {
   }
   if (error is AuthException) {
     return error.message == 'Invalid login credentials'
-        ? 'بيانات الدخول غير صحيحة.'
+        ? tr('بيانات الدخول غير صحيحة.')
         : error.message;
   }
   final text = error.toString();
-  if (text.isEmpty) return 'تعذّر تنفيذ الطلب.';
+  if (text.isEmpty) return tr('تعذّر تنفيذ الطلب.');
 
   // **ولا يُعرض JSON خامٌ على أحد.** ردٌّ مثل
   // `{"message":"JWT issued at future","code":"PGRST303",…}` وقع على شاشة

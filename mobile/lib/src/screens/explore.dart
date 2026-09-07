@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../core/i18n.dart';
 import '../core/geo.dart';
 import '../core/theme.dart';
 import '../data/api.dart';
@@ -196,7 +197,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
             // شاشة الجوال فيُقصّ إلى «…ابحث عن قاعة، مصوّر، طبا». رأيتُه في
             // لقطةٍ من جهازٍ حقيقيّ. والمقصوصُ يُقرأ عطباً لا اقتراحاً.
             decoration: InputDecoration(
-              hintText: 'ابحث عن…',
+              hintText: tr('ابحث عن…'),
               // **والشعارُ في الطرف الأيسر — `suffixIcon` لا `prefixIcon`.**
               //
               // و`prefixIcon` تضعه في **بداية** الحقل، والبدايةُ في العربيّة
@@ -253,7 +254,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 const SizedBox(width: Space.sm),
                 PickChip(
                   key: const ValueKey('nearest-chip'),
-                  label: 'الأقرب إليّ',
+                  label: tr('الأقرب إليّ'),
                   active: _nearest,
                   onTap: () {
                     _nearest = !_nearest;
@@ -272,7 +273,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
             children: [
               Expanded(
                 child: _Toggle(
-                  label: 'خدمات',
+                  label: tr('خدمات'),
                   icon: Icons.sell_outlined,
                   active: !_asProviders,
                   onTap: () => _switchTo(false),
@@ -281,7 +282,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
               const SizedBox(width: Space.sm),
               Expanded(
                 child: _Toggle(
-                  label: 'مقدّمو الخدمة',
+                  label: tr('مقدّمو الخدمة'),
                   icon: Icons.storefront_outlined,
                   active: _asProviders,
                   onTap: () => _switchTo(true),
@@ -306,7 +307,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: Space.lg),
                 children: [
                   CategoryCard(
-                    label: 'الكل',
+                    label: tr('الكل'),
                     icon: Icons.apps,
                     active: _categoryId == null,
                     onTap: () {
@@ -351,9 +352,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
               }
               final items = snap.data ?? const <ServiceItem>[];
               if (items.isEmpty) {
-                return const EmptyBlock(
-                  title: 'لا توجد خدمات مطابقة',
-                  description: 'جرّب قسماً آخر أو امسح البحث.',
+                return EmptyBlock(
+                  title: tr('لا توجد خدمات مطابقة'),
+                  description: tr('جرّب قسماً آخر أو امسح البحث.'),
                 );
               }
               return ListView.separated(
@@ -465,9 +466,9 @@ class _Providers extends StatelessWidget {
         }
         final rows = snap.data ?? const <PublicProvider>[];
         if (rows.isEmpty) {
-          return const EmptyBlock(
-            title: 'لا مزوّدين في هذا القسم',
-            description: 'جرّب قسماً آخر أو امسح البحث.',
+          return EmptyBlock(
+            title: tr('لا مزوّدين في هذا القسم'),
+            description: tr('جرّب قسماً آخر أو امسح البحث.'),
           );
         }
         return ListView.separated(
@@ -521,15 +522,15 @@ class _ProviderRow extends StatelessWidget {
                       ),
                       if (p.isVerified) ...[
                         const SizedBox(width: 4),
-                        const VerifiedMark(size: 14),
+                        VerifiedMark(size: 14),
                       ],
                       if (p.isFeatured) ...[
-                        const SizedBox(width: Space.xs),
-                        const StatusBadge('مميّز', color: AppColors.warning),
+                        SizedBox(width: Space.xs),
+                        StatusBadge(tr('مميّز'), color: AppColors.warning),
                       ],
                     ],
                   ),
-                  const SizedBox(height: 3),
+                  SizedBox(height: 3),
                   Muted(
                     [
                       p.governorate,
@@ -537,18 +538,18 @@ class _ProviderRow extends StatelessWidget {
                     ].where((t) => t.isNotEmpty).join(' · ') +
                         distanceSuffix(from, p.point),
                   ),
-                  const SizedBox(height: Space.sm),
+                  SizedBox(height: Space.sm),
                   Row(
                     children: [
                       if (p.rating > 0)
                         Rating(p.rating, count: p.reviewsCount)
                       else
-                        const Muted('جديد'),
-                      const SizedBox(width: Space.md),
+                        Muted(tr('جديد')),
+                      SizedBox(width: Space.md),
                       // عددُ ما نُفِّذ هو ما يفرّق مزوّداً عن مزوّد أكثر من
                       // التقييم: خمسُ نجومٍ من تقييمين ليست كأربعٍ من مئة.
                       if (p.completedBookings > 0)
-                        Muted('${p.completedBookings} حجزاً منفَّذاً', size: 11),
+                        Muted(trf('{0} حجزاً منفَّذاً', ['${p.completedBookings}']), size: 11),
                     ],
                   ),
                 ],
@@ -557,12 +558,12 @@ class _ProviderRow extends StatelessWidget {
           ],
         ),
         if (p.bio.isNotEmpty) ...[
-          const SizedBox(height: Space.sm),
+          SizedBox(height: Space.sm),
           Text(
             p.bio,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 13, height: 1.7, color: AppColors.ink2),
+            style: TextStyle(fontSize: 13, height: 1.7, color: AppColors.ink2),
           ),
         ],
       ],
@@ -592,7 +593,11 @@ class _GovernorateField extends StatelessWidget {
   /// أتُفتح الورقةُ عند الضغط؟ — لا تُفتح قبل أن تصل القائمة.
   final bool enabled;
 
-  static const _all = 'كل المحافظات';
+  /// «كل المحافظات» — قيمةُ اللاترشيح.
+  ///
+  /// **ودالّةٌ لا ثابت:** الثابتُ يُحسب مرّةً عند التحميل، فلو بدّل
+  /// المستخدمُ اللغةَ بقي الخيارُ الأوّلُ بلغةٍ والبقيّةُ بأخرى.
+  String get _all => tr('كل المحافظات');
 
   @override
   Widget build(BuildContext context) {
@@ -665,9 +670,9 @@ class _GovernorateField extends StatelessWidget {
                 borderRadius: BorderRadius.circular(999),
               ),
             ),
-            const Padding(
+            Padding(
               padding: EdgeInsets.all(Space.lg),
-              child: Text('اختر المحافظة',
+              child: Text(tr('اختر المحافظة'),
                   style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,

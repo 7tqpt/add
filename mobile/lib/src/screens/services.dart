@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../core/i18n.dart';
 import '../core/format.dart';
 import '../core/session.dart';
 import '../core/theme.dart';
@@ -72,7 +73,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
     try {
       await Api.setServiceActive(service.id, !service.isActive);
       if (!mounted) return;
-      showMessage(context, service.isActive ? 'أُوقفت الخدمة' : 'عادت الخدمة للعرض');
+      showMessage(context, service.isActive ? tr('أُوقفت الخدمة') : tr('عادت الخدمة للعرض'));
       _reload();
     } catch (e) {
       if (mounted) showMessage(context, messageOf(e));
@@ -87,7 +88,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _edit(),
         icon: const Icon(Icons.add),
-        label: const Text('خدمة جديدة'),
+        label: Text(tr('خدمة جديدة')),
       ),
       body: FutureBuilder<List<MyService>>(
         future: _future,
@@ -98,9 +99,9 @@ class _ServicesScreenState extends State<ServicesScreen> {
           }
           final rows = snap.data ?? const <MyService>[];
           if (rows.isEmpty) {
-            return const EmptyBlock(
-              title: 'لا خدمات بعد',
-              description: 'أضف ما تقدّمه بسعره وعربونه، ليظهر للعملاء في الاستكشاف.',
+            return EmptyBlock(
+              title: tr('لا خدمات بعد'),
+              description: tr('أضف ما تقدّمه بسعره وعربونه، ليظهر للعملاء في الاستكشاف.'),
             );
           }
           return ListView.separated(
@@ -120,7 +121,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
                       // المعطَّلة تحمل شارتها: بلا علامةٍ ظاهرة يظنّ صاحبها أنها
                       // معروضة، ويسأل لماذا لا تصله طلبات.
                       StatusBadge(
-                        s.isActive ? 'معروضة' : 'موقوفة',
+                        s.isActive ? tr('معروضة') : tr('موقوفة'),
                         color: s.isActive ? AppColors.good : AppColors.muted,
                       ),
                     ],
@@ -141,21 +142,21 @@ class _ServicesScreenState extends State<ServicesScreen> {
                     ),
                   ),
                   const SizedBox(height: Space.xs),
-                  Muted('العربون ${s.depositPercent}٪', size: 11),
+                  Muted(trf('العربون {0}٪', ['${s.depositPercent}']), size: 11),
                   const SizedBox(height: Space.md),
                   Row(
                     children: [
                       Expanded(
                         child: OutlinedButton(
                           onPressed: _busyId == null ? () => _edit(s) : null,
-                          child: const Text('تعديل'),
+                          child: Text(tr('تعديل')),
                         ),
                       ),
                       const SizedBox(width: Space.sm),
                       Expanded(
                         child: OutlinedButton(
                           onPressed: _busyId == null ? () => _toggle(s) : null,
-                          child: Text(s.isActive ? 'إيقاف' : 'عرض'),
+                          child: Text(s.isActive ? tr('إيقاف') : tr('عرض')),
                         ),
                       ),
                     ],
@@ -167,7 +168,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
                   FilledButton.tonalIcon(
                     onPressed: _busyId == null ? () => _media(s) : null,
                     icon: const Icon(Icons.perm_media_outlined, size: 19),
-                    label: const Text('الصور والمقاطع'),
+                    label: Text(tr('الصور والمقاطع')),
                   ),
                 ],
               ));
@@ -194,7 +195,7 @@ class _ServiceEditorState extends State<_ServiceEditor> {
   late final _description = TextEditingController(text: widget.service?.description ?? '');
   late final _price = TextEditingController(text: widget.service?.price.toString() ?? '');
   late final _priceTo = TextEditingController(text: widget.service?.priceTo?.toString() ?? '');
-  late final _unit = TextEditingController(text: widget.service?.unit ?? 'للحجز');
+  late final _unit = TextEditingController(text: widget.service?.unit ?? tr('للحجز'));
   late int _deposit = widget.service?.depositPercent ?? 30;
   late String? _categoryId = widget.service?.categoryId;
 
@@ -223,13 +224,13 @@ class _ServiceEditorState extends State<_ServiceEditor> {
     final priceTo = _priceTo.text.trim().isEmpty ? null : num.tryParse(_priceTo.text.trim());
 
     if (_title.text.trim().isEmpty || price == null || _categoryId == null) {
-      setState(() => _error = 'اكتب اسم الخدمة وسعرها، واختر قسمها.');
+      setState(() => _error = tr('اكتب اسم الخدمة وسعرها، واختر قسمها.'));
       return;
     }
     // القاعدة تفرض `price_to >= price` بقيد، ورفضُها يصل نصّاً إنجليزياً غامضاً.
     // الشرط هنا يقوله بالعربية قبل أن يُرسَل.
     if (priceTo != null && priceTo < price) {
-      setState(() => _error = 'أعلى السعر لا يكون أقلّ من أدناه.');
+      setState(() => _error = tr('أعلى السعر لا يكون أقلّ من أدناه.'));
       return;
     }
 
@@ -246,7 +247,7 @@ class _ServiceEditorState extends State<_ServiceEditor> {
         categoryId: _categoryId!,
         price: price,
         priceTo: priceTo,
-        unit: _unit.text.trim().isEmpty ? 'للحجز' : _unit.text.trim(),
+        unit: _unit.text.trim().isEmpty ? tr('للحجز') : _unit.text.trim(),
         depositPercent: _deposit,
       );
       if (mounted) Navigator.of(context).pop(true);
@@ -268,22 +269,22 @@ class _ServiceEditorState extends State<_ServiceEditor> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,
           children: [
-            SectionTitle(widget.service == null ? 'خدمة جديدة' : 'تعديل الخدمة'),
+            SectionTitle(widget.service == null ? tr('خدمة جديدة') : tr('تعديل الخدمة')),
             const SizedBox(height: Space.lg),
             TextField(
               controller: _title,
-              decoration: const InputDecoration(
-                labelText: 'اسم الخدمة',
-                hintText: 'قاعة التاج — باقة شاملة',
+              decoration: InputDecoration(
+                labelText: tr('اسم الخدمة'),
+                hintText: tr('قاعة التاج — باقة شاملة'),
               ),
             ),
             const SizedBox(height: Space.md),
             TextField(
               controller: _description,
               maxLines: 3,
-              decoration: const InputDecoration(
-                labelText: 'الوصف',
-                hintText: 'ما الذي تشمله الباقة؟',
+              decoration: InputDecoration(
+                labelText: tr('الوصف'),
+                hintText: tr('ما الذي تشمله الباقة؟'),
               ),
             ),
             const SizedBox(height: Space.md),
@@ -294,7 +295,7 @@ class _ServiceEditorState extends State<_ServiceEditor> {
                     controller: _price,
                     keyboardType: TextInputType.number,
                     textDirection: TextDirection.ltr,
-                    decoration: const InputDecoration(labelText: 'السعر (ر.ي)'),
+                    decoration: InputDecoration(labelText: tr('السعر (ر.ي)')),
                   ),
                 ),
                 const SizedBox(width: Space.sm),
@@ -303,9 +304,9 @@ class _ServiceEditorState extends State<_ServiceEditor> {
                     controller: _priceTo,
                     keyboardType: TextInputType.number,
                     textDirection: TextDirection.ltr,
-                    decoration: const InputDecoration(
-                      labelText: 'إلى (اختياري)',
-                      hintText: 'لنطاق سعري',
+                    decoration: InputDecoration(
+                      labelText: tr('إلى (اختياري)'),
+                      hintText: tr('لنطاق سعري'),
                     ),
                   ),
                 ),
@@ -314,13 +315,13 @@ class _ServiceEditorState extends State<_ServiceEditor> {
             const SizedBox(height: Space.md),
             TextField(
               controller: _unit,
-              decoration: const InputDecoration(
-                labelText: 'الوحدة',
-                hintText: 'للحجز / لليوم / لليلة',
+              decoration: InputDecoration(
+                labelText: tr('الوحدة'),
+                hintText: tr('للحجز / لليوم / لليلة'),
               ),
             ),
             const SizedBox(height: Space.lg),
-            const Align(alignment: AlignmentDirectional.centerStart, child: Muted('القسم')),
+            Align(alignment: AlignmentDirectional.centerStart, child: Muted(tr('القسم'))),
             const SizedBox(height: Space.sm),
             FutureBuilder<List<ServiceCategory>>(
               future: _categories,
@@ -342,13 +343,13 @@ class _ServiceEditorState extends State<_ServiceEditor> {
               },
             ),
             const SizedBox(height: Space.lg),
-            Align(alignment: AlignmentDirectional.centerStart, child: Muted('العربون: $_deposit٪')),
+            Align(alignment: AlignmentDirectional.centerStart, child: Muted(trf('العربون: {0}٪', ['$_deposit']))),
             Slider(
               value: _deposit.toDouble(),
               min: 0,
               max: 100,
               divisions: 20,
-              label: '$_deposit٪',
+              label: trf('{0}٪', ['$_deposit']),
               onChanged: (v) => setState(() => _deposit = v.round()),
             ),
             if (_error != null) ...[
@@ -361,12 +362,12 @@ class _ServiceEditorState extends State<_ServiceEditor> {
             const SizedBox(height: Space.lg),
             FilledButton(
               onPressed: _busy ? null : _save,
-              child: Text(widget.service == null ? 'إضافة' : 'حفظ'),
+              child: Text(widget.service == null ? tr('إضافة') : tr('حفظ')),
             ),
             const SizedBox(height: Space.sm),
             TextButton(
               onPressed: _busy ? null : () => Navigator.of(context).pop(false),
-              child: const Text('إلغاء'),
+              child: Text(tr('إلغاء')),
             ),
           ],
         ),

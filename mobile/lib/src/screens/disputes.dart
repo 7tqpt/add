@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../core/i18n.dart';
 import '../core/format.dart';
 import '../core/session.dart';
 import '../core/theme.dart';
@@ -39,7 +40,7 @@ class _DisputesScreenState extends State<DisputesScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('النزاعات')),
+      appBar: AppBar(title: Text(tr('النزاعات'))),
       body: FutureBuilder<List<Dispute>>(
         future: _future,
         builder: (context, snap) {
@@ -49,10 +50,10 @@ class _DisputesScreenState extends State<DisputesScreen> {
           }
           final rows = snap.data ?? const <Dispute>[];
           if (rows.isEmpty) {
-            return const EmptyBlock(
-              title: 'لا نزاعات',
-              description: 'وهذا هو الأصل. وإن اختلفت مع مقدّم خدمة على حجزٍ '
-                  'فافتح نزاعاً من بطاقة الحجز في «حجوزاتي».',
+            return EmptyBlock(
+              title: tr('لا نزاعات'),
+              description: tr('وهذا هو الأصل. وإن اختلفت مع مقدّم خدمة على حجزٍ '
+                  'فافتح نزاعاً من بطاقة الحجز في «حجوزاتي».'),
             );
           }
           return RefreshIndicator(
@@ -127,7 +128,7 @@ class _Row extends StatelessWidget {
         if (d.refundAmount > 0) ...[
           const SizedBox(height: Space.sm),
           Text(
-            'أعادت الإدارة ${formatMoney(d.refundAmount)}',
+            trf('أعادت الإدارة {0}', [formatMoney(d.refundAmount)]),
             style: const TextStyle(fontSize: 13, color: AppColors.good, fontWeight: FontWeight.w600),
           ),
         ],
@@ -256,7 +257,7 @@ class _DisputeScreenState extends State<DisputeScreen> {
                       Expanded(
                         child: TextField(
                           controller: _reply,
-                          decoration: const InputDecoration(hintText: 'أضف ما يوضّح موقفك…'),
+                          decoration: InputDecoration(hintText: tr('أضف ما يوضّح موقفك…')),
                         ),
                       ),
                       const SizedBox(width: Space.sm),
@@ -267,7 +268,7 @@ class _DisputeScreenState extends State<DisputeScreen> {
                       ),
                     ],
                   )
-                : const Center(child: Muted('حُسم النزاع — لا تُقبل ردودٌ بعده.')),
+                : Center(child: Muted(tr('حُسم النزاع — لا تُقبل ردودٌ بعده.'))),
           ),
         ],
       ),
@@ -287,15 +288,15 @@ class _Head extends StatelessWidget {
       children: [
         Row(
           children: [
-            const Expanded(child: SectionTitle('النزاع')),
+            Expanded(child: SectionTitle(tr('النزاع'))),
             StatusBadge(disputeStatusLabel(d.status), color: disputeStatusColor(d.status)),
           ],
         ),
         const SizedBox(height: Space.sm),
-        KeyValue('الرقم', d.reference),
-        if (d.bookingReference.isNotEmpty) KeyValue('الحجز', d.bookingReference),
-        KeyValue('السبب', disputeCategoryLabel(d.category)),
-        KeyValue('مقدّم الخدمة', d.providerName),
+        KeyValue(tr('الرقم'), d.reference),
+        if (d.bookingReference.isNotEmpty) KeyValue(tr('الحجز'), d.bookingReference),
+        KeyValue(tr('السبب'), disputeCategoryLabel(d.category)),
+        KeyValue(tr('مقدّم الخدمة'), d.providerName),
         if (d.resolution.isNotEmpty) ...[
           const SizedBox(height: Space.md),
           Container(
@@ -307,13 +308,13 @@ class _Head extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Muted('قرار الإدارة', size: 11),
+                Muted(tr('قرار الإدارة'), size: 11),
                 const SizedBox(height: Space.xs),
                 Text(d.resolution, style: const TextStyle(height: 1.8, color: AppColors.ink)),
                 if (d.refundAmount > 0) ...[
                   const SizedBox(height: Space.sm),
                   Text(
-                    'المبلغ المُعاد: ${formatMoney(d.refundAmount)}',
+                    trf('المبلغ المُعاد: {0}', [formatMoney(d.refundAmount)]),
                     style: const TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
@@ -341,9 +342,9 @@ class _Bubble extends StatelessWidget {
     final m = message;
     final mine = m.author == (asProvider ? 'provider' : 'customer');
     final label = switch (m.author) {
-      'admin' => 'الإدارة',
-      'provider' => mine ? 'أنت' : 'مقدّم الخدمة',
-      _ => mine ? 'أنت' : 'العميل',
+      'admin' => tr('الإدارة'),
+      'provider' => mine ? tr('أنت') : tr('مقدّم الخدمة'),
+      _ => mine ? tr('أنت') : tr('العميل'),
     };
     return Align(
       alignment: mine ? AlignmentDirectional.centerStart : AlignmentDirectional.centerEnd,
@@ -408,7 +409,7 @@ class _OpenSheetState extends State<_OpenSheet> {
   Future<void> _open() async {
     final subject = _subject.text.trim();
     if (subject.length < 4) {
-      setState(() => _error = 'اكتب عنواناً يوضّح المشكلة في سطر.');
+      setState(() => _error = tr('اكتب عنواناً يوضّح المشكلة في سطر.'));
       return;
     }
     setState(() {
@@ -443,17 +444,17 @@ class _OpenSheetState extends State<_OpenSheet> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,
           children: [
-            const SectionTitle('فتح نزاع'),
+            SectionTitle(tr('فتح نزاع')),
             const SizedBox(height: Space.xs),
             Muted('${widget.booking.serviceTitle} · ${widget.booking.reference}'),
             const SizedBox(height: Space.lg),
-            const Align(alignment: AlignmentDirectional.centerStart, child: Muted('السبب')),
+            Align(alignment: AlignmentDirectional.centerStart, child: Muted(tr('السبب'))),
             const SizedBox(height: Space.sm),
             Wrap(
               spacing: Space.sm,
               runSpacing: Space.sm,
               children: [
-                for (final c in disputeCategories)
+                for (final c in disputeCategories())
                   PickChip(
                     label: c.label,
                     active: _category == c.value,
@@ -464,23 +465,23 @@ class _OpenSheetState extends State<_OpenSheet> {
             const SizedBox(height: Space.lg),
             TextField(
               controller: _subject,
-              decoration: const InputDecoration(
-                labelText: 'العنوان',
-                hintText: 'لم تحضر الفرقة ليلة العرس',
+              decoration: InputDecoration(
+                labelText: tr('العنوان'),
+                hintText: tr('لم تحضر الفرقة ليلة العرس'),
               ),
             ),
             const SizedBox(height: Space.md),
             TextField(
               controller: _description,
               maxLines: 4,
-              decoration: const InputDecoration(
-                labelText: 'ماذا حدث؟',
-                hintText: 'اذكر التواريخ والمبالغ وما اتُّفق عليه — هذا ما تنظر فيه الإدارة.',
+              decoration: InputDecoration(
+                labelText: tr('ماذا حدث؟'),
+                hintText: tr('اذكر التواريخ والمبالغ وما اتُّفق عليه — هذا ما تنظر فيه الإدارة.'),
               ),
             ),
             const SizedBox(height: Space.sm),
-            const Muted(
-              'يصل النزاع إلى إدارة المنصّة، ويرى مقدّم الخدمة ما تكتبه هنا.',
+            Muted(
+              tr('يصل النزاع إلى إدارة المنصّة، ويرى مقدّم الخدمة ما تكتبه هنا.'),
               size: 11,
             ),
             if (_error != null) ...[
@@ -491,11 +492,11 @@ class _OpenSheetState extends State<_OpenSheet> {
               ),
             ],
             const SizedBox(height: Space.lg),
-            FilledButton(onPressed: _busy ? null : _open, child: const Text('افتح النزاع')),
+            FilledButton(onPressed: _busy ? null : _open, child: Text(tr('افتح النزاع'))),
             const SizedBox(height: Space.sm),
             TextButton(
               onPressed: _busy ? null : () => Navigator.of(context).pop(false),
-              child: const Text('تراجع'),
+              child: Text(tr('تراجع')),
             ),
           ],
         ),

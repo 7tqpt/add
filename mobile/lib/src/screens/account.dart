@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../core/i18n.dart';
 import '../core/session.dart';
 import '../core/app_version.dart';
 import '../core/theme.dart';
@@ -94,34 +95,34 @@ class _AccountScreenState extends State<AccountScreen> {
           children: [
             MenuRow(
               icon: Icons.person_outline_rounded,
-              label: 'الملف الشخصي',
+              label: tr('الملف الشخصي'),
               onTap: () => _openProfile(context),
             ),
             MenuRow(
               icon: Icons.receipt_long_outlined,
-              label: 'فواتيري',
+              label: tr('فواتيري'),
               onTap: () => _push(
                 context,
-                'فواتيري',
+                tr('فواتيري'),
                 InvoicesScreen(session: session),
               ),
             ),
             MenuRow(
               icon: Icons.favorite_border_rounded,
-              label: 'المفضّلة',
-              onTap: () => _push(context, 'المفضّلة', const FavouritesScreen()),
+              label: tr('المفضّلة'),
+              onTap: () => _push(context, tr('المفضّلة'), const FavouritesScreen()),
             ),
             // **صارت أبواباً تفتح، لا صفوفاً في لوحةِ تصميم.**
             MenuRow(
               icon: Icons.location_on_outlined,
-              label: 'العناوين',
+              label: tr('العناوين'),
               onTap: () => Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const AddressesScreen()),
               ),
             ),
             MenuRow(
               icon: Icons.credit_card_outlined,
-              label: 'طرق الدفع',
+              label: tr('طرق الدفع'),
               onTap: () => Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const PaymentMethodsScreen()),
               ),
@@ -132,7 +133,7 @@ class _AccountScreenState extends State<AccountScreen> {
               icon: provider
                   ? Icons.storefront_outlined
                   : Icons.add_business_outlined,
-              label: provider ? 'التبديل إلى وضع مقدّم الخدمة' : 'أريد تقديم خدمة',
+              label: provider ? tr('التبديل إلى وضع مقدّم الخدمة') : tr('أريد تقديم خدمة'),
               onTap: provider
                   ? () => session.switchTo(provider: true)
                   : () => Navigator.of(context).push(
@@ -147,21 +148,21 @@ class _AccountScreenState extends State<AccountScreen> {
 
             MenuRow(
               icon: Icons.settings_outlined,
-              label: 'الإعدادات',
+              label: tr('الإعدادات'),
               onTap: () => Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => SettingsScreen(session: session)),
               ),
             ),
             MenuRow(
               icon: Icons.support_agent_outlined,
-              label: 'الدعم',
+              label: tr('الدعم'),
               onTap: () => Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => SupportScreen(session: session)),
               ),
             ),
             MenuRow(
               icon: Icons.gavel_rounded,
-              label: 'النزاعات',
+              label: tr('النزاعات'),
               onTap: () => Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => DisputesScreen(session: session)),
               ),
@@ -171,7 +172,7 @@ class _AccountScreenState extends State<AccountScreen> {
             // تُخرج المستخدم ثم تطلب منه بريده وكلمته.
             MenuRow(
               icon: Icons.logout_rounded,
-              label: 'تسجيل الخروج',
+              label: tr('تسجيل الخروج'),
               tone: AppColors.critical,
               onTap: () => _confirmSignOut(context),
               last: true,
@@ -204,7 +205,7 @@ class _AccountScreenState extends State<AccountScreen> {
       // في ذاكرته.
       if (mounted) setState(() => _avatarVersion++);
       await _load();
-      if (context.mounted) showMessage(context, 'حُفظت بياناتك.');
+      if (context.mounted) showMessage(context, tr('حُفظت بياناتك.'));
     }
   }
 
@@ -212,20 +213,20 @@ class _AccountScreenState extends State<AccountScreen> {
     final yes = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('تسجيل الخروج؟'),
-        content: const Text(
-          'ستحتاج إلى بريدك وكلمة مرورك للدخول مرّةً أخرى.',
+        title: Text(tr('تسجيل الخروج؟')),
+        content: Text(
+          tr('ستحتاج إلى بريدك وكلمة مرورك للدخول مرّةً أخرى.'),
           style: TextStyle(height: 1.7),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('إلغاء'),
+            child: Text(tr('إلغاء')),
           ),
           FilledButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
             style: FilledButton.styleFrom(backgroundColor: AppColors.critical),
-            child: const Text('خروج'),
+            child: Text(tr('خروج')),
           ),
         ],
       ),
@@ -284,7 +285,7 @@ class _AccountAvatar extends StatelessWidget {
     final name = profile?.fullName.trim() ?? '';
     final source = name.isNotEmpty ? name : fallbackEmail.trim();
     return Text(
-      source.isEmpty ? '؟' : source.characters.first.toUpperCase(),
+      source.isEmpty ? tr('؟') : source.characters.first.toUpperCase(),
       // النمط كاملٌ مكتوبٌ باليد، فيُذكر الخطّ صراحةً: النمط الكامل يحلّ محلّ
       // الموروث ولا يرث احتياط الثيمة.
       style: TextStyle(

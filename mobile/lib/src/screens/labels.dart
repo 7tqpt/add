@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
 
+import '../core/i18n.dart';
 import '../core/theme.dart';
 import '../data/models.dart';
 
 String bookingStatusLabel(BookingStatus s) => switch (s) {
-  BookingStatus.pendingProvider => 'بانتظار مقدّم الخدمة',
-  BookingStatus.confirmed => 'مؤكد',
-  BookingStatus.completed => 'منفّذ',
-  BookingStatus.rejected => 'مرفوض',
-  BookingStatus.cancelled => 'ملغي',
-  BookingStatus.expired => 'منتهٍ',
+  BookingStatus.pendingProvider => tr('بانتظار مقدّم الخدمة'),
+  BookingStatus.confirmed => tr('مؤكد'),
+  BookingStatus.completed => tr('منفّذ'),
+  BookingStatus.rejected => tr('مرفوض'),
+  BookingStatus.cancelled => tr('ملغي'),
+  BookingStatus.expired => tr('منتهٍ'),
 };
 
 Color bookingStatusColor(BookingStatus s) => switch (s) {
@@ -22,27 +23,31 @@ Color bookingStatusColor(BookingStatus s) => switch (s) {
 };
 
 String ticketStatusLabel(String s) => switch (s) {
-  'open' => 'مفتوحة',
-  'in_progress' => 'قيد المعالجة',
-  'waiting_customer' => 'بانتظار ردّك',
-  'resolved' => 'تم الحل',
-  _ => 'مغلقة',
+  'open' => tr('مفتوحة'),
+  'in_progress' => tr('قيد المعالجة'),
+  'waiting_customer' => tr('بانتظار ردّك'),
+  'resolved' => tr('تم الحل'),
+  _ => tr('مغلقة'),
 };
 
-const ticketCategories = <({String value, String label})>[
-  (value: 'booking', label: 'الحجوزات'),
-  (value: 'payment', label: 'الدفع'),
-  (value: 'account', label: 'الحساب'),
-  (value: 'technical', label: 'عطل فني'),
-  (value: 'suggestion', label: 'اقتراح'),
-  (value: 'other', label: 'أخرى'),
+/// أبوابُ التذكرة.
+///
+/// **ودالّةٌ لا ثابت:** الثابتُ يُحسب مرّةً عند التحميل، فلو بدّل المستخدمُ
+/// اللغةَ بقيت القائمةُ باللغة الأولى إلى أن يُغلق التطبيقُ ويُفتح.
+List<({String value, String label})> ticketCategories() => [
+  (value: 'booking', label: tr('الحجوزات')),
+  (value: 'payment', label: tr('الدفع')),
+  (value: 'account', label: tr('الحساب')),
+  (value: 'technical', label: tr('عطل فني')),
+  (value: 'suggestion', label: tr('اقتراح')),
+  (value: 'other', label: tr('أخرى')),
 ];
 
 String planStatusLabel(String s) => switch (s) {
-  'confirmed' => 'مكتملة الحجز',
-  'completed' => 'انتهى العرس',
-  'cancelled' => 'ملغاة',
-  _ => 'قيد التجهيز',
+  'confirmed' => tr('مكتملة الحجز'),
+  'completed' => tr('انتهى العرس'),
+  'cancelled' => tr('ملغاة'),
+  _ => tr('قيد التجهيز'),
 };
 
 Color planStatusColor(String s) => switch (s) {
@@ -53,10 +58,10 @@ Color planStatusColor(String s) => switch (s) {
 };
 
 String providerStatusLabel(String s) => switch (s) {
-  'verified' => 'موثّق',
-  'rejected' => 'مرفوض',
-  'suspended' => 'موقوف',
-  _ => 'قيد المراجعة',
+  'verified' => tr('موثّق'),
+  'rejected' => tr('مرفوض'),
+  'suspended' => tr('موقوف'),
+  _ => tr('قيد المراجعة'),
 };
 
 Color providerStatusColor(String s) => switch (s) {
@@ -67,21 +72,22 @@ Color providerStatusColor(String s) => switch (s) {
 };
 
 /// أنواع المستندات كما يقيّدها الجدول — أي قيمةٍ خارجها يرفضها القيد.
-const documentTypes = <({String value, String label})>[
-  (value: 'id_card', label: 'الهوية الشخصية'),
-  (value: 'commercial_register', label: 'السجل التجاري'),
-  (value: 'certificate', label: 'شهادة أو ترخيص'),
-  (value: 'insurance', label: 'تأمين'),
-  (value: 'work_samples', label: 'نماذج أعمال'),
+/// دالّةٌ لا ثابت — للسبب نفسِه في `ticketCategories`.
+List<({String value, String label})> documentTypes() => [
+  (value: 'id_card', label: tr('الهوية الشخصية')),
+  (value: 'commercial_register', label: tr('السجل التجاري')),
+  (value: 'certificate', label: tr('شهادة أو ترخيص')),
+  (value: 'insurance', label: tr('تأمين')),
+  (value: 'work_samples', label: tr('نماذج أعمال')),
 ];
 
 String documentTypeLabel(String value) =>
-    documentTypes.where((t) => t.value == value).firstOrNull?.label ?? value;
+    documentTypes().where((t) => t.value == value).firstOrNull?.label ?? value;
 
 String documentStatusLabel(String s) => switch (s) {
-  'approved' => 'مقبول',
-  'rejected' => 'مرفوض',
-  _ => 'قيد المراجعة',
+  'approved' => tr('مقبول'),
+  'rejected' => tr('مرفوض'),
+  _ => tr('قيد المراجعة'),
 };
 
 Color documentStatusColor(String s) => switch (s) {
@@ -91,23 +97,24 @@ Color documentStatusColor(String s) => switch (s) {
 };
 
 /// أسبابُ النزاع كما يقيّدها الجدول — أي قيمةٍ خارجها يرفضها القيد.
-const disputeCategories = <({String value, String label})>[
-  (value: 'no_show', label: 'لم يحضر / لم يُنفَّذ'),
-  (value: 'quality', label: 'الخدمة دون المتّفق عليه'),
-  (value: 'payment', label: 'مشكلة في مبلغ أو استرجاع'),
-  (value: 'cancellation', label: 'خلاف على الإلغاء'),
-  (value: 'behaviour', label: 'سلوك غير لائق'),
-  (value: 'other', label: 'سبب آخر'),
+/// دالّةٌ لا ثابت — للسبب نفسِه في `ticketCategories`.
+List<({String value, String label})> disputeCategories() => [
+  (value: 'no_show', label: tr('لم يحضر / لم يُنفَّذ')),
+  (value: 'quality', label: tr('الخدمة دون المتّفق عليه')),
+  (value: 'payment', label: tr('مشكلة في مبلغ أو استرجاع')),
+  (value: 'cancellation', label: tr('خلاف على الإلغاء')),
+  (value: 'behaviour', label: tr('سلوك غير لائق')),
+  (value: 'other', label: tr('سبب آخر')),
 ];
 
 String disputeCategoryLabel(String value) =>
-    disputeCategories.where((c) => c.value == value).firstOrNull?.label ?? value;
+    disputeCategories().where((c) => c.value == value).firstOrNull?.label ?? value;
 
 String disputeStatusLabel(String s) => switch (s) {
-  'investigating' => 'قيد النظر',
-  'resolved' => 'حُسم',
-  'closed' => 'مغلق',
-  _ => 'مفتوح',
+  'investigating' => tr('قيد النظر'),
+  'resolved' => tr('حُسم'),
+  'closed' => tr('مغلق'),
+  _ => tr('مفتوح'),
 };
 
 Color disputeStatusColor(String s) => switch (s) {

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../core/i18n.dart';
 import '../core/format.dart';
 import '../core/theme.dart';
 import '../data/api.dart';
@@ -71,7 +72,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('الإشعارات')),
+      appBar: AppBar(title: Text(tr('الإشعارات'))),
       body: FutureBuilder<List<AppNotification>>(
         future: _future,
         builder: (context, snap) {
@@ -81,9 +82,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           }
           final rows = snap.data ?? const <AppNotification>[];
           if (rows.isEmpty) {
-            return const EmptyBlock(
-              title: 'لا إشعارات',
-              description: 'هنا يصلك ما يخصّ حجوزاتك ومدفوعاتك ورسائلك.',
+            return EmptyBlock(
+              title: tr('لا إشعارات'),
+              description: tr('هنا يصلك ما يخصّ حجوزاتك ومدفوعاتك ورسائلك.'),
             );
           }
           final unread = rows.where((n) => n.isUnread).length;
@@ -105,10 +106,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     padding: const EdgeInsets.fromLTRB(Space.lg, Space.md, Space.lg, Space.xs),
                     child: Row(
                       children: [
-                        Expanded(child: Muted('$unread جديد')),
+                        Expanded(child: Muted(trf('{0} جديد', ['$unread']))),
                         TextButton(
                           onPressed: _busy ? null : _markAll,
-                          child: const Text('علّم الكلّ مقروءاً'),
+                          child: Text(tr('علّم الكلّ مقروءاً')),
                         ),
                       ],
                     ),

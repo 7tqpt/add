@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../core/i18n.dart';
 import '../core/session.dart';
 import '../core/theme.dart';
 import '../data/api.dart';
@@ -63,7 +64,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   Future<void> _submit() async {
     if (_name.text.trim().isEmpty || _phone.text.trim().isEmpty || _governorate == null) {
-      setState(() => _error = 'اكتب اسمك ورقمك واختر محافظتك.');
+      setState(() => _error = tr('اكتب اسمك ورقمك واختر محافظتك.'));
       return;
     }
     setState(() {
@@ -117,12 +118,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     if (_who == null) return _picker(context);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('أكمل ملفك'),
+        title: Text(tr('أكمل ملفك')),
         // بابُ رجوعٍ إلى الاختيار: من ضغط «مقدّم خدمة» وهو يريد أن يحجز
         // كان سيمضي في طريقٍ لم يقصده بلا مخرج.
         leading: IconButton(
           onPressed: () => setState(() => _who = null),
-          tooltip: 'غيّر الاختيار',
+          tooltip: tr('غيّر الاختيار'),
           icon: const Icon(Icons.arrow_forward),
         ),
       ),
@@ -136,18 +137,18 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             children: [
               AppCard(
                 children: [
-                  const SectionTitle('أهلاً بك'),
+                  SectionTitle(tr('أهلاً بك')),
                   const SizedBox(height: Space.sm),
-                  const Text(
-                    'عرّفنا بنفسك لنكمل حجوزاتك ونتواصل معك عند الحاجة.',
+                  Text(
+                    tr('عرّفنا بنفسك لنكمل حجوزاتك ونتواصل معك عند الحاجة.'),
                     style: TextStyle(height: 1.7),
                   ),
                   const SizedBox(height: Space.lg),
                   TextField(
                     controller: _name,
-                    decoration: const InputDecoration(
-                      labelText: 'الاسم الكامل',
-                      hintText: 'محمد الصنعاني',
+                    decoration: InputDecoration(
+                      labelText: tr('الاسم الكامل'),
+                      hintText: tr('محمد الصنعاني'),
                     ),
                   ),
                   const SizedBox(height: Space.md),
@@ -155,15 +156,15 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     controller: _phone,
                     keyboardType: TextInputType.phone,
                     textDirection: TextDirection.ltr,
-                    decoration: const InputDecoration(
-                      labelText: 'رقم الجوال',
+                    decoration: InputDecoration(
+                      labelText: tr('رقم الجوال'),
                       hintText: '+967 7XX XXX XXX',
                     ),
                   ),
                   const SizedBox(height: Space.lg),
-                  const Align(
+                  Align(
                     alignment: AlignmentDirectional.centerStart,
-                    child: Muted('المحافظة'),
+                    child: Muted(tr('المحافظة')),
                   ),
                   const SizedBox(height: Space.sm),
                   Wrap(
@@ -183,13 +184,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     Text(_error!, style: const TextStyle(color: AppColors.critical, fontSize: 13)),
                   ],
                   const SizedBox(height: Space.lg),
-                  FilledButton(onPressed: _busy ? null : _submit, child: const Text('متابعة')),
+                  FilledButton(onPressed: _busy ? null : _submit, child: Text(tr('متابعة'))),
                 ],
               ),
               const SizedBox(height: Space.md),
               TextButton(
                 onPressed: () => widget.session.signOut(),
-                child: const Text('تسجيل الخروج'),
+                child: Text(tr('تسجيل الخروج')),
               ),
             ],
           );
@@ -204,8 +205,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         padding: const EdgeInsets.all(Space.lg),
         children: [
           const SizedBox(height: Space.xl),
-          const Text(
-            'مرحباً بك في فرحتي',
+          Text(
+            tr('مرحباً بك في فرحتي'),
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 22,
@@ -215,41 +216,41 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             ),
           ),
           const SizedBox(height: Space.xs),
-          const Center(child: Muted('اختر ما يصفك لنبدأ من مكانك الصحيح', size: 13)),
+          Center(child: Muted(tr('اختر ما يصفك لنبدأ من مكانك الصحيح'), size: 13)),
           const SizedBox(height: Space.xl),
           _WhoCard(
             icon: Icons.favorite_rounded,
-            title: 'أنا عروس',
-            body: 'أبحث عن خدمات وأخطّط لحفل زفافي',
+            title: tr('أنا عروس'),
+            body: tr('أبحث عن خدمات وأخطّط لحفل زفافي'),
             onTap: () => setState(() => _who = _Who.bride),
           ),
           const SizedBox(height: Space.md),
           _WhoCard(
             icon: Icons.favorite_border_rounded,
-            title: 'أنا عريس',
-            body: 'أبحث عن خدمات وأخطّط لحفل زفافي',
+            title: tr('أنا عريس'),
+            body: tr('أبحث عن خدمات وأخطّط لحفل زفافي'),
             onTap: () => setState(() => _who = _Who.groom),
           ),
           const SizedBox(height: Space.md),
           _WhoCard(
             icon: Icons.storefront_rounded,
-            title: 'مقدّم خدمة',
-            body: 'أعرض خدماتي وأستقبل الحجوزات',
+            title: tr('مقدّم خدمة'),
+            body: tr('أعرض خدماتي وأستقبل الحجوزات'),
             onTap: () => setState(() => _who = _Who.provider),
           ),
           const SizedBox(height: Space.lg),
           // **يُقال صراحةً:** الاختيارُ طريقٌ لا قفل. ومن لم يُقل له ذلك ظنّ
           // أنه يفتح حساباً من نوعٍ لا يُبدَّل، فتردّد أو فتح حسابين.
-          const Center(
+          Center(
             child: Muted(
-              'الحساب واحد — تستطيع أن تعرض خدماتك لاحقاً أو أن تحجز، أيّاً كان اختيارك',
+              tr('الحساب واحد — تستطيع أن تعرض خدماتك لاحقاً أو أن تحجز، أيّاً كان اختيارك'),
               size: 12,
             ),
           ),
           const SizedBox(height: Space.md),
           TextButton(
             onPressed: () => widget.session.signOut(),
-            child: const Text('تسجيل الخروج'),
+            child: Text(tr('تسجيل الخروج')),
           ),
         ],
       ),

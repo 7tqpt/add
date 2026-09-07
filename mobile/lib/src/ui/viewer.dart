@@ -15,6 +15,7 @@ import 'package:http/http.dart' as http;
 import 'package:pdfx/pdfx.dart';
 import 'package:video_player/video_player.dart';
 
+import '../core/i18n.dart';
 import '../core/theme.dart';
 
 /// شاشةُ عرضٍ سوداء لها زرُّ إغلاقٍ وعنوان.
@@ -40,7 +41,7 @@ class _ViewerShell extends StatelessWidget {
           title,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: const TextStyle(fontSize: 15, color: Colors.white),
+          style: TextStyle(fontSize: 15, color: Colors.white),
         ),
         actions: actions,
       ),
@@ -51,16 +52,16 @@ class _ViewerShell extends StatelessWidget {
 
 Widget _viewerError(String message) => Center(
   child: Padding(
-    padding: const EdgeInsets.all(Space.xl),
+    padding: EdgeInsets.all(Space.xl),
     child: Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        const Icon(Icons.error_outline, color: Colors.white54, size: 40),
-        const SizedBox(height: Space.md),
+        Icon(Icons.error_outline, color: Colors.white54, size: 40),
+        SizedBox(height: Space.md),
         Text(
           message,
           textAlign: TextAlign.center,
-          style: const TextStyle(color: Colors.white70, fontSize: 13, height: 1.7),
+          style: TextStyle(color: Colors.white70, fontSize: 13, height: 1.7),
         ),
       ],
     ),
@@ -78,11 +79,11 @@ const _spinner = Center(
 Future<void> openImageViewer(
   BuildContext context, {
   required String url,
-  String title = 'صورة',
+  String? title,
 }) {
   return Navigator.of(context).push(
     MaterialPageRoute(
-      builder: (_) => _ImageViewer(url: url, title: title),
+      builder: (_) => _ImageViewer(url: url, title: title ?? tr('صورة')),
     ),
   );
 }
@@ -106,7 +107,7 @@ class _ImageViewer extends StatelessWidget {
           child: Image.network(
             url,
             fit: BoxFit.contain,
-            errorBuilder: (_, _, _) => _viewerError('تعذّر تحميل الصورة.'),
+            errorBuilder: (_, _, _) => _viewerError(tr('تعذّر تحميل الصورة.')),
             loadingBuilder: (context, child, progress) =>
                 progress == null ? child : _spinner,
           ),
@@ -172,9 +173,9 @@ class _VideoViewerState extends State<_VideoViewer> {
   Widget build(BuildContext context) {
     final c = _c;
     return _ViewerShell(
-      title: 'مقطع',
+      title: tr('مقطع'),
       child: c == null
-          ? (_failed ? _viewerError('تعذّر تشغيل المقطع.') : _spinner)
+          ? (_failed ? _viewerError(tr('تعذّر تشغيل المقطع.')) : _spinner)
           : Column(
               children: [
                 Expanded(
@@ -192,11 +193,11 @@ class _VideoViewerState extends State<_VideoViewer> {
                               valueListenable: c,
                               builder: (context, value, _) => AnimatedOpacity(
                                 opacity: value.isPlaying ? 0 : 1,
-                                duration: const Duration(milliseconds: 200),
+                                duration: Duration(milliseconds: 200),
                                 child: Container(
                                   color: Colors.black26,
                                   alignment: Alignment.center,
-                                  child: const CircleAvatar(
+                                  child: CircleAvatar(
                                     radius: 30,
                                     backgroundColor: Colors.white,
                                     child: Icon(Icons.play_arrow_rounded,
@@ -214,7 +215,7 @@ class _VideoViewerState extends State<_VideoViewer> {
                 VideoProgressIndicator(
                   c,
                   allowScrubbing: true,
-                  padding: const EdgeInsets.symmetric(
+                  padding: EdgeInsets.symmetric(
                       horizontal: Space.lg, vertical: Space.lg),
                   colors: VideoProgressColors(
                     playedColor: AppColors.accent,
@@ -235,10 +236,12 @@ class _VideoViewerState extends State<_VideoViewer> {
 Future<void> openPdfViewer(
   BuildContext context, {
   required String url,
-  String name = 'ملف',
+  String? name,
 }) {
   return Navigator.of(context).push(
-    MaterialPageRoute(builder: (_) => _PdfViewer(url: url, name: name)),
+    MaterialPageRoute(
+      builder: (_) => _PdfViewer(url: url, name: name ?? tr('ملف')),
+    ),
   );
 }
 
@@ -274,7 +277,7 @@ class _PdfViewerState extends State<_PdfViewer> {
     try {
       final res = await http.get(Uri.parse(widget.url));
       if (res.statusCode != 200) {
-        throw 'تعذّر تحميل الملف (${res.statusCode}).';
+        throw trf('تعذّر تحميل الملف ({0}).', ['${res.statusCode}']);
       }
       final bytes = Uint8List.fromList(res.bodyBytes);
       final controller = PdfControllerPinch(
@@ -287,7 +290,7 @@ class _PdfViewerState extends State<_PdfViewer> {
       setState(() => _controller = controller);
     } catch (e) {
       if (mounted) {
-        setState(() => _error = e is String ? e : 'تعذّر فتح الملف.');
+        setState(() => _error = e is String ? e : tr('تعذّر فتح الملف.'));
       }
     }
   }
@@ -311,7 +314,7 @@ class _PdfViewerState extends State<_PdfViewer> {
               child: Text(
                 // «٣ من ١٢» — ومن فتح ملفاً من اثنتي عشرة صفحةً يريد أن يعرف
                 // أين هو منه.
-                '$_page من $_pages',
+                trf('{0} من {1}', ['$_page', '$_pages']),
                 style: const TextStyle(color: Colors.white70, fontSize: 12),
               ),
             ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../core/i18n.dart';
 import '../core/presence.dart';
 import '../core/push.dart';
 import '../core/session.dart';
@@ -103,13 +104,13 @@ class _ProviderShellState extends State<ProviderShell> {
 
   Future<void> _openChats() async {
     await Navigator.of(context)
-        .push(MaterialPageRoute(builder: (_) => const ConversationsScreen()));
+        .push(MaterialPageRoute(builder: (_) => ConversationsScreen()));
     if (mounted) _countUnread();
   }
 
   @override
   Widget build(BuildContext context) {
-    final titles = ['الطلبات', 'تقويمي', 'خدماتي', 'ملفي'];
+    final titles = [tr('الطلبات'), tr('تقويمي'), tr('خدماتي'), tr('ملفي')];
     final pages = [
       RequestsScreen(session: widget.session),
       AvailabilityScreen(session: widget.session),
@@ -141,11 +142,11 @@ class _ProviderShellState extends State<ProviderShell> {
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
         onDestinationSelected: (i) => setState(() => _index = i),
-        destinations: const [
-          NavigationDestination(icon: Icon(Icons.inbox_outlined), label: 'الطلبات'),
-          NavigationDestination(icon: Icon(Icons.event_note_outlined), label: 'تقويمي'),
-          NavigationDestination(icon: Icon(Icons.sell_outlined), label: 'خدماتي'),
-          NavigationDestination(icon: Icon(Icons.storefront_outlined), label: 'ملفي'),
+        destinations: [
+          NavigationDestination(icon: Icon(Icons.inbox_outlined), label: tr('الطلبات')),
+          NavigationDestination(icon: Icon(Icons.event_note_outlined), label: tr('تقويمي')),
+          NavigationDestination(icon: Icon(Icons.sell_outlined), label: tr('خدماتي')),
+          NavigationDestination(icon: Icon(Icons.storefront_outlined), label: tr('ملفي')),
         ],
       ),
     );

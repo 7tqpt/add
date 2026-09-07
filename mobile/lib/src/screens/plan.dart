@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../core/i18n.dart';
 import '../core/format.dart';
 import '../core/session.dart';
 import '../core/theme.dart';
@@ -65,17 +66,17 @@ class _PlanScreenState extends State<PlanScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const EmptyBlock(
-                    title: 'لا خطة بعد',
-                    description:
+                  EmptyBlock(
+                    title: tr('لا خطة بعد'),
+                    description: tr(
                         'خطة العرس تجمع حجوزاتك، وتحسب المتبقّي من ميزانيتك، '
-                        'وتفتح لك قائمة تجهيزٍ تشطبها مهمّةً مهمّة.',
+                        'وتفتح لك قائمة تجهيزٍ تشطبها مهمّةً مهمّة.'),
                   ),
                   const SizedBox(height: Space.lg),
                   FilledButton.icon(
                     onPressed: _edit,
                     icon: const Icon(Icons.add, size: 20),
-                    label: const Text('أنشئ خطتك'),
+                    label: Text(tr('أنشئ خطتك')),
                   ),
                 ],
               ),
@@ -195,13 +196,13 @@ class _PlanBlockState extends State<_PlanBlock> {
                   children: [
                     Row(
                       children: [
-                        const Expanded(child: SectionTitle('قائمة التجهيز')),
+                        Expanded(child: SectionTitle(tr('قائمة التجهيز'))),
                         if (done.isNotEmpty)
                           TextButton(
                             onPressed: () => setState(() => _showDone = !_showDone),
                             child: Text(_showDone
-                                ? 'إخفاء المنجَز'
-                                : 'المنجَز (${done.length})'),
+                                ? tr('إخفاء المنجَز')
+                                : trf('المنجَز ({0})', ['${done.length}'])),
                           ),
                       ],
                     ),
@@ -209,7 +210,7 @@ class _PlanBlockState extends State<_PlanBlock> {
                       const SizedBox(height: Space.sm),
                       // قاعدةٌ لم يُشغَّل عليها `plan_tasks.sql` بعد: تنقص
                       // ميزةٌ ولا تسقط شاشة.
-                      const Muted('لم تُفتح قائمة التجهيز بعد. أضف أول مهمّة بنفسك.'),
+                      Muted(tr('لم تُفتح قائمة التجهيز بعد. أضف أول مهمّة بنفسك.')),
                     ],
                     for (final t in left) _TaskRow(
                       task: t,
@@ -218,8 +219,8 @@ class _PlanBlockState extends State<_PlanBlock> {
                     ),
                     if (left.isEmpty && tasks.isNotEmpty) ...[
                       const SizedBox(height: Space.sm),
-                      const Text(
-                        'انتهى كل شيء — مبارك!',
+                      Text(
+                        tr('انتهى كل شيء — مبارك!'),
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
@@ -242,8 +243,8 @@ class _PlanBlockState extends State<_PlanBlock> {
                             controller: _newTask,
                             textInputAction: TextInputAction.done,
                             onSubmitted: (_) => _add(),
-                            decoration: const InputDecoration(
-                              hintText: 'أضف مهمّة…',
+                            decoration: InputDecoration(
+                              hintText: tr('أضف مهمّة…'),
                               isDense: true,
                             ),
                           ),
@@ -251,7 +252,7 @@ class _PlanBlockState extends State<_PlanBlock> {
                         const SizedBox(width: Space.sm),
                         IconButton.filled(
                           onPressed: _add,
-                          tooltip: 'أضف',
+                          tooltip: tr('أضف'),
                           icon: const Icon(Icons.add, size: 20),
                         ),
                       ],
@@ -367,9 +368,9 @@ class _ProgressCard extends StatelessWidget {
       children: [
         Row(
           children: [
-            const Expanded(child: SectionTitle('التقدّم الكلّي')),
+            Expanded(child: SectionTitle(tr('التقدّم الكلّي'))),
             Text(
-              '${progress.percent}٪',
+              trf('{0}٪', ['${progress.percent}']),
               style: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
@@ -391,11 +392,13 @@ class _ProgressCard extends StatelessWidget {
         const SizedBox(height: Space.sm),
         Muted(
           progress.tasksTotal == 0
-              ? 'لا مهامّ بعد'
+              ? tr('لا مهامّ بعد')
               : progress.tasksLeft == 0
-                  ? 'لم يبقَ شيء'
-                  : 'بقيت ${formatCount(progress.tasksLeft, taskForms)} '
-                    'من ${progress.tasksTotal}',
+                  ? tr('لم يبقَ شيء')
+                  : trf('بقيت {0} من {1}', [
+                      formatCount(progress.tasksLeft, taskForms),
+                      '${progress.tasksTotal}',
+                    ]),
         ),
       ],
     );
@@ -413,16 +416,20 @@ class _Tiles extends StatelessWidget {
     final tiles = [
       (
         Icons.checklist_rounded,
-        'المهامّ',
-        progress.tasksTotal == 0 ? '—' : '${progress.tasksLeft} متبقّية',
+        tr('المهامّ'),
+        progress.tasksTotal == 0
+            ? '—'
+            : trf('{0} متبقّية', ['${progress.tasksLeft}']),
       ),
-      (Icons.account_balance_wallet_outlined, 'الميزانية', formatMoney(plan.budget)),
+      (Icons.account_balance_wallet_outlined, tr('الميزانية'), formatMoney(plan.budget)),
       (
         Icons.event_available_outlined,
-        'المواعيد',
-        progress.upcomingBookings == 0 ? 'لا مواعيد' : '${progress.upcomingBookings} قادمة',
+        tr('المواعيد'),
+        progress.upcomingBookings == 0
+            ? tr('لا مواعيد')
+            : trf('{0} قادمة', ['${progress.upcomingBookings}']),
       ),
-      (Icons.groups_outlined, 'قائمة الضيوف', formatCount(plan.guestsCount, guestForms)),
+      (Icons.groups_outlined, tr('قائمة الضيوف'), formatCount(plan.guestsCount, guestForms)),
     ];
 
     // شبكةٌ بعمودين تلتفّ: `GridView` بنسبةٍ ثابتة يقصّ النصّ على الشاشات
@@ -511,7 +518,7 @@ class _TaskRow extends StatelessWidget {
             ),
             IconButton(
               onPressed: onDelete,
-              tooltip: 'احذف المهمّة',
+              tooltip: tr('احذف المهمّة'),
               visualDensity: VisualDensity.compact,
               icon: const Icon(Icons.close, size: 18, color: AppColors.muted),
             ),
@@ -536,7 +543,7 @@ class _MoneyCard extends StatelessWidget {
 
     return AppCard(
       children: [
-        const SectionTitle('الميزانية'),
+        SectionTitle(tr('الميزانية')),
         const SizedBox(height: Space.sm),
         ClipRRect(
           borderRadius: BorderRadius.circular(999),
@@ -548,19 +555,19 @@ class _MoneyCard extends StatelessWidget {
           ),
         ),
         const SizedBox(height: Space.sm),
-        KeyValue('الميزانية', formatMoney(p.budget)),
-        KeyValue('إجمالي الحجوزات', formatMoney(p.totalCost)),
-        KeyValue('المدفوع', formatMoney(p.paidAmount)),
-        KeyValue('المتبقّي عليك', formatMoney(p.remainingAmount)),
+        KeyValue(tr('الميزانية'), formatMoney(p.budget)),
+        KeyValue(tr('إجمالي الحجوزات'), formatMoney(p.totalCost)),
+        KeyValue(tr('المدفوع'), formatMoney(p.paidAmount)),
+        KeyValue(tr('المتبقّي عليك'), formatMoney(p.remainingAmount)),
         if (over) ...[
           const SizedBox(height: Space.sm),
           Text(
-            'تجاوزت الميزانية بـ ${formatMoney(p.totalCost - p.budget)}.',
+            trf('تجاوزت الميزانية بـ {0}.', [formatMoney(p.totalCost - p.budget)]),
             style: const TextStyle(color: AppColors.critical, fontSize: 13),
           ),
         ],
         const SizedBox(height: Space.md),
-        OutlinedButton(onPressed: onEdit, child: const Text('تعديل الخطة')),
+        OutlinedButton(onPressed: onEdit, child: Text(tr('تعديل الخطة'))),
       ],
     );
   }

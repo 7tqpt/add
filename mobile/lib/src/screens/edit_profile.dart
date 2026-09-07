@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../core/i18n.dart';
 import '../core/session.dart';
 import '../core/theme.dart';
 import '../data/api.dart';
@@ -108,12 +109,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           children: [
             ListTile(
               leading: const Icon(Icons.photo_camera_outlined, color: AppColors.accent),
-              title: const Text('التقاط صورة'),
+              title: Text(tr('التقاط صورة')),
               onTap: () => Navigator.of(sheetContext).pop(ImageSource.camera),
             ),
             ListTile(
               leading: const Icon(Icons.photo_library_outlined, color: AppColors.accent),
-              title: const Text('اختيار من المعرض'),
+              title: Text(tr('اختيار من المعرض')),
               onTap: () => Navigator.of(sheetContext).pop(ImageSource.gallery),
             ),
             const SizedBox(height: Space.sm),
@@ -127,7 +128,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   Future<void> _save() async {
     final name = _name.text.trim();
     if (name.length < 2) {
-      setState(() => _error = 'اكتب اسمك كاملاً.');
+      setState(() => _error = tr('اكتب اسمك كاملاً.'));
       return;
     }
     setState(() {
@@ -166,11 +167,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('تعديل بياناتي')),
+      appBar: AppBar(title: Text(tr('تعديل بياناتي'))),
       body: _loading
           ? const LoadingBlock()
           : _profile == null
-          ? ErrorBlock(message: _error ?? 'لا ملفَّ لحسابك بعد.', onRetry: _load)
+          ? ErrorBlock(message: _error ?? tr('لا ملفَّ لحسابك بعد.'), onRetry: _load)
           : ListView(
               padding: const EdgeInsets.all(Space.lg),
               children: [
@@ -178,13 +179,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 const SizedBox(height: Space.xl),
                 AppCard(
                   children: [
-                    const SectionTitle('بياناتي'),
+                    SectionTitle(tr('بياناتي')),
                     const SizedBox(height: Space.lg),
                     TextField(
                       controller: _name,
                       textInputAction: TextInputAction.next,
-                      decoration: const InputDecoration(
-                        labelText: 'الاسم الكامل',
+                      decoration: InputDecoration(
+                        labelText: tr('الاسم الكامل'),
                         prefixIcon: Icon(Icons.person_outline, size: 20),
                       ),
                     ),
@@ -195,8 +196,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       // الأرقام لاتينية والسياق عربيّ: بلا اتجاهٍ صريح يتقدّم
                       // رمز الدولة إلى آخر الرقم.
                       textDirection: TextDirection.ltr,
-                      decoration: const InputDecoration(
-                        labelText: 'رقم الجوال',
+                      decoration: InputDecoration(
+                        labelText: tr('رقم الجوال'),
                         prefixIcon: Icon(Icons.phone_outlined, size: 20),
                       ),
                     ),
@@ -204,8 +205,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     DropdownButtonFormField<String>(
                       initialValue: _governorateId,
                       isExpanded: true,
-                      decoration: const InputDecoration(
-                        labelText: 'المحافظة',
+                      decoration: InputDecoration(
+                        labelText: tr('المحافظة'),
                         prefixIcon: Icon(Icons.location_on_outlined, size: 20),
                       ),
                       items: [
@@ -221,8 +222,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   children: [
                     Row(
                       children: [
-                        const Expanded(child: SectionTitle('البريد الإلكتروني')),
-                        const StatusBadge('لا يُعدَّل هنا'),
+                        Expanded(child: SectionTitle(tr('البريد الإلكتروني'))),
+                        StatusBadge(tr('لا يُعدَّل هنا')),
                       ],
                     ),
                     const SizedBox(height: Space.sm),
@@ -238,10 +239,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       ),
                     ),
                     const SizedBox(height: Space.sm),
-                    const Text(
-                      'به تدخل إلى حسابك، وتغييره يحتاج رسالة تأكيدٍ إلى العنوان الجديد. '
-                      'راسل الدعم لتغييره.',
-                      style: TextStyle(fontSize: 12, height: 1.7, color: AppColors.muted),
+                    Text(
+                      tr('به تدخل إلى حسابك، وتغييره يحتاج رسالة تأكيدٍ إلى '
+                          'العنوان الجديد. راسل الدعم لتغييره.'),
+                      style: const TextStyle(
+                          fontSize: 12, height: 1.7, color: AppColors.muted),
                     ),
                   ],
                 ),
@@ -262,7 +264,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                         )
                       : const Icon(Icons.check, size: 20),
-                  label: Text(_saving ? 'جارٍ الحفظ…' : 'حفظ التعديلات'),
+                  label: Text(_saving ? tr('جارٍ الحفظ…') : tr('حفظ التعديلات')),
                 ),
                 const SizedBox(height: Space.xl),
               ],
@@ -350,7 +352,7 @@ class _Avatar extends StatelessWidget {
   Widget _initial() {
     final clean = profile.fullName.trim();
     return Text(
-      clean.isEmpty ? '؟' : clean.characters.first,
+      clean.isEmpty ? tr('؟') : clean.characters.first,
       style: const TextStyle(
         fontSize: 40,
         fontWeight: FontWeight.w600,

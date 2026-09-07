@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../core/i18n.dart';
 import '../core/format.dart';
 import '../core/session.dart';
 import '../core/theme.dart';
@@ -46,7 +47,7 @@ class _SupportScreenState extends State<SupportScreen> {
 
   Future<void> _submit() async {
     if (_subject.text.trim().isEmpty || _body.text.trim().isEmpty) {
-      setState(() => _error = 'اكتب الموضوع وتفاصيل المشكلة.');
+      setState(() => _error = tr('اكتب الموضوع وتفاصيل المشكلة.'));
       return;
     }
     setState(() {
@@ -74,7 +75,7 @@ class _SupportScreenState extends State<SupportScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('خدمة العملاء')),
+      appBar: AppBar(title: Text(tr('خدمة العملاء'))),
       body: _composing ? _compose() : _list(),
     );
   }
@@ -84,20 +85,20 @@ class _SupportScreenState extends State<SupportScreen> {
     children: [
       AppCard(
         children: [
-          const SectionTitle('تذكرة جديدة'),
+          SectionTitle(tr('تذكرة جديدة')),
           const SizedBox(height: Space.sm),
-          const Text(
-            'اشرح مشكلتك بالتفصيل، وسيصلك ردّ الإدارة هنا وبإشعار.',
+          Text(
+            tr('اشرح مشكلتك بالتفصيل، وسيصلك ردّ الإدارة هنا وبإشعار.'),
             style: TextStyle(height: 1.7),
           ),
           const SizedBox(height: Space.lg),
-          const Align(alignment: AlignmentDirectional.centerStart, child: Muted('التصنيف')),
+          Align(alignment: AlignmentDirectional.centerStart, child: Muted(tr('التصنيف'))),
           const SizedBox(height: Space.sm),
           Wrap(
             spacing: Space.sm,
             runSpacing: Space.sm,
             children: [
-              for (final c in ticketCategories)
+              for (final c in ticketCategories())
                 PickChip(
                   label: c.label,
                   active: _category == c.value,
@@ -108,18 +109,18 @@ class _SupportScreenState extends State<SupportScreen> {
           const SizedBox(height: Space.lg),
           TextField(
             controller: _subject,
-            decoration: const InputDecoration(
-              labelText: 'الموضوع',
-              hintText: 'خُصم المبلغ ولم يظهر الحجز',
+            decoration: InputDecoration(
+              labelText: tr('الموضوع'),
+              hintText: tr('خُصم المبلغ ولم يظهر الحجز'),
             ),
           ),
           const SizedBox(height: Space.md),
           TextField(
             controller: _body,
             maxLines: 5,
-            decoration: const InputDecoration(
-              labelText: 'التفاصيل',
-              hintText: 'اشرح ما حدث بالتفصيل…',
+            decoration: InputDecoration(
+              labelText: tr('التفاصيل'),
+              hintText: tr('اشرح ما حدث بالتفصيل…'),
             ),
           ),
           if (_error != null) ...[
@@ -127,10 +128,10 @@ class _SupportScreenState extends State<SupportScreen> {
             Text(_error!, style: const TextStyle(color: AppColors.critical, fontSize: 13)),
           ],
           const SizedBox(height: Space.lg),
-          FilledButton(onPressed: _busy ? null : _submit, child: const Text('إرسال')),
+          FilledButton(onPressed: _busy ? null : _submit, child: Text(tr('إرسال'))),
           TextButton(
             onPressed: () => setState(() => _composing = false),
-            child: const Text('إلغاء'),
+            child: Text(tr('إلغاء')),
           ),
         ],
       ),
@@ -144,7 +145,7 @@ class _SupportScreenState extends State<SupportScreen> {
         child: FilledButton.icon(
           onPressed: () => setState(() => _composing = true),
           icon: const Icon(Icons.add, size: 20),
-          label: const Text('فتح تذكرة جديدة'),
+          label: Text(tr('فتح تذكرة جديدة')),
         ),
       ),
       Expanded(
@@ -157,9 +158,9 @@ class _SupportScreenState extends State<SupportScreen> {
             }
             final rows = snap.data ?? const <SupportTicket>[];
             if (rows.isEmpty) {
-              return const EmptyBlock(
-                title: 'لا تذاكر',
-                description: 'لو واجهتك مشكلة، افتح تذكرة وسنردّ عليك.',
+              return EmptyBlock(
+                title: tr('لا تذاكر'),
+                description: tr('لو واجهتك مشكلة، افتح تذكرة وسنردّ عليك.'),
               );
             }
             return ListView.separated(
@@ -208,7 +209,7 @@ class _SupportScreenState extends State<SupportScreen> {
                       ),
                     ),
                     const SizedBox(height: Space.xs),
-                    Muted('آخر حركة ${formatRelative(t.lastMessageAt)}'),
+                    Muted(trf('آخر حركة {0}', [formatRelative(t.lastMessageAt)])),
                   ],
                 ));
               },

@@ -14,6 +14,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../core/i18n.dart';
 import '../core/device_location.dart';
 import '../core/geo.dart';
 import '../core/place_search.dart';
@@ -109,8 +110,8 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
       setState(() {
         _results = const [];
         _pasteError = text.contains('goo.gl')
-            ? 'هذا رابطٌ مختصر — افتحه في الخرائط أوّلاً ثمّ انسخ الرابط الكامل.'
-            : 'لم أجد موقعاً في هذا الرابط.';
+            ? tr('هذا رابطٌ مختصر — افتحه في الخرائط أوّلاً ثمّ انسخ الرابط الكامل.')
+            : tr('لم أجد موقعاً في هذا الرابط.');
       });
       return;
     }
@@ -129,15 +130,15 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
         _results = places;
         // **و«لا نتائج» تُقال، ولا تُترك القائمةُ فارغةً بلا خبر.**
         _pasteError = places.isEmpty
-            ? 'لم أجد مكاناً بهذا الاسم. جرّب اسم الحيّ أو المدينة، أو حرّك '
-                'الخريطة بإصبعك.'
+            ? tr('لم أجد مكاناً بهذا الاسم. جرّب اسم الحيّ أو المدينة، أو حرّك '
+                'الخريطة بإصبعك.')
             : null;
       });
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _searching = false;
-        _pasteError = e is String ? e : 'تعذّر البحث الآن.';
+        _pasteError = e is String ? e : tr('تعذّر البحث الآن.');
       });
     }
   }
@@ -186,12 +187,12 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('موقع المناسبة'),
+        title: Text(tr('موقع المناسبة')),
         actions: [
           if (_placed)
             TextButton(
               onPressed: () => Navigator.of(context).pop(const GeoPoint(0, 0)),
-              child: const Text('أزل الموقع',
+              child: Text(tr('أزل الموقع'),
                   style: TextStyle(color: AppColors.critical)),
             ),
         ],
@@ -278,7 +279,7 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
                     onPressed: _locating ? null : _useMyLocation,
                     backgroundColor: AppColors.surface,
                     foregroundColor: AppColors.accent,
-                    tooltip: 'موقعي الحالي',
+                    tooltip: tr('موقعي الحالي'),
                     child: _locating
                         ? const SizedBox(
                             width: 18,
@@ -306,14 +307,14 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
                       _ZoomButton(
                         key: const ValueKey('zoom-in'),
                         icon: Icons.add,
-                        tooltip: 'تكبير',
+                        tooltip: tr('تكبير'),
                         onTap: () => _zoomBy(1),
                       ),
                       const SizedBox(height: Space.sm),
                       _ZoomButton(
                         key: const ValueKey('zoom-out'),
                         icon: Icons.remove,
-                        tooltip: 'تصغير',
+                        tooltip: tr('تصغير'),
                         onTap: () => _zoomBy(-1),
                       ),
                     ],
@@ -330,8 +331,8 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
                         color: AppColors.accentDeep.withValues(alpha: 0.92),
                         borderRadius: BorderRadius.circular(999),
                       ),
-                      child: const Text(
-                        'حرّك الخريطة حتى يقف الدبّوس على المكان',
+                      child: Text(
+                        tr('حرّك الخريطة حتى يقف الدبّوس على المكان'),
                         style: TextStyle(color: Colors.white, fontSize: 12),
                       ),
                     ),
@@ -361,8 +362,8 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
                   controller: _paste,
                   textInputAction: TextInputAction.search,
                   decoration: InputDecoration(
-                    labelText: 'ابحث عن مكان، أو الصق رابطه',
-                    hintText: 'حدة، السنينة، جامع الصالح…',
+                    labelText: tr('ابحث عن مكان، أو الصق رابطه'),
+                    hintText: tr('حدة، السنينة، جامع الصالح…'),
                     errorText: _pasteError,
                     prefixIcon: const Icon(Icons.search, size: 20),
                     suffixIcon: _searching
@@ -376,7 +377,7 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
                           )
                         : TextButton(
                             onPressed: _readField,
-                            child: const Text('ابحث'),
+                            child: Text(tr('ابحث')),
                           ),
                   ),
                   onSubmitted: (_) => _readField(),
@@ -436,7 +437,7 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
                   // قد يحمل الإحداثيّتين نفسَهما إن لُصقتا — فباحثٌ يسأل عن
                   // النصّ وحده يجد اثنين ولا يدري أيُّهما قرأه.
                   key: const ValueKey('point-text'),
-                  _placed ? _point.text : 'لم يُحدَّد موقعٌ بعد',
+                  _placed ? _point.text : tr('لم يُحدَّد موقعٌ بعد'),
                   textDirection: TextDirection.ltr,
                   textAlign: TextAlign.start,
                   style: TextStyle(
@@ -451,7 +452,7 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
                   // موقعاً للعرس.
                   onPressed:
                       _placed ? () => Navigator.of(context).pop(_point) : null,
-                  child: const Text('تأكيد الموقع'),
+                  child: Text(tr('تأكيد الموقع')),
                 ),
               ],
             ),
@@ -515,12 +516,12 @@ class LocationRow extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(set ? 'الموقع محدَّد على الخريطة' : 'حدّد الموقع على الخريطة'),
+                  Text(set ? tr('الموقع محدَّد على الخريطة') : tr('حدّد الموقع على الخريطة')),
                   const SizedBox(height: 2),
                   Muted(
                     set
                         ? point!.text
-                        : 'اختياري — ويوفّر على مقدّم الخدمة أن يتّصل ليسأل عن الطريق',
+                        : tr('اختياري — ويوفّر على مقدّم الخدمة أن يتّصل ليسأل عن الطريق'),
                     size: 11,
                   ),
                 ],

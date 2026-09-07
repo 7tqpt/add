@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../core/i18n.dart';
 import '../core/format.dart';
 import '../core/theme.dart';
 import '../core/session.dart';
@@ -66,21 +67,21 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('إلغاء الحجز'),
+        title: Text(tr('إلغاء الحجز')),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             // المبلغ المستردّ يحسبه الخادم من سلّم الإلغاء، فلا يُوعَد هنا برقم.
-            const Text(
-              'ما يُستردّ لك يُحسب حسب سياسة الإلغاء وقُرب الموعد. '
-              'الإلغاء لا رجعة فيه.',
-              style: TextStyle(height: 1.7),
+            Text(
+              tr('ما يُستردّ لك يُحسب حسب سياسة الإلغاء وقُرب الموعد. '
+                  'الإلغاء لا رجعة فيه.'),
+              style: const TextStyle(height: 1.7),
             ),
             const SizedBox(height: Space.md),
             TextField(
               controller: reason,
-              decoration: const InputDecoration(labelText: 'السبب (اختياري)'),
+              decoration: InputDecoration(labelText: tr('السبب (اختياري)')),
             ),
           ],
         ),
@@ -90,12 +91,12 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('تراجع'),
+            child: Text(tr('تراجع')),
           ),
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
             style: TextButton.styleFrom(foregroundColor: AppColors.critical),
-            child: const Text('إلغاء الحجز'),
+            child: Text(tr('إلغاء الحجز')),
           ),
         ],
       ),
@@ -106,7 +107,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
     try {
       await Api.cancelBooking(b.id, reason: reason.text.trim());
       if (!mounted) return;
-      showMessage(context, 'أُلغي الحجز.');
+      showMessage(context, tr('أُلغي الحجز.'));
       _reload();
     } catch (e) {
       if (mounted) showMessage(context, messageOf(e));
@@ -128,7 +129,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
     try {
       await Api.submitReview(b.id, result.rating, result.comment);
       if (!mounted) return;
-      showMessage(context, 'شكراً — نُشر تقييمك.');
+      showMessage(context, tr('شكراً — نُشر تقييمك.'));
       _reload();
     } catch (e) {
       if (mounted) showMessage(context, messageOf(e));
@@ -163,7 +164,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
     }
     final opened = await openDisputeSheet(context, b);
     if (!opened || !mounted) return;
-    showMessage(context, 'فُتح النزاع — تنظر فيه الإدارة وتصلك ردودها هنا.');
+    showMessage(context, tr('فُتح النزاع — تنظر فيه الإدارة وتصلك ردودها هنا.'));
     _reload();
   }
 
@@ -178,9 +179,9 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
         }
         final rows = snap.data ?? const <Booking>[];
         if (rows.isEmpty) {
-          return const EmptyBlock(
-            title: 'لا حجوزات بعد',
-            description: 'ابدأ من «استكشف» واختر أول خدمة لعرسك.',
+          return EmptyBlock(
+            title: tr('لا حجوزات بعد'),
+            description: tr('ابدأ من «استكشف» واختر أول خدمة لعرسك.'),
           );
         }
         // **ملخّصٌ قبل التفاصيل.** من فتح «حجوزاتي» وعنده ستّةُ حجوزاتٍ يقرأ
@@ -202,19 +203,21 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                   // طَفليٌّ محروق — لونُ «حجوزاتي» في الرئيسية نفسه.
                   colors: const [Color(0xFFA3521A), Color(0xFF6B3208)],
                   icon: Icons.event_available_rounded,
-                  title: 'حجوزاتي',
+                  title: tr('حجوزاتي'),
                   headline: summary.count == 0
-                      ? 'لا حجوزات قادمة'
+                      ? tr('لا حجوزات قادمة')
                       : formatCount(summary.count, bookingForms),
                   subtitle: summary.next == null
-                      ? 'حجوزاتك السابقة محفوظة أدناه'
-                      : 'أقربها ${formatDate(summary.next!.eventDate)}'
-                            ' · ${summary.next!.providerName}',
+                      ? tr('حجوزاتك السابقة محفوظة أدناه')
+                      : trf('أقربها {0} · {1}', [
+                          formatDate(summary.next!.eventDate),
+                          summary.next!.providerName,
+                        ]),
                   footer: summary.count == 0
-                      ? 'ابدأ من «استكشف» واحجز خدمتك القادمة'
+                      ? tr('ابدأ من «استكشف» واحجز خدمتك القادمة')
                       : [
-                          if (summary.confirmed > 0) 'مؤكّد ${summary.confirmed}',
-                          if (summary.pending > 0) 'بانتظار المزوّد ${summary.pending}',
+                          if (summary.confirmed > 0) trf('مؤكّد {0}', ['${summary.confirmed}']),
+                          if (summary.pending > 0) trf('بانتظار المزوّد {0}', ['${summary.pending}']),
                         ].join(' · '),
                   // **ولا ضغطةَ لها هنا:** هي في الشاشة التي تشير إليها،
                   // وبطاقةٌ تفتح ما هو مفتوحٌ أصلاً تُعلّم المستخدم أنّ ضغطها
@@ -266,11 +269,11 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                     runSpacing: Space.xs,
                     children: [
                       Text(
-                        'الإجمالي ${formatMoney(b.totalPrice)}',
+                        trf('الإجمالي {0}', [formatMoney(b.totalPrice)]),
                         style: const TextStyle(fontSize: 13, color: AppColors.ink),
                       ),
                       Muted(
-                        b.paidAmount > 0 ? 'مدفوع ${formatMoney(b.paidAmount)}' : 'لم يُدفع بعد',
+                        b.paidAmount > 0 ? trf('مدفوع {0}', [formatMoney(b.paidAmount)]) : tr('لم يُدفع بعد'),
                       ),
                     ],
                   ),
@@ -297,8 +300,10 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                       icon: const Icon(Icons.account_balance_wallet_outlined, size: 19),
                       label: Text(
                         b.paidAmount < b.depositAmount
-                            ? 'ادفع العربون ${formatMoney(b.depositAmount - b.paidAmount)}'
-                            : 'أكمل المبلغ ${formatMoney(b.totalPrice - b.paidAmount)}',
+                            ? trf('ادفع العربون {0}',
+                            [formatMoney(b.depositAmount - b.paidAmount)])
+                            : trf('أكمل المبلغ {0}',
+                            [formatMoney(b.totalPrice - b.paidAmount)]),
                       ),
                     ),
                   ],
@@ -309,7 +314,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                     const SizedBox(height: Space.md),
                     OutlinedButton(
                       onPressed: _busyId == null ? () => _cancel(b) : null,
-                      child: const Text('إلغاء الحجز'),
+                      child: Text(tr('إلغاء الحجز')),
                     ),
                   ],
                   if (b.status == BookingStatus.completed && !_reviewed.contains(b.id)) ...[
@@ -317,7 +322,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                     FilledButton.icon(
                       onPressed: _busyId == null ? () => _review(b) : null,
                       icon: const Icon(Icons.star_rounded, size: 20),
-                      label: const Text('قيّم الخدمة'),
+                      label: Text(tr('قيّم الخدمة')),
                     ),
                   ],
                   // النزاع متاحٌ على كل حجزٍ تجاوز الانتظار.
@@ -341,7 +346,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                             : AppColors.muted,
                       ),
                       label: Text(
-                        _disputes.containsKey(b.id) ? 'متابعة النزاع' : 'عندي مشكلة في هذا الحجز',
+                        _disputes.containsKey(b.id) ? tr('متابعة النزاع') : tr('عندي مشكلة في هذا الحجز'),
                       ),
                     ),
                   ],
@@ -386,7 +391,7 @@ class _ReviewSheetState extends State<_ReviewSheet> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,
           children: [
-            SectionTitle('كيف كانت ${widget.booking.serviceTitle}؟'),
+            SectionTitle(trf('كيف كانت {0}؟', [widget.booking.serviceTitle])),
             const SizedBox(height: Space.xs),
             Muted(widget.booking.providerName),
             const SizedBox(height: Space.lg),
@@ -398,7 +403,7 @@ class _ReviewSheetState extends State<_ReviewSheet> {
                     onPressed: () => setState(() => _rating = i),
                     // بلا وصفٍ تظهر النجوم في شجرة الدلالات أزراراً بلا اسم،
                     // فلا يعرف قارئ الشاشة أيَّها يضغط.
-                    tooltip: '$i من 5',
+                    tooltip: trf('{0} من 5', ['$i']),
                     icon: Icon(
                       i <= _rating ? Icons.star_rounded : Icons.star_outline_rounded,
                       size: 36,
@@ -411,19 +416,19 @@ class _ReviewSheetState extends State<_ReviewSheet> {
             TextField(
               controller: _comment,
               maxLines: 3,
-              decoration: const InputDecoration(
-                labelText: 'تعليقك (اختياري)',
-                hintText: 'ما الذي أعجبك؟ وما الذي كان يمكن أن يكون أفضل؟',
+              decoration: InputDecoration(
+                labelText: tr('تعليقك (اختياري)'),
+                hintText: tr('ما الذي أعجبك؟ وما الذي كان يمكن أن يكون أفضل؟'),
               ),
             ),
             const SizedBox(height: Space.lg),
             FilledButton(
               onPressed: () =>
                   Navigator.of(context).pop((rating: _rating, comment: _comment.text.trim())),
-              child: const Text('إرسال التقييم'),
+              child: Text(tr('إرسال التقييم')),
             ),
             const SizedBox(height: Space.sm),
-            TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('لاحقاً')),
+            TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(tr('لاحقاً'))),
           ],
         ),
       ),

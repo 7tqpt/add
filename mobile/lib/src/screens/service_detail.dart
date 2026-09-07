@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../core/i18n.dart';
 import '../core/format.dart';
 import '../core/geo.dart';
 import '../core/theme.dart';
@@ -220,16 +221,16 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
 
   Future<void> _book(ServiceItem item) async {
     if (_date == null) {
-      setState(() => _error = 'اختر تاريخ العرس.');
+      setState(() => _error = tr('اختر تاريخ العرس.'));
       return;
     }
     final guests = int.tryParse(_guests.text.trim());
     if (guests == null || guests <= 0) {
-      setState(() => _error = 'اكتب عدد الضيوف رقماً.');
+      setState(() => _error = tr('اكتب عدد الضيوف رقماً.'));
       return;
     }
     if (_address.text.trim().isEmpty) {
-      setState(() => _error = 'اكتب عنوان المناسبة.');
+      setState(() => _error = tr('اكتب عنوان المناسبة.'));
       return;
     }
 
@@ -262,13 +263,16 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
       // ثانيتين فاته الرقم.
       await showCelebration(
         context,
-        title: 'تمّ حجزك',
+        title: tr('تمّ حجزك'),
         body: booking.discountAmount > 0
-            ? 'رقم حجزك ${booking.reference}\nخُصم '
-                '${formatMoney(booking.discountAmount)} بكود ${booking.couponCode}'
-            : 'رقم حجزك ${booking.reference}\nالعربون '
-                '${formatMoney(booking.depositAmount)}',
-        actionLabel: 'إلى حجوزاتي',
+            ? trf('رقم حجزك {0}\nخُصم {1} بكود {2}', [
+                booking.reference,
+                formatMoney(booking.discountAmount),
+                booking.couponCode,
+              ])
+            : trf('رقم حجزك {0}\nالعربون {1}',
+                [booking.reference, formatMoney(booking.depositAmount)]),
+        actionLabel: tr('إلى حجوزاتي'),
       );
       if (!mounted) return;
       Navigator.of(context).pop();
@@ -290,7 +294,7 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('تفاصيل الخدمة'),
+        title: Text(tr('تفاصيل الخدمة')),
         // **و`_future` نفسُها لا نداءٌ ثانٍ.** `FutureBuilder` على المستقبل
         // عينِه يشترك في نتيجته، فلا تُقرأ الخدمةُ مرّتين لأجل زرّ.
         actions: [
@@ -355,7 +359,7 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
           if (snap.connectionState != ConnectionState.done) return const LoadingBlock();
           if (snap.hasError) return ErrorBlock(message: messageOf(snap.error!));
           final item = snap.data;
-          if (item == null) return const EmptyBlock(title: 'الخدمة غير موجودة');
+          if (item == null) return EmptyBlock(title: tr('الخدمة غير موجودة'));
 
           final deposit = (item.price * item.depositPercent / 100).round();
 
@@ -381,7 +385,7 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
                       Expanded(child: SectionTitle(item.title)),
                       if (item.providerIsFeatured) ...[
                         const SizedBox(width: Space.sm),
-                        const StatusBadge('مميّز', color: AppColors.warning),
+                        StatusBadge(tr('مميّز'), color: AppColors.warning),
                       ],
                     ],
                   ),
@@ -404,34 +408,34 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
                   OutlinedButton.icon(
                     onPressed: _busy ? null : () => _message(item),
                     icon: const Icon(Icons.forum_outlined, size: 19),
-                    label: Text('راسل ${item.providerName}'),
+                    label: Text(trf('راسل {0}', [item.providerName])),
                   ),
                 ],
               ),
               const SizedBox(height: Space.md),
               AppCard(
                 children: [
-                  const SectionTitle('السعر'),
+                  SectionTitle(tr('السعر')),
                   KeyValue(
-                    'السعر',
+                    tr('السعر'),
                     item.priceTo == null
                         ? formatMoney(item.price)
                         : '${formatMoney(item.price)} – ${formatMoney(item.priceTo!)}',
                   ),
-                  KeyValue('الوحدة', item.unit),
-                  KeyValue('العربون ${item.depositPercent}٪', formatMoney(deposit)),
+                  KeyValue(tr('الوحدة'), item.unit),
+                  KeyValue(trf('العربون {0}٪', ['${item.depositPercent}']), formatMoney(deposit)),
                   if (item.cancellationPolicyName != null)
-                    KeyValue('سياسة الإلغاء', item.cancellationPolicyName!),
+                    KeyValue(tr('سياسة الإلغاء'), item.cancellationPolicyName!),
                   const SizedBox(height: Space.sm),
                   // السعر المعروض للاطّلاع، والمعتمد ما يحسبه الخادم عند الحجز:
                   // لو قبِل سعراً من التطبيق لأمكن حجز قاعة بريال واحد.
-                  const Muted('المبلغ النهائي يحسبه النظام عند تأكيد الحجز.', size: 11),
+                  Muted(tr('المبلغ النهائي يحسبه النظام عند تأكيد الحجز.'), size: 11),
                 ],
               ),
               const SizedBox(height: Space.md),
               AppCard(
                 children: [
-                  const SectionTitle('احجز'),
+                  SectionTitle(tr('احجز')),
                   const SizedBox(height: Space.md),
                   // منتقي تاريخ لا حقل نصّي: كتابة «2026-09-15» بيدك على جوال
                   // مصدرُ خطأ لا داعي له.
@@ -439,7 +443,7 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
                     onPressed: () => _pickDate(item.providerId),
                     icon: const Icon(Icons.calendar_today_outlined, size: 20),
                     label: Text(
-                      _date == null ? 'اختر تاريخ العرس' : formatDate(_date!.toIso8601String()),
+                      _date == null ? tr('اختر تاريخ العرس') : formatDate(_date!.toIso8601String()),
                     ),
                   ),
                   const SizedBox(height: Space.sm),
@@ -450,14 +454,17 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
                     },
                     icon: const Icon(Icons.access_time, size: 20),
                     label: Text(
-                      'الوقت: ${formatTime('${_time.hour.toString().padLeft(2, '0')}:${_time.minute.toString().padLeft(2, '0')}')}',
+                      trf('الوقت: {0}', [
+                        formatTime('${_time.hour.toString().padLeft(2, '0')}'
+                            ':${_time.minute.toString().padLeft(2, '0')}'),
+                      ]),
                     ),
                   ),
                   const SizedBox(height: Space.md),
                   TextField(
                     controller: _guests,
                     keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(labelText: 'عدد الضيوف'),
+                    decoration: InputDecoration(labelText: tr('عدد الضيوف')),
                   ),
                   const SizedBox(height: Space.md),
                   // **العنوانُ يملأ نفسه من الدفتر.** كان يُكتب في كل حجز،
@@ -469,10 +476,10 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
                   TextField(
                     controller: _address,
                     decoration: InputDecoration(
-                      labelText: 'عنوان المناسبة',
-                      hintText: 'حي السنينة — صنعاء',
+                      labelText: tr('عنوان المناسبة'),
+                      hintText: tr('حي السنينة — صنعاء'),
                       suffixIcon: IconButton(
-                        tooltip: 'من عناويني',
+                        tooltip: tr('من عناويني'),
                         icon: const Icon(Icons.bookmark_border_rounded, size: 22),
                         onPressed: _pickAddress,
                       ),
@@ -489,9 +496,9 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
                   const SizedBox(height: Space.md),
                   if (_plans.isNotEmpty) ...[
                     const SizedBox(height: Space.md),
-                    const Align(
+                    Align(
                       alignment: AlignmentDirectional.centerStart,
-                      child: Muted('أضِفه إلى خطة العرس'),
+                      child: Muted(tr('أضِفه إلى خطة العرس')),
                     ),
                     const SizedBox(height: Space.sm),
                     Wrap(
@@ -505,7 +512,7 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
                             onTap: () => setState(() => _planId = p.id),
                           ),
                         PickChip(
-                          label: 'بلا خطة',
+                          label: tr('بلا خطة'),
                           active: _planId == null,
                           onTap: () => setState(() => _planId = null),
                         ),
@@ -533,8 +540,8 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
                       }
                     },
                     decoration: InputDecoration(
-                      labelText: 'كود الخصم (اختياري)',
-                      hintText: 'إن كان لديك كود',
+                      labelText: tr('كود الخصم (اختياري)'),
+                      hintText: tr('إن كان لديك كود'),
                       suffixIcon: _checking
                           ? const Padding(
                               padding: EdgeInsets.all(12),
@@ -546,7 +553,7 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
                             )
                           : TextButton(
                               onPressed: () => _checkCoupon(item),
-                              child: const Text('تحقّق'),
+                              child: Text(tr('تحقّق')),
                             ),
                     ),
                   ),
@@ -562,8 +569,12 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
                         const SizedBox(width: Space.sm),
                         Expanded(
                           child: Text(
-                            'خصم ${formatMoney(_applied!.discount)}'
-                            '${_applied!.description.isEmpty ? '' : ' — ${_applied!.description}'}',
+                            _applied!.description.isEmpty
+                                ? trf('خصم {0}', [formatMoney(_applied!.discount)])
+                                : trf('خصم {0} — {1}', [
+                                    formatMoney(_applied!.discount),
+                                    _applied!.description,
+                                  ]),
                             style: const TextStyle(
                                 color: AppColors.good,
                                 fontSize: 13,
@@ -583,9 +594,9 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
                   TextField(
                     controller: _notes,
                     maxLines: 3,
-                    decoration: const InputDecoration(
-                      labelText: 'ملاحظات (اختياري)',
-                      hintText: 'أي تفاصيل يحتاجها مقدّم الخدمة',
+                    decoration: InputDecoration(
+                      labelText: tr('ملاحظات (اختياري)'),
+                      hintText: tr('أي تفاصيل يحتاجها مقدّم الخدمة'),
                     ),
                   ),
                   if (_error != null) ...[
@@ -604,11 +615,11 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
                               color: AppColors.accentInk,
                             ),
                           )
-                        : const Text('تأكيد الحجز'),
+                        : Text(tr('تأكيد الحجز')),
                   ),
                   const SizedBox(height: Space.sm),
-                  const Muted(
-                    'الحجز يبقى «بانتظار مقدّم الخدمة» حتى يقبله. لو اعتذر، يُستردّ كل ما دفعته.',
+                  Muted(
+                    tr('الحجز يبقى «بانتظار مقدّم الخدمة» حتى يقبله. لو اعتذر، يُستردّ كل ما دفعته.'),
                     size: 11,
                   ),
                 ],
@@ -657,7 +668,7 @@ class _ProviderRow extends StatelessWidget {
                   color: AppColors.accent.withValues(alpha: Tint.disc),
                 ),
                 child: Text(
-                  item.providerName.isEmpty ? '؟' : item.providerName.characters.first,
+                  item.providerName.isEmpty ? tr('؟') : item.providerName.characters.first,
                   style: const TextStyle(
                     fontSize: 17,
                     fontWeight: FontWeight.w700,
@@ -704,7 +715,7 @@ class _ProviderRow extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: Space.xs),
-              const Muted('عرض ملفّه', size: 11),
+              Muted(tr('عرض ملفّه'), size: 11),
               // «forward» لا «back»: أيقونات الأسهم تنعكس مع اتجاه النصّ، فـ
               // «back» في العربية يشير يميناً — أي رجوعاً.
               const Icon(Icons.arrow_forward_ios_rounded, size: 12, color: AppColors.muted),
@@ -765,7 +776,7 @@ class _MediaState extends State<_Media> {
               AudioBar(
                 url: Api.mediaUrl(audio.path),
                 seconds: audio.durationSeconds,
-                label: audio.title.isEmpty ? 'استمع قبل أن تحجز' : audio.title,
+                label: audio.title.isEmpty ? tr('استمع قبل أن تحجز') : audio.title,
               ),
               const SizedBox(height: Space.md),
             ],

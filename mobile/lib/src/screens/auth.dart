@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../core/i18n.dart';
 import '../core/session.dart';
 import '../core/theme.dart';
 import '../data/supabase.dart';
@@ -46,7 +47,7 @@ class _AuthScreenState extends State<AuthScreen> {
   Future<void> _submit() async {
     final mail = _email.text.trim();
     if (mail.isEmpty || _password.text.isEmpty) {
-      setState(() => _error = 'اكتب البريد وكلمة المرور.');
+      setState(() => _error = tr('اكتب البريد وكلمة المرور.'));
       return;
     }
     setState(() {
@@ -60,7 +61,7 @@ class _AuthScreenState extends State<AuthScreen> {
         if (needsCode && mounted) {
           setState(() {
             _pendingEmail = mail;
-            _note = 'أرسلنا رمزاً إلى $mail — اكتبه هنا.';
+            _note = trf('أرسلنا رمزاً إلى {0} — اكتبه هنا.', [mail]);
           });
         }
       } else {
@@ -76,7 +77,7 @@ class _AuthScreenState extends State<AuthScreen> {
   Future<void> _confirm() async {
     final code = _code.text.trim();
     if (code.isEmpty) {
-      setState(() => _error = 'اكتب الرمز الواصل إلى بريدك.');
+      setState(() => _error = tr('اكتب الرمز الواصل إلى بريدك.'));
       return;
     }
     setState(() {
@@ -102,7 +103,7 @@ class _AuthScreenState extends State<AuthScreen> {
     });
     try {
       await widget.session.resendSignUpCode(_pendingEmail!);
-      if (mounted) setState(() => _note = 'أُرسل رمزٌ جديد. تحقّق من «المهملات» إن تأخّر.');
+      if (mounted) setState(() => _note = tr('أُرسل رمزٌ جديد. تحقّق من «المهملات» إن تأخّر.'));
     } catch (e) {
       if (mounted) setState(() => _error = messageOf(e));
     } finally {
@@ -130,7 +131,7 @@ class _AuthScreenState extends State<AuthScreen> {
   Future<void> _askCode() async {
     final mail = _email.text.trim();
     if (mail.isEmpty) {
-      setState(() => _error = 'اكتب بريدك أوّلاً.');
+      setState(() => _error = tr('اكتب بريدك أوّلاً.'));
       return;
     }
     await _guard(() async {
@@ -140,7 +141,7 @@ class _AuthScreenState extends State<AuthScreen> {
         _recover = _Recover.code;
         // ولا يُقال «البريد غير مسجّل» ولا «مسجّل»: ذلك يجعل الشاشة باباً
         // يعرف به الغريب من له حسابٌ في المنصّة ومن لا.
-        _note = 'إن كان $mail مسجّلاً لدينا فقد وصله رمز.';
+        _note = trf('إن كان {0} مسجّلاً لدينا فقد وصله رمز.', [mail]);
       });
     });
   }
@@ -148,7 +149,7 @@ class _AuthScreenState extends State<AuthScreen> {
   Future<void> _checkCode() async {
     final code = _code.text.trim();
     if (code.isEmpty) {
-      setState(() => _error = 'اكتب الرمز الواصل إلى بريدك.');
+      setState(() => _error = tr('اكتب الرمز الواصل إلى بريدك.'));
       return;
     }
     await _guard(() async {
@@ -159,7 +160,7 @@ class _AuthScreenState extends State<AuthScreen> {
       // عند أوّل خروج.
       setState(() {
         _recover = _Recover.password;
-        _note = 'تحقّقنا من الرمز. اكتب كلمتك الجديدة الآن.';
+        _note = tr('تحقّقنا من الرمز. اكتب كلمتك الجديدة الآن.');
       });
     });
   }
@@ -186,7 +187,7 @@ class _AuthScreenState extends State<AuthScreen> {
     return AppCard(
       children: [
         Text(
-          'أرسلنا رمزاً إلى $_pendingEmail. اكتبه هنا لتفعيل حسابك.',
+          trf('أرسلنا رمزاً إلى {0}. اكتبه هنا لتفعيل حسابك.', ['$_pendingEmail']),
           style: const TextStyle(height: 1.7),
         ),
         const SizedBox(height: Space.md),
@@ -196,7 +197,7 @@ class _AuthScreenState extends State<AuthScreen> {
           textDirection: TextDirection.ltr,
           textAlign: TextAlign.center,
           style: const TextStyle(fontSize: 22, letterSpacing: 8),
-          decoration: const InputDecoration(labelText: 'رمز التفعيل', hintText: '------'),
+          decoration: InputDecoration(labelText: tr('رمز التفعيل'), hintText: '------'),
         ),
         if (_note != null) ...[
           const SizedBox(height: Space.sm),
@@ -215,9 +216,9 @@ class _AuthScreenState extends State<AuthScreen> {
                   width: 20,
                   child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.accentInk),
                 )
-              : const Text('تفعيل الحساب'),
+              : Text(tr('تفعيل الحساب')),
         ),
-        TextButton(onPressed: _busy ? null : _resend, child: const Text('لم يصلني — أعد الإرسال')),
+        TextButton(onPressed: _busy ? null : _resend, child: Text(tr('لم يصلني — أعد الإرسال'))),
         TextButton(
           // مخرجٌ ممّن أخطأ بريده: بدونه يُحبس في شاشةٍ تنتظر رمزاً لن يأتي.
           onPressed: _busy
@@ -228,7 +229,7 @@ class _AuthScreenState extends State<AuthScreen> {
                   _error = null;
                   _note = null;
                 }),
-          child: const Text('بريدي خطأ — ارجع'),
+          child: Text(tr('بريدي خطأ — ارجع')),
         ),
       ],
     );
@@ -241,8 +242,8 @@ class _AuthScreenState extends State<AuthScreen> {
       children: [
         Text(
           onCode
-              ? 'اكتب الرمز الواصل إلى ${_email.text.trim()}.'
-              : 'اكتب كلمة المرور الجديدة لحسابك.',
+              ? trf('اكتب الرمز الواصل إلى {0}.', [_email.text.trim()])
+              : tr('اكتب كلمة المرور الجديدة لحسابك.'),
           style: const TextStyle(height: 1.7),
         ),
         const SizedBox(height: Space.md),
@@ -253,16 +254,16 @@ class _AuthScreenState extends State<AuthScreen> {
             textDirection: TextDirection.ltr,
             textAlign: TextAlign.center,
             style: const TextStyle(fontSize: 22, letterSpacing: 8),
-            decoration: const InputDecoration(labelText: 'رمز الاستعادة', hintText: '------'),
+            decoration: InputDecoration(labelText: tr('رمز الاستعادة'), hintText: '------'),
           )
         else
           TextField(
             controller: _newPassword,
             obscureText: true,
             textDirection: TextDirection.ltr,
-            decoration: const InputDecoration(
-              labelText: 'كلمة المرور الجديدة',
-              helperText: 'ثمانية أحرف فأكثر.',
+            decoration: InputDecoration(
+              labelText: tr('كلمة المرور الجديدة'),
+              helperText: tr('ثمانية أحرف فأكثر.'),
             ),
           ),
         if (_note != null) ...[
@@ -282,13 +283,13 @@ class _AuthScreenState extends State<AuthScreen> {
                   width: 20,
                   child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.accentInk),
                 )
-              : Text(onCode ? 'تحقّق من الرمز' : 'حفظ الكلمة الجديدة'),
+              : Text(onCode ? tr('تحقّق من الرمز') : tr('حفظ الكلمة الجديدة')),
         ),
         if (onCode)
-          TextButton(onPressed: _busy ? null : _askCode, child: const Text('لم يصلني — أعد الإرسال')),
+          TextButton(onPressed: _busy ? null : _askCode, child: Text(tr('لم يصلني — أعد الإرسال'))),
         TextButton(
           onPressed: _busy ? null : _leaveRecovery,
-          child: const Text('رجوع إلى تسجيل الدخول'),
+          child: Text(tr('رجوع إلى تسجيل الدخول')),
         ),
       ],
     );
@@ -322,8 +323,8 @@ class _AuthScreenState extends State<AuthScreen> {
                     ),
                   ),
                   const SizedBox(height: Space.sm),
-                  const Text(
-                    'فرحتي',
+                  Text(
+                    tr('فرحتي'),
                     style: TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.bold,
@@ -333,12 +334,12 @@ class _AuthScreenState extends State<AuthScreen> {
                   const SizedBox(height: Space.xs),
                   Muted(
                     _pendingEmail != null
-                        ? 'خطوة أخيرة — أكّد بريدك'
+                        ? tr('خطوة أخيرة — أكّد بريدك')
                         : _recover != _Recover.none
-                        ? 'استعادة كلمة المرور'
+                        ? tr('استعادة كلمة المرور')
                         : _signUp
-                        ? 'أنشئ حسابك لتبدأ تجهيز عرسك'
-                        : 'سجّل الدخول لمتابعة حجوزاتك',
+                        ? tr('أنشئ حسابك لتبدأ تجهيز عرسك')
+                        : tr('سجّل الدخول لمتابعة حجوزاتك'),
                   ),
                   const SizedBox(height: Space.xl),
                   if (_pendingEmail != null)
@@ -359,8 +360,8 @@ class _AuthScreenState extends State<AuthScreen> {
                           // شاشةٍ عربيّةٍ كلُّها، تُقرأ لأوّل وهلةٍ نصّاً
                           // مكتوباً فعلاً فيمسحه صاحبُها قبل أن يكتب.
                           // والعنوانُ فوق الحقل يقول ما يُكتب فيه.
-                          decoration: const InputDecoration(
-                            labelText: 'البريد الإلكتروني',
+                          decoration: InputDecoration(
+                            labelText: tr('البريد الإلكتروني'),
                           ),
                         ),
                         const SizedBox(height: Space.md),
@@ -371,8 +372,8 @@ class _AuthScreenState extends State<AuthScreen> {
                           // وثمانُ نقاطٍ في حقلٍ مخفيٍّ أصلاً لا تقول شيئاً:
                           // ما يُكتب فيه يخرج نقاطاً على كلّ حال.
                           decoration: InputDecoration(
-                            labelText: 'كلمة المرور',
-                            helperText: _signUp ? 'ثمانية أحرف فأكثر.' : null,
+                            labelText: tr('كلمة المرور'),
+                            helperText: _signUp ? tr('ثمانية أحرف فأكثر.') : null,
                           ),
                         ),
                         if (_error != null) ...[
@@ -394,7 +395,7 @@ class _AuthScreenState extends State<AuthScreen> {
                                     color: AppColors.accentInk,
                                   ),
                                 )
-                              : Text(_signUp ? 'إنشاء الحساب' : 'دخول'),
+                              : Text(_signUp ? tr('إنشاء الحساب') : tr('دخول')),
                         ),
                         TextButton(
                           onPressed: () => setState(() {
@@ -402,7 +403,7 @@ class _AuthScreenState extends State<AuthScreen> {
                             _error = null;
                           }),
                           child: Text(
-                            _signUp ? 'عندي حساب — سجّل الدخول' : 'ما عندي حساب — أنشئ واحداً',
+                            _signUp ? tr('عندي حساب — سجّل الدخول') : tr('ما عندي حساب — أنشئ واحداً'),
                           ),
                         ),
                         // في شاشة الدخول وحدها: من يُنشئ حساباً جديداً لا كلمةَ
@@ -410,13 +411,13 @@ class _AuthScreenState extends State<AuthScreen> {
                         if (!_signUp)
                           TextButton(
                             onPressed: _busy ? null : _askCode,
-                            child: const Text('نسيت كلمة المرور'),
+                            child: Text(tr('نسيت كلمة المرور')),
                           ),
                       ],
                     ),
                   const SizedBox(height: Space.lg),
-                  const Text(
-                    'تبدأ عميلاً، وإن أردت تقديم خدمة تطلبها من شاشة حسابك.',
+                  Text(
+                    tr('تبدأ عميلاً، وإن أردت تقديم خدمة تطلبها من شاشة حسابك.'),
                     textAlign: TextAlign.center,
                     style: TextStyle(fontSize: 13, color: AppColors.muted, height: 1.7),
                   ),

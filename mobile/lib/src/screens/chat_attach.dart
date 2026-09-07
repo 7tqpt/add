@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../core/i18n.dart';
 import '../data/models.dart';
 
 /// مرفقٌ اختاره المستخدم، جاهزٌ للرفع.
@@ -101,7 +102,7 @@ class DeviceAttachmentPicker implements AttachmentPicker {
     final picked = await FilePicker.pickFile(
       type: FileType.custom,
       allowedExtensions: const ['pdf'],
-      dialogTitle: 'اختر ملفاً',
+      dialogTitle: tr('اختر ملفاً'),
     );
     if (picked == null) return null;
     final bytes = await picked.readAsBytes();

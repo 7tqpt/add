@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../core/i18n.dart';
 import '../core/format.dart';
 import '../core/geo.dart';
 import '../core/theme.dart';
@@ -105,7 +106,7 @@ class ServiceListCard extends StatelessWidget {
                       ),
                       if (item.providerIsFeatured && showProvider) ...[
                         const SizedBox(width: Space.sm),
-                        const StatusBadge('مميّز', color: AppColors.warning),
+                        StatusBadge(tr('مميّز'), color: AppColors.warning),
                       ],
                       // القلب داخل البطاقة على InkWell البطاقة نفسها: يُعطى
                       // مساحته الخاصة كي لا تفتح الضغطةُ عليه صفحةَ التفاصيل.
@@ -113,7 +114,7 @@ class ServiceListCard extends StatelessWidget {
                         IconButton(
                           onPressed: onToggleFavourite,
                           visualDensity: VisualDensity.compact,
-                          tooltip: favourite ? 'أزل من المفضّلة' : 'أضف للمفضّلة',
+                          tooltip: favourite ? tr('أزل من المفضّلة') : tr('أضف للمفضّلة'),
                           icon: Icon(
                             favourite ? Icons.favorite : Icons.favorite_border,
                             size: 20,
@@ -143,9 +144,9 @@ class ServiceListCard extends StatelessWidget {
                     const SizedBox(height: Space.sm),
                     Row(
                       children: [
-                        if (item.hasVideo) const MediaChip(Icons.play_circle_outline, 'فيديو'),
+                        if (item.hasVideo) MediaChip(Icons.play_circle_outline, tr('فيديو')),
                         if (item.hasVideo && item.hasAudio) const SizedBox(width: Space.xs),
-                        if (item.hasAudio) const MediaChip(Icons.graphic_eq, 'مقطع صوتي'),
+                        if (item.hasAudio) MediaChip(Icons.graphic_eq, tr('مقطع صوتي')),
                       ],
                     ),
                   ],
@@ -176,11 +177,11 @@ class ServiceListCard extends StatelessWidget {
             if (item.providerRating > 0 && showProvider)
               Rating(item.providerRating, count: item.providerReviewsCount)
             else if (showProvider)
-              const Muted('جديد'),
+              Muted(tr('جديد')),
           ],
         ),
         const SizedBox(height: Space.xs),
-        Muted('العربون ${item.depositPercent}٪ · ${item.unit}', size: 11),
+        Muted(trf('العربون {0}٪ · {1}', ['${item.depositPercent}', item.unit]), size: 11),
       ],
     );
   }

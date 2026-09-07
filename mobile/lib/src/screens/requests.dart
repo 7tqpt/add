@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 
+import '../core/i18n.dart';
 import '../core/format.dart';
 import '../core/theme.dart';
 import '../core/session.dart';
@@ -72,8 +73,8 @@ class _RequestsScreenState extends State<RequestsScreen> {
       showMessage(
         context,
         accept
-            ? 'قُبل الحجز — أُغلق اليوم في تقويمك ووصل العميل إشعار.'
-            : 'رُفض الحجز — أُعيد للعميل كل ما دفعه.',
+            ? tr('قُبل الحجز — أُغلق اليوم في تقويمك ووصل العميل إشعار.')
+            : tr('رُفض الحجز — أُعيد للعميل كل ما دفعه.'),
       );
       _reload();
     } catch (e) {
@@ -88,7 +89,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
     try {
       await Api.completeBooking(id);
       if (!mounted) return;
-      showMessage(context, 'سُجّل تنفيذ الحجز، وفُتح للعميل باب التقييم.');
+      showMessage(context, tr('سُجّل تنفيذ الحجز، وفُتح للعميل باب التقييم.'));
       _reload();
     } catch (e) {
       if (mounted) showMessage(context, messageOf(e));
@@ -108,9 +109,9 @@ class _RequestsScreenState extends State<RequestsScreen> {
         }
         final rows = snap.data ?? const <Booking>[];
         if (rows.isEmpty) {
-          return const EmptyBlock(
-            title: 'لا طلبات بعد',
-            description: 'ستصلك هنا حجوزات العملاء على خدماتك بعد توثيق ملفك.',
+          return EmptyBlock(
+            title: tr('لا طلبات بعد'),
+            description: tr('ستصلك هنا حجوزات العملاء على خدماتك بعد توثيق ملفك.'),
           );
         }
         return RefreshIndicator(
@@ -172,7 +173,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
                         key: ValueKey('open-map-${b.id}'),
                         onPressed: () => openMap(context, b.point!),
                         icon: const Icon(Icons.map_outlined, size: 18),
-                        label: const Text('افتح الموقع في الخرائط'),
+                        label: Text(tr('افتح الموقع في الخرائط')),
                         style: TextButton.styleFrom(
                           padding: EdgeInsets.zero,
                           minimumSize: const Size(0, 32),
@@ -197,14 +198,14 @@ class _RequestsScreenState extends State<RequestsScreen> {
                         Expanded(
                           child: FilledButton(
                             onPressed: busy ? null : () => _respond(b.id, true),
-                            child: const Text('قبول'),
+                            child: Text(tr('قبول')),
                           ),
                         ),
                         const SizedBox(width: Space.sm),
                         Expanded(
                           child: OutlinedButton(
                             onPressed: busy ? null : () => _respond(b.id, false),
-                            child: const Text('اعتذار'),
+                            child: Text(tr('اعتذار')),
                           ),
                         ),
                       ],
@@ -214,7 +215,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
                     const SizedBox(height: Space.md),
                     OutlinedButton(
                       onPressed: busy ? null : () => _complete(b.id),
-                      child: const Text('تأكيد التنفيذ'),
+                      child: Text(tr('تأكيد التنفيذ')),
                     ),
                   ],
                   const SizedBox(height: Space.sm),
@@ -224,7 +225,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
                   OutlinedButton.icon(
                     onPressed: busy ? null : () => _message(b),
                     icon: const Icon(Icons.forum_outlined, size: 19),
-                    label: Text('راسل ${b.userName}'),
+                    label: Text(trf('راسل {0}', [b.userName])),
                   ),
                 ],
               ));
