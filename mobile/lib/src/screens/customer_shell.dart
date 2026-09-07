@@ -5,6 +5,7 @@ import '../ui/kit.dart';
 
 import '../core/i18n.dart';
 import '../core/presence.dart';
+import '../core/notification_tone.dart';
 import '../core/push.dart';
 import '../core/session.dart';
 import '../data/api.dart';
@@ -40,6 +41,15 @@ class _CustomerShellState extends State<CustomerShell> {
     Push.start(onOpened: (data) => _openFrom(data));
     // ونبضةُ الحضور للسبب نفسِه: تكتب في صفِّ مستخدم، ولا صفَّ لمن لم يدخل.
     Presence.start();
+    // **وإعفاءُ البطّاريّة يُطلب هنا، بعد إذن الإشعارات لا قبله.**
+    //
+    // من لم يأذن بالإشعارات أصلاً لا معنى لسؤاله عن قيدٍ يؤخّرها، وحوارٌ
+    // ثانٍ يعقب الأوّلَ في ثانيةٍ يُقرأ إلحاحاً فيُرفض كلاهما.
+    //
+    // **ولا إعفاءَ صامتاً في أندرويد**: أقصى المتاح حوارُ النظام بضغطةٍ
+    // واحدة. ويُسأل **مرّةً في عمر التثبيت** لا كلَّ فتحة، والصفُّ في
+    // الإعدادات يبقى لمن بدا له بعدها.
+    askBatteryExemptionOnce();
   }
 
   @override

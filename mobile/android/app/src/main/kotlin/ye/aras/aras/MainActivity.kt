@@ -4,6 +4,7 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Intent
 import android.media.AudioAttributes
+import android.net.Uri
 import android.os.Build
 import android.os.PowerManager
 import android.os.Bundle
@@ -26,6 +27,8 @@ class MainActivity : FlutterActivity() {
                 when (call.method) {
                     "openChannelSettings" -> result.success(openChannelSettings())
                     "batteryUnrestricted" -> result.success(batteryUnrestricted())
+                    "requestBatteryExemption" ->
+                        result.success(requestBatteryExemption())
                     "openBatterySettings" -> result.success(openBatterySettings())
                     else -> result.notImplemented()
                 }
@@ -122,6 +125,30 @@ class MainActivity : FlutterActivity() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return true
         val power = getSystemService(PowerManager::class.java) ?: return true
         return power.isIgnoringBatteryOptimizations(packageName)
+    }
+
+    /**
+     * يطلب الإعفاءَ بحوارِ النظام — **ضغطةٌ واحدة**.
+     *
+     * **ولا إعفاءَ صامتاً في أندرويد.** لا تملك دالّةٌ أن ترفع القيدَ بلا علم
+     * صاحب الجهاز، وهذا حرزٌ مقصودٌ لا نقصٌ يُلتفّ عليه. وأقصى المتاح هذا
+     * الحوار: «فرحتي تطلب تجاهلَ تحسين البطّاريّة — سماح / رفض».
+     *
+     * ويُعاد `false` إن كان معفىً أصلاً أو تعذّر الحوار — فلا يُسأل من لا
+     * حاجةَ به، ولا تُفتح شاشةٌ لا وجودَ لها في جهازه.
+     */
+    private fun requestBatteryExemption(): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return false
+        if (batteryUnrestricted()) return false
+        return try {
+            startActivity(
+                Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
+                    .setData(Uri.parse("package:$packageName")),
+            )
+            true
+        } catch (e: Exception) {
+            false
+        }
     }
 
     /**

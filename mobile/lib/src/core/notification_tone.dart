@@ -13,6 +13,7 @@
 library;
 
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// جسرُ الشيفرة الأصليّة — الاسمُ نفسُه المكتوب في `MainActivity.kt`.
 ///
@@ -65,14 +66,43 @@ typedef BatteryProbe = Future<bool> Function();
 /// وجودَ لها في جهازه.
 BatteryProbe batteryProbe = _batteryUnrestricted;
 BatteryProbe batterySettingsOpener = _openBatterySettings;
+BatteryProbe batteryExemptionRequester = _requestBatteryExemption;
 
 void resetBatteryBridge() {
   batteryProbe = _batteryUnrestricted;
   batterySettingsOpener = _openBatterySettings;
+  batteryExemptionRequester = _requestBatteryExemption;
 }
 
 Future<bool> _batteryUnrestricted() => _ask('batteryUnrestricted', whenAbsent: true);
 Future<bool> _openBatterySettings() => _ask('openBatterySettings', whenAbsent: false);
+Future<bool> _requestBatteryExemption() =>
+    _ask('requestBatteryExemption', whenAbsent: false);
+
+/// مفتاحُ «سُئل مرّة» — والسؤالُ لا يُعاد.
+const _askedKey = 'battery_exemption_asked';
+
+/// يطلب الإعفاءَ مرّةً واحدةً في عمر التثبيت.
+///
+/// **ولا إعفاءَ صامتاً في أندرويد**: لا تملك دالّةٌ أن ترفع القيدَ بلا علم
+/// صاحب الجهاز. وأقصى المتاح حوارُ النظام بضغطةٍ واحدة، وهذا ما يُفتح.
+///
+/// **ويُسأل مرّةً لا كلَّ مرّة.** من رفض له سببُه، وحوارٌ يعود في كلّ فتحةٍ
+/// يُقرأ إلحاحاً فيُرفض أسرع — ثمّ يُطفأ التطبيقُ كلُّه من الإشعارات. والصفُّ
+/// في الإعدادات يبقى لمن بدا له بعدها.
+///
+/// ويُعاد `true` إن فُتح الحوارُ فعلاً.
+Future<bool> askBatteryExemptionOnce() async {
+  // من هو معفىً أصلاً لا يُسأل — ولا تُستهلك «المرّة الواحدة» على من لا
+  // حاجةَ به. (وهي أوّلُ ما يُفحص: أرخصُ من قراءة التفضيلات.)
+  if (await batteryProbe()) return false;
+
+  final prefs = await SharedPreferences.getInstance();
+  if (prefs.getBool(_askedKey) ?? false) return false;
+  await prefs.setBool(_askedKey, true);
+
+  return batteryExemptionRequester();
+}
 
 Future<bool> _ask(String method, {required bool whenAbsent}) async {
   try {
