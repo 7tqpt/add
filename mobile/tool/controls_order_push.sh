@@ -12,13 +12,15 @@ X=android/app/src/main/res/values/strings.xml
 E=../supabase/functions/push/index.ts
 S=lib/src/screens/account_extras.dart
 T=lib/src/core/notification_tone.dart
+X2=android/app/src/main/AndroidManifest.xml
+P=lib/src/screens/provider_shell.dart
 
 BACKUP=$(mktemp -d)
-for f in "$A" "$D" "$M" "$K" "$X" "$E" "$S" "$T"; do
+for f in "$A" "$D" "$M" "$K" "$X" "$E" "$S" "$T" "$X2" "$P"; do
   cp "$f" "$BACKUP/$(echo "$f" | tr '/.' '__')"
 done
 restore() {
-  for f in "$A" "$D" "$M" "$K" "$X" "$E" "$S" "$T"; do
+  for f in "$A" "$D" "$M" "$K" "$X" "$E" "$S" "$T" "$X2" "$P"; do
     cp "$BACKUP/$(echo "$f" | tr '/.' '__')" "$f"
   done
 }
@@ -130,10 +132,29 @@ run "ك) اسمُ الجسر يختلف بين الطرفين" sub "$K" \
   "                    \"batteryUnrestricted\" -> result.success(batteryUnrestricted())" \
   "                    \"isBatteryUnrestricted\" -> result.success(batteryUnrestricted())"
 
-# ل) وإذنُ الإعفاء يُطلب في البيان — وسياسةُ Play تردّ به.
-run "ل) إذنٌ يعرّض النشرَ للردّ" sub "$K" \
-  "            startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))" \
-  "            startActivity(Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS))"
+# ل) إذنُ الحوار يُشال من البيان — فلا يُفتح الحوارُ أصلاً ويعود صاحبُ الجهاز
+#    يبحث في قائمةٍ طويلة، وهو ما شكا منه صاحبُ المنصّة بعينه.
+run "ل) لا إذنَ للحوار في البيان" sub "$X2" \
+  "    <uses-permission android:name=\"android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS\"/>" \
+  ""
+
+# ل٢) والحوارُ يُسأل في كلّ فتحة — يُقرأ إلحاحاً فيُرفض أسرع، ثمّ يُطفأ
+#     التطبيقُ كلُّه من الإشعارات.
+run "ل٢) الحوارُ يعود في كلّ فتحة" sub "$T" \
+  "  if (prefs.getBool(_askedKey) ?? false) return false;
+  await prefs.setBool(_askedKey, true);" \
+  ""
+
+# ل٣) ويُسأل من هو معفىً أصلاً — فتُستهلك «المرّةُ الواحدة» على من لا حاجةَ
+#     به، ولو قُيِّد جهازُه بعد شهرٍ لم يُسأل أبداً.
+run "ل٣) يُسأل من لا قيدَ عليه" sub "$T" \
+  "  if (await batteryProbe()) return false;" \
+  ""
+
+# ل٤) وقشرةُ المزوّد تكفّ عن السؤال — وهو الطرفُ الذي يصله طلبُ الحجز.
+run "ل٤) قشرةُ المزوّد لا تسأل" sub "$P" \
+  "    askBatteryExemptionOnce();" \
+  ""
 
 # م) والتحذيرُ يُعرض للجميع — صفُّ طمأنةٍ تُدرَّب العينُ على تخطّيه.
 run "م) التحذيرُ يُعرض للجميع" sub "$S" \

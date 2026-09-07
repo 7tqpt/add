@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../core/i18n.dart';
 import '../core/presence.dart';
+import '../core/notification_tone.dart';
 import '../core/push.dart';
 import '../core/session.dart';
 import '../data/api.dart';
@@ -37,6 +38,15 @@ class _ProviderShellState extends State<ProviderShell> {
     // ونبضةُ الحضور: هنا آكدُ منها في قشرة العميل — «متّصل الآن» تحت اسم
     // القاعة هي ما يجعل العميل يسأل بدل أن ينصرف.
     Presence.start();
+    // **وإعفاءُ البطّاريّة يُطلب هنا، بعد إذن الإشعارات لا قبله.**
+    //
+    // من لم يأذن بالإشعارات أصلاً لا معنى لسؤاله عن قيدٍ يؤخّرها، وحوارٌ
+    // ثانٍ يعقب الأوّلَ في ثانيةٍ يُقرأ إلحاحاً فيُرفض كلاهما.
+    //
+    // **ولا إعفاءَ صامتاً في أندرويد**: أقصى المتاح حوارُ النظام بضغطةٍ
+    // واحدة. ويُسأل **مرّةً في عمر التثبيت** لا كلَّ فتحة، والصفُّ في
+    // الإعدادات يبقى لمن بدا له بعدها.
+    askBatteryExemptionOnce();
   }
 
   @override

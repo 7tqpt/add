@@ -18,6 +18,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:aras/src/core/notification_tone.dart';
 import 'package:aras/src/core/session.dart';
@@ -204,13 +205,63 @@ void main() {
       expect(activity, contains('isIgnoringBatteryOptimizations'));
     });
 
-    test('**ولا يُطلب إذنُ الإعفاء في البيان**', () {
-      // `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` يفتح حواراً بضغطةٍ واحدة —
-      // وسياسةُ Google Play تسأل عنه وتردّ به تطبيقاتٍ كثيرة. فالقائمةُ
-      // أبعدُ بضغطةٍ ولا تعرّض النشرَ للردّ.
-      expect(manifest, isNot(contains('REQUEST_IGNORE_BATTERY_OPTIMIZATIONS')),
-          reason: 'إذنٌ يعرّض النشرَ على Play للردّ');
+    test('**وحوارُ الضغطة الواحدة له إذنُه في البيان**', () {
+      // طلب صاحبُ المنصّة ألّا يبحث أحدٌ في قائمةٍ طويلة. وأقصى ما يسمح به
+      // أندرويد حوارٌ من النظام بضغطةٍ واحدة — **ولا إعفاءَ صامتاً فيه
+      // البتّة** — وهذا الحوارُ لا يُفتح بلا إذنه في البيان.
+      //
+      // وقيل لصاحب المنصّة إنّ Play تسأل عنه، والقرارُ قرارُه.
+      expect(manifest, contains('REQUEST_IGNORE_BATTERY_OPTIMIZATIONS'),
+          reason: 'بلا الإذن لا يُفتح الحوارُ أصلاً — ويعود البحثُ في القائمة');
+      expect(activity, contains('ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS'));
+      // والقائمةُ تبقى إلى جانبه: من ضغط «لا» يجدها في الإعدادات.
       expect(activity, contains('ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS'));
+    });
+
+    test('**ولا يُسأل من هو معفىً أصلاً**', () async {
+      // ولا تُستهلك «المرّةُ الواحدة» على من لا حاجةَ به: لو استُهلكت، ثمّ
+      // قيّد جهازُه التطبيقَ بعد شهر، لَما سُئل أبداً.
+      SharedPreferences.setMockInitialValues({});
+      var asked = 0;
+      batteryProbe = () async => true;
+      batteryExemptionRequester = () async {
+        asked++;
+        return true;
+      };
+      addTearDown(resetBatteryBridge);
+
+      expect(await askBatteryExemptionOnce(), isFalse);
+      expect(asked, 0, reason: 'سُئل من لا قيدَ عليه');
+    });
+
+    test('**ويُسأل مرّةً واحدةً في عمر التثبيت لا كلَّ فتحة**', () async {
+      // **وحوارٌ يعود في كلّ فتحةٍ يُقرأ إلحاحاً فيُرفض أسرع** — ثمّ يُطفأ
+      // التطبيقُ كلُّه من الإشعارات، فنخسر أكثرَ ممّا كسبنا.
+      SharedPreferences.setMockInitialValues({});
+      var asked = 0;
+      batteryProbe = () async => false;
+      batteryExemptionRequester = () async {
+        asked++;
+        return true;
+      };
+      addTearDown(resetBatteryBridge);
+
+      expect(await askBatteryExemptionOnce(), isTrue);
+      expect(await askBatteryExemptionOnce(), isFalse);
+      await askBatteryExemptionOnce();
+      expect(asked, 1, reason: 'الحوارُ يعود ويُلحّ');
+    });
+
+    test('**والقشرتان تسألان — لا واحدةٌ دون الأخرى**', () {
+      // طلبُ الحجز يصل المزوّدَ وردُّه يصل العميل، فالقيدُ يضرّ الاثنين.
+      // وقشرةٌ تسأل وأخرى لا تُنسى بسهولة: هما ملفّان متوازيان.
+      for (final path in [
+        'lib/src/screens/customer_shell.dart',
+        'lib/src/screens/provider_shell.dart',
+      ]) {
+        expect(_read(path), contains('askBatteryExemptionOnce()'),
+            reason: '$path لا تطلب الإعفاء');
+      }
     });
 
     testWidgets('**والتحذيرُ لا يُعرض لمن جهازُه غيرُ مقيِّد**', (tester) async {
