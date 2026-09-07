@@ -45,3 +45,42 @@ Future<bool> _openChannelSettings() async {
 /// يُعيد `false` إن تعذّر، فيسقط النداءُ إلى إعدادات التطبيق العامّة — وهي
 /// أبعدُ بضغطتين لكنّها تصل.
 Future<bool> openNotificationTone() => toneOpener();
+
+// ── تقييدُ البطّاريّة ────────────────────────────────────────────────────────
+//
+// **وهو أشهرُ سببٍ لـ«لا يصلني إشعارٌ والتطبيق مغلق».** أندرويد يُدخل
+// التطبيقاتِ في سُبات Doze، وأجهزةُ إنفينكس وتكنو وشاومي وأوبو — وهي أكثرُ
+// ما يُستعمل هنا — تزيد فوقه قتلاً للخلفيّة أشدَّ من قياسيّ أندرويد.
+// والمقيَّدُ لا يستيقظ لرسالة FCM حتى تُفتح شاشتُه.
+//
+// **ولا تُصلحه شيفرة.** الإعفاءُ بيد صاحب الجهاز وحدَه، وأقصى ما نملكه أن
+// نقول له إنّ التطبيق مقيَّدٌ وأن نفتح له الموضع.
+
+typedef BatteryProbe = Future<bool> Function();
+
+/// أمُعفىً التطبيقُ من تقييد البطّاريّة؟
+///
+/// **وحيث لا جسرَ يُقرأ «معفىً» لا «مقيَّد».** على iOS لا تقييدَ من هذا
+/// النوع، ولو قُرئ الغيابُ تقييداً لَظهر لكلّ صاحب آيفون تحذيرٌ عن شاشةٍ لا
+/// وجودَ لها في جهازه.
+BatteryProbe batteryProbe = _batteryUnrestricted;
+BatteryProbe batterySettingsOpener = _openBatterySettings;
+
+void resetBatteryBridge() {
+  batteryProbe = _batteryUnrestricted;
+  batterySettingsOpener = _openBatterySettings;
+}
+
+Future<bool> _batteryUnrestricted() => _ask('batteryUnrestricted', whenAbsent: true);
+Future<bool> _openBatterySettings() => _ask('openBatterySettings', whenAbsent: false);
+
+Future<bool> _ask(String method, {required bool whenAbsent}) async {
+  try {
+    final ok = await notificationBridge.invokeMethod<bool>(method);
+    return ok ?? whenAbsent;
+  } on PlatformException {
+    return whenAbsent;
+  } on MissingPluginException {
+    return whenAbsent;
+  }
+}

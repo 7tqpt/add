@@ -5,6 +5,7 @@ import android.app.NotificationManager
 import android.content.Intent
 import android.media.AudioAttributes
 import android.os.Build
+import android.os.PowerManager
 import android.os.Bundle
 import android.provider.Settings
 import io.flutter.embedding.android.FlutterActivity
@@ -24,6 +25,8 @@ class MainActivity : FlutterActivity() {
             .setMethodCallHandler { call, result ->
                 when (call.method) {
                     "openChannelSettings" -> result.success(openChannelSettings())
+                    "batteryUnrestricted" -> result.success(batteryUnrestricted())
+                    "openBatterySettings" -> result.success(openBatterySettings())
                     else -> result.notImplemented()
                 }
             }
@@ -99,6 +102,41 @@ class MainActivity : FlutterActivity() {
                         getString(R.string.notification_channel_id),
                     ),
             )
+            true
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    /**
+     * هل التطبيقُ مُعفىً من تقييد البطّاريّة.
+     *
+     * **وهذا أشهرُ سببٍ لـ«لا يصلني إشعارٌ والتطبيق مغلق».** أندرويد يُدخل
+     * التطبيقاتِ في سُبات Doze، وأجهزةُ إنفينكس وتكنو وشاومي وأوبو تزيد فوقه
+     * قتلاً للخلفيّة أشدَّ من قياسيّ أندرويد. والمقيَّدُ لا يستيقظ لرسالة FCM
+     * حتى تُفتح شاشتُه — فيصل الإشعارُ بعد ساعاتٍ أو لا يصل.
+     *
+     * ولا شيءَ في الشيفرة يعالج هذا: الإعفاءُ بيد صاحب الجهاز وحدَه.
+     */
+    private fun batteryUnrestricted(): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return true
+        val power = getSystemService(PowerManager::class.java) ?: return true
+        return power.isIgnoringBatteryOptimizations(packageName)
+    }
+
+    /**
+     * يفتح قائمةَ تقييد البطّاريّة في إعدادات النظام.
+     *
+     * **وقائمةٌ لا حوارُ طلب.** `ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`
+     * يفتح حواراً بضغطةٍ واحدة — لكنّه يحتاج إذنَ
+     * `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` في البيان، وسياسةُ Google Play
+     * تسأل عنه وتردّ به تطبيقاتٍ كثيرة. وهذه القائمةُ لا تحتاج إذناً ولا
+     * تعرّض النشرَ للردّ — والثمنُ ضغطتان يجد فيهما اسمَ التطبيق.
+     */
+    private fun openBatterySettings(): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return false
+        return try {
+            startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
             true
         } catch (e: Exception) {
             false

@@ -452,25 +452,44 @@ class Api {
 
   // ----- الحجوزات -----
 
+  /// الأحدثُ أوّلاً — بوقت الإنشاء لا بتاريخ العرس.
+  ///
+  /// **ووضعُ العرض يرتّب كما يرتّب الخادم.** لو تُرك الترتيبُ للقاعدة وحدَها
+  /// لَخرج التطبيقُ التجريبيُّ بترتيبٍ آخر، فيُقاس في الاختبار شيءٌ ويقع على
+  /// الجهاز غيرُه.
+  static List<Booking> _newestFirst(List<Booking> rows) =>
+      [...rows]..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
   /// حجوزات المستخدم بوصفه **عميلاً**.
   ///
   /// الشرط ضروري ولا تكفي RLS: سياسة الحجوزات تُرجع للمستخدم ما حجزه *وما
   /// وصله بوصفه مقدّم خدمة* — «الحجز يراه طرفاه». ومن يجمع الصفتين — وهو ما
   /// يقصده التطبيق أصلاً — كان يرى مبيعاته مختلطةً بمشترياته في الشاشتين معاً.
   static Future<List<Booking>> myBookings(String appUserId) async {
-    if (!isSupabaseConfigured) return demoDelay(demoBookings);
-    final rows = await db.from('bookings').select().eq('user_id', appUserId).order('event_date', ascending: true);
+    if (!isSupabaseConfigured) return demoDelay(_newestFirst(demoBookings));
+    // **بوقت الحجز لا بتاريخ العرس.** كان الترتيبُ بـ`event_date`، فحجزٌ
+    // أُنشئ قبل دقيقةٍ لعرسٍ بعد سنةٍ يقع تحت عشرةٍ قديمة — ومن حجز للتوّ
+    // يفتح الشاشةَ فلا يجد حجزَه. و«الأقربُ موعداً» باقٍ في بطاقة الملخّص
+    // أعلى الشاشة، وهي تُرتِّب بنفسها.
+    final rows = await db
+        .from('bookings')
+        .select()
+        .eq('user_id', appUserId)
+        .order('created_at', ascending: false);
     return rows.map(Booking.fromMap).toList();
   }
 
   /// الطلبات الواردة إلى المستخدم بوصفه **مقدّم خدمة** — الوجه الآخر للسياسة.
+  ///
+  /// والأحدثُ أوّلاً كذلك، وهو هنا آكد: الشاشةُ تُفتح للردّ على ما وصل، وما
+  /// وصل للتوّ هو المقصود.
   static Future<List<Booking>> providerRequests(String providerId) async {
-    if (!isSupabaseConfigured) return demoDelay(demoProviderRequests);
+    if (!isSupabaseConfigured) return demoDelay(_newestFirst(demoProviderRequests));
     final rows = await db
         .from('bookings')
         .select()
         .eq('provider_id', providerId)
-        .order('event_date', ascending: true);
+        .order('created_at', ascending: false);
     return rows.map(Booking.fromMap).toList();
   }
 

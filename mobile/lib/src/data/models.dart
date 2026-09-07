@@ -208,6 +208,7 @@ class Booking {
     this.couponCode = '',
     this.discountAmount = 0,
     this.point,
+    this.createdAt = '',
   });
 
   final String id;
@@ -235,6 +236,15 @@ class Booking {
   /// مقدّمُ الخدمة إلى بيت العرس.
   final GeoPoint? point;
 
+  /// وقتُ إنشاء الحجز — وهو **غيرُ تاريخ العرس**.
+  ///
+  /// **والفرقُ بينهما هو علّةُ ترتيبٍ خاطئ.** كانت الشاشتان تُرتَّبان
+  /// بـ`event_date`، فحجزٌ وصل قبل دقيقةٍ لعرسٍ بعد سنةٍ يقع في آخر القائمة
+  /// تحت عشرة قديمة — ومقدّمُ الخدمة يفتح «الطلبات» ليرى الجديدَ فلا يجده.
+  ///
+  /// ومبدؤه فراغٌ لا `null`: قاعدةٌ أقدمُ من هذه النسخة لا تُسقط الطراز.
+  final String createdAt;
+
   factory Booking.fromMap(Map<String, dynamic> m) => Booking(
     id: m['id'] as String,
     reference: (m['reference'] ?? '') as String,
@@ -252,6 +262,7 @@ class Booking {
     couponCode: (m['coupon_code'] ?? '') as String,
     discountAmount: (m['discount_amount'] ?? 0) as num,
     point: _pointOf(m),
+    createdAt: (m['created_at'] ?? '') as String,
   );
 }
 

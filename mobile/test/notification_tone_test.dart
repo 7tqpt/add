@@ -150,4 +150,140 @@ void main() {
       expect(await openNotificationTone(), isFalse);
     });
   });
+
+  // ==========================================================================
+  //  حمولةُ الإرسال — وهي الطرفُ الرابع للمعرّف نفسِه
+  // ==========================================================================
+
+  group('حمولةُ FCM', () {
+    final push = _read('../supabase/functions/push/index.ts');
+
+    test('**تسمّي القناةَ بمعرّفها الحيِّ نفسِه**', () {
+      // **ورابعُ موضعٍ يُكتب فيه المعرّف، وهو الوحيد خارج أندرويد.** كان
+      // متروكاً لوسم البيان، وذكرُه صراحةً يُغلق بابَ «قناة Miscellaneous
+      // الصامتة» — لكنّه يفتح باباً آخر: معرّفٌ هنا وآخرُ هناك يعني قناةً لا
+      // وجودَ لها، فيسقط أندرويد إلى قناته المجهولة **وهي بلا نغمة**.
+      expect(push, contains('channel_id:'),
+          reason: 'الحمولةُ لا تسمّي قناةً — والوسمُ وحدَه يكفي حتى لا يكفي');
+      expect(push, contains("channel_id: '$live'"),
+          reason: 'معرّفُ القناة في دالّة الدفع يخالف «$live»');
+    });
+
+    test('**وأولويّةُ العرض غيرُ أولويّة التسليم**', () {
+      // `priority: HIGH` تُوقظ الجهازَ من سُبات Doze،
+      // و`notification_priority` هي التي تجعله لافتةً بنغمة. وكانت الأولى
+      // وحدَها مضبوطةً، فيهبط الإشعارُ صامتاً إلى الدرج على كثيرٍ من الأجهزة.
+      expect(push, contains("priority: 'HIGH'"));
+      expect(push, contains("notification_priority: 'PRIORITY_HIGH'"),
+          reason: 'أولويّةُ العرض ناقصة — فيصل صامتاً');
+    });
+
+    test('والنغمةُ والاهتزازُ مطلوبان صراحةً', () {
+      // **والنغمةُ تُطلب في الطرفين، وسؤالٌ مطلقٌ يرى أحدَهما ويظنّهما.**
+      // `sound: 'default'` مكتوبةٌ مرّتين — في كتلة أندرويد وفي كتلة iOS —
+      // فكسرُ أندرويد وحدَه أبقى الحزمةَ خضراءَ وكشفه ضابطٌ لم يسقط.
+      expect(RegExp("sound: 'default'").allMatches(push).length, 2,
+          reason: 'نغمةٌ لأحد النظامين دون الآخر');
+      expect(push, contains('default_vibrate_timings: true'));
+    });
+  });
+
+  // ==========================================================================
+  //  تقييدُ البطّاريّة
+  // ==========================================================================
+  //
+  // **وهو أشهرُ سببٍ لـ«لا يصلني إشعارٌ والتطبيق مغلق».** ولا تُصلحه شيفرة:
+  // الإعفاءُ بيد صاحب الجهاز. وأقصى ما نملكه أن نقول له إنّ جهازَه يقيّد
+  // التطبيقَ وأن نفتح له الموضع.
+
+  group('تقييدُ البطّاريّة', () {
+    test('**وجسرُه في كوتلن باسمَيه اللذين تناديهما دارت**', () {
+      // اسمٌ هنا واسمٌ هناك يعني جسراً لا يعبر أحد.
+      expect(activity, contains('"batteryUnrestricted"'));
+      expect(activity, contains('"openBatterySettings"'));
+      expect(activity, contains('isIgnoringBatteryOptimizations'));
+    });
+
+    test('**ولا يُطلب إذنُ الإعفاء في البيان**', () {
+      // `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` يفتح حواراً بضغطةٍ واحدة —
+      // وسياسةُ Google Play تسأل عنه وتردّ به تطبيقاتٍ كثيرة. فالقائمةُ
+      // أبعدُ بضغطةٍ ولا تعرّض النشرَ للردّ.
+      expect(manifest, isNot(contains('REQUEST_IGNORE_BATTERY_OPTIMIZATIONS')),
+          reason: 'إذنٌ يعرّض النشرَ على Play للردّ');
+      expect(activity, contains('ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS'));
+    });
+
+    testWidgets('**والتحذيرُ لا يُعرض لمن جهازُه غيرُ مقيِّد**', (tester) async {
+      // صفوفُ الطمأنة تُدرَّب العينُ على تخطّيها، فتُتخطّى معها التحذيراتُ
+      // الحقيقيّة.
+      batteryProbe = () async => true;
+      addTearDown(resetBatteryBridge);
+      await _settings(tester);
+      expect(find.byKey(const ValueKey('battery-restriction')), findsNothing);
+    });
+
+    testWidgets('ويُعرض لمن جهازُه يقيّد', (tester) async {
+      batteryProbe = () async => false;
+      addTearDown(resetBatteryBridge);
+      await _settings(tester);
+      expect(find.byKey(const ValueKey('battery-restriction')), findsOneWidget);
+    });
+
+    testWidgets('**وضغطتُه تفتح إعداداتِ النظام**', (tester) async {
+      var opened = 0;
+      batteryProbe = () async => false;
+      batterySettingsOpener = () async {
+        opened++;
+        return true;
+      };
+      addTearDown(resetBatteryBridge);
+
+      await _settings(tester);
+      final row = find.byKey(const ValueKey('battery-restriction'));
+      await tester.ensureVisible(row);
+      await tester.pumpAndSettle();
+      await tester.tap(row);
+      await tester.pumpAndSettle();
+
+      expect(opened, 1, reason: 'الضغطةُ لا تفتح شيئاً');
+    });
+
+    test('**والجسرُ الغائبُ يُقرأ «غيرُ مقيَّد» لا «مقيَّد»**', () async {
+      // على iOS لا جسرَ ولا تقييدَ من هذا النوع. ولو قُرئ الغيابُ تقييداً
+      // لَظهر لكلّ صاحب آيفون تحذيرٌ عن شاشةٍ لا وجودَ لها في جهازه.
+      TestWidgetsFlutterBinding.ensureInitialized();
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(notificationBridge, (call) async {
+        throw MissingPluginException();
+      });
+      addTearDown(() => TestDefaultBinaryMessengerBinding
+          .instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(notificationBridge, null));
+
+      resetBatteryBridge();
+      expect(await batteryProbe(), isTrue);
+      expect(await batterySettingsOpener(), isFalse);
+    });
+  });
+}
+
+Future<void> _settings(WidgetTester tester) async {
+  tester.view.physicalSize = const Size(1080, 3600);
+  tester.view.devicePixelRatio = 3.0;
+  addTearDown(tester.view.reset);
+
+  await tester.pumpWidget(MaterialApp(
+    theme: buildTheme(),
+    locale: const Locale('ar'),
+    supportedLocales: const [Locale('ar')],
+    localizationsDelegates: const [
+      GlobalMaterialLocalizations.delegate,
+      GlobalWidgetsLocalizations.delegate,
+      GlobalCupertinoLocalizations.delegate,
+    ],
+    home: SettingsScreen(session: Session()),
+  ));
+  await tester.pumpAndSettle();
+  await tester.pump(const Duration(seconds: 1));
+  await tester.pumpAndSettle();
 }

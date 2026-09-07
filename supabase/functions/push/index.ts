@@ -166,8 +166,40 @@ Deno.serve(async (request) => {
               token,
               notification: { title: row.title, body: row.body },
               data,
-              android: { priority: 'HIGH', notification: { sound: 'default' } },
-              apns: { payload: { aps: { sound: 'default' } } },
+              android: {
+                // **أولويّتان لا واحدة، وهما شيئان مختلفان.**
+                //
+                //   `priority`  — أولويّةُ **التسليم**: تُوقظ الجهازَ من سُبات
+                //                 Doze بدل أن تنتظر نافذةَ الصيانة التالية.
+                //   `notification_priority` — أولويّةُ **العرض**: بها يظهر
+                //                 الإشعارُ لافتةً فوق الشاشة مع نغمته. وبدونها
+                //                 يهبط صامتاً إلى الدرج على كثيرٍ من الأجهزة،
+                //                 فيقول صاحبُه «لا نغمة» وهو محقّ.
+                //
+                // وكانت الأولى وحدَها مضبوطة.
+                priority: 'HIGH',
+                notification: {
+                  sound: 'default',
+                  notification_priority: 'PRIORITY_HIGH',
+                  default_vibrate_timings: true,
+                  // **والقناةُ تُسمّى صراحةً.** كانت متروكةً لبيان التطبيق
+                  // (`default_notification_channel_id`)، وهو يعمل — حتى يُبنى
+                  // التطبيقُ ببيانٍ لا يحمل الوسمَ فتقع الإشعاراتُ في قناةٍ
+                  // ينشئها FCM باسم «Miscellaneous» بأهمّيّةٍ منخفضةٍ **وبلا
+                  // نغمة**. وذكرُها هنا يُغلق هذا الباب.
+                  //
+                  // وهي المعرّفُ نفسُه في `res/values/strings.xml` —
+                  // `notification_channel_id`. واختلافُهما يعني قناةً لا وجودَ
+                  // لها، فيسقط أندرويد إلى قناته المجهولة.
+                  channel_id: 'farhati_alerts',
+                },
+              },
+              // و`apns-priority: 10` تسليمٌ فوريّ على iOS — والافتراضُ ٥،
+              // وهو «متى تيسّر».
+              apns: {
+                headers: { 'apns-priority': '10' },
+                payload: { aps: { sound: 'default' } },
+              },
             },
           }),
         },
