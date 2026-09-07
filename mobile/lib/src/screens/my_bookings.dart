@@ -7,6 +7,7 @@ import '../core/session.dart';
 import '../data/api.dart';
 import '../data/models.dart';
 import '../data/supabase.dart';
+import '../ui/booking_stages.dart';
 import '../ui/kit.dart';
 import 'disputes.dart';
 import 'labels.dart';
@@ -286,27 +287,20 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                       style: const TextStyle(fontSize: 11, color: AppColors.muted),
                     ),
                   ),
-                  // الدفع أوّل ما يُعرض بعد الأرقام: الحجز لا يصير حجزاً
-                  // حتى يصل عربونه، ومن حجز اليوم لا يعرف أين يدفع.
+                  // **والمراحلُ بعد الأرقام مباشرة.** كانت البطاقةُ تحمل شارةَ
+                  // حالةٍ واحدةً تقول أين هو ولا تقول ما بعدَه، فمن حجز لم
+                  // يدرِ ماذا ينتظر. والسكّةُ تقول الثلاثةَ في نظرة.
                   //
-                  // والمستحقُّ يُحسب هنا للعرض وحده — والخادم يحسبه من جديد
+                  // **وزرُّ الدفع انتقل إليها** — إلى صفّ مرحلته، تحت السطر
+                  // الذي يقول لماذا يُدفع. وكان أسفلَ البطاقة منفصلاً عن
+                  // سببه. والمستحقُّ يُحسب للعرض وحده: الخادم يحسبه من جديد
                   // عند الإرسال ولا يقبل رقماً من التطبيق.
-                  if ((b.status == BookingStatus.pendingProvider ||
-                          b.status == BookingStatus.confirmed) &&
-                      b.paidAmount < b.totalPrice) ...[
-                    const SizedBox(height: Space.md),
-                    FilledButton.icon(
-                      onPressed: _busyId == null ? () => _pay(b) : null,
-                      icon: const Icon(Icons.account_balance_wallet_outlined, size: 19),
-                      label: Text(
-                        b.paidAmount < b.depositAmount
-                            ? trf('ادفع العربون {0}',
-                            [formatMoney(b.depositAmount - b.paidAmount)])
-                            : trf('أكمل المبلغ {0}',
-                            [formatMoney(b.totalPrice - b.paidAmount)]),
-                      ),
-                    ),
-                  ],
+                  const SizedBox(height: Space.md),
+                  BookingStages(
+                    stages: bookingStages(b),
+                    action: bookingPayLabel(b),
+                    onAction: _busyId == null ? () => _pay(b) : null,
+                  ),
                   // الإلغاء متاحٌ ما دام الحجز قائماً؛ والقاعدة ترفضه بعد
                   // التنفيذ، فإخفاؤه هنا يوافق ما ستقوله هناك.
                   if (b.status == BookingStatus.pendingProvider ||
