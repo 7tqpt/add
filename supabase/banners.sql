@@ -79,6 +79,20 @@ alter table public.promotions
 alter table public.promotions
   add column if not exists headline text not null default '';
 
+-- ----------------------------------------------------------------------------
+--  واسمُ المعلِن — لِمن ليس مزوّداً مسجَّلاً
+-- ----------------------------------------------------------------------------
+--
+--  **وهذه ثغرةٌ لا زينة.** اسمُ صاحب اللافتة كان يُؤخذ من `provider_id` وحدَه.
+--  فمن باع مساحةً إعلانيّةً لمحلٍّ خارج المنصّة — وهو أصلُ بيع الإعلانات —
+--  لا يجد مزوّداً يربطه، فتخرج اللافتةُ **بلا اسمٍ ألبتّة**، ولا سبيلَ إلى
+--  كتابته بيدٍ.
+--
+--  فحقلٌ نصّيّ. والمزوّدُ المسجَّل يبقى أَولى: اسمُه يتبدّل في مكانٍ واحدٍ
+--  فتتبعه لافتاتُه، ونصٌّ يُنسخ في كلّ لافتةٍ يعتّق عند أوّل تغيير.
+alter table public.promotions
+  add column if not exists advertiser text not null default '';
+
 -- والقديمُ يُنقل مرّةً واحدة: صفٌّ له صورةٌ ولا مصفوفة.
 update public.promotions
    set image_urls = array[image_url]
@@ -95,6 +109,11 @@ update public.promotions
 --
 --  والاسمُ الظاهرُ من المزوّد إن كان لها مزوّد: اللافتةُ قد تكون حملةً من
 --  المنصّة نفسِها فلا وجهةَ لها ولا اسم.
+--
+--  **و`business_name` مبدَؤه فراغٌ لا NULL.** من سجّل مزوّداً باسمه ولم يكتب
+--  اسمَ منشأةٍ يُقرأ اسمُه **فارغاً** في كلّ موضعٍ يعرضه — لا NULL يُمسَك
+--  بـ`coalesce` بل نصٌّ فارغٌ يمرّ منها. فيُقلَب بـ`nullif` أوّلاً، ويُرجَع
+--  إلى `full_name` وهو `not null` بلا مبدأ.
 --  **وصورةٌ واحدةٌ في كلّ صفٍّ يُعاد لا مصفوفةٌ في صفّ.** اللافتةُ في الشاشة
 --  شريحةٌ تُمرَّر، فحملةٌ بثلاث صورٍ ثلاثُ شرائح — تحمل كلُّها وجهةَ الحملة
 --  نفسَها وكلماتِها. ولو أُعيدت المصفوفةُ كما هي لَاحتاج التطبيقُ أن يفرشها
@@ -114,7 +133,9 @@ language sql stable security definer set search_path = public as $$
          img.url,
          pr.headline,
          pr.provider_id,
-         coalesce(p.business_name, ''),
+         -- المزوّدُ المسجَّل أوّلاً، ثمّ الاسمُ المكتوب بيدٍ، ثمّ فراغ.
+         coalesce(nullif(p.business_name, ''), p.full_name,
+                  nullif(pr.advertiser, ''), ''),
          pr.ends_at
     from public.promotions pr
     left join public.service_providers p
@@ -140,14 +161,42 @@ grant execute on function public.api_active_banners() to anon, authenticated;
 -- ----------------------------------------------------------------------------
 --  وشريطُ «مزوّدون مميّزون» يقتصر على الإبراز
 -- ----------------------------------------------------------------------------
+--
+--  ── وعمودان يُضافان: التوثيقُ والقسم ──────────────────────────────────────
+--
+--  البطاقةُ كانت اسماً ومحافظةً وحدَهما، والعميلُ يسأل عنهما آخِراً. أوّلُ
+--  ما يسأله: **ماذا يقدّم هذا؟** وثانيه: **أموثَّقٌ هو؟** فيُرسَلان معه.
+--
+--  **والتوثيقُ يُرسَل وإن كان اليومَ محسوماً.** الشرطُ أدناه `p.status =
+--  'verified'`، فكلُّ صفٍّ يخرج من هنا موثَّقٌ قطعاً — ولو كُتبت العلامةُ
+--  في التطبيق ثابتةً لَصدقت اليوم. لكنّها تصير كذبةً في اليوم الذي يُوسَّع
+--  فيه الشرط، ولا شيءَ يُنبّه. فيُقرأ من الصفّ.
+--
+--  والقسمُ الأوّلُ بترتيبه لا كلُّ أقسامه: البطاقةُ في الشريط ١٦٤ بكسلاً،
+--  وثلاثةُ أقسامٍ فيها تُقرأ حشواً. ومن أراد الباقيَ فتح الملفّ.
+drop function if exists public.api_active_promotions();
+
 create or replace function public.api_active_promotions()
 returns table (
   id uuid, provider_id uuid, provider_name text, logo_path text,
-  governorate text, rating numeric, ends_at timestamptz
+  governorate text, rating numeric, verified boolean, category text,
+  ends_at timestamptz
 )
 language sql stable security definer set search_path = public as $$
-  select pr.id, pr.provider_id, p.business_name, p.logo_path,
-         p.governorate, p.rating, pr.ends_at
+  select pr.id, pr.provider_id,
+         coalesce(nullif(p.business_name, ''), p.full_name),
+         p.logo_path,
+         p.governorate, p.rating,
+         (p.verified_at is not null),
+         coalesce(
+           (select c.name
+              from public.provider_categories pc
+              join public.service_categories c on c.id = pc.category_id
+             where pc.provider_id = p.id
+             order by c.sort_order
+             limit 1),
+           ''),
+         pr.ends_at
     from public.promotions pr
     join public.service_providers p on p.id = pr.provider_id
    where pr.kind = 'featured'
@@ -200,16 +249,21 @@ union all
 select 'دالّة اللافتات',
        coalesce((select 'موجودة' from pg_proc where proname = 'api_active_banners'), 'غير موجودة')
 union all
+select 'شريط المميّزين يرسل التوثيق والقسم',
+       case when (select prosrc from pg_proc where proname = 'api_active_promotions')
+                 like '%verified_at is not null%'
+            then 'نعم' else 'لا' end
+union all
 select 'شريط المميّزين يقتصر على featured',
        case when (select prosrc from pg_proc where proname = 'api_active_promotions')
                  like '%kind = ''featured''%'
             then 'نعم' else 'لا' end
 union all
-select 'عمودا الصور والكلمات',
+select 'أعمدة الصور والكلمات واسم المعلِن',
        case when (select count(*) from information_schema.columns
                    where table_schema = 'public' and table_name = 'promotions'
-                     and column_name in ('image_urls', 'headline')) = 2
-            then 'موجودان' else 'ناقصان' end
+                     and column_name in ('image_urls', 'headline', 'advertiser')) = 3
+            then 'موجودة' else 'ناقصة' end
 -- **وهذا السطرُ هو الذي كان سيكشف العلّة.** سياساتُ السلّة كانت على مجالٍ
 -- اسمُه `growth` ولا وجودَ له في `admin_areas`، فمنعت الجميعَ بلا خطأٍ في
 -- التنفيذ — ولا يظهر ذلك إلّا حين يحاول إنسانٌ رفعَ صورةٍ فيُردّ.

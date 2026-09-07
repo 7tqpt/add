@@ -118,7 +118,10 @@ select
   c.name  as category_name,
   c.slug  as category_slug,
   s.provider_id,
-  p.business_name as provider_name,
+  -- **والفراغُ يُقلَب أوّلاً.** `business_name` مبدَؤه نصٌّ فارغٌ لا
+  -- NULL، فمن سجّل باسمه ولم يكتب اسمَ منشأةٍ يُقرأ اسمُه فارغاً في
+  -- كلّ بطاقةٍ تعرضه.
+  coalesce(nullif(p.business_name, ''), p.full_name) as provider_name,
   p.governorate   as provider_governorate,
   p.rating        as provider_rating,
   p.reviews_count as provider_reviews_count,
@@ -152,7 +155,7 @@ create view public.v_providers
 with (security_invoker = true) as
 select
   p.id,
-  p.business_name,
+  coalesce(nullif(p.business_name, ''), p.full_name) as business_name,
   p.full_name,
   p.bio,
   p.logo_path,

@@ -1382,6 +1382,8 @@ class PromoSlot {
     required this.logoPath,
     required this.governorate,
     required this.rating,
+    this.verified = false,
+    this.category = '',
   });
 
   final String id;
@@ -1391,6 +1393,18 @@ class PromoSlot {
   final String governorate;
   final num rating;
 
+  /// وثّقته الإدارة — تُقرأ من الصفّ لا تُفترض.
+  ///
+  /// **والدالّةُ اليومَ لا تُخرج غيرَ الموثَّق**، فلو كُتبت العلامةُ ثابتةً
+  /// لَصدقت. لكنّها تصير كذبةً في اليوم الذي يُوسَّع فيه شرطُ الدالّة، ولا
+  /// شيءَ يُنبّه.
+  final bool verified;
+
+  /// قسمُه الأوّل — «قاعات أفراح»، «تصوير». وأوّلُ ما يسأل عنه العميل.
+  final String category;
+
+  /// و`false` و`''` هما الأصل: تطبيقٌ أحدثُ من قاعدته يقرأ صفّاً بلا
+  /// العمودين فلا يسقط — تنقص علامةٌ ولا تنكسر شاشة.
   factory PromoSlot.fromMap(Map<String, dynamic> m) => PromoSlot(
     id: m['id'] as String,
     providerId: (m['provider_id'] ?? '') as String,
@@ -1398,5 +1412,7 @@ class PromoSlot {
     logoPath: (m['logo_path'] ?? '') as String,
     governorate: (m['governorate'] ?? '') as String,
     rating: (m['rating'] ?? 0) as num,
+    verified: (m['verified'] ?? false) as bool,
+    category: (m['category'] ?? '') as String,
   );
 }

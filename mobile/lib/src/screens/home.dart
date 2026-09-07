@@ -12,6 +12,7 @@ import '../data/supabase.dart';
 import '../ui/kit.dart';
 import '../ui/media.dart';
 import '../ui/motion.dart';
+import '../ui/viewer.dart';
 import 'provider_public.dart';
 import 'service_detail.dart';
 
@@ -284,6 +285,10 @@ class BannerCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // والستارُ يُرسم لأيّهما وُجد — لا للكلمات وحدَها: لافتةٌ بلا كلماتٍ
+    // ولها اسمٌ كانت تكتبه على الصورة عاريةً فلا يُقرأ.
+    final hasText = banner.headline.isNotEmpty || banner.providerName.isNotEmpty;
+
     // نصفُ القطر ‎٢٢‎ — هو نصفُ قطر البطاقة الكبيرة، فلا تُقرأ اللافتةُ
     // جسماً غريباً عن الشاشة.
     final card = ClipRRect(
@@ -296,13 +301,13 @@ class BannerCard extends StatelessWidget {
           // خارج المنصّة أصلاً — فلا يُفترض لها موضعُ تخزينٍ واحد.
           MediaThumb(url: banner.imageUrl.isEmpty ? null : banner.imageUrl),
 
-          // كلماتُ الإعلان — وتحتها ستارٌ متدرّج.
+          // كلماتُ الإعلان واسمُ صاحبها — وتحتهما ستارٌ متدرّج.
           //
           // **والستارُ شرطٌ لا زينة.** الصورةُ تأتي من صاحب الإعلان ولا
           // نعرف ألوانها: نصٌّ أبيضُ على سماءٍ بيضاءَ في صورةِ قاعةٍ نهاراً
           // لا يُقرأ حرفاً منه. والتدرّجُ يضمن أرضيّةً غامقةً تحت الكلمات
           // مهما كانت الصورة، ويترك أعلاها كما هو.
-          if (banner.headline.isNotEmpty)
+          if (hasText)
             Positioned.fill(
               child: DecoratedBox(
                 decoration: BoxDecoration(
@@ -319,68 +324,102 @@ class BannerCard extends StatelessWidget {
                 ),
               ),
             ),
-          if (banner.headline.isNotEmpty)
+          if (hasText)
             PositionedDirectional(
               start: 14,
               end: 14,
               bottom: 12,
-              child: Text(
-                banner.headline,
-                // سطران وقصٌّ بعدهما: اللافتةُ مساحةٌ ثابتةٌ، ونصٌّ طويلٌ
-                // يزحف عليها حتى يغطّي الصورةَ التي دُفع ثمنُها.
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  height: 1.35,
-                  color: Colors.white,
-                  fontFamilyFallback: arabicFallback,
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (banner.headline.isNotEmpty)
+                    Text(
+                      banner.headline,
+                      // سطران وقصٌّ بعدهما: اللافتةُ مساحةٌ ثابتةٌ، ونصٌّ
+                      // طويلٌ يزحف عليها حتى يغطّي الصورةَ التي دُفع ثمنُها.
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        height: 1.35,
+                        color: Colors.white,
+                        fontFamilyFallback: arabicFallback,
+                      ),
+                    ),
+                  // **واسمُ صاحبِ الإعلان.**
+                  //
+                  // كانت اللافتةُ صورةً وكلماتٍ ولا تقول لمن هي. ومن رآها
+                  // أُعجب بها لم يجد اسماً يبحث عنه — ولا يُغني عنه أن
+                  // ضغطَها يفتح صفحته: **الإصبعُ يتردّد قبل أن يضغط ما لا
+                  // يعرف صاحبَه.**
+                  //
+                  // وتحت الكلمات لا فوقها: العرضُ هو ما يوقف العين، والاسمُ
+                  // جوابُ سؤالٍ يأتي بعده.
+                  if (banner.providerName.isNotEmpty) ...[
+                    if (banner.headline.isNotEmpty) const SizedBox(height: 3),
+                    Text(
+                      banner.providerName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        // أبيضُ خافتٌ لا أبيضُ صريح: الاسمُ دونَ العرض في
+                        // الترتيب، ولو تساويا لَتنافسا على العين.
+                        color: Colors.white.withValues(alpha: 0.88),
+                        fontFamilyFallback: arabicFallback,
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
 
-          // شارةُ «إعلان» على ركنٍ أعلى: صغيرةٌ لا تبتلع الصورة، ومقروءةٌ
-          // على أيّ صورةٍ لأنّ لها أرضيّتَها.
-          PositionedDirectional(
-            top: 8,
-            start: 8,
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                color: AppColors.ink.withValues(alpha: 0.55),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                child: Text(
-                  tr('إعلان'),
-                  style: const TextStyle(
-                    fontSize: 10,
-                    color: Colors.white,
-                    fontFamilyFallback: arabicFallback,
-                  ),
-                ),
-              ),
-            ),
-          ),
+          // (وكانت هنا شارةُ «إعلان». شالها صاحبُ المنصّة.
+          //
+          // وقد قلتُ له ما أقوله هنا لمن يقرأ بعدُ: الشارةُ **إفصاحٌ لا
+          // زينة** — مساحةٌ مدفوعةٌ تُعرض كأنّها اختيارُ المنصّة قد تُقرأ
+          // تضليلاً، ومن اكتشف ذلك لم يعد يثق بترتيبٍ آخرَ في التطبيق.
+          // والقرارُ قرارُه، وشارةُ «إعلان» باقيةٌ على شريط «مزوّدون
+          // مميّزون» أدناه.)
         ],
       ),
     );
 
-    // **ولا تُضغط لافتةٌ لا وجهةَ لها.** ضغطةٌ لا يقع بعدها شيءٌ تُقرأ عطباً
-    // في التطبيق لا إعلاناً بلا رابط.
-    if (banner.providerId.isEmpty) return card;
+    // **وكلُّ لافتةٍ تُضغط — ولكلِّ ضغطةٍ ما يقع بعدها.**
+    //
+    // وكان الشرطُ قبلاً: من لا وجهةَ له لا يُضغط. وهو صحيحٌ في نصفه —
+    // ضغطةٌ لا يقع بعدها شيءٌ تُقرأ عطباً في التطبيق لا إعلاناً بلا رابط —
+    // وخاطئٌ في نصفه الآخر: **الإصبعُ لا يعرف أيَّ لافتةٍ لها وجهة**، فيضغط
+    // فلا يقع شيءٌ ويظنّ التطبيقَ متجمّداً.
+    //
+    // فصار لكلِّ حالٍ وجهةٌ حقيقيّة:
+    //
+    //   • لها مزوّد  ← تُفتح صفحتُه، وهي المقصودةُ من الإعلان.
+    //   • لا مزوّدَ لها ← تُفتح الصورةُ نفسُها ملءَ الشاشة. وهو فعلٌ ينفع
+    //     لا حيلةٌ تُسكت الضغطة: اللافتةُ فيها كلامٌ وتفصيلٌ لا يُقرأ في
+    //     مئةٍ وستّةٍ وتسعين بكسلاً، ومن ضغطها يريد أن يراها أكبر.
     return Pressable(
-      onTap: () => Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (_) => PublicProviderScreen(
-            providerId: banner.providerId,
-            // الاسمُ يُكتب في الشريط ريثما يصل الملفّ — فلا تُفتح الشاشةُ
-            // على عنوانٍ عامٍّ ثمّ يتبدّل تحت العين.
-            name: banner.providerName.isEmpty ? null : banner.providerName,
-          ),
-        ),
-      ),
+      onTap: () {
+        if (banner.providerId.isNotEmpty) {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => PublicProviderScreen(
+                providerId: banner.providerId,
+                // الاسمُ يُكتب في الشريط ريثما يصل الملفّ — فلا تُفتح
+                // الشاشةُ على عنوانٍ عامٍّ ثمّ يتبدّل تحت العين.
+                name: banner.providerName.isEmpty ? null : banner.providerName,
+              ),
+            ),
+          );
+          return;
+        }
+        if (banner.imageUrl.isNotEmpty) {
+          openImageViewer(context, url: banner.imageUrl);
+        }
+      },
       child: card,
     );
   }
@@ -689,8 +728,20 @@ class _HeartButton extends StatelessWidget {
 
 /// شريطُ المزوّدين المميَّزين — ما تبيعه المنصّة في «الإعلانات».
 ///
-/// **ومكتوبٌ عليه «إعلان» صراحةً.** ترتيبٌ مدفوعٌ يُعرض كأنه اختيارُ المنصّة
-/// يخدع من يقرؤه، ومن اكتشفه لاحقاً لم يعد يثق بترتيبٍ آخر فيها.
+/// (وكانت عليه شارةُ «إعلان» صراحةً. شالها صاحبُ المنصّة كما شالها عن
+/// اللافتة، وقيل له ما يُقال هنا لمن يقرأ بعدُ: ترتيبٌ مدفوعٌ يُعرض كأنّه
+/// اختيارُ المنصّة يخدع من يقرؤه، ومن اكتشفه لاحقاً لم يعد يثق بترتيبٍ
+/// آخرَ فيها. والقرارُ قرارُه.)
+///
+/// ── والبطاقةُ تقول أربعةَ أشياءَ لا اثنين ─────────────────────────────────
+///
+/// كانت اسماً ومحافظةً بخطٍّ ‎١٢‎ و‎١١‎ — والعميلُ يسأل عنهما آخِراً. أوّلُ
+/// ما يسأله **ماذا يقدّم هذا؟** وثانيه **أموثَّقٌ هو؟**. فصارت:
+///
+///   • الاسمُ ‎١٣٫٥‎ بوزن ‎٧٠٠‎ — كان ‎١٢‎، وهو في بطاقةٍ عرضُها ١٦٤ عنوانُها.
+///   • علامةُ التوثيق إلى جانبه — زرقاءُ يعرفها الناسُ من كلّ تطبيق.
+///   • القسمُ في شارةٍ تحته — «قاعات أفراح»، وهو أوّلُ ما يُبحث عنه.
+///   • ثمّ المحافظة.
 class _Promoted extends StatelessWidget {
   const _Promoted({required this.promos});
 
@@ -701,25 +752,22 @@ class _Promoted extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
-          children: [
-            Expanded(child: SectionTitle(tr('مزوّدون مميّزون'))),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                color: AppColors.muted.withValues(alpha: Tint.chip),
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Text(
-                tr('إعلان'),
-                style: const TextStyle(fontSize: 10, color: AppColors.muted),
-              ),
-            ),
-          ],
-        ),
+        SectionTitle(tr('مزوّدون مميّزون')),
         const SizedBox(height: Space.sm),
         SizedBox(
-          height: 116,
+          // **والارتفاعُ يتبع خطَّ الجهاز لا يقيّده.**
+          //
+          // البطاقةُ صارت أربعةَ سطورٍ بدل سطرين، ومئةٌ وستّةَ عشرَ لا تسعها.
+          // ورقمٌ ثابتٌ أكبرُ لا يكفي كذلك: قِيس ‎١٥٢‎ فمرّ، ثمّ فاض بثلاثة
+          // بكسلاتٍ عند خطٍّ أكبرَ بثلاثين بالمئة — وهو إعدادٌ في كلّ جهاز.
+          //
+          // فيُقسَم الارتفاعُ قسمين: ما لا يكبر بالخطّ (الصورةُ والحشوةُ
+          // والفواصل)، وما يكبر به (ثلاثةُ سطورٍ وشارةُ القسم). ويُحدّ
+          // التمدّدُ عند الضِّعف: من رفع خطَّه إلى ثلاثة أضعافٍ يقرأ الاسمَ
+          // مقصوصاً — وذلك خيرٌ من شريطٍ يبتلع الشاشة.
+          //
+          // (والفيضُ كشفه اختبارٌ لا عين: ثلاثةُ بكسلاتٍ لا تُرى في لقطة.)
+          height: 96 + 56 * MediaQuery.textScalerOf(context).scale(1).clamp(1.0, 2.0),
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             itemCount: promos.length,
@@ -727,35 +775,83 @@ class _Promoted extends StatelessWidget {
             itemBuilder: (context, i) {
               final promo = promos[i];
               return SizedBox(
-                width: 148,
+                width: 164,
                 child: AppCard(
                   onTap: () => Navigator.of(context).push(
                     MaterialPageRoute(
-                      builder: (_) => PublicProviderScreen(providerId: promo.providerId, name: promo.providerName),
+                      builder: (_) => PublicProviderScreen(
+                        providerId: promo.providerId,
+                        name: promo.providerName,
+                      ),
                     ),
                   ),
                   children: [
+                    // **و`Align` ضرورةٌ لا زينة.** عمودُ `AppCard` يمدّ
+                    // أبناءَه (`stretch`)، فصورةٌ ثابتةُ المقاس تتوسّط
+                    // وحدَها بينما الاسمُ والقسمُ والمحافظةُ إلى الحافّة —
+                    // فتُقرأ البطاقةُ متنافرة. رأيتُها في الرسم لا في
+                    // اختبار.
+                    Align(
+                      alignment: AlignmentDirectional.centerStart,
+                      child: ProviderAvatar(
+                        name: promo.providerName,
+                        imageUrl: Api.avatarUrl(promo.logoPath),
+                        size: 34,
+                      ),
+                    ),
+                    const SizedBox(height: Space.sm),
+                    // الاسمُ والعلامةُ في صفٍّ واحد، و`Flexible` على النصّ
+                    // وحدَه: اسمٌ طويلٌ يقصّ نفسَه ولا يدفع العلامةَ خارج
+                    // البطاقة.
                     Row(
                       children: [
-                        ProviderAvatar(
-                          name: promo.providerName,
-                          imageUrl: Api.avatarUrl(promo.logoPath),
-                          size: 32,
-                        ),
-                        const SizedBox(width: Space.sm),
-                        Expanded(
+                        Flexible(
                           child: Text(
                             promo.providerName,
-                            maxLines: 2,
+                            maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
-                                fontSize: 12, fontWeight: FontWeight.w700),
+                              fontSize: 13.5,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.ink,
+                            ),
                           ),
                         ),
+                        if (promo.verified) ...[
+                          const SizedBox(width: 4),
+                          const VerifiedMark(size: 14),
+                        ],
                       ],
                     ),
-                    const SizedBox(height: Space.xs),
-                    Muted(promo.governorate, size: 11),
+                    if (promo.category.isNotEmpty) ...[
+                      const SizedBox(height: 5),
+                      // شارةُ القسم — وتُقصّ إلى سطرٍ واحد: «تنسيق حفلات
+                      // ومناسبات» في مئةٍ وأربعةٍ وستّين بكسلاً تلتفّ سطرين
+                      // فتدفع المحافظةَ خارج البطاقة.
+                      Align(
+                        alignment: AlignmentDirectional.centerStart,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 7, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppColors.accent.withValues(alpha: Tint.chip),
+                            borderRadius: BorderRadius.circular(5),
+                          ),
+                          child: Text(
+                            promo.category,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.accent,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 5),
+                    Muted(promo.governorate, size: 11, maxLines: 1),
                   ],
                 ),
               );

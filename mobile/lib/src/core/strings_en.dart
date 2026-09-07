@@ -100,7 +100,6 @@ const Map<String, String> englishStrings = {
   'إشعارات الحجوزات والرسائل': 'Booking and message notifications',
   'إضافة': 'Add',
   'إعادة المحاولة': 'Try again',
-  'إعلان': 'Advertisement',
   'إغلاق': 'Close',
   'إغلاق {0}': 'Close {0}',
   'إغلاق التذكرة': 'Close ticket',

@@ -362,6 +362,7 @@ function NewBannerCard({ onToast }: { onToast: (message: string) => void }) {
   const [files, setFiles] = useState<File[]>([])
   const [previews, setPreviews] = useState<string[]>([])
   const [headline, setHeadline] = useState('')
+  const [advertiser, setAdvertiser] = useState('')
   const [startsAt, setStartsAt] = useState(isoDay(0))
   const [endsAt, setEndsAt] = useState(isoDay(30))
   const [provider, setProvider] = useState<ServiceProvider | null>(null)
@@ -406,6 +407,7 @@ function NewBannerCard({ onToast }: { onToast: (message: string) => void }) {
       await createBanner({
         files,
         headline,
+        advertiser,
         starts_at: startsAt,
         // آخرُ اليوم لا أوّلُه: من كتب «تنتهي ٣٠ يونيو» يقصد أن تُعرض ذلك
         // اليوم كلَّه، لا أن تختفي في منتصف ليلته الأولى.
@@ -417,6 +419,7 @@ function NewBannerCard({ onToast }: { onToast: (message: string) => void }) {
       )
       setFiles([])
       setHeadline('')
+      setAdvertiser('')
       setProvider(null)
       setRejected('')
     } catch (cause) {
@@ -541,6 +544,25 @@ function NewBannerCard({ onToast }: { onToast: (message: string) => void }) {
           )}
         </Field>
 
+        {/* **واسم المعلِن لا يُطلب إلّا حين لا مزوّد.** حقلان لشيءٍ واحد
+            يجعلان الملء يسأل: أيّهما أكتب؟ */}
+        {provider ? null : (
+          <Field
+            label="اسم المعلِن (اختياري)"
+            hint="يُكتب على اللافتة في التطبيق. لمحلٍّ خارج المنصّة لا حساب له عندك."
+          >
+            {(id) => (
+              <Input
+                id={id}
+                value={advertiser}
+                maxLength={40}
+                placeholder="مطابع الصفوة"
+                onChange={(event) => setAdvertiser(event.target.value)}
+              />
+            )}
+          </Field>
+        )}
+
         <div className="grid gap-3 sm:grid-cols-3">
           <Field label="تبدأ">
             {(id) => (
@@ -564,7 +586,7 @@ function NewBannerCard({ onToast }: { onToast: (message: string) => void }) {
           </Field>
           <Field
             label="المزوّد (اختياري)"
-            hint="تُفتح صفحته بالضغط على اللافتة. ويُترك فارغاً فلا تُضغط."
+            hint="تُفتح صفحته بالضغط على اللافتة، ويظهر اسمه عليها. ويُترك فارغاً فيُكتب اسم المعلِن أعلاه."
           >
             {() => (
               // **ولا يُكتب المعرّفُ بيده.** كان حقلَ `uuid` يُلصق فيه —

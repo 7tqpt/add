@@ -26,6 +26,7 @@ import 'package:aras/src/screens/lock.dart';
 import 'package:aras/src/screens/service_detail.dart';
 import 'package:aras/src/ui/kit.dart';
 import 'package:aras/src/ui/media.dart';
+import 'package:aras/src/ui/motion.dart';
 import 'package:aras/src/ui/service_card.dart';
 
 Widget _wrap(Widget child) => MaterialApp(
@@ -688,13 +689,256 @@ void main() {
       expect(tester.getSize(find.byType(PageView)).height, 196);
     });
 
-    testWidgets('**وعليها «إعلان» صراحةً**', (tester) async {
-      // مساحةٌ مدفوعةٌ تُعرض كأنّها اختيارُ المنصّة تخدع من يقرؤها.
+    // (وكان هنا ضمانُ «وعليها إعلان صراحةً»: مساحةٌ مدفوعةٌ تُعرض كأنّها
+    // اختيارُ المنصّة تخدع من يقرؤها. شال صاحبُ المنصّة الشارةَ بطلبٍ صريح
+    // بعد أن قيل له ذلك، فسقط الضمانُ معها. وهو **باقٍ على شريط «مزوّدون
+    // مميّزون»**، ومقيسٌ في `shell_test`.)
+
+    testWidgets('**وكلُّ لافتةٍ تُضغط — ولها وجهة**', (tester) async {
+      // **والإصبعُ لا يعرف أيَّ لافتةٍ لها مزوّد.** فكانت التي بلا وجهةٍ
+      // تُضغط فلا يقع شيء، فتُقرأ عطباً في التطبيق.
+      await open(tester);
+
+      final cards = find.byType(BannerCard);
+      expect(cards, findsWidgets);
+
+      // و`Pressable` **سليلةٌ** للبطاقة لا جدّةٌ لها: `BannerCard.build`
+      // تُخرجها، فهي في شجرة عناصرها. (وأوّلُ صياغةٍ سألت عن جدٍّ فسقطت.)
+      for (var i = 0; i < tester.widgetList(cards).length; i++) {
+        expect(
+          find.descendant(of: cards.at(i), matching: find.byType(Pressable)),
+          findsWidgets,
+          reason: 'لافتةٌ لا تُضغط',
+        );
+      }
+    });
+
+    testWidgets('**ولافتةٌ بلا مزوّدٍ تفتح صورتَها لا تصمت**', (tester) async {
+      // الثالثةُ في وضع العرض بلا مزوّد. وضغطُها يفتح الصورةَ ملءَ الشاشة —
+      // فعلٌ ينفع لا حيلةٌ تُسكت الضغطة: اللافتةُ فيها تفصيلٌ لا يُقرأ في
+      // مئةٍ وستّةٍ وتسعين بكسلاً.
+      _screen(tester, height: 3000);
+      await tester.pumpWidget(_wrap(Scaffold(
+        body: SizedBox(
+          height: 196,
+          child: BannerCard(
+            banner: const PromoBanner(
+              id: 'b#1',
+              imageUrl: 'https://example.invalid/x.jpg',
+            ),
+          ),
+        ),
+      )));
+      await _settle(tester);
+
+      await tester.tap(find.byType(BannerCard));
+      await _settle(tester);
+
+      // فُتحت شاشةٌ ثانية — العارض.
+      expect(find.byType(BannerCard), findsNothing);
+    });
+
+    testWidgets('**واسمُ معلِنٍ ليس مزوّداً يُكتب ويُقرأ**', (tester) async {
+      // **وهذا هو البابُ الذي سأل عنه صاحبُ المنصّة ثلاثاً.** لافتتُه لمحلٍّ
+      // خارج المنصّة لا حسابَ له، فلا اسمَ في القاعدة يُؤخذ منه — فكانت
+      // تُعرض صامتةً بلا اسم. صار في اللوحة حقلُ «اسم المعلِن» يُكتب بيد،
+      // فيهبط إلى `advertiser` ويُقرأ في `providerName` كأيِّ اسم.
+      //
+      // وهي **الثالثةُ** في الشريط، و`PageView` لا تبني ما لم يُعرض بعد —
+      // فيُدار الشريطُ إليها بمؤقّته نفسِه لا بيدٍ خارجة عنه.
+      await open(tester);
+      for (var i = 0; i < 3; i++) {
+        if (find.text('مطابع الصفوة').evaluate().isNotEmpty) break;
+        await tester.pump(const Duration(seconds: 3));
+        await tester.pumpAndSettle();
+      }
+      expect(
+        find.descendant(
+          of: find.byType(PageView),
+          matching: find.text('مطابع الصفوة'),
+        ),
+        findsWidgets,
+        reason: 'لافتةُ معلِنٍ غيرِ مسجَّلٍ بلا اسم',
+      );
+    });
+
+    testWidgets('**ولافتةُ معلِنٍ باسمٍ بلا وجهةٍ تفتح صورتَها**', (tester) async {
+      // والاسمُ لا يصنع وجهة: لا صفحةَ لمن لا حسابَ له. فالضغطةُ تفتح
+      // الصورةَ ملءَ الشاشة — وإلّا صار الاسمُ وعداً بصفحةٍ لا تأتي.
+      _screen(tester, height: 3000);
+      await tester.pumpWidget(_wrap(const Scaffold(
+        body: SizedBox(
+          height: 196,
+          child: BannerCard(
+            banner: PromoBanner(
+              id: 'b#1',
+              imageUrl: 'https://example.invalid/x.jpg',
+              providerName: 'مطابع الصفوة',
+            ),
+          ),
+        ),
+      )));
+      await _settle(tester);
+
+      expect(find.text('مطابع الصفوة'), findsOneWidget);
+      await tester.tap(find.byType(BannerCard));
+      await _settle(tester);
+      expect(find.byType(BannerCard), findsNothing, reason: 'ضغطةٌ لا تفتح شيئاً');
+    });
+
+    testWidgets('**واللافتةُ تقول لمن هي**', (tester) async {
+      // كانت صورةً وكلماتٍ ولا اسمَ فيها. ومن أُعجب بالعرض لم يجد اسماً
+      // يبحث عنه — ولا يُغني عنه أنّ ضغطَها يفتح صفحته: الإصبعُ يتردّد
+      // قبل أن يضغط ما لا يعرف صاحبَه.
       await open(tester);
       expect(
-        find.descendant(of: find.byType(PageView), matching: find.text('إعلان')),
+        find.descendant(
+          of: find.byType(PageView),
+          matching: find.text('قاعة التاج الملكي'),
+        ),
         findsWidgets,
       );
+    });
+
+    testWidgets('**والاسمُ دونَ العرض في العين لا فوقه**', (tester) async {
+      await open(tester);
+      final headline =
+          tester.widget<Text>(find.text('قاعةُ التاج — خصمُ ٢٠٪ لحجوزات رمضان').first);
+      final name = tester.widget<Text>(find.descendant(
+        of: find.byType(PageView),
+        matching: find.text('قاعة التاج الملكي'),
+      ).first);
+
+      // العرضُ هو ما يوقف العين، والاسمُ جوابُ سؤالٍ يأتي بعده.
+      expect(name.style!.fontSize!, lessThan(headline.style!.fontSize!));
+      expect(
+        tester.getCenter(find.text('قاعة التاج الملكي').first).dy,
+        greaterThan(tester
+            .getCenter(find.text('قاعةُ التاج — خصمُ ٢٠٪ لحجوزات رمضان').first)
+            .dy),
+        reason: 'الاسمُ فوق العرض',
+      );
+    });
+
+    testWidgets('**ولافتةٌ باسمٍ بلا كلماتٍ لها ستارٌ كذلك**', (tester) async {
+      // وكان الستارُ يتبع الكلماتِ وحدَها، فاسمٌ بلا عرضٍ يُكتب على الصورة
+      // عارياً فلا يُقرأ.
+      _screen(tester, height: 3000);
+      await tester.pumpWidget(_wrap(const Scaffold(
+        body: SizedBox(
+          height: 196,
+          child: BannerCard(
+            banner: PromoBanner(
+              id: 'b#1',
+              imageUrl: 'https://example.invalid/x.jpg',
+              providerId: 'p1',
+              providerName: 'قاعة التاج الملكي',
+            ),
+          ),
+        ),
+      )));
+      await tester.pump();
+
+      final gradients = tester
+          .widgetList<DecoratedBox>(find.byType(DecoratedBox))
+          .map((d) => d.decoration)
+          .whereType<BoxDecoration>()
+          .where((d) => d.gradient != null);
+      expect(gradients, isNotEmpty, reason: 'اسمٌ بلا ستار');
+    });
+
+    testWidgets('**ولا شارةَ «إعلان» في الشاشة كلِّها**', (tester) async {
+      // شالها صاحبُ المنصّة عن اللافتة وعن شريط «مزوّدون مميّزون» معاً.
+      // ويُسأل عن الشاشة كلِّها لا عن الشريط وحدَه: كانت في موضعين.
+      await open(tester);
+      expect(find.text('إعلان', skipOffstage: false), findsNothing);
+    });
+
+    testWidgets('**وبطاقةُ المميَّز تقول قسمَه وتوثيقَه**', (tester) async {
+      // كانت اسماً ومحافظةً وحدَهما — والعميلُ يسأل عنهما آخِراً. أوّلُ ما
+      // يسأله: ماذا يقدّم هذا؟ وثانيه: أموثَّقٌ هو؟
+      await open(tester);
+
+      // والمرساةُ القسمُ لا الاسم: الاسمُ في اللافتة كذلك.
+      final strip = find.ancestor(
+        of: find.text('قاعات أفراح'),
+        matching: find.byType(AppCard),
+      );
+      expect(strip, findsWidgets, reason: 'لا بطاقةَ لمزوّدٍ مميَّز');
+
+      expect(
+        find.descendant(of: strip.first, matching: find.text('قاعات أفراح')),
+        findsOneWidget,
+        reason: 'لا قسمَ في البطاقة',
+      );
+      expect(
+        find.descendant(of: strip.first, matching: find.byType(VerifiedMark)),
+        findsOneWidget,
+        reason: 'لا علامةَ توثيقٍ في البطاقة',
+      );
+    });
+
+    testWidgets('**واسمُه بخطٍّ يُقرأ — لا أصغرَ من محافظته**', (tester) async {
+      // كان ‎١٢‎ والمحافظةُ ‎١١‎: فرقُ بكسلٍ واحدٍ لا يقول أيّهما العنوان.
+      await open(tester);
+
+      // **ومن البطاقة لا من الشاشة.** الاسمُ نفسُه صار في موضعين — على
+      // اللافتة وفي البطاقة — فسؤالٌ مطلقٌ يلتقط أوّلَهما في الشجرة ويقيس
+      // خطَّ اللافتة وهو يظنّه خطَّ البطاقة. (وقد وقع.)
+      final card = find.ancestor(
+        of: find.text('قاعات أفراح'),
+        matching: find.byType(AppCard),
+      );
+      final name = tester.widget<Text>(
+        find.descendant(of: card.first, matching: find.text('قاعة التاج الملكي')),
+      );
+      expect(name.style!.fontSize, greaterThanOrEqualTo(13));
+      expect(name.style!.fontWeight, FontWeight.w700);
+
+      // ويُقاس بالفرق لا بحدٍّ: المقصودُ أن يتقدّم الاسمُ على ما تحته.
+      final place = tester.widget<Text>(
+        find.descendant(of: card.first, matching: find.text('أمانة العاصمة')),
+      );
+      expect(name.style!.fontSize! - place.style!.fontSize!,
+          greaterThanOrEqualTo(2),
+          reason: 'الاسمُ والمحافظةُ في حجمٍ واحدٍ تقريباً');
+    });
+
+    testWidgets('**ومزوّدٌ بلا قسمٍ لا يترك شارةً فارغة**', (tester) async {
+      // الثاني في وضع العرض بلا قسمٍ مسجَّل. وشارةٌ فارغةٌ مستطيلٌ ملوّنٌ
+      // بلا معنى، وهي حالُ كلِّ مزوّدٍ لم تُسجَّل أقسامُه بعد.
+      await open(tester);
+
+      final card = find.ancestor(
+        of: find.text('استوديو النور'),
+        matching: find.byType(AppCard),
+      );
+      expect(card, findsWidgets);
+      expect(
+        find.descendant(of: card.first, matching: find.text('')),
+        findsNothing,
+      );
+      // والمحافظةُ تبقى.
+      expect(find.descendant(of: card.first, matching: find.text('عدن')),
+          findsOneWidget);
+    });
+
+    testWidgets('**ولا تفيض البطاقةُ بخطِّ الجهاز الكبير**', (tester) async {
+      // أربعةُ سطورٍ في ارتفاعٍ ثابت: أوّلُ من كبّر خطَّ جهازه يرى شريطاً
+      // مخطّطاً بالأصفر. وقد وقع في شبكة الأقسام ثلاث مرّاتٍ قبل أن تُقاس.
+      // ويُقاس عند حدَّين: ١٫٣ وهو شائعٌ في الأجهزة، و٢٫٠ وهو حدُّ
+      // التمدّد المكتوب في الشيفرة — فلو نزل الحدُّ يوماً بان هنا.
+      for (final scale in [1.3, 2.0]) {
+        _screen(tester, height: 3000);
+        await tester.pumpWidget(_wrap(MediaQuery(
+          data: MediaQueryData(textScaler: TextScaler.linear(scale)),
+          child: CustomerShell(session: Session()),
+        )));
+        await _settle(tester);
+        expect(tester.takeException(), isNull, reason: 'فاضت عند $scale');
+        await tester.pumpWidget(const SizedBox.shrink());
+        await _settle(tester);
+      }
     });
 
     testWidgets('**وتدور وحدها كلَّ ثلاث ثوانٍ**', (tester) async {
