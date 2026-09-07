@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../core/i18n.dart';
 import '../core/session.dart';
 import '../core/theme.dart';
 import '../ui/kit.dart';
@@ -33,7 +34,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
   /// لها بدايةٌ ونهاية.
   late final AnimationController _c = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 1700),
+    duration: Duration(milliseconds: 1700),
   );
   bool _started = false;
 
@@ -61,12 +62,12 @@ class _WelcomeScreenState extends State<WelcomeScreen>
     return Scaffold(
       body: BrandBackdrop(
         child: Padding(
-          padding: const EdgeInsets.all(Space.xl),
+          padding: EdgeInsets.all(Space.xl),
           child: Column(
             children: [
-              const Spacer(),
+              Spacer(),
               Expanded(flex: 6, child: ArchMark(t: _c)),
-              const Spacer(),
+              Spacer(),
               // زرٌّ ذهبيٌّ بحبرٍ نبيذيّ — لا نبيذيٌّ على نبيذيّ فيختفي.
               // والأبيضُ على الذهب لا يُقرأ (‎١٫٦٦:١‎)، والنبيذيُّ عليه
               // ‎٨٫٢٨:١‎.
@@ -81,14 +82,14 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                   style: FilledButton.styleFrom(
                     backgroundColor: AppColors.goldOnAccent,
                     foregroundColor: AppColors.accentDeep,
-                    minimumSize: const Size.fromHeight(52),
+                    minimumSize: Size.fromHeight(52),
                   ),
                   onPressed: () => Navigator.of(context).push(
                     MaterialPageRoute(
                         builder: (_) => RolePickerScreen(session: widget.session)),
                   ),
-                  child: const Text(
-                    'ابدأ رحلتك',
+                  child: Text(
+                    tr('ابدأ رحلتك'),
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
@@ -116,7 +117,7 @@ class BrandBackdrop extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    decoration: const BoxDecoration(
+    decoration: BoxDecoration(
       gradient: LinearGradient(
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
@@ -135,14 +136,19 @@ class BrandBackdrop extends StatelessWidget {
 /// ترحيباً. فالذي فيها أرضيّةُ الهويّة — تظهر فوراً بلا ومضةٍ بيضاء — ثمّ
 /// دوّارٌ يُكشف بعد مهلةٍ لمن طال انتظارُه وحده.
 class BootScreen extends StatelessWidget {
-  const BootScreen({super.key, this.label = 'جارٍ التحقق…'});
-  final String label;
+  const BootScreen({super.key, this.label});
+
+  /// السطرُ تحت الدوّار — يُترك فارغاً فيكون «جارٍ التحقق…».
+  ///
+  /// **وفارغاً لا نصّاً افتراضيّاً:** المُنشئُ `const` فلا تُنادى فيه
+  /// `tr()`، والنداءُ يقع عند البناء حيث تُعرف لغةُ الشاشة.
+  final String? label;
 
   @override
   Widget build(BuildContext context) => Scaffold(
     body: BrandBackdrop(
       child: LoadingBlock(
-        label: label,
+        label: label ?? tr('جارٍ التحقق…'),
         color: AppColors.goldOnAccent,
         tint: Colors.white,
         labelColor: Colors.white70,
@@ -389,8 +395,8 @@ class _ArchMarkState extends State<ArchMark>
             const SizedBox(height: Space.sm),
             _rise(
               Stage.at(t, 0.44, 0.76),
-              const Text(
-                'فرحتي',
+              Text(
+                tr('فرحتي'),
                 style: TextStyle(
                   fontSize: 44,
                   height: 1.2,
@@ -404,7 +410,7 @@ class _ArchMarkState extends State<ArchMark>
             _rise(
               Stage.at(t, 0.56, 0.86),
               Text(
-                'للأعراس اليمنية',
+                tr('للأعراس اليمنية'),
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
@@ -418,7 +424,7 @@ class _ArchMarkState extends State<ArchMark>
               _rise(
                 Stage.at(t, 0.66, 0.96),
                 Text(
-                  'كل خدمات زفافك في مكان واحد',
+                  tr('كل خدمات زفافك في مكان واحد'),
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 14,
@@ -621,9 +627,9 @@ class RolePickerScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(Space.lg, 0, Space.lg, Space.xl),
         children: [
-          const Center(
+          Center(
             child: Text(
-              'فرحتي',
+              tr('فرحتي'),
               style: TextStyle(
                 fontSize: 34,
                 fontWeight: FontWeight.w700,
@@ -633,9 +639,9 @@ class RolePickerScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: Space.lg),
-          const Center(
+          Center(
             child: Text(
-              'مرحباً بك في فرحتي',
+              tr('مرحباً بك في فرحتي'),
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
@@ -645,36 +651,36 @@ class RolePickerScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: Space.xs),
-          const Center(child: Muted('اختر نوع الحساب', size: 13)),
+          Center(child: Muted(tr('اختر نوع الحساب'), size: 13)),
           const SizedBox(height: Space.xl),
 
           _RoleCard(
             icon: Icons.favorite_rounded,
-            title: 'أنا عروس',
-            body: 'أبحث عن خدمات وأخطّط لحفل زفافي',
+            title: tr('أنا عروس'),
+            body: tr('أبحث عن خدمات وأخطّط لحفل زفافي'),
             onTap: () => _go(context, 'bride'),
           ),
           const SizedBox(height: Space.md),
           _RoleCard(
             icon: Icons.favorite_border_rounded,
-            title: 'أنا عريس',
-            body: 'أبحث عن خدمات وأخطّط لحفل زفافي',
+            title: tr('أنا عريس'),
+            body: tr('أبحث عن خدمات وأخطّط لحفل زفافي'),
             onTap: () => _go(context, 'groom'),
           ),
           const SizedBox(height: Space.md),
           _RoleCard(
             icon: Icons.storefront_rounded,
-            title: 'مقدّم خدمة',
-            body: 'أعرض خدماتي وأستقبل الحجوزات',
+            title: tr('مقدّم خدمة'),
+            body: tr('أعرض خدماتي وأستقبل الحجوزات'),
             onTap: () => _go(context, 'provider'),
           ),
 
           const SizedBox(height: Space.lg),
           // **يُقال صراحةً:** الاختيارُ طريقٌ لا قفل. ومن لم يُقل له ذلك ظنّ
           // أنه يفتح حساباً من نوعٍ لا يُبدَّل، فتردّد أو فتح حسابين.
-          const Center(
+          Center(
             child: Muted(
-              'الحساب واحد — تستطيع أن تعرض خدماتك لاحقاً أو أن تحجز، أيّاً كان اختيارك',
+              tr('الحساب واحد — تستطيع أن تعرض خدماتك لاحقاً أو أن تحجز، أيّاً كان اختيارك'),
               size: 12,
             ),
           ),
@@ -682,12 +688,12 @@ class RolePickerScreen extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Muted('لديك حساب بالفعل؟', size: 13),
+              Muted(tr('لديك حساب بالفعل؟'), size: 13),
               TextButton(
                 onPressed: () => Navigator.of(context).pushReplacement(
                   MaterialPageRoute(builder: (_) => AuthScreen(session: session)),
                 ),
-                child: const Text('تسجيل الدخول'),
+                child: Text(tr('تسجيل الدخول')),
               ),
             ],
           ),

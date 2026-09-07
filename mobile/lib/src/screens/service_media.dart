@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../core/i18n.dart';
 import '../core/format.dart';
 import '../core/theme.dart';
 import '../data/api.dart';
@@ -65,12 +66,12 @@ class _ServiceMediaScreenState extends State<ServiceMediaScreen> {
           const SizedBox(height: Space.sm),
           ListTile(
             leading: const Icon(Icons.photo_camera_outlined, color: AppColors.accent),
-            title: Text('التقط $what الآن'),
+            title: Text(trf('التقط {0} الآن', [what])),
             onTap: () => Navigator.of(sheet).pop(ImageSource.camera),
           ),
           ListTile(
             leading: const Icon(Icons.photo_library_outlined, color: AppColors.accent),
-            title: Text('اختر من المعرض'),
+            title: Text(tr('اختر من المعرض')),
             onTap: () => Navigator.of(sheet).pop(ImageSource.gallery),
           ),
           const SizedBox(height: Space.sm),
@@ -80,7 +81,7 @@ class _ServiceMediaScreenState extends State<ServiceMediaScreen> {
   );
 
   Future<void> _addImage(int taken) async {
-    final source = await _askSource('صورة');
+    final source = await _askSource(tr('صورة'));
     if (source == null) return;
     final file = await ImagePicker().pickImage(
       source: source,
@@ -96,7 +97,7 @@ class _ServiceMediaScreenState extends State<ServiceMediaScreen> {
   }
 
   Future<void> _addVideo() async {
-    final source = await _askSource('مقطعاً');
+    final source = await _askSource(tr('مقطعاً'));
     if (source == null) return;
     final file = await ImagePicker().pickVideo(
       source: source,
@@ -114,7 +115,7 @@ class _ServiceMediaScreenState extends State<ServiceMediaScreen> {
     // عشرة سببَ العدول عنها في شاشة المستندات.
     final picked = await FilePicker.pickFile(
       type: FileType.audio,
-      dialogTitle: 'اختر مقطعاً صوتياً',
+      dialogTitle: tr('اختر مقطعاً صوتياً'),
     );
     if (picked == null) return;
     await _upload(picked.xFile, MediaKind.audio, uri: picked.uri);
@@ -131,8 +132,8 @@ class _ServiceMediaScreenState extends State<ServiceMediaScreen> {
       final bytes = await file.readAsBytes();
       if (bytes.length > Api.mediaMaxBytes) {
         throw _Rejected(
-          'الملف ${formatBytes(bytes.length)} والحدّ ${formatBytes(Api.mediaMaxBytes)}. '
-          'صوّر بجودةٍ أقلّ أو اقصص المقطع.',
+          trf('الملف {0} والحدّ {1}. صوّر بجودةٍ أقلّ أو اقصص المقطع.',
+              [formatBytes(bytes.length), formatBytes(Api.mediaMaxBytes)]),
         );
       }
 
@@ -140,12 +141,12 @@ class _ServiceMediaScreenState extends State<ServiceMediaScreen> {
       if (kind != MediaKind.image) {
         seconds = await probeSeconds(uri ?? _uriOf(file));
         if (seconds <= 0) {
-          throw const _Rejected('تعذّرت قراءة مدّة الملف. جرّب ملفاً آخر بصيغة MP4 أو M4A.');
+          throw _Rejected(tr('تعذّرت قراءة مدّة الملف. جرّب ملفاً آخر بصيغة MP4 أو M4A.'));
         }
         if (seconds > Api.mediaMaxSeconds) {
           throw _Rejected(
-            'المقطع ${formatSeconds(seconds)} والحدّ ${formatSeconds(Api.mediaMaxSeconds)}. '
-            'اقصصه ثم أعد الرفع.',
+            trf('المقطع {0} والحدّ {1}. اقصصه ثم أعد الرفع.',
+                [formatSeconds(seconds), formatSeconds(Api.mediaMaxSeconds)]),
           );
         }
       }
@@ -160,7 +161,7 @@ class _ServiceMediaScreenState extends State<ServiceMediaScreen> {
         sortOrder: sortOrder,
       );
       if (!mounted) return;
-      showMessage(context, 'تمّ الرفع');
+      showMessage(context, tr('تمّ الرفع'));
       _reload();
     } catch (e) {
       if (!mounted) return;
@@ -183,14 +184,14 @@ class _ServiceMediaScreenState extends State<ServiceMediaScreen> {
     final yes = await showDialog<bool>(
       context: context,
       builder: (d) => AlertDialog(
-        title: const Text('حذف الوسيط؟'),
-        content: const Text('يُحذف من الخدمة ومن التخزين، ولا يُسترجع.'),
+        title: Text(tr('حذف الوسيط؟')),
+        content: Text(tr('يُحذف من الخدمة ومن التخزين، ولا يُسترجع.')),
         actions: [
-          TextButton(onPressed: () => Navigator.of(d).pop(false), child: const Text('تراجع')),
+          TextButton(onPressed: () => Navigator.of(d).pop(false), child: Text(tr('تراجع'))),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: AppColors.critical),
             onPressed: () => Navigator.of(d).pop(true),
-            child: const Text('احذف'),
+            child: Text(tr('احذف')),
           ),
         ],
       ),
@@ -201,7 +202,7 @@ class _ServiceMediaScreenState extends State<ServiceMediaScreen> {
     try {
       await Api.deleteServiceMedia(media);
       if (!mounted) return;
-      showMessage(context, 'حُذف');
+      showMessage(context, tr('حُذف'));
       _reload();
     } catch (e) {
       if (mounted) setState(() => _note = messageOf(e));
@@ -213,7 +214,7 @@ class _ServiceMediaScreenState extends State<ServiceMediaScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('صور الخدمة ومقاطعها')),
+      appBar: AppBar(title: Text(tr('صور الخدمة ومقاطعها'))),
       body: FutureBuilder<List<ServiceMedia>>(
         future: _future,
         builder: (context, snap) {
@@ -311,14 +312,14 @@ class _ImagesCard extends StatelessWidget {
       children: [
         Row(
           children: [
-            const Expanded(child: SectionTitle('الصور')),
+            Expanded(child: SectionTitle(tr('الصور'))),
             Muted('${images.length}/${Api.mediaMaxImages}'),
           ],
         ),
         const SizedBox(height: Space.xs),
         // الترتيب ليس تفصيلاً: الأولى هي التي تظهر في بطاقة الاستكشاف، وهي
         // كلُّ ما يراه من لم يفتح الخدمة بعد.
-        const Muted('الأولى غلافُ الخدمة في قائمة الاستكشاف.'),
+        Muted(tr('الأولى غلافُ الخدمة في قائمة الاستكشاف.')),
         const SizedBox(height: Space.md),
         Wrap(
           spacing: Space.sm,
@@ -329,14 +330,14 @@ class _ImagesCard extends StatelessWidget {
             if (!full)
               _AddTile(
                 icon: Icons.add_a_photo_outlined,
-                label: 'أضف صورة',
+                label: tr('أضف صورة'),
                 onTap: busy ? null : onAdd,
               ),
           ],
         ),
         if (full) ...[
           const SizedBox(height: Space.sm),
-          const Muted('بلغتَ الحدّ. احذف صورةً لتضيف غيرها.'),
+          Muted(tr('بلغتَ الحدّ. احذف صورةً لتضيف غيرها.')),
         ],
       ],
     );
@@ -443,19 +444,19 @@ class _ClipCard extends StatelessWidget {
     final m = media;
     return AppCard(
       children: [
-        SectionTitle(_video ? 'مقطع فيديو' : 'مقطع صوتي'),
+        SectionTitle(_video ? tr('مقطع فيديو') : tr('مقطع صوتي')),
         const SizedBox(height: Space.xs),
         Muted(
           _video
-              ? 'دقيقةٌ على الأكثر. أرِ ما لا تُريه صورة: القاعة وهي ممتلئة، أو الطبخ وهو يُقدَّم.'
-              : 'دقيقةٌ على الأكثر. للفنانين والفرق: صورتُك لا تقول شيئاً عن صوتك.',
+              ? tr('دقيقةٌ على الأكثر. أرِ ما لا تُريه صورة: القاعة وهي ممتلئة، أو الطبخ وهو يُقدَّم.')
+              : tr('دقيقةٌ على الأكثر. للفنانين والفرق: صورتُك لا تقول شيئاً عن صوتك.'),
         ),
         const SizedBox(height: Space.md),
         if (m == null)
           OutlinedButton.icon(
             onPressed: busy ? null : onAdd,
             icon: Icon(_video ? Icons.videocam_outlined : Icons.mic_none, size: 20),
-            label: Text(_video ? 'أضف مقطع فيديو' : 'أضف مقطعاً صوتياً'),
+            label: Text(_video ? tr('أضف مقطع فيديو') : tr('أضف مقطعاً صوتياً')),
           )
         else
           Row(
@@ -493,7 +494,7 @@ class _ClipCard extends StatelessWidget {
               ),
               IconButton(
                 onPressed: busy ? null : () => onDelete(m),
-                tooltip: 'احذف',
+                tooltip: tr('احذف'),
                 icon: const Icon(Icons.delete_outline, color: AppColors.critical, size: 20),
               ),
             ],

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../core/i18n.dart';
 import '../core/session.dart';
 import '../core/theme.dart';
 import '../data/api.dart';
@@ -50,7 +51,7 @@ class _BecomeProviderScreenState extends State<BecomeProviderScreen> {
         _phone.text.trim().isEmpty ||
         _governorate == null ||
         _picked.isEmpty) {
-      setState(() => _error = 'اكتب اسم المنشأة ورقمك، واختر محافظتك وقسماً واحداً على الأقل.');
+      setState(() => _error = tr('اكتب اسم المنشأة ورقمك، واختر محافظتك وقسماً واحداً على الأقل.'));
       return;
     }
     setState(() {
@@ -79,7 +80,7 @@ class _BecomeProviderScreenState extends State<BecomeProviderScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('تقديم خدمة')),
+      appBar: AppBar(title: Text(tr('تقديم خدمة'))),
       body: FutureBuilder<(List<Governorate>, List<ServiceCategory>)>(
         future: _future,
         builder: (context, snap) {
@@ -92,18 +93,18 @@ class _BecomeProviderScreenState extends State<BecomeProviderScreen> {
             children: [
               AppCard(
                 children: [
-                  const SectionTitle('سجّل منشأتك'),
+                  SectionTitle(tr('سجّل منشأتك')),
                   const SizedBox(height: Space.sm),
-                  const Text(
-                    'بعد الإرسال يصير ملفك «قيد المراجعة». ترفع مستنداتك، وحين تقبلها الإدارة تبدأ باستقبال الحجوزات.',
+                  Text(
+                    tr('بعد الإرسال يصير ملفك «قيد المراجعة». ترفع مستنداتك، وحين تقبلها الإدارة تبدأ باستقبال الحجوزات.'),
                     style: TextStyle(height: 1.8),
                   ),
                   const SizedBox(height: Space.lg),
                   TextField(
                     controller: _name,
-                    decoration: const InputDecoration(
-                      labelText: 'اسم المنشأة',
-                      hintText: 'قاعة التاج',
+                    decoration: InputDecoration(
+                      labelText: tr('اسم المنشأة'),
+                      hintText: tr('قاعة التاج'),
                     ),
                   ),
                   const SizedBox(height: Space.md),
@@ -111,8 +112,8 @@ class _BecomeProviderScreenState extends State<BecomeProviderScreen> {
                     controller: _phone,
                     keyboardType: TextInputType.phone,
                     textDirection: TextDirection.ltr,
-                    decoration: const InputDecoration(
-                      labelText: 'رقم التواصل',
+                    decoration: InputDecoration(
+                      labelText: tr('رقم التواصل'),
                       hintText: '+967 7XX XXX XXX',
                     ),
                   ),
@@ -120,15 +121,15 @@ class _BecomeProviderScreenState extends State<BecomeProviderScreen> {
                   TextField(
                     controller: _bio,
                     maxLines: 3,
-                    decoration: const InputDecoration(
-                      labelText: 'نبذة',
-                      hintText: 'ماذا تقدّم؟ وما الذي يميّزك؟',
+                    decoration: InputDecoration(
+                      labelText: tr('نبذة'),
+                      hintText: tr('ماذا تقدّم؟ وما الذي يميّزك؟'),
                     ),
                   ),
                   const SizedBox(height: Space.lg),
-                  const Align(
+                  Align(
                     alignment: AlignmentDirectional.centerStart,
-                    child: Muted('المحافظة'),
+                    child: Muted(tr('المحافظة')),
                   ),
                   const SizedBox(height: Space.sm),
                   Wrap(
@@ -144,9 +145,9 @@ class _BecomeProviderScreenState extends State<BecomeProviderScreen> {
                     ],
                   ),
                   const SizedBox(height: Space.lg),
-                  const Align(
+                  Align(
                     alignment: AlignmentDirectional.centerStart,
-                    child: Muted('الأقسام التي تعمل فيها'),
+                    child: Muted(tr('الأقسام التي تعمل فيها')),
                   ),
                   const SizedBox(height: Space.sm),
                   Wrap(
@@ -168,7 +169,7 @@ class _BecomeProviderScreenState extends State<BecomeProviderScreen> {
                     Text(_error!, style: const TextStyle(color: AppColors.critical, fontSize: 13)),
                   ],
                   const SizedBox(height: Space.lg),
-                  FilledButton(onPressed: _busy ? null : _submit, child: const Text('إرسال الطلب')),
+                  FilledButton(onPressed: _busy ? null : _submit, child: Text(tr('إرسال الطلب'))),
                 ],
               ),
             ],

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../core/i18n.dart';
 import '../core/theme.dart';
 import '../data/api.dart';
 import '../data/models.dart';
@@ -49,9 +50,9 @@ class _FavouritesScreenState extends State<FavouritesScreen> {
       _reload();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('أُزيلت «${item.title}» من المفضّلة'),
+          content: Text(trf('أُزيلت «{0}» من المفضّلة', [item.title])),
           action: SnackBarAction(
-            label: 'تراجع',
+            label: tr('تراجع'),
             // التراجع يُعيد الصفّ فعلاً: الإزالة بضغطةٍ واحدة بلا سؤال،
             // فلا بدّ من بابٍ للرجوع — وإلّا ضاع ما حُفظ بلمسةٍ خاطئة.
             onPressed: () async {
@@ -80,9 +81,9 @@ class _FavouritesScreenState extends State<FavouritesScreen> {
           }
           final data = snap.data!;
           if (data.items.isEmpty && data.missing == 0) {
-            return const EmptyBlock(
-              title: 'لا شيء في المفضّلة بعد',
-              description: 'اضغط القلب على أي خدمة في الاستكشاف لتحفظها هنا وتقارن بينها.',
+            return EmptyBlock(
+              title: tr('لا شيء في المفضّلة بعد'),
+              description: tr('اضغط القلب على أي خدمة في الاستكشاف لتحفظها هنا وتقارن بينها.'),
             );
           }
 
@@ -102,8 +103,9 @@ class _FavouritesScreenState extends State<FavouritesScreen> {
                         Expanded(
                           child: Muted(
                             data.missing == 1
-                                ? 'خدمةٌ واحدة في مفضّلتك لم تعد متاحة — أوقفها صاحبها أو حذفها.'
-                                : '${data.missing} خدماتٍ في مفضّلتك لم تعد متاحة.',
+                                ? tr('خدمةٌ واحدة في مفضّلتك لم تعد متاحة — أوقفها صاحبها أو حذفها.')
+                                : trf('{0} خدماتٍ في مفضّلتك لم تعد متاحة.',
+                                    ['${data.missing}']),
                           ),
                         ),
                       ],

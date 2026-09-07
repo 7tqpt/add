@@ -67,6 +67,16 @@ const _translated = <String>[
   'lib/src/screens/support.dart',
   'lib/src/screens/ticket.dart',
   'lib/src/screens/documents.dart',
+  'lib/src/screens/welcome.dart',
+  'lib/src/screens/auth.dart',
+  'lib/src/screens/onboarding.dart',
+  'lib/src/screens/become_provider.dart',
+  'lib/src/screens/edit_profile.dart',
+  'lib/src/screens/service_media.dart',
+  'lib/src/screens/map_picker.dart',
+  'lib/src/screens/favourites.dart',
+  'lib/src/screens/chat_attach.dart',
+  'lib/src/screens/root.dart',
 ];
 
 // ── مستخرِجُ النصوص ─────────────────────────────────────────────────────────
@@ -474,7 +484,7 @@ void main() {
 }
 
 /// أقلُّ ما بلغته التغطية — يُرفع مع كلّ دفعة، ولا يُنزَل.
-const coverageFloor = 600;
+const coverageFloor = 760;
 
 /// كم نصّاً عربيّاً أُعفي من الترجمة — واحدٌ اليوم: `' و'` أداةُ التقسيم.
 const exemptionsCeiling = 1;
@@ -483,4 +493,4 @@ const exemptionsCeiling = 1;
 ///
 /// بدأ ٢٢٥ حين كُتب هذا الملفّ: معجمٌ سبق النداءَ فتفرّقا. وكلُّ شاشةٍ
 /// تُترجَم تُنقصه، فحين يبلغ الصفرَ تكون الترجمةُ قد تمّت.
-const deadEntriesCeiling = 82;
+const deadEntriesCeiling = 46;
