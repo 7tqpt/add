@@ -12,6 +12,7 @@ import '../data/supabase.dart';
 import '../ui/kit.dart';
 import '../ui/media.dart';
 import '../ui/motion.dart';
+import '../ui/viewer.dart';
 import 'provider_public.dart';
 import 'service_detail.dart';
 
@@ -340,47 +341,49 @@ class BannerCard extends StatelessWidget {
               ),
             ),
 
-          // شارةُ «إعلان» على ركنٍ أعلى: صغيرةٌ لا تبتلع الصورة، ومقروءةٌ
-          // على أيّ صورةٍ لأنّ لها أرضيّتَها.
-          PositionedDirectional(
-            top: 8,
-            start: 8,
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                color: AppColors.ink.withValues(alpha: 0.55),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                child: Text(
-                  tr('إعلان'),
-                  style: const TextStyle(
-                    fontSize: 10,
-                    color: Colors.white,
-                    fontFamilyFallback: arabicFallback,
-                  ),
-                ),
-              ),
-            ),
-          ),
+          // (وكانت هنا شارةُ «إعلان». شالها صاحبُ المنصّة.
+          //
+          // وقد قلتُ له ما أقوله هنا لمن يقرأ بعدُ: الشارةُ **إفصاحٌ لا
+          // زينة** — مساحةٌ مدفوعةٌ تُعرض كأنّها اختيارُ المنصّة قد تُقرأ
+          // تضليلاً، ومن اكتشف ذلك لم يعد يثق بترتيبٍ آخرَ في التطبيق.
+          // والقرارُ قرارُه، وشارةُ «إعلان» باقيةٌ على شريط «مزوّدون
+          // مميّزون» أدناه.)
         ],
       ),
     );
 
-    // **ولا تُضغط لافتةٌ لا وجهةَ لها.** ضغطةٌ لا يقع بعدها شيءٌ تُقرأ عطباً
-    // في التطبيق لا إعلاناً بلا رابط.
-    if (banner.providerId.isEmpty) return card;
+    // **وكلُّ لافتةٍ تُضغط — ولكلِّ ضغطةٍ ما يقع بعدها.**
+    //
+    // وكان الشرطُ قبلاً: من لا وجهةَ له لا يُضغط. وهو صحيحٌ في نصفه —
+    // ضغطةٌ لا يقع بعدها شيءٌ تُقرأ عطباً في التطبيق لا إعلاناً بلا رابط —
+    // وخاطئٌ في نصفه الآخر: **الإصبعُ لا يعرف أيَّ لافتةٍ لها وجهة**، فيضغط
+    // فلا يقع شيءٌ ويظنّ التطبيقَ متجمّداً.
+    //
+    // فصار لكلِّ حالٍ وجهةٌ حقيقيّة:
+    //
+    //   • لها مزوّد  ← تُفتح صفحتُه، وهي المقصودةُ من الإعلان.
+    //   • لا مزوّدَ لها ← تُفتح الصورةُ نفسُها ملءَ الشاشة. وهو فعلٌ ينفع
+    //     لا حيلةٌ تُسكت الضغطة: اللافتةُ فيها كلامٌ وتفصيلٌ لا يُقرأ في
+    //     مئةٍ وستّةٍ وتسعين بكسلاً، ومن ضغطها يريد أن يراها أكبر.
     return Pressable(
-      onTap: () => Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (_) => PublicProviderScreen(
-            providerId: banner.providerId,
-            // الاسمُ يُكتب في الشريط ريثما يصل الملفّ — فلا تُفتح الشاشةُ
-            // على عنوانٍ عامٍّ ثمّ يتبدّل تحت العين.
-            name: banner.providerName.isEmpty ? null : banner.providerName,
-          ),
-        ),
-      ),
+      onTap: () {
+        if (banner.providerId.isNotEmpty) {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => PublicProviderScreen(
+                providerId: banner.providerId,
+                // الاسمُ يُكتب في الشريط ريثما يصل الملفّ — فلا تُفتح
+                // الشاشةُ على عنوانٍ عامٍّ ثمّ يتبدّل تحت العين.
+                name: banner.providerName.isEmpty ? null : banner.providerName,
+              ),
+            ),
+          );
+          return;
+        }
+        if (banner.imageUrl.isNotEmpty) {
+          openImageViewer(context, url: banner.imageUrl);
+        }
+      },
       child: card,
     );
   }

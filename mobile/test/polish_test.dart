@@ -26,6 +26,7 @@ import 'package:aras/src/screens/lock.dart';
 import 'package:aras/src/screens/service_detail.dart';
 import 'package:aras/src/ui/kit.dart';
 import 'package:aras/src/ui/media.dart';
+import 'package:aras/src/ui/motion.dart';
 import 'package:aras/src/ui/service_card.dart';
 
 Widget _wrap(Widget child) => MaterialApp(
@@ -688,13 +689,53 @@ void main() {
       expect(tester.getSize(find.byType(PageView)).height, 196);
     });
 
-    testWidgets('**وعليها «إعلان» صراحةً**', (tester) async {
-      // مساحةٌ مدفوعةٌ تُعرض كأنّها اختيارُ المنصّة تخدع من يقرؤها.
+    // (وكان هنا ضمانُ «وعليها إعلان صراحةً»: مساحةٌ مدفوعةٌ تُعرض كأنّها
+    // اختيارُ المنصّة تخدع من يقرؤها. شال صاحبُ المنصّة الشارةَ بطلبٍ صريح
+    // بعد أن قيل له ذلك، فسقط الضمانُ معها. وهو **باقٍ على شريط «مزوّدون
+    // مميّزون»**، ومقيسٌ في `shell_test`.)
+
+    testWidgets('**وكلُّ لافتةٍ تُضغط — ولها وجهة**', (tester) async {
+      // **والإصبعُ لا يعرف أيَّ لافتةٍ لها مزوّد.** فكانت التي بلا وجهةٍ
+      // تُضغط فلا يقع شيء، فتُقرأ عطباً في التطبيق.
       await open(tester);
-      expect(
-        find.descendant(of: find.byType(PageView), matching: find.text('إعلان')),
-        findsWidgets,
-      );
+
+      final cards = find.byType(BannerCard);
+      expect(cards, findsWidgets);
+
+      // و`Pressable` **سليلةٌ** للبطاقة لا جدّةٌ لها: `BannerCard.build`
+      // تُخرجها، فهي في شجرة عناصرها. (وأوّلُ صياغةٍ سألت عن جدٍّ فسقطت.)
+      for (var i = 0; i < tester.widgetList(cards).length; i++) {
+        expect(
+          find.descendant(of: cards.at(i), matching: find.byType(Pressable)),
+          findsWidgets,
+          reason: 'لافتةٌ لا تُضغط',
+        );
+      }
+    });
+
+    testWidgets('**ولافتةٌ بلا مزوّدٍ تفتح صورتَها لا تصمت**', (tester) async {
+      // الثالثةُ في وضع العرض بلا مزوّد. وضغطُها يفتح الصورةَ ملءَ الشاشة —
+      // فعلٌ ينفع لا حيلةٌ تُسكت الضغطة: اللافتةُ فيها تفصيلٌ لا يُقرأ في
+      // مئةٍ وستّةٍ وتسعين بكسلاً.
+      _screen(tester, height: 3000);
+      await tester.pumpWidget(_wrap(Scaffold(
+        body: SizedBox(
+          height: 196,
+          child: BannerCard(
+            banner: const PromoBanner(
+              id: 'b#1',
+              imageUrl: 'https://example.invalid/x.jpg',
+            ),
+          ),
+        ),
+      )));
+      await _settle(tester);
+
+      await tester.tap(find.byType(BannerCard));
+      await _settle(tester);
+
+      // فُتحت شاشةٌ ثانية — العارض.
+      expect(find.byType(BannerCard), findsNothing);
     });
 
     testWidgets('**وتدور وحدها كلَّ ثلاث ثوانٍ**', (tester) async {
