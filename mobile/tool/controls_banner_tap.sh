@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# ضوابطُ سالبةٌ لضغط اللافتة — بعد أن شال صاحبُ المنصّة شارةَ «إعلان».
+# ضوابطُ سالبةٌ لضغط اللافتة ولبطاقة المزوّد المميَّز — بعد أن شال
+# صاحبُ المنصّة شارةَ «إعلان» من الموضعين.
 set -uo pipefail
 cd "$(dirname "$0")/.."
 command -v flutter >/dev/null || { echo "لا flutter في المسار"; exit 1; }
@@ -63,6 +64,46 @@ run "ب) ضغطةٌ تومض ولا تفعل" sub "$H" \
           openImageViewer(context, url: banner.imageUrl);
         }" \
   "        // لا شيء"
+
+# ── بطاقةُ المميَّز ──────────────────────────────────────────────────────────
+
+# ج) شارةُ «إعلان» تعود إلى شريط المميّزين.
+run "ج) شارةُ «إعلان» تعود" sub "$H" \
+  "        SectionTitle(tr('مزوّدون مميّزون'))," \
+  "        Row(children: [
+          Expanded(child: SectionTitle(tr('مزوّدون مميّزون'))),
+          Text(tr('إعلان')),
+        ]),"
+
+# د) علامةُ التوثيق تُحذف — والعميلُ لا يعرف أموثَّقٌ من أمامه.
+run "د) لا علامةَ توثيقٍ في البطاقة" sub "$H" \
+  "                        if (promo.verified) ...[
+                          const SizedBox(width: 4),
+                          const VerifiedMark(size: 14),
+                        ]," \
+  ""
+
+# هـ) القسمُ يُحذف — وهو أوّلُ ما يسأل عنه العميل.
+run "هـ) لا قسمَ في البطاقة" sub "$H" \
+  "                    if (promo.category.isNotEmpty) ...[" \
+  "                    if (false) ...["
+
+# و) الاسمُ يعود إلى ‎١٢‎ — بكسلٌ واحدٌ فوق المحافظة، فلا يُقرأ عنواناً.
+run "و) الاسمُ يعود صغيراً" sub "$H" \
+  "                              fontSize: 13.5,
+                              fontWeight: FontWeight.w700," \
+  "                              fontSize: 12,
+                              fontWeight: FontWeight.w700,"
+
+# ز) الارتفاعُ يعود ثابتاً — يمرّ عند خطٍّ عاديٍّ ويفيض عند من كبّر خطَّه.
+run "ز) ارتفاعٌ ثابتٌ يفيض" sub "$H" \
+  "          height: 96 + 56 * MediaQuery.textScalerOf(context).scale(1).clamp(1.0, 2.0)," \
+  "          height: 152,"
+
+# ح) شارةُ القسم تُرسم لمن لا قسمَ له — مستطيلٌ ملوّنٌ فارغ.
+run "ح) شارةٌ فارغةٌ لمن لا قسمَ له" sub "$H" \
+  "                    if (promo.category.isNotEmpty) ...[" \
+  "                    if (true) ...["
 
 echo; echo "== الحصيلة: $PASS سقطت، $FAIL لم تسقط =="
 [ "$FAIL" -eq 0 ]

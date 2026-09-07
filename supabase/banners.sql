@@ -140,14 +140,40 @@ grant execute on function public.api_active_banners() to anon, authenticated;
 -- ----------------------------------------------------------------------------
 --  وشريطُ «مزوّدون مميّزون» يقتصر على الإبراز
 -- ----------------------------------------------------------------------------
+--
+--  ── وعمودان يُضافان: التوثيقُ والقسم ──────────────────────────────────────
+--
+--  البطاقةُ كانت اسماً ومحافظةً وحدَهما، والعميلُ يسأل عنهما آخِراً. أوّلُ
+--  ما يسأله: **ماذا يقدّم هذا؟** وثانيه: **أموثَّقٌ هو؟** فيُرسَلان معه.
+--
+--  **والتوثيقُ يُرسَل وإن كان اليومَ محسوماً.** الشرطُ أدناه `p.status =
+--  'verified'`، فكلُّ صفٍّ يخرج من هنا موثَّقٌ قطعاً — ولو كُتبت العلامةُ
+--  في التطبيق ثابتةً لَصدقت اليوم. لكنّها تصير كذبةً في اليوم الذي يُوسَّع
+--  فيه الشرط، ولا شيءَ يُنبّه. فيُقرأ من الصفّ.
+--
+--  والقسمُ الأوّلُ بترتيبه لا كلُّ أقسامه: البطاقةُ في الشريط ١٦٤ بكسلاً،
+--  وثلاثةُ أقسامٍ فيها تُقرأ حشواً. ومن أراد الباقيَ فتح الملفّ.
+drop function if exists public.api_active_promotions();
+
 create or replace function public.api_active_promotions()
 returns table (
   id uuid, provider_id uuid, provider_name text, logo_path text,
-  governorate text, rating numeric, ends_at timestamptz
+  governorate text, rating numeric, verified boolean, category text,
+  ends_at timestamptz
 )
 language sql stable security definer set search_path = public as $$
   select pr.id, pr.provider_id, p.business_name, p.logo_path,
-         p.governorate, p.rating, pr.ends_at
+         p.governorate, p.rating,
+         (p.verified_at is not null),
+         coalesce(
+           (select c.name
+              from public.provider_categories pc
+              join public.service_categories c on c.id = pc.category_id
+             where pc.provider_id = p.id
+             order by c.sort_order
+             limit 1),
+           ''),
+         pr.ends_at
     from public.promotions pr
     join public.service_providers p on p.id = pr.provider_id
    where pr.kind = 'featured'
@@ -199,6 +225,11 @@ select 'سلّة اللافتات' as البند,
 union all
 select 'دالّة اللافتات',
        coalesce((select 'موجودة' from pg_proc where proname = 'api_active_banners'), 'غير موجودة')
+union all
+select 'شريط المميّزين يرسل التوثيق والقسم',
+       case when (select prosrc from pg_proc where proname = 'api_active_promotions')
+                 like '%verified_at is not null%'
+            then 'نعم' else 'لا' end
 union all
 select 'شريط المميّزين يقتصر على featured',
        case when (select prosrc from pg_proc where proname = 'api_active_promotions')

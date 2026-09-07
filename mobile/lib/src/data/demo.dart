@@ -1843,6 +1843,18 @@ const demoPromos = [
     logoPath: '',
     governorate: 'أمانة العاصمة',
     rating: 4.8,
+    verified: true,
+    category: 'قاعات أفراح',
+  ),
+  // وواحدٌ بلا قسمٍ مسجَّل: البطاقةُ تبقى سليمةً ولا تترك فراغاً.
+  PromoSlot(
+    id: 'promo-2',
+    providerId: 'p2',
+    providerName: 'استوديو النور',
+    logoPath: '',
+    governorate: 'عدن',
+    rating: 4.5,
+    verified: true,
   ),
 ];
 

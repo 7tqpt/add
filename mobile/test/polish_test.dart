@@ -738,6 +738,88 @@ void main() {
       expect(find.byType(BannerCard), findsNothing);
     });
 
+    testWidgets('**ولا شارةَ «إعلان» في الشاشة كلِّها**', (tester) async {
+      // شالها صاحبُ المنصّة عن اللافتة وعن شريط «مزوّدون مميّزون» معاً.
+      // ويُسأل عن الشاشة كلِّها لا عن الشريط وحدَه: كانت في موضعين.
+      await open(tester);
+      expect(find.text('إعلان', skipOffstage: false), findsNothing);
+    });
+
+    testWidgets('**وبطاقةُ المميَّز تقول قسمَه وتوثيقَه**', (tester) async {
+      // كانت اسماً ومحافظةً وحدَهما — والعميلُ يسأل عنهما آخِراً. أوّلُ ما
+      // يسأله: ماذا يقدّم هذا؟ وثانيه: أموثَّقٌ هو؟
+      await open(tester);
+
+      final strip = find.ancestor(
+        of: find.text('قاعة التاج الملكي'),
+        matching: find.byType(AppCard),
+      );
+      expect(strip, findsWidgets, reason: 'لا بطاقةَ لمزوّدٍ مميَّز');
+
+      expect(
+        find.descendant(of: strip.first, matching: find.text('قاعات أفراح')),
+        findsOneWidget,
+        reason: 'لا قسمَ في البطاقة',
+      );
+      expect(
+        find.descendant(of: strip.first, matching: find.byType(VerifiedMark)),
+        findsOneWidget,
+        reason: 'لا علامةَ توثيقٍ في البطاقة',
+      );
+    });
+
+    testWidgets('**واسمُه بخطٍّ يُقرأ — لا أصغرَ من محافظته**', (tester) async {
+      // كان ‎١٢‎ والمحافظةُ ‎١١‎: فرقُ بكسلٍ واحدٍ لا يقول أيّهما العنوان.
+      await open(tester);
+
+      final name = tester.widget<Text>(find.text('قاعة التاج الملكي').first);
+      expect(name.style!.fontSize, greaterThanOrEqualTo(13));
+      expect(name.style!.fontWeight, FontWeight.w700);
+
+      // ويُقاس بالفرق لا بحدٍّ: المقصودُ أن يتقدّم الاسمُ على ما تحته.
+      final place = tester.widget<Text>(find.text('أمانة العاصمة').first);
+      expect(name.style!.fontSize! - place.style!.fontSize!,
+          greaterThanOrEqualTo(2),
+          reason: 'الاسمُ والمحافظةُ في حجمٍ واحدٍ تقريباً');
+    });
+
+    testWidgets('**ومزوّدٌ بلا قسمٍ لا يترك شارةً فارغة**', (tester) async {
+      // الثاني في وضع العرض بلا قسمٍ مسجَّل. وشارةٌ فارغةٌ مستطيلٌ ملوّنٌ
+      // بلا معنى، وهي حالُ كلِّ مزوّدٍ لم تُسجَّل أقسامُه بعد.
+      await open(tester);
+
+      final card = find.ancestor(
+        of: find.text('استوديو النور'),
+        matching: find.byType(AppCard),
+      );
+      expect(card, findsWidgets);
+      expect(
+        find.descendant(of: card.first, matching: find.text('')),
+        findsNothing,
+      );
+      // والمحافظةُ تبقى.
+      expect(find.descendant(of: card.first, matching: find.text('عدن')),
+          findsOneWidget);
+    });
+
+    testWidgets('**ولا تفيض البطاقةُ بخطِّ الجهاز الكبير**', (tester) async {
+      // أربعةُ سطورٍ في ارتفاعٍ ثابت: أوّلُ من كبّر خطَّ جهازه يرى شريطاً
+      // مخطّطاً بالأصفر. وقد وقع في شبكة الأقسام ثلاث مرّاتٍ قبل أن تُقاس.
+      // ويُقاس عند حدَّين: ١٫٣ وهو شائعٌ في الأجهزة، و٢٫٠ وهو حدُّ
+      // التمدّد المكتوب في الشيفرة — فلو نزل الحدُّ يوماً بان هنا.
+      for (final scale in [1.3, 2.0]) {
+        _screen(tester, height: 3000);
+        await tester.pumpWidget(_wrap(MediaQuery(
+          data: MediaQueryData(textScaler: TextScaler.linear(scale)),
+          child: CustomerShell(session: Session()),
+        )));
+        await _settle(tester);
+        expect(tester.takeException(), isNull, reason: 'فاضت عند $scale');
+        await tester.pumpWidget(const SizedBox.shrink());
+        await _settle(tester);
+      }
+    });
+
     testWidgets('**وتدور وحدها كلَّ ثلاث ثوانٍ**', (tester) async {
       // **ويُقاس ما رُسم لا ما جُدول.** مؤقّتٌ يعمل ولا ينتقل شيءٌ لا يفيد،
       // فيُقرأ موضعُ الشريط قبل الثلاث وبعدها.

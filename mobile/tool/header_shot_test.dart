@@ -146,8 +146,8 @@ void main() {
     addTearDown(tester.view.reset);
 
     await tester.pumpWidget(_wrap(_Sheet(cells: [
-      (label: 'الرئيسية بعد حذف الأقسام', screen: CustomerShell(session: Session())),
-      (label: 'وبعد التمرير', screen: CustomerShell(session: Session())),
+      (label: 'الرئيسية', screen: CustomerShell(session: Session())),
+      (label: 'شريط المميّزين بعد التمرير', screen: CustomerShell(session: Session())),
     ])));
     await _settle(tester);
 
@@ -159,7 +159,7 @@ void main() {
     // ممرَّرةٍ وأنا أحسبها ممرَّرة.
     await tester.dragFrom(
       tester.getCenter(find.byKey(const ValueKey('cell1'))),
-      const Offset(0, -230),
+      const Offset(0, -215),
     );
     await _settle(tester);
 

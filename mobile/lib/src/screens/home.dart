@@ -692,8 +692,20 @@ class _HeartButton extends StatelessWidget {
 
 /// شريطُ المزوّدين المميَّزين — ما تبيعه المنصّة في «الإعلانات».
 ///
-/// **ومكتوبٌ عليه «إعلان» صراحةً.** ترتيبٌ مدفوعٌ يُعرض كأنه اختيارُ المنصّة
-/// يخدع من يقرؤه، ومن اكتشفه لاحقاً لم يعد يثق بترتيبٍ آخر فيها.
+/// (وكانت عليه شارةُ «إعلان» صراحةً. شالها صاحبُ المنصّة كما شالها عن
+/// اللافتة، وقيل له ما يُقال هنا لمن يقرأ بعدُ: ترتيبٌ مدفوعٌ يُعرض كأنّه
+/// اختيارُ المنصّة يخدع من يقرؤه، ومن اكتشفه لاحقاً لم يعد يثق بترتيبٍ
+/// آخرَ فيها. والقرارُ قرارُه.)
+///
+/// ── والبطاقةُ تقول أربعةَ أشياءَ لا اثنين ─────────────────────────────────
+///
+/// كانت اسماً ومحافظةً بخطٍّ ‎١٢‎ و‎١١‎ — والعميلُ يسأل عنهما آخِراً. أوّلُ
+/// ما يسأله **ماذا يقدّم هذا؟** وثانيه **أموثَّقٌ هو؟**. فصارت:
+///
+///   • الاسمُ ‎١٣٫٥‎ بوزن ‎٧٠٠‎ — كان ‎١٢‎، وهو في بطاقةٍ عرضُها ١٦٤ عنوانُها.
+///   • علامةُ التوثيق إلى جانبه — زرقاءُ يعرفها الناسُ من كلّ تطبيق.
+///   • القسمُ في شارةٍ تحته — «قاعات أفراح»، وهو أوّلُ ما يُبحث عنه.
+///   • ثمّ المحافظة.
 class _Promoted extends StatelessWidget {
   const _Promoted({required this.promos});
 
@@ -704,25 +716,22 @@ class _Promoted extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
-          children: [
-            Expanded(child: SectionTitle(tr('مزوّدون مميّزون'))),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                color: AppColors.muted.withValues(alpha: Tint.chip),
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Text(
-                tr('إعلان'),
-                style: const TextStyle(fontSize: 10, color: AppColors.muted),
-              ),
-            ),
-          ],
-        ),
+        SectionTitle(tr('مزوّدون مميّزون')),
         const SizedBox(height: Space.sm),
         SizedBox(
-          height: 116,
+          // **والارتفاعُ يتبع خطَّ الجهاز لا يقيّده.**
+          //
+          // البطاقةُ صارت أربعةَ سطورٍ بدل سطرين، ومئةٌ وستّةَ عشرَ لا تسعها.
+          // ورقمٌ ثابتٌ أكبرُ لا يكفي كذلك: قِيس ‎١٥٢‎ فمرّ، ثمّ فاض بثلاثة
+          // بكسلاتٍ عند خطٍّ أكبرَ بثلاثين بالمئة — وهو إعدادٌ في كلّ جهاز.
+          //
+          // فيُقسَم الارتفاعُ قسمين: ما لا يكبر بالخطّ (الصورةُ والحشوةُ
+          // والفواصل)، وما يكبر به (ثلاثةُ سطورٍ وشارةُ القسم). ويُحدّ
+          // التمدّدُ عند الضِّعف: من رفع خطَّه إلى ثلاثة أضعافٍ يقرأ الاسمَ
+          // مقصوصاً — وذلك خيرٌ من شريطٍ يبتلع الشاشة.
+          //
+          // (والفيضُ كشفه اختبارٌ لا عين: ثلاثةُ بكسلاتٍ لا تُرى في لقطة.)
+          height: 96 + 56 * MediaQuery.textScalerOf(context).scale(1).clamp(1.0, 2.0),
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             itemCount: promos.length,
@@ -730,35 +739,83 @@ class _Promoted extends StatelessWidget {
             itemBuilder: (context, i) {
               final promo = promos[i];
               return SizedBox(
-                width: 148,
+                width: 164,
                 child: AppCard(
                   onTap: () => Navigator.of(context).push(
                     MaterialPageRoute(
-                      builder: (_) => PublicProviderScreen(providerId: promo.providerId, name: promo.providerName),
+                      builder: (_) => PublicProviderScreen(
+                        providerId: promo.providerId,
+                        name: promo.providerName,
+                      ),
                     ),
                   ),
                   children: [
+                    // **و`Align` ضرورةٌ لا زينة.** عمودُ `AppCard` يمدّ
+                    // أبناءَه (`stretch`)، فصورةٌ ثابتةُ المقاس تتوسّط
+                    // وحدَها بينما الاسمُ والقسمُ والمحافظةُ إلى الحافّة —
+                    // فتُقرأ البطاقةُ متنافرة. رأيتُها في الرسم لا في
+                    // اختبار.
+                    Align(
+                      alignment: AlignmentDirectional.centerStart,
+                      child: ProviderAvatar(
+                        name: promo.providerName,
+                        imageUrl: Api.avatarUrl(promo.logoPath),
+                        size: 34,
+                      ),
+                    ),
+                    const SizedBox(height: Space.sm),
+                    // الاسمُ والعلامةُ في صفٍّ واحد، و`Flexible` على النصّ
+                    // وحدَه: اسمٌ طويلٌ يقصّ نفسَه ولا يدفع العلامةَ خارج
+                    // البطاقة.
                     Row(
                       children: [
-                        ProviderAvatar(
-                          name: promo.providerName,
-                          imageUrl: Api.avatarUrl(promo.logoPath),
-                          size: 32,
-                        ),
-                        const SizedBox(width: Space.sm),
-                        Expanded(
+                        Flexible(
                           child: Text(
                             promo.providerName,
-                            maxLines: 2,
+                            maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
-                                fontSize: 12, fontWeight: FontWeight.w700),
+                              fontSize: 13.5,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.ink,
+                            ),
                           ),
                         ),
+                        if (promo.verified) ...[
+                          const SizedBox(width: 4),
+                          const VerifiedMark(size: 14),
+                        ],
                       ],
                     ),
-                    const SizedBox(height: Space.xs),
-                    Muted(promo.governorate, size: 11),
+                    if (promo.category.isNotEmpty) ...[
+                      const SizedBox(height: 5),
+                      // شارةُ القسم — وتُقصّ إلى سطرٍ واحد: «تنسيق حفلات
+                      // ومناسبات» في مئةٍ وأربعةٍ وستّين بكسلاً تلتفّ سطرين
+                      // فتدفع المحافظةَ خارج البطاقة.
+                      Align(
+                        alignment: AlignmentDirectional.centerStart,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 7, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppColors.accent.withValues(alpha: Tint.chip),
+                            borderRadius: BorderRadius.circular(5),
+                          ),
+                          child: Text(
+                            promo.category,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.accent,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 5),
+                    Muted(promo.governorate, size: 11, maxLines: 1),
                   ],
                 ),
               );
