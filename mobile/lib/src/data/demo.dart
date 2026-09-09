@@ -565,6 +565,15 @@ String? demoProviderId;
 
 ProviderProfile? demoProviderProfile;
 
+/// **القسمُ الذي وصل عند التسجيل — معرّفاً لا اسماً.**
+///
+/// ولا يُقرأ في الواجهة، وإنّما وُضع ليُقاس: `DropdownButtonFormField` حقلُ
+/// نموذجٍ يحتفظ باختياره داخلَ نفسه فيعرضه للعين ولو لم يصل الخادمَ شيء،
+/// فسؤالُ الحقل عمّا فيه لا يُثبت شيئاً. وأدهى منه أن يوضع **اسمُ** القسم
+/// في `value` بدل معرّفه: يمرّ في العين ويصل القاعدةَ نصّاً لا `uuid` فتردّ
+/// الطلب — ووضعُ العرض بلا قاعدةٍ تردّ، فلا يظهر العطبُ إلا على جهاز صاحبه.
+String? demoProviderCategoryId;
+
 /// الطلبات الواردة إلى مقدّم الخدمة.
 ///
 /// تبدأ فارغة عمداً: الملفّ الجديد «قيد المراجعة» ولا يصله شيء حتى تقبله
@@ -575,8 +584,10 @@ void demoBecomeProvider({
   required String businessName,
   required String governorate,
   required String bio,
+  String categoryId = '',
 }) {
   demoProviderId = 'demo-provider';
+  demoProviderCategoryId = categoryId;
   demoProviderProfile = ProviderProfile(
     id: 'demo-provider',
     // ما كتبه المستخدم لا اسمٌ ثابت: نموذجٌ يُرسَل ثم يُعرض بغير ما أُدخل يجعل

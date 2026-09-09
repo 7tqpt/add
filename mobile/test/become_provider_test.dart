@@ -1,11 +1,15 @@
-// «تقديم خدمة» — الحقولُ المغلقة بدل جدار الشرائح.
+// «تقديم خدمة» — منسدلتان متطابقتان.
 //
 // **والعلّةُ أنّ النموذجَ كان يمتدّ صفحتين.** المحافظاتُ عشرون شريحةً
 // والأقسامُ ستّ، فتُدفع بها بقيّةُ النموذج وزرُّ الإرسال تحت الطيّة —
 // ومن فتح الشاشةَ لا يرى كم بقي عليه.
 //
-// فصارت المحافظةُ منسدلةً كما في «عنوان جديد» و«تعديل الملف»، والأقسامُ
-// حقلاً مغلقاً يفتح ورقةَ اختيارٍ متعدّد.
+// ثمّ قرّر صاحبُ المنصّة أنّ **المزوّد لا يعمل في أكثر من قسم**: القاعةُ
+// قاعةٌ ولا تطبخ. فسقط الاختيارُ المتعدّدُ بورقته ومربّعاته وزرِّ «تمّ»،
+// وصار الحقلان منسدلتين متطابقتين.
+//
+// **والقسمُ غيرُ الخدمة:** المزوّدُ يعرض داخلَ قسمه باقاتٍ عدّة في
+// `provider_services` — وتلك لم تُمسّ، ومنعُها إلى واحدةٍ يكسر المنصّة.
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -64,7 +68,9 @@ void main() {
 
     testWidgets('**والمحافظةُ منسدلةٌ فيها كلُّ المحافظات**', (tester) async {
       await _open(tester);
-      final field = find.byType(DropdownButtonFormField<String>);
+      // **وبمفتاحه لا بنوعه:** في الشاشة منسدلتان منذ صار القسمُ واحداً،
+      // فسؤالٌ بالنوع يلتقط أوّلَهما في الشجرة ويظنّه المحافظة.
+      final field = find.byKey(const ValueKey('governorate-field'));
       expect(field, findsOneWidget);
 
       await tester.tap(field);
@@ -77,107 +83,95 @@ void main() {
       }
     });
 
-    testWidgets('**وما يُختار منها هو ما يصل الخادم**', (tester) async {
-      // **ولا يُسأل الحقلُ عمّا فيه — فهو يكذب.** `DropdownButtonFormField`
-      // حقلُ نموذجٍ يحتفظ باختياره **داخلَ نفسه**، فيعرضه للعين ولو لم يصل
-      // `onChanged` شيئاً. كسرتُ `onChanged` إلى دالّةٍ فارغةٍ فبقي الاسمُ
-      // مكتوباً في الحقل وبقيت الحزمةُ خضراء — والطلبُ يُرسَل بمحافظةٍ
-      // فارغة.
+    testWidgets('**والقسمُ منسدلةٌ واحدةٌ لا ورقةَ اختيارٍ متعدّد**',
+        (tester) async {
+      // **وهذه هي القاعدةُ الجديدة.** كان حقلاً يفتح ورقةً بمربّعاتٍ
+      // يُختار منها ما شاء. فصار قسماً واحداً.
+      await _open(tester);
+      expect(find.byKey(const ValueKey('category-field')), findsOneWidget);
+      expect(find.text('اختر قسمك'), findsOneWidget);
+
+      // ولا ورقةَ ولا مربّعاتِ اختيارٍ في الشاشة كلِّها.
+      await tester.tap(find.byKey(const ValueKey('category-field')));
+      await _settle(tester);
+      expect(find.byType(CheckboxListTile), findsNothing,
+          reason: 'عاد الاختيارُ المتعدّد');
+      expect(find.widgetWithText(FilledButton, 'تمّ'), findsNothing);
+    });
+
+    testWidgets('**والحقلان منسدلتان — لا شكلان مختلفان**', (tester) async {
+      // حقلان متجاوران يفتحان سطحين مختلفين فوضى تُقرأ قبل أن تُسمّى.
+      await _open(tester);
+      expect(find.byType(DropdownButtonFormField<String>), findsNWidgets(2));
+    });
+
+    testWidgets('**وأقسامُ القاعدة كلُّها في القائمة**', (tester) async {
+      await _open(tester);
+      await tester.tap(find.byKey(const ValueKey('category-field')));
+      await _settle(tester);
+      for (final c in demoCategories) {
+        expect(find.text(c.name), findsWidgets, reason: '${c.name} ليست فيها');
+      }
+    });
+
+    testWidgets('**والقسمُ المختارُ هو ما يصل الخادم**', (tester) async {
+      // **ولا يُسأل الحقلُ عمّا فيه — فهو يكذب.**
+      // `DropdownButtonFormField` حقلُ نموذجٍ يحتفظ باختياره داخلَ نفسه،
+      // فيعرضه للعين ولو لم يصل `onChanged` شيئاً.
       //
-      // فيُقاس **ما وصل** لا ما رُسم: النموذجُ يُملأ ويُرسل، ثمّ يُسأل
-      // الملفُّ الذي أنشأه الخادم.
+      // ويُقاس **اسمُ القسم** لا معرّفُه: وضعُ الاسم في `value` بدل `id`
+      // يمرّ في العين ويصل الخادمَ نصّاً لا `uuid`، فيُرفض الطلب.
       demoProviderProfile = null;
-      addTearDown(() => demoProviderProfile = null);
+      demoProviderCategoryId = null;
+      addTearDown(() {
+        demoProviderProfile = null;
+        demoProviderCategoryId = null;
+      });
 
       await _open(tester);
-      final pick = demoGovernorates[1].name;
-
       await tester.enterText(find.byType(TextField).at(0), 'قاعة التجربة');
       await tester.enterText(find.byType(TextField).at(1), '770000000');
-      await tester.tap(find.byType(DropdownButtonFormField<String>));
+
+      await tester.tap(find.byKey(const ValueKey('governorate-field')));
       await _settle(tester);
-      await tester.tap(find.text(pick).last);
+      await tester.tap(find.text(demoGovernorates[1].name).last);
       await _settle(tester);
 
-      await tester.tap(find.byKey(const ValueKey('categories-field')));
+      await tester.tap(find.byKey(const ValueKey('category-field')));
       await _settle(tester);
-      await tester.tap(find.text(demoCategories.first.name));
-      await tester.pump();
-      await tester.tap(find.widgetWithText(FilledButton, 'تمّ'));
+      await tester.tap(find.text(demoCategories[1].name).last);
       await _settle(tester);
 
       await tester.tap(find.widgetWithText(FilledButton, 'إرسال الطلب'));
       await _settle(tester);
 
       expect(demoProviderProfile, isNotNull, reason: 'لم يُرسَل الطلبُ أصلاً');
-      expect(demoProviderProfile!.governorate, pick,
-          reason: 'المحافظةُ المختارةُ لم تصل الخادم');
+      expect(demoProviderProfile!.governorate, demoGovernorates[1].name);
+      // **والمعرّفُ لا الاسم.** لو وُضع `c.name` في `value` لَمرّ في العين
+      // ووصل هنا نصّاً عربيّاً — وهو ما تردّه القاعدةُ ولا يردّه وضعُ العرض.
+      expect(demoProviderCategoryId, demoCategories[1].id,
+          reason: 'وصل الخادمَ غيرُ معرّفِ القسم');
     });
 
-    testWidgets('**وحقلُ الأقسام يقول ما لم يُختر بعد**', (tester) async {
-      // حقلٌ فارغٌ بلا كلمةٍ لا يقول إن كان مطلوباً أم اختيارياً.
-      await _open(tester);
-      expect(find.byKey(const ValueKey('categories-field')), findsOneWidget);
-      expect(find.text('اختر قسماً واحداً على الأقل'), findsOneWidget);
-    });
+    testWidgets('**ولا يُرسَل طلبٌ بلا قسم**', (tester) async {
+      // الخادمُ يقبله بلا قسمٍ فيصير مزوّداً لا يظهر في أيّ دليل — وهو
+      // أسوأُ من رفضٍ ظاهر.
+      demoProviderProfile = null;
+      addTearDown(() => demoProviderProfile = null);
 
-    testWidgets('**والورقةُ اختيارٌ متعدّدٌ لا تُغلق عند كلّ ضغطة**',
-        (tester) async {
-      // **وهذا سببُ ألّا تكون منسدلةً:** قائمةُ المادّة تُغلق عند كلّ
-      // اختيار، فمن أراد ثلاثةَ أقسامٍ فتحها ثلاثاً.
       await _open(tester);
-      await tester.tap(find.byKey(const ValueKey('categories-field')));
+      await tester.enterText(find.byType(TextField).at(0), 'قاعة التجربة');
+      await tester.enterText(find.byType(TextField).at(1), '770000000');
+      await tester.tap(find.byKey(const ValueKey('governorate-field')));
+      await _settle(tester);
+      await tester.tap(find.text(demoGovernorates[1].name).last);
       await _settle(tester);
 
-      expect(find.byType(CheckboxListTile), findsNWidgets(demoCategories.length));
-
-      await tester.tap(find.text(demoCategories[0].name));
-      await tester.pump();
-      await tester.tap(find.text(demoCategories[1].name));
-      await tester.pump();
-
-      // الورقةُ ما زالت مفتوحةً بعد اختيارين.
-      expect(find.byType(CheckboxListTile), findsNWidgets(demoCategories.length),
-          reason: 'الورقةُ أُغلقت عند أوّل اختيار');
-
-      final boxes = tester
-          .widgetList<CheckboxListTile>(find.byType(CheckboxListTile))
-          .toList();
-      expect(boxes[0].value, isTrue);
-      expect(boxes[1].value, isTrue);
-      expect(boxes[2].value, isFalse);
-    });
-
-    testWidgets('**و«تمّ» مطفأٌ حتى يُختار قسم**', (tester) async {
-      // الخادمُ يرفض طلباً بلا قسم، فزرٌّ يُغلق الورقةَ ثمّ يردّه النموذجُ
-      // بخطأٍ أسوأُ من زرٍّ مطفأ.
-      await _open(tester);
-      await tester.tap(find.byKey(const ValueKey('categories-field')));
+      await tester.tap(find.widgetWithText(FilledButton, 'إرسال الطلب'));
       await _settle(tester);
 
-      final done = find.widgetWithText(FilledButton, 'تمّ');
-      expect(tester.widget<FilledButton>(done).onPressed, isNull);
-
-      await tester.tap(find.text(demoCategories.first.name));
-      await tester.pump();
-      expect(tester.widget<FilledButton>(done).onPressed, isNotNull);
-    });
-
-    testWidgets('**وما اختير في الورقة يُكتب في الحقل بعد إغلاقها**',
-        (tester) async {
-      await _open(tester);
-      await tester.tap(find.byKey(const ValueKey('categories-field')));
-      await _settle(tester);
-
-      await tester.tap(find.text(demoCategories.first.name));
-      await tester.pump();
-      await tester.tap(find.widgetWithText(FilledButton, 'تمّ'));
-      await _settle(tester);
-
-      // الورقةُ أُغلقت، والاسمُ في الحقل.
-      expect(find.byType(CheckboxListTile), findsNothing);
-      expect(find.text(demoCategories.first.name), findsOneWidget);
-      expect(find.text('اختر قسماً واحداً على الأقل'), findsNothing);
+      expect(demoProviderProfile, isNull, reason: 'مرّ طلبٌ بلا قسم');
+      expect(find.textContaining('وقسمك'), findsOneWidget);
     });
 
     testWidgets('ولا يفيض النموذجُ بخطّ الجهاز الكبير', (tester) async {

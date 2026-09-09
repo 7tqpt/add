@@ -97,9 +97,14 @@ void main() {
     await tester.pumpWidget(_wrap(BecomeProviderScreen(session: _session())));
     await _settle(tester);
 
-    // ولا يُصدَّق أنّ النموذجَ رُسم: تُسأل الحقولُ الثلاثةُ عن نفسها.
-    expect(find.byType(DropdownButtonFormField<String>), findsOneWidget);
-    expect(find.byKey(const ValueKey('categories-field')), findsOneWidget);
+    // ولا يُصدَّق أنّ النموذجَ رُسم: تُسأل الحقولُ عن نفسها.
+    //
+    // **ومنسدلتان لا واحدة:** صار القسمُ واحداً بقرار صاحب المنصّة، فسقط
+    // الحقلُ الذي يفتح ورقةَ الاختيار المتعدّد (`categories-field`) وصار
+    // منسدلةً كالمحافظة (`category-field`).
+    expect(find.byType(DropdownButtonFormField<String>), findsNWidgets(2));
+    expect(find.byKey(const ValueKey('governorate-field')), findsOneWidget);
+    expect(find.byKey(const ValueKey('category-field')), findsOneWidget);
     expect(find.widgetWithText(FilledButton, 'إرسال الطلب'), findsOneWidget);
     expect(tester.takeException(), isNull, reason: 'فاضت الشاشة');
 

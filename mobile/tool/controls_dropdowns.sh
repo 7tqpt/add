@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 # ضوابطُ سالبةٌ للحقول المنسدلة في «تقديم خدمة» وفي محفظة الحساب.
+#
+# وسقط منها ما كان يكسر ورقةَ الاختيار المتعدّد ومربّعاتِها وزرَّ «تمّ»:
+# صار القسمُ واحداً بقرار صاحب المنصّة، فلا ورقةَ تُكسر.
 set -uo pipefail
 cd "$(dirname "$0")/.."
 command -v flutter >/dev/null || { echo "لا flutter في المسار"; exit 1; }
@@ -51,7 +54,7 @@ echo; echo "== الضوابط =="
 #    شريحةً تدفع زرَّ الإرسال تحت الطيّة.
 run "أ) شرائحُ المحافظة تعود" sub "$B" \
   "                  DropdownButtonFormField<String>(
-                    initialValue: _governorate," \
+                    key: const ValueKey('governorate-field')," \
   "                  Wrap(children: [
                     for (final g in governorates)
                       PickChip(
@@ -61,7 +64,7 @@ run "أ) شرائحُ المحافظة تعود" sub "$B" \
                       ),
                   ]),
                   if (false) DropdownButtonFormField<String>(
-                    initialValue: _governorate,"
+                    key: const ValueKey('governorate-field'),"
 
 # ب) والمنسدلةُ تُفتح فارغة — تُضغط ولا تُظهر شيئاً، فيظنّها عاطلة.
 run "ب) منسدلةٌ بلا خيارات" sub "$B" \
@@ -79,53 +82,46 @@ run "ج) الاختيارُ لا يبقى" sub "$B" \
 
 # د) جدارُ شرائح الأقسام يعود.
 run "د) شرائحُ الأقسام تعود" sub "$B" \
-  "                  _CategoriesField(
-                    all: categories,
-                    picked: _picked,
-                    onDone: (next) => setState(() {
-                      _picked
-                        ..clear()
-                        ..addAll(next);
-                    }),
-                  )," \
+  "                  DropdownButtonFormField<String>(
+                    key: const ValueKey('category-field')," \
   "                  Wrap(children: [
                     for (final c in categories)
                       PickChip(
                         label: c.name,
-                        active: _picked.contains(c.id),
-                        onTap: () => setState(() {
-                          if (!_picked.remove(c.id)) _picked.add(c.id);
-                        }),
+                        active: _category == c.id,
+                        onTap: () => setState(() => _category = c.id),
                       ),
-                  ]),"
+                  ]),
+                  if (false) DropdownButtonFormField<String>(
+                    key: const ValueKey('category-field'),"
 
-# هـ) الورقةُ تُغلق عند أوّل اختيار — وهي علّةُ ألّا تكون منسدلةً أصلاً:
-#     من أراد ثلاثةَ أقسامٍ فتحها ثلاثاً.
-run "هـ) الورقةُ تُغلق عند كلّ اختيار" sub "$B" \
-  "                onChanged: (_) => setSheet(() {
-                  if (!draft.remove(c.id)) draft.add(c.id);
-                })," \
-  "                onChanged: (_) {
-                  if (!draft.remove(c.id)) draft.add(c.id);
-                  Navigator.of(sheetContext).pop(true);
-                },"
+# هـ) والقائمةُ تُفتح فارغة — تُضغط ولا تُظهر قسماً، فيظنّها عاطلة.
+run "هـ) قائمةُ الأقسام فارغة" sub "$B" \
+  "                      for (final c in categories)
+                        DropdownMenuItem<String>(
+                          value: c.id,
+                          child: Text(c.name, overflow: TextOverflow.ellipsis),
+                        )," \
+  ""
 
-# و) «تمّ» يعمل والورقةُ فارغة — يُغلقها ثمّ يردّ النموذجُ الطلبَ بخطأ.
-run "و) «تمّ» يعمل بلا اختيار" sub "$B" \
-  "              onPressed: draft.isEmpty
-                  ? null
-                  : () => Navigator.of(sheetContext).pop(true)," \
-  "              onPressed: () => Navigator.of(sheetContext).pop(true),"
+# و) والقسمُ المختارُ لا يُحفظ — يُرسَل الطلبُ بلا قسم، فيصير مزوّداً لا
+#    يظهر في أيّ دليل.
+run "و) القسمُ لا يُحفظ" sub "$B" \
+  "                    onChanged: (v) => setState(() => _category = v)," \
+  "                    onChanged: (v) {},"
 
-# ز) وما اختير لا يصل النموذج — تُغلق الورقةُ ويبقى الحقلُ فارغاً.
-run "ز) الاختيارُ لا يصل النموذج" sub "$B" \
-  "    if (saved == true) onDone(draft);" \
-  "    if (saved == false) onDone(draft);"
+# ز) والنموذجُ يقبل طلباً بلا قسم — أسوأُ من رفضٍ ظاهر.
+run "ز) يمرّ طلبٌ بلا قسم" sub "$B" \
+  "        _category == null) {" \
+  "        false) {"
 
-# ح) والحقلُ الفارغُ بلا كلمة — لا يقول أمطلوبٌ هو أم اختياريّ.
-run "ح) حقلٌ فارغٌ لا يقول شيئاً" sub "$B" \
-  "          summary.isEmpty ? tr('اختر قسماً واحداً على الأقل') : summary," \
-  "          summary,"
+# ح) ويُرسَل **اسمُ** القسم بدل معرّفه — يمرّ في العين ويصل الخادمَ نصّاً
+#    لا `uuid`، فيُرفض الطلب على الجهاز ولا يظهر ذلك في وضع العرض.
+run "ح) يُرسَل الاسمُ بدل المعرّف" sub "$B" \
+  "                          value: c.id,
+                          child: Text(c.name, overflow: TextOverflow.ellipsis)," \
+  "                          value: c.name,
+                          child: Text(c.name, overflow: TextOverflow.ellipsis),"
 
 # ط) ومحفظةُ الحساب تعود شرائحَ بلا عنوان.
 run "ط) شرائحُ المحفظة تعود" sub "$A" \

@@ -309,10 +309,17 @@ class Api {
     required String phone,
     required String bio,
     required String governorate,
-    required List<String> categoryIds,
+    /// **قسمٌ واحدٌ لا مصفوفة.** والدالّةُ في القاعدة تأخذ `uuid[]` كما
+    /// هي — فتُرسَل مصفوفةٌ من عنصرٍ واحد. ولا `sql` تُبدَّل: الطرقُ تجمع
+    /// الأقسامَ بـ`array_agg`، ومصفوفةٌ من واحدٍ تُقرأ كما تُقرأ من عشرة.
+    required String categoryId,
   }) async {
     if (!isSupabaseConfigured) {
-      demoBecomeProvider(businessName: businessName, governorate: governorate, bio: bio);
+      demoBecomeProvider(
+          businessName: businessName,
+          governorate: governorate,
+          bio: bio,
+          categoryId: categoryId);
       return;
     }
     await db.rpc(
@@ -322,7 +329,7 @@ class Api {
         'p_phone': phone,
         'p_bio': bio,
         'p_governorate': governorate,
-        'p_category_ids': categoryIds,
+        'p_category_ids': [categoryId],
       },
     );
   }
