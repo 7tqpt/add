@@ -506,17 +506,20 @@ class _PaymentSheetState extends State<_PaymentSheet> {
           tr('نحفظ رقم محفظتك التي تُحوّل منها ليملأ نفسه عند الإبلاغ بالحوالة — ولا نحفظ بطاقات ولا أرقاماً سرّية.'),
         ),
         const SizedBox(height: Space.md),
-        Wrap(
-          spacing: Space.sm,
-          runSpacing: Space.sm,
-          children: [
+        // **حقلٌ منسدلٌ لا شرائح.** الشرائحُ كانت العنصرَ الوحيدَ في هذه
+        // الورقة بلا عنوان — تحتها حقلان بعنوانيهما، فيُقرأ الصفُّ الأوّلُ
+        // زينةً لا سؤالاً. والمنسدلةُ تحمل عنوانها «الوسيلة» فيُعرف ما
+        // المطلوب قبل أن يُضغط.
+        DropdownButtonFormField<String>(
+          key: const ValueKey('wallet-method'),
+          initialValue: _method,
+          isExpanded: true,
+          decoration: InputDecoration(labelText: tr('الوسيلة')),
+          items: [
             for (final e in paymentMethodNames().entries)
-              PickChip(
-                label: e.value,
-                active: _method == e.key,
-                onTap: () => setState(() => _method = e.key),
-              ),
+              DropdownMenuItem<String>(value: e.key, child: Text(e.value)),
           ],
+          onChanged: (v) => setState(() => _method = v ?? _method),
         ),
         const SizedBox(height: Space.md),
         TextField(

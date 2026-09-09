@@ -126,43 +126,57 @@ class _BecomeProviderScreenState extends State<BecomeProviderScreen> {
                       hintText: tr('ماذا تقدّم؟ وما الذي يميّزك؟'),
                     ),
                   ),
-                  const SizedBox(height: Space.lg),
-                  Align(
-                    alignment: AlignmentDirectional.centerStart,
-                    child: Muted(tr('المحافظة')),
-                  ),
-                  const SizedBox(height: Space.sm),
-                  Wrap(
-                    spacing: Space.sm,
-                    runSpacing: Space.sm,
-                    children: [
+                  const SizedBox(height: Space.md),
+
+                  // ── المحافظة ────────────────────────────────────────────
+                  //
+                  // **قائمةٌ منسدلةٌ لا جدارُ شرائح.** المحافظاتُ عشرون في
+                  // `seed.sql`، فكانت تملأ الشاشةَ صفوفاً تُدفع بها بقيّةُ
+                  // النموذج تحت الطيّة — ومن فتح الشاشةَ لا يرى زرَّ الإرسال
+                  // ولا يعرف كم بقي عليه.
+                  //
+                  // وهي الصورةُ نفسُها في «عنوان جديد» و«تعديل الملف»: حقلٌ
+                  // مغلقٌ بعنوانه. وكانت هذه الشاشةُ وحدَها شاذّةً عنهما.
+                  DropdownButtonFormField<String>(
+                    initialValue: _governorate,
+                    isExpanded: true,
+                    // **والعنوانُ يطفو دائماً كجارِه تحته.** حقلُ الأقسام
+                    // يحمل نصّاً أبداً فعنوانُه طافٍ، فلو بقي هذا الحقلُ
+                    // بعنوانٍ في الداخل لَوقف حقلان متجاوران بشكلين — وهي
+                    // فوضى تُقرأ قبل أن تُسمّى. كشفتها لقطةٌ لا اختبار.
+                    decoration: InputDecoration(
+                      labelText: tr('المحافظة'),
+                      floatingLabelBehavior: FloatingLabelBehavior.always,
+                    ),
+                    hint: Text(
+                      tr('اختر محافظتك'),
+                      style: const TextStyle(color: AppColors.muted),
+                    ),
+                    items: [
                       for (final g in governorates)
-                        PickChip(
-                          label: g.name,
-                          active: _governorate == g.name,
-                          onTap: () => setState(() => _governorate = g.name),
+                        DropdownMenuItem<String>(
+                          value: g.name,
+                          child: Text(g.name, overflow: TextOverflow.ellipsis),
                         ),
                     ],
+                    onChanged: (v) => setState(() => _governorate = v),
                   ),
                   const SizedBox(height: Space.lg),
-                  Align(
-                    alignment: AlignmentDirectional.centerStart,
-                    child: Muted(tr('الأقسام التي تعمل فيها')),
-                  ),
-                  const SizedBox(height: Space.sm),
-                  Wrap(
-                    spacing: Space.sm,
-                    runSpacing: Space.sm,
-                    children: [
-                      for (final c in categories)
-                        PickChip(
-                          label: c.name,
-                          active: _picked.contains(c.id),
-                          onTap: () => setState(() {
-                            if (!_picked.remove(c.id)) _picked.add(c.id);
-                          }),
-                        ),
-                    ],
+
+                  // ── الأقسام ─────────────────────────────────────────────
+                  //
+                  // **وهذه اختيارٌ متعدّد، فلا تصلح لها المنسدلةُ نفسُها:**
+                  // قائمةُ المادّة تُغلق عند كلّ اختيار، فمن أراد ثلاثةَ
+                  // أقسامٍ فتحها ثلاثاً. فحقلٌ مغلقٌ بصورتها يفتح ورقةً فيها
+                  // مربّعاتُ اختيار — يختار ما شاء ثمّ يُغلق مرّةً واحدة.
+                  _CategoriesField(
+                    all: categories,
+                    picked: _picked,
+                    onDone: (next) => setState(() {
+                      _picked
+                        ..clear()
+                        ..addAll(next);
+                    }),
                   ),
                   if (_error != null) ...[
                     const SizedBox(height: Space.md),
@@ -175,6 +189,100 @@ class _BecomeProviderScreenState extends State<BecomeProviderScreen> {
             ],
           );
         },
+      ),
+    );
+  }
+}
+
+/// حقلُ الأقسام — مغلقٌ بصورة الاختيار، يفتح ورقةً فيها مربّعاتُ اختيار.
+///
+/// **ولمَ ورقةٌ لا `DropdownButton`.** المنسدلةُ تُغلق عند كلّ اختيار، وهذه
+/// اختيارٌ متعدّد — فمن أراد ثلاثةَ أقسامٍ فتحها ثلاث مرّات. والورقةُ تُفتح
+/// مرّةً ويُختار فيها ما شاء.
+///
+/// وهو `InputDecorator` لا زرّاً: فيرث حدودَ الحقول وعنوانَها من الثيمة،
+/// فيقف في صفٍّ واحدٍ مع «المحافظة» فوقه ولا يُقرأ جسماً غريباً.
+class _CategoriesField extends StatelessWidget {
+  const _CategoriesField({
+    required this.all,
+    required this.picked,
+    required this.onDone,
+  });
+
+  final List<ServiceCategory> all;
+  final Set<String> picked;
+  final ValueChanged<Set<String>> onDone;
+
+  /// ما يُكتب في الحقل المغلق.
+  ///
+  /// **والأسماءُ ما دامت تُقرأ، ثمّ العدد.** «٣ أقسام» لا يقول أيَّها، ومن
+  /// عاد إلى النموذج ليراجعه يريد أن يعرف ما اختار بلا أن يفتح شيئاً.
+  String _summary() {
+    if (picked.isEmpty) return '';
+    final names = all.where((c) => picked.contains(c.id)).map((c) => c.name).toList();
+    if (names.length <= 2) return names.join(tr('، '));
+    return trf('{0} — و{1} غيرها', [names.first, '${names.length - 1}']);
+  }
+
+  Future<void> _open(BuildContext context) async {
+    final draft = {...picked};
+    final saved = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (sheetContext, setSheet) => SheetBody(
+          title: tr('الأقسام التي تعمل فيها'),
+          children: [
+            for (final c in all)
+              CheckboxListTile(
+                value: draft.contains(c.id),
+                onChanged: (_) => setSheet(() {
+                  if (!draft.remove(c.id)) draft.add(c.id);
+                }),
+                title: Text(c.name),
+                contentPadding: EdgeInsets.zero,
+                controlAffinity: ListTileControlAffinity.leading,
+              ),
+            const SizedBox(height: Space.md),
+            // **والزرُّ يُطفأ حتى يُختار واحد.** الخادمُ يرفض طلباً بلا قسم،
+            // فزرٌّ يُغلق الورقةَ ثمّ يردّه النموذجُ بخطأٍ أسوأُ من زرٍّ
+            // مطفأ.
+            FilledButton(
+              onPressed: draft.isEmpty
+                  ? null
+                  : () => Navigator.of(sheetContext).pop(true),
+              child: Text(tr('تمّ')),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (saved == true) onDone(draft);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final summary = _summary();
+    return InkWell(
+      key: const ValueKey('categories-field'),
+      borderRadius: BorderRadius.circular(12),
+      onTap: () => _open(context),
+      child: InputDecorator(
+        decoration: InputDecoration(
+          labelText: tr('الأقسام التي تعمل فيها'),
+          // العنوانُ يعلو الحقلَ دائماً — وإلّا نزل فوق النصّ حين يفرغ.
+          floatingLabelBehavior: FloatingLabelBehavior.always,
+          suffixIcon: const Icon(Icons.arrow_drop_down),
+        ),
+        child: Text(
+          summary.isEmpty ? tr('اختر قسماً واحداً على الأقل') : summary,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            color: summary.isEmpty ? AppColors.muted : AppColors.ink,
+          ),
+        ),
       ),
     );
   }
