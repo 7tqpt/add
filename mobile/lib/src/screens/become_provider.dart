@@ -24,7 +24,13 @@ class _BecomeProviderScreenState extends State<BecomeProviderScreen> {
   final _phone = TextEditingController();
   final _bio = TextEditingController();
   String? _governorate;
-  final _picked = <String>{};
+
+  /// **قسمٌ واحدٌ لا مجموعة.** قرّر صاحبُ المنصّة أنّ المزوّد لا يعمل في
+  /// أكثر من قسم: القاعةُ قاعةٌ ولا تطبخ. وكان الحقلُ اختياراً متعدّداً.
+  ///
+  /// و**القسمُ غيرُ الخدمة**: المزوّدُ يعرض داخلَ قسمه باقاتٍ عدّة
+  /// (`provider_services`) — وتلك لم تُمسّ.
+  String? _category;
   late Future<(List<Governorate>, List<ServiceCategory>)> _future;
   bool _busy = false;
   String? _error;
@@ -50,8 +56,8 @@ class _BecomeProviderScreenState extends State<BecomeProviderScreen> {
     if (_name.text.trim().isEmpty ||
         _phone.text.trim().isEmpty ||
         _governorate == null ||
-        _picked.isEmpty) {
-      setState(() => _error = tr('اكتب اسم المنشأة ورقمك، واختر محافظتك وقسماً واحداً على الأقل.'));
+        _category == null) {
+      setState(() => _error = tr('اكتب اسم المنشأة ورقمك، واختر محافظتك وقسمك.'));
       return;
     }
     setState(() {
@@ -64,7 +70,7 @@ class _BecomeProviderScreenState extends State<BecomeProviderScreen> {
         phone: _phone.text.trim(),
         bio: _bio.text.trim(),
         governorate: _governorate!,
-        categoryIds: _picked.toList(),
+        categoryId: _category!,
       );
       await widget.session.refreshIdentity();
       if (!mounted) return;
@@ -126,43 +132,70 @@ class _BecomeProviderScreenState extends State<BecomeProviderScreen> {
                       hintText: tr('ماذا تقدّم؟ وما الذي يميّزك؟'),
                     ),
                   ),
-                  const SizedBox(height: Space.lg),
-                  Align(
-                    alignment: AlignmentDirectional.centerStart,
-                    child: Muted(tr('المحافظة')),
-                  ),
-                  const SizedBox(height: Space.sm),
-                  Wrap(
-                    spacing: Space.sm,
-                    runSpacing: Space.sm,
-                    children: [
+                  const SizedBox(height: Space.md),
+
+                  // ── المحافظة ────────────────────────────────────────────
+                  //
+                  // **قائمةٌ منسدلةٌ لا جدارُ شرائح.** المحافظاتُ عشرون في
+                  // `seed.sql`، فكانت تملأ الشاشةَ صفوفاً تُدفع بها بقيّةُ
+                  // النموذج تحت الطيّة — ومن فتح الشاشةَ لا يرى زرَّ الإرسال
+                  // ولا يعرف كم بقي عليه.
+                  //
+                  // وهي الصورةُ نفسُها في «عنوان جديد» و«تعديل الملف»: حقلٌ
+                  // مغلقٌ بعنوانه. وكانت هذه الشاشةُ وحدَها شاذّةً عنهما.
+                  DropdownButtonFormField<String>(
+                    key: const ValueKey('governorate-field'),
+                    initialValue: _governorate,
+                    isExpanded: true,
+                    // **والعنوانُ يطفو دائماً كجارِه تحته.** حقلُ الأقسام
+                    // يحمل نصّاً أبداً فعنوانُه طافٍ، فلو بقي هذا الحقلُ
+                    // بعنوانٍ في الداخل لَوقف حقلان متجاوران بشكلين — وهي
+                    // فوضى تُقرأ قبل أن تُسمّى. كشفتها لقطةٌ لا اختبار.
+                    decoration: InputDecoration(
+                      labelText: tr('المحافظة'),
+                      floatingLabelBehavior: FloatingLabelBehavior.always,
+                    ),
+                    hint: Text(
+                      tr('اختر محافظتك'),
+                      style: const TextStyle(color: AppColors.muted),
+                    ),
+                    items: [
                       for (final g in governorates)
-                        PickChip(
-                          label: g.name,
-                          active: _governorate == g.name,
-                          onTap: () => setState(() => _governorate = g.name),
+                        DropdownMenuItem<String>(
+                          value: g.name,
+                          child: Text(g.name, overflow: TextOverflow.ellipsis),
                         ),
                     ],
+                    onChanged: (v) => setState(() => _governorate = v),
                   ),
                   const SizedBox(height: Space.lg),
-                  Align(
-                    alignment: AlignmentDirectional.centerStart,
-                    child: Muted(tr('الأقسام التي تعمل فيها')),
-                  ),
-                  const SizedBox(height: Space.sm),
-                  Wrap(
-                    spacing: Space.sm,
-                    runSpacing: Space.sm,
-                    children: [
+
+                  // ── القسم ───────────────────────────────────────────────
+                  //
+                  // **واحدٌ لا أكثر، وقرارُ صاحب المنصّة.** كان اختياراً
+                  // متعدّداً بورقةٍ ومربّعاتٍ وزرِّ «تمّ» — فلمّا صار واحداً
+                  // سقط ذلك كلُّه، وصار حقلاً كالمحافظة تماماً. وحقلان
+                  // متطابقان أهدأ من حقلين يفتحان سطحين مختلفين.
+                  DropdownButtonFormField<String>(
+                    key: const ValueKey('category-field'),
+                    initialValue: _category,
+                    isExpanded: true,
+                    decoration: InputDecoration(
+                      labelText: tr('القسم الذي تعمل فيه'),
+                      floatingLabelBehavior: FloatingLabelBehavior.always,
+                    ),
+                    hint: Text(
+                      tr('اختر قسمك'),
+                      style: const TextStyle(color: AppColors.muted),
+                    ),
+                    items: [
                       for (final c in categories)
-                        PickChip(
-                          label: c.name,
-                          active: _picked.contains(c.id),
-                          onTap: () => setState(() {
-                            if (!_picked.remove(c.id)) _picked.add(c.id);
-                          }),
+                        DropdownMenuItem<String>(
+                          value: c.id,
+                          child: Text(c.name, overflow: TextOverflow.ellipsis),
                         ),
                     ],
+                    onChanged: (v) => setState(() => _category = v),
                   ),
                   if (_error != null) ...[
                     const SizedBox(height: Space.md),
