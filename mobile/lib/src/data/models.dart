@@ -1427,3 +1427,46 @@ class PromoSlot {
     category: (m['category'] ?? '') as String,
   );
 }
+
+/// حالُ حاجزِ الرقم لصاحب الجلسة.
+///
+/// **ثلاثةُ أشياءَ تُقرأ معاً لأنّ القرارَ واحد:** أواجبٌ الحاجزُ في هذه
+/// المنصّة، وأمؤكَّدٌ رقمي، وما هو رقمي. وقراءتُها في نداءين متتابعين تُري
+/// الشاشةَ حالاً نصفَ محدَّثة.
+class PhoneGate {
+  const PhoneGate({
+    required this.required_,
+    required this.verified,
+    required this.phone,
+  });
+
+  /// `require_phone_verification` في إعدادات المنصّة.
+  ///
+  /// **والاسمُ بشرطةٍ لاحقةٍ لأنّ `required` كلمةٌ محفوظةٌ في دارت.**
+  final bool required_;
+
+  /// `phone_verified_at` غيرُ فارغ.
+  final bool verified;
+
+  /// الرقمُ المكتوبُ في الملفّ — يُعرض في الشاشة ويُرسَل إليه الرمز.
+  final String phone;
+
+  /// **وقاعدةٌ لم يُطبَّق عليها `phone_verify.sql` لا حاجزَ فيها.**
+  ///
+  /// وهذا هو الحالُ الآمن: نافذةُ التحديث بين تطبيقٍ أحدثَ وقاعدةٍ أقدمَ
+  /// يجب أن تنقص فيها ميزةٌ لا أن يُحبس الناسُ خارج التطبيق.
+  static const none = PhoneGate(required_: false, verified: false, phone: '');
+
+  factory PhoneGate.fromMaps(
+    Map<String, dynamic>? settings,
+    Map<String, dynamic>? me,
+  ) =>
+      PhoneGate(
+        required_: (settings?['require_phone_verification'] ?? false) as bool,
+        verified: me?['phone_verified_at'] != null,
+        phone: (me?['phone'] ?? '') as String,
+      );
+
+  /// هل يُحجَز صاحبُ الجلسة على شاشة التحقّق.
+  bool get blocks => required_ && !verified;
+}

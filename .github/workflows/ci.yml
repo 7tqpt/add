@@ -1,5 +1,16 @@
 name: CI
 
+# **ثلاثُ مهمّاتٍ لثلاثة أطراف.** كان هذا المسار يفحص اللوحةَ وحدَها — ووراءها
+# ٧٢٤ اختباراً للتطبيق و٤٨ للقاعدة، مكتوبةً بعنايةٍ ولا يشغّلها شيءٌ عند الدفع.
+# فكانت شيفرةٌ تكسر التطبيقَ أو القاعدةَ تدخل `main` والفحوصُ خضراء: الحرزُ
+# موجودٌ وغيرُ موصولٍ بالباب.
+#
+# **ومتوازيةٌ لا متسلسلة:** لا مهمّةَ تنتظر أخرى، فزمنُ المسار زمنُ أطولها.
+#
+# وما لا يُوضع هنا قصداً: **الضوابطُ السالبة** في `mobile/tool/controls_*.sh`.
+# تلك تكسر الشيفرةَ كسراً مقصوداً لتتأكّد أنّ الحزمةَ تحمرّ — فمكانُها يدُ من
+# يكتب الضمانة، لا مسارٌ يمنع الدمج.
+
 on:
   push:
     branches: ['**']
@@ -11,8 +22,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
-    name: فحص الأنواع والبناء
+  dashboard:
+    name: اللوحة — الأنواع والبناء
     runs-on: ubuntu-latest
 
     steps:
@@ -30,3 +41,54 @@ jobs:
       # `npm run build` is tsc -b followed by vite build, so this covers both
       # type errors and anything that only breaks in a production bundle.
       - run: npm run build
+
+  mobile:
+    name: التطبيق — التحليل والاختبارات
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+
+      # **ولا عدّةَ أندرويد هنا ولا Java.** هذه المهمّةُ لا تبني حزمةً:
+      # `flutter test` يعمل على سطح المكتب، والحزمةُ تُبنى في `apk.yml`.
+      # وتثبيتُ ما لا يُستعمل يُطيل المسارَ الذي يُنتظر عند كلّ دفعة.
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.47.0
+          channel: stable
+          cache: true
+
+      - run: flutter pub get
+        working-directory: mobile
+
+      - run: flutter analyze
+        working-directory: mobile
+
+      # **والنسخةُ تُحرَس هنا.** رقمُ البناء في `pubspec.yaml` ونظيرُه في
+      # `app_version.dart` يجب أن يتطابقا — وقد سهوتُ عن أحدهما مرّةً،
+      # فأمسكه الاختبار. وهو اختبارٌ في الحزمة، فلا يحتاج سطراً خاصّاً به.
+      - run: flutter test
+        working-directory: mobile
+
+  database:
+    name: القاعدة — اختبارات SQL
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      # **ولا خادمَ Supabase ولا أسرار.** الاختباراتُ تشغّل Postgres حقيقيّاً
+      # في الذاكرة (`pglite`) وتصبّ فيه `schema.sql` و`policies.sql` و`api.sql`
+      # و`seed.sql` كما هي. فما يُقاس هنا هو ملفّاتُ القاعدة نفسُها لا محاكاتُها،
+      # ولا يمسّ هذا المسارُ قاعدةَ الإنتاج بشيء.
+      #
+      # و`npm install` لا `npm ci`: لا ملفَّ قفلٍ في هذا المجلّد.
+      - run: npm install --no-audit --no-fund
+        working-directory: supabase/tests
+
+      - run: npm test
+        working-directory: supabase/tests

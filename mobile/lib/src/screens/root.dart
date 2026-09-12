@@ -9,6 +9,7 @@ import 'welcome.dart';
 import 'lock.dart';
 import 'update_prompt.dart';
 import 'onboarding.dart';
+import 'verify_phone.dart';
 import 'customer_shell.dart';
 import 'provider_shell.dart';
 
@@ -202,6 +203,17 @@ class _RootScreenState extends State<RootScreen> with WidgetsBindingObserver {
           );
         }
         if (session.needsProfile) return OnboardingScreen(session: session);
+        // **وحاجزُ الرقم بعد الملفّ وقبل التطبيق.** قرّر صاحبُ المنصّة أنّ من
+        // لم يؤكّد رقمه لا يرى التطبيق: الرقمُ هو ما يُتواصل به في كلّ حجز.
+        //
+        // وقبله الملفُّ لا بعده: الرقمُ يُكتب في «أكمل ملفك»، فسؤالُ من لا
+        // ملفَّ له عن تأكيد رقمٍ لم يكتبه سؤالٌ عن لا شيء.
+        //
+        // وبعده الدورُ: العميلُ والمزوّدُ كلاهما يُسأل — ومزوّدٌ لا يُوصَل
+        // إليه أسوأُ من عميل.
+        if (session.needsPhoneVerification) {
+          return VerifyPhoneScreen(session: session);
+        }
         return session.asProvider
             ? ProviderShell(session: session)
             : CustomerShell(session: session);

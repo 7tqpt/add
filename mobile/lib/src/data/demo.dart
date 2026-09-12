@@ -1935,3 +1935,44 @@ DateTime demoConversationPresence() => DateTime.now();
 
 DateTime demoProviderPresence() =>
     DateTime.now().subtract(const Duration(minutes: 7));
+
+// ── حاجزُ تحقّق الرقم — في وضع العرض ────────────────────────────────────────
+//
+// **ويبدأ مطفأً كما في القاعدة.** وضعُ العرض هو ما يُصفَّح به التطبيق قبل
+// ربط قاعدة، ولو خرج الحاجزُ مشتعلاً فيه لَوقف كلُّ من فتح التطبيق أمام
+// شاشةٍ تنتظر رمزاً من مُرسِلٍ لا وجود له. والاختباراتُ تقلبه بيدها.
+
+/// أواجبٌ الحاجزُ في وضع العرض.
+bool demoPhoneGateRequired = false;
+
+/// أمؤكَّدٌ الرقمُ في وضع العرض.
+bool demoPhoneVerified = false;
+
+/// الرقمُ الذي أُرسل إليه آخرُ رمز — يُقاس به **ما وصل الخادم** لا ما عرضته
+/// الشاشة. ولا يُقرأ في الواجهة.
+String? demoOtpSentTo;
+
+/// عددُ الرسائل المطلوبة — لأنّ كلَّ رسالةٍ في الواقع مالٌ يُنفَق.
+int demoOtpSendCount = 0;
+
+/// الرمزُ الذي يقبله وضعُ العرض. وما عداه يُردّ كما يردّه المُرسِل.
+const demoOtpCode = '418027';
+
+void resetDemoPhoneGate() {
+  demoPhoneGateRequired = false;
+  demoPhoneVerified = false;
+  demoOtpSentTo = null;
+  demoOtpSendCount = 0;
+}
+
+void demoSendPhoneOtp(String phone) {
+  demoOtpSentTo = phone;
+  demoOtpSendCount++;
+}
+
+/// يُعيد `true` إن صحّ الرمز، ويؤكّد الرقم.
+bool demoVerifyPhoneOtp(String phone, String otp) {
+  if (otp != demoOtpCode) return false;
+  demoPhoneVerified = true;
+  return true;
+}
