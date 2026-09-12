@@ -67,9 +67,18 @@ if (bucket.length !== 1 || bucket[0].public !== true) throw new Error('سلّة 
 // ── ٣. المزوّد يكتب شعارَه ولا يرقّي نفسه ───────────────────────────────────
 // البذرة لا تربط مزوّديها بحساباتِ مصادقة (‏`user_id` فارغ‏) — فيُربط واحدٌ
 // هنا، إذ الحارس والسياسة كلاهما يمرّ بـ`auth.uid()`.
+//
+// **ويُشترط أن يكون غيرَ «مميّز»، وهذا سببُ حمرةٍ متقطّعة:** معرّفاتُ البذرة
+// عشوائيّةٌ فـ`order by id` تختار مزوّداً مختلفاً كلَّ مرّة، والبذرةُ تجعل
+// واحداً من كلّ ثلاثةَ عشرَ مميّزاً. فإن وقع الاختيارُ على مميّزٍ صار
+// `set is_featured = true` كتابةً للقيمة نفسِها — لا تبديلَ فيها — فلا يرتفع
+// الحارسُ بحقٍّ، ويقول الاختبارُ إنّه سقط. **والعطبُ في السؤال لا في
+// المسؤول:** ١٢ تشغيلةً للمسبار وافقت فيها الصمتُ حالَ «مميّزٍ سلفاً» اثنتي
+// عشرةَ مرّة من اثنتي عشرة.
 const [provider] = await rows(`
-  select id from public.service_providers where status = 'verified' order by id limit 1`)
-if (!provider) throw new Error('البذرة بلا مزوّدٍ موثّق')
+  select id from public.service_providers
+   where status = 'verified' and is_featured = false order by id limit 1`)
+if (!provider) throw new Error('البذرة بلا مزوّدٍ موثّقٍ غيرِ مميّز')
 
 const authUid = '11111111-1111-1111-1111-111111111111'
 const [appUser] = await rows(`select id from public.app_users order by email limit 1`)
@@ -105,6 +114,23 @@ try {
   raised = /إدارة المنصة/.test(e.message)
 }
 if (!raised) throw new Error('المزوّد رقّى نفسه إلى «مميّز» — الحارس سقط')
+console.log('✅ **ولا يرقّي نفسه إلى «مميّز»** — الحارس ارتفع')
+
+// **وكتابةُ القيمة نفسِها تمرّ، وهذا مقصودٌ يُثبَّت هنا:** الحارسُ يقارن
+// `is distinct from`، فمن حفظ صفَّه بما فيه لم يرقِّ نفسَه شيئاً. ولولا هذا
+// السطرُ لَظنّ قارئٌ أنّ الصمتَ عيبٌ فبدّل المقارنة، فصار كلُّ حفظٍ عاديٍّ
+// يُردّ.
+let raisedOnSame = false
+try {
+  await db.exec(`
+    update public.service_providers set is_featured = false where id = '${provider.id}'`)
+} catch (e) {
+  raisedOnSame = /إدارة المنصة/.test(e.message)
+}
+if (raisedOnSame) {
+  throw new Error('حفظُ القيمة نفسِها رُدّ — الحارس يمنع ما ليس ترقية')
+}
+console.log('✅ وحفظُ القيمة نفسِها يمرّ — لا تبديلَ فيه فلا ترقية')
 
 // ── ٤. وغيرُه لا يكتب شعارَه ─────────────────────────────────────────────────
 const [other] = await rows(`
