@@ -85,7 +85,9 @@ void main() {
     expect(find.text('ابدأ رحلتك'), findsOneWidget);
   });
 
-  testWidgets('و«ابدأ رحلتك» تنقل إلى اختيار نوع الحساب', (tester) async {
+  testWidgets('**و«ابدأ رحلتك» تفتح التسجيل مباشرةً**', (tester) async {
+    // حُذفت صفحةُ «اختر نوع الحساب» بأمر صاحب المنصّة — خطوةٌ تسبق
+    // التسجيلَ تُسأل قبل أن يُعرف السائلُ من هو.
     _phone(tester);
     await tester.pumpWidget(_wrap(WelcomeScreen(session: _guest())));
     await _settle(tester);
@@ -93,49 +95,27 @@ void main() {
     await tester.tap(find.text('ابدأ رحلتك'));
     await _settle(tester);
 
-    expect(find.text('اختر نوع الحساب'), findsOneWidget);
-    expect(find.text('أنا عروس'), findsOneWidget);
-    expect(find.text('أنا عريس'), findsOneWidget);
-    expect(find.text('مقدّم خدمة'), findsOneWidget);
-  });
-
-  testWidgets('والاختيارُ يُحفظ ويفتح التسجيل لا الدخول', (tester) async {
-    // **وهذا ما ينكسر بصمت:** من اختار «مقدّم خدمة» للتوّ ثم وجد شاشة دخولٍ
-    // يبحث عن الزرّ الذي يقلبها — وقد يظنّ أن اختياره ضاع. وضياعُ الاختيار
-    // نفسه أخطر: يُسأل عنه مرّتين، أو يُسجَّل عميلاً وهو جاء ليبيع.
-    _phone(tester);
-    final session = _guest();
-    await tester.pumpWidget(_wrap(RolePickerScreen(session: session)));
-    await _settle(tester);
-
-    await tester.tap(find.text('مقدّم خدمة'));
-    await _settle(tester);
-
-    expect(session.signUpIntent, 'provider');
     expect(find.byType(AuthScreen), findsOneWidget);
+    // **وعلى التسجيل لا الدخول:** من ضغط «ابدأ رحلتك» ليس له حسابٌ بعد،
+    // وشاشةُ دخولٍ في وجهه تُقرأ جداراً.
     expect(find.text('إنشاء الحساب'), findsOneWidget);
+    // ولا أثرَ للصفحة المحذوفة.
+    expect(find.text('اختر نوع الحساب'), findsNothing);
+    expect(find.text('أنا عروس'), findsNothing);
   });
 
-  testWidgets('و«تسجيل الدخول» تفتح الدخول لا التسجيل', (tester) async {
+  testWidgets('**وبابُ من له حسابٌ مفتوحٌ في الشاشة نفسِها**', (tester) async {
+    // الصفحةُ المحذوفةُ كانت تحمل «لديك حساب بالفعل؟ تسجيل الدخول» — فلو
+    // حُذفت بلا بديلٍ لَسُدّ بابُ العائدين. والبديلُ داخلَ شاشة التسجيل.
     _phone(tester);
-    final session = _guest();
-    await tester.pumpWidget(_wrap(RolePickerScreen(session: session)));
+    await tester.pumpWidget(_wrap(WelcomeScreen(session: _guest())));
+    await _settle(tester);
+    await tester.tap(find.text('ابدأ رحلتك'));
     await _settle(tester);
 
-    await tester.tap(find.text('تسجيل الدخول'));
+    await tester.tap(find.text('عندي حساب — سجّل الدخول'));
     await _settle(tester);
-
-    expect(find.byType(AuthScreen), findsOneWidget);
     expect(find.text('دخول'), findsWidgets);
-    // ولا يُلوَّث الدورُ بضغطةٍ على «لديك حساب».
-    expect(session.signUpIntent, isNull);
-  });
-
-  testWidgets('ويُقال إن الحساب واحد — وإلّا فُتح حسابان', (tester) async {
-    _phone(tester);
-    await tester.pumpWidget(_wrap(RolePickerScreen(session: _guest())));
-    await _settle(tester);
-    expect(find.textContaining('الحساب واحد'), findsOneWidget);
   });
 
   testWidgets('ومن لا جلسة له يبدأ من الترحيب', (tester) async {
@@ -158,8 +138,8 @@ void main() {
 
   testWidgets('ونجاحُ الدخول يُخرج من شاشة الدخول لا يتركه فيها', (tester) async {
     // **وهذا ما ينكسر بصمت.** `RootScreen` تبدّل ما تعرضه حين تُفتح الجلسة،
-    // لكنّ شاشة الدخول **مكدَّسةٌ فوقها** — دخلها المستخدم من «ابدأ رحلتك»
-    // ثمّ «اختر نوع الحساب». فتُبدَّل الشاشةُ تحتها وتبقى هي في وجهه: يكتب
+    // لكنّ شاشة الدخول **مكدَّسةٌ فوقها** — دخلها المستخدم من «ابدأ
+    // رحلتك». فتُبدَّل الشاشةُ تحتها وتبقى هي في وجهه: يكتب
     // بريده وكلمته، وينجح الدخول فعلاً، ولا يقع شيء أمامه.
     _phone(tester);
     final session = _LiveSession()..loading = false;
@@ -167,8 +147,6 @@ void main() {
     await _settle(tester);
 
     await tester.tap(find.text('ابدأ رحلتك'));
-    await _settle(tester);
-    await tester.tap(find.text('أنا عروس'));
     await _settle(tester);
     expect(find.byType(AuthScreen), findsOneWidget);
 

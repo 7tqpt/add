@@ -84,9 +84,19 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                     foregroundColor: AppColors.accentDeep,
                     minimumSize: Size.fromHeight(52),
                   ),
+                  // **ويفتح التسجيلَ مباشرةً.** كانت بينهما صفحةُ «اختر
+                  // نوع الحساب»، فحُذفت بأمر صاحب المنصّة: خطوةٌ تسبق
+                  // التسجيلَ تُسأل قبل أن يُعرف السائلُ من هو.
+                  //
+                  // **والسؤالُ لم يسقط** — «أكمل ملفك» تسأله بنفسها بعد
+                  // التسجيل حين لا تجد جواباً قبلها (`signUpIntent` فارغ).
+                  // فشارةُ «عروس/عريس» باقيةٌ، وبابُ مقدّم الخدمة يُفتح له
+                  // فورَ إكمال ملفّه كما كان.
                   onPressed: () => Navigator.of(context).push(
                     MaterialPageRoute(
-                        builder: (_) => RolePickerScreen(session: widget.session)),
+                      builder: (_) => AuthScreen(
+                          session: widget.session, startOnSignUp: true),
+                    ),
                   ),
                   child: Text(
                     tr('ابدأ رحلتك'),
@@ -598,160 +608,3 @@ class ArchPainter extends CustomPainter {
   bool shouldRepaint(ArchPainter old) => old.progress != progress;
 }
 
-/// «اختر نوع الحساب» — ثلاثةُ أبوابٍ إلى بابٍ واحد.
-///
-/// **وهي طريقٌ لا قسمة:** الحسابُ واحدٌ في الحالات الثلاث. عروسٌ وعريسٌ
-/// كلاهما عميل، ومقدّمُ الخدمة عميلٌ **زاد** عليه ملفَّ عرض — والشخص نفسه قد
-/// يحجز لعرس أخيه ويبيع خدمة التصوير، فحبسه في أحد الطرفين يُلزمه بحسابين.
-///
-/// فما تفعله أنها تختصر الطريق: من قال «مقدّم خدمة» يُساق إلى إنشاء ملفّه فور
-/// إكمال بياناته، بدل أن يبحث عنه في «حسابي» بعد أسبوع — وأكثرُهم لم يكن
-/// يبحث، فيبقى مسجَّلاً عميلاً وهو جاء ليبيع.
-class RolePickerScreen extends StatelessWidget {
-  const RolePickerScreen({super.key, required this.session});
-  final Session session;
-
-  void _go(BuildContext context, String intent) {
-    session.signUpIntent = intent;
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(
-        builder: (_) => AuthScreen(session: session, startOnSignUp: true),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(backgroundColor: AppColors.page, elevation: 0),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(Space.lg, 0, Space.lg, Space.xl),
-        children: [
-          Center(
-            child: Text(
-              tr('فرحتي'),
-              style: TextStyle(
-                fontSize: 34,
-                fontWeight: FontWeight.w700,
-                color: AppColors.accent,
-                fontFamilyFallback: arabicFallback,
-              ),
-            ),
-          ),
-          const SizedBox(height: Space.lg),
-          Center(
-            child: Text(
-              tr('مرحباً بك في فرحتي'),
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: AppColors.ink,
-                fontFamilyFallback: arabicFallback,
-              ),
-            ),
-          ),
-          const SizedBox(height: Space.xs),
-          Center(child: Muted(tr('اختر نوع الحساب'), size: 13)),
-          const SizedBox(height: Space.xl),
-
-          _RoleCard(
-            icon: Icons.favorite_rounded,
-            title: tr('أنا عروس'),
-            body: tr('أبحث عن خدمات وأخطّط لحفل زفافي'),
-            onTap: () => _go(context, 'bride'),
-          ),
-          const SizedBox(height: Space.md),
-          _RoleCard(
-            icon: Icons.favorite_border_rounded,
-            title: tr('أنا عريس'),
-            body: tr('أبحث عن خدمات وأخطّط لحفل زفافي'),
-            onTap: () => _go(context, 'groom'),
-          ),
-          const SizedBox(height: Space.md),
-          _RoleCard(
-            icon: Icons.storefront_rounded,
-            title: tr('مقدّم خدمة'),
-            body: tr('أعرض خدماتي وأستقبل الحجوزات'),
-            onTap: () => _go(context, 'provider'),
-          ),
-
-          const SizedBox(height: Space.lg),
-          // **يُقال صراحةً:** الاختيارُ طريقٌ لا قفل. ومن لم يُقل له ذلك ظنّ
-          // أنه يفتح حساباً من نوعٍ لا يُبدَّل، فتردّد أو فتح حسابين.
-          Center(
-            child: Muted(
-              tr('الحساب واحد — تستطيع أن تعرض خدماتك لاحقاً أو أن تحجز، أيّاً كان اختيارك'),
-              size: 12,
-            ),
-          ),
-          const SizedBox(height: Space.lg),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Muted(tr('لديك حساب بالفعل؟'), size: 13),
-              TextButton(
-                onPressed: () => Navigator.of(context).pushReplacement(
-                  MaterialPageRoute(builder: (_) => AuthScreen(session: session)),
-                ),
-                child: Text(tr('تسجيل الدخول')),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _RoleCard extends StatelessWidget {
-  const _RoleCard({
-    required this.icon,
-    required this.title,
-    required this.body,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String title;
-  final String body;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) => AppCard(
-    onTap: onTap,
-    children: [
-      Row(
-        children: [
-          Container(
-            width: 46,
-            height: 46,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: AppColors.accent.withValues(alpha: Tint.disc),
-            ),
-            child: Icon(icon, size: 24, color: AppColors.accent),
-          ),
-          const SizedBox(width: Space.md),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.ink,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Muted(body, size: 12.5),
-              ],
-            ),
-          ),
-          const Icon(Icons.chevron_left, size: 22, color: AppColors.muted),
-        ],
-      ),
-    ],
-  );
-}
