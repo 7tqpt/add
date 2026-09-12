@@ -145,6 +145,7 @@ const Map<String, String> englishStrings = {
   'اختر قسمك': 'Pick your category',
   'اختر ما يصفك لنبدأ من مكانك الصحيح': 'Pick what describes you so we start in the right place',
   'اختر محافظتك': 'Pick your governorate',
+  'اختر محافظة العرس': 'Pick the wedding governorate',
   'اختر مقطعاً صوتياً': 'Choose an audio clip',
   'اختر ملفاً': 'Choose a file',
   'اختر من المعرض': 'Choose from gallery',
