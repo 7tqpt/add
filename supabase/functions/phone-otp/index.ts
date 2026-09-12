@@ -13,6 +13,14 @@
 //    · `AUTHENTICA_API_KEY` — مفتاحُ التطبيق من لوحة Authentica. يوضع في
 //      Edge Functions → Secrets. **وهو مالٌ لا كلمةُ مرور**: من ملكه أنفق
 //      رصيدَك.
+//    · `AUTHENTICA_TEMPLATE_ID` — **اختياريٌّ في الشيفرة، ولعلّه لازمٌ عند
+//      المُرسِل.** وثيقتُهم تقول: «كلُّ قالبٍ مخصَّصٌ لقناةٍ بعينها، وطريقةُ
+//      الإرسال يجب أن توافق قناةَ القالب» — فقالبُ واتساب غيرُ قالب الرسالة
+//      النصّيّة. وحين يُضبط هذا السرُّ يُرسَل `template_id` في الطلب، وحين
+//      لا يُضبط يُترك للمُرسِل أن يختار قالبَه الافتراضيّ.
+//
+//      **ولا يُخبَز في الشيفرة:** الأرقامُ تخصّ حساباً بعينه، وتبديلُها في
+//      الشيفرة يعني نشرَ دالّةٍ من جديد.
 //    · `SUPABASE_SERVICE_ROLE_KEY` و`SUPABASE_URL` — تضعهما Supabase في بيئة
 //      الدالّة. ومفتاحُ الخدمة يتخطّى الحرز، وبه تُنادى دالّتا الحدّ
 //      والإثبات — وهما منزوعتا الصلاحيّة عن المسجَّلين قصداً.
@@ -142,6 +150,14 @@ Deno.serve(async (request) => {
         )
       }
 
+      // **ورقمُ القالب نصٌّ أو عدد؟** وثيقتُهم تكتبه عدداً (`31`) في المثال،
+      // والسرُّ يأتي نصّاً أبداً — فيُحوَّل، وإن لم يكن رقماً أُرسل كما هو
+      // ولم يُبتَر الطلبُ لأجل ذلك.
+      const templateRaw = Deno.env.get('AUTHENTICA_TEMPLATE_ID')?.trim()
+      const templateId = templateRaw
+        ? (Number.isFinite(Number(templateRaw)) ? Number(templateRaw) : templateRaw)
+        : undefined
+
       const sent = await fetch(`${AUTHENTICA}/send-otp`, {
         method: 'POST',
         headers: {
@@ -149,7 +165,11 @@ Deno.serve(async (request) => {
           'Accept': 'application/json',
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ method: 'whatsapp', phone }),
+        body: JSON.stringify({
+          method: 'whatsapp',
+          phone,
+          ...(templateId === undefined ? {} : { template_id: templateId }),
+        }),
       })
 
       if (!sent.ok) {
