@@ -1,6 +1,12 @@
-name: نشر دالّة الدفع
+name: نشر دوالّ الحافة
 
-# يُشغَّل يدوياً من تبويب Actions، وتلقائياً حين تتغيّر الدالّة على main.
+# يُشغَّل يدوياً من تبويب Actions، وتلقائياً حين تتغيّر دالّةٌ على main.
+#
+# **وكان ينشر `push` وحدَها بالاسم.** فلمّا أُضيفت `phone-otp` عمل السيرُ
+# ونجح ولم يَنشرها — والملخّصُ يقول «نُشرت» فيُقرأ أنّ الكلَّ نُشر. عيبٌ
+# أخطرُ من الفشل: الفشلُ يُرى.
+#
+# فصارت الدوالُّ تُعدَّد صراحةً، ولكلٍّ حكمُها في التحقّق من الجلسة.
 #
 # **ولماذا من هنا لا من الحاسوب:** نشرُ الدالّة يحتاج `supabase` CLI مثبّتاً،
 # ورمزَ وصولٍ في الطرفية، وأن يتذكّر صاحبُها أن ينشرها بعد كل تعديل. وهذه
@@ -13,7 +19,7 @@ on:
 
 jobs:
   deploy:
-    name: نشر push
+    name: نشر الدوالّ
     runs-on: ubuntu-latest
 
     steps:
@@ -44,23 +50,52 @@ jobs:
         with:
           version: latest
 
-      # `--no-verify-jwt` لأن المنادي مُشغِّلُ قاعدة البيانات لا مستخدمٌ يحمل
-      # جلسة. ولو طُلب التحقّق لرُدَّ كلُّ إشعارٍ بـ401 بلا أن يظهر في سجلّ
-      # التطبيق شيء.
+      # **ولكلِّ دالّةٍ حكمُها في التحقّق من الجلسة — ولا يُوحَّد.**
+      #
+      # `push`: `--no-verify-jwt` لأنّ المنادي مُشغِّلُ قاعدة البيانات لا
+      # مستخدمٌ يحمل جلسة. ولو طُلب التحقّق لرُدَّ كلُّ إشعارٍ بـ401 بلا أن
+      # يظهر في سجلّ التطبيق شيء.
+      #
+      # `phone-otp`: **بالتحقّق** — يناديها مستخدمٌ داخلٌ برمز جلسته، وكلُّ
+      # نداءٍ يُنفق من رصيدٍ مدفوع. فالبوّابةُ تردّ من لا جلسةَ له قبل أن
+      # تعمل الدالّةُ أصلاً، والدالّةُ تُعرف صاحبَها من الرمز بعدها.
       - name: نشر
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          REF: ${{ secrets.SUPABASE_PROJECT_REF }}
         run: |
-          supabase functions deploy push \
-            --project-ref "${{ secrets.SUPABASE_PROJECT_REF }}" \
-            --no-verify-jwt
+          set -euo pipefail
+          supabase functions deploy push --project-ref "$REF" --no-verify-jwt
+          supabase functions deploy phone-otp --project-ref "$REF"
+
+      # **ويُسأل الخادمُ عمّا عنده لا يُفترض.** دالّةٌ تُضاف في المستودع ولا
+      # يُذكَر اسمُها هنا تمرّ صامتةً — وهو ما وقع بـ`phone-otp`. فتُقارَن
+      # مجلّداتُ `supabase/functions` بما نشرناه، ويُسقط السيرُ إن بقي
+      # مجلّدٌ لم يُنشَر.
+      - name: لا دالّةَ منسيّة
+        run: |
+          set -euo pipefail
+          deployed="push phone-otp"
+          missing=""
+          for dir in supabase/functions/*/; do
+            name=$(basename "$dir")
+            case " $deployed " in
+              *" $name "*) ;;
+              *) missing="$missing $name" ;;
+            esac
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::دوالٌّ في المستودع ولم تُنشَر:$missing — أضِف سطرَ نشرٍ لها في .github/workflows/push-function.yml"
+            exit 1
+          fi
+          echo "✅ كلُّ دالّةٍ في المستودع لها سطرُ نشر"
 
       - name: الخلاصة
         run: |
           {
-            echo "### نُشرت دالّة الدفع"
+            echo "### نُشرت دالّتان: \`push\` و\`phone-otp\`"
             echo ""
-            echo "بقي شيئان في محرّر SQL:"
+            echo "**الإشعارات** — بقي شيئان في محرّر SQL:"
             echo ""
             echo '1. `supabase/notifications.sql` — إن لم يكن شُغّل بعد.'
             echo '2. `supabase/push_hook.sql` ثم:'
@@ -69,4 +104,7 @@ jobs:
             echo '   ```'
             echo ""
             echo 'وسرُّ `FCM_SERVICE_ACCOUNT` في Edge Functions → Secrets.'
+            echo ""
+            echo "**تحقّقُ الرقم** — يحتاج `supabase/phone_verify.sql` في محرّر SQL،"
+            echo 'وسرَّي `AUTHENTICA_API_KEY` و`AUTHENTICA_TEMPLATE_ID` في الأسرار.'
           } >> "$GITHUB_STEP_SUMMARY"
