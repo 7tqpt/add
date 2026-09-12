@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show OtpType, UserAttributes;
 
 import '../data/api.dart';
+import '../data/models.dart';
 import 'push.dart';
 import '../data/supabase.dart';
 
@@ -34,9 +35,21 @@ class Session extends ChangeNotifier {
   /// هو `provider` وحده — يُساق إلى إنشاء ملفّه فور إكمال بياناته.
   String? signUpIntent;
 
+  /// حالُ حاجز الرقم — يُقرأ مع الهويّة لأنّه يُسأل عنه في اللحظة نفسِها.
+  ///
+  /// ويبدأ `none` — «لا حاجز» — فمن لم تُقرأ حالُه بعد لا يُحبس.
+  PhoneGate phoneGate = PhoneGate.none;
+
   bool get signedIn => userId != null;
   bool get needsProfile => userId != null && appUserId == null;
   bool get hasProviderProfile => providerId != null;
+
+  /// أيُحجَز صاحبُ الجلسة على شاشة تحقّق الرقم.
+  ///
+  /// **وبعد الملفّ لا قبله:** الرقمُ يُكتب في «أكمل ملفك»، فسؤالُ من لا ملفَّ
+  /// له عن تأكيد رقمٍ لم يكتبه بعدُ سؤالٌ عن لا شيء.
+  bool get needsPhoneVerification =>
+      signedIn && !needsProfile && phoneGate.blocks;
 
   Future<void> boot() async {
     if (!isSupabaseConfigured) {
@@ -91,6 +104,12 @@ class Session extends ChangeNotifier {
   Future<void> _readIdentity() async {
     appUserId = await Api.myAppUserId();
     providerId = appUserId == null ? null : await Api.myProviderId(appUserId!);
+    // **ويُقرأ الحاجزُ هنا لا في الشاشة.** الشاشةُ تُبنى ثمّ تقرأ، فتظهر
+    // شاشةُ التطبيق لحظةً قبل أن يهبط الحاجزُ عليها — وهي لحظةٌ يُقرأ فيها
+    // ما لا يُراد أن يُقرأ قبل التأكيد.
+    //
+    // ومن لا ملفَّ له لا يُسأل: لا رقمَ عنده يُؤكَّد.
+    phoneGate = appUserId == null ? PhoneGate.none : await Api.phoneGate();
   }
 
   /// فرقُ ساعةٍ بين مُصدِر الرمز وقارئه: يُطلب رمزٌ جديد ويُعاد السؤال.

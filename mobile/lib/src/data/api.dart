@@ -1,6 +1,6 @@
 import 'dart:typed_data';
 
-import 'package:supabase_flutter/supabase_flutter.dart' show FileOptions, PostgrestException;
+import 'package:supabase_flutter/supabase_flutter.dart' show FileOptions, FunctionException, PostgrestException;
 
 import '../core/app_update.dart';
 import '../core/app_version.dart';
@@ -1400,6 +1400,16 @@ class Api {
     return MyProfile.fromMap(Map<String, dynamic>.from(row as Map));
   }
 
+  /// يبدّل الرقمَ وحدَه — من داخل حاجز التحقّق.
+  ///
+  /// **ولا يُبنى نداءٌ ثانٍ في القاعدة لأجل حقل.** `api_update_profile` تأخذ
+  /// الاسمَ لازماً، فيُقرأ الملفُّ ويُعاد اسمُه كما هو. ونداءان هنا أهونُ من
+  /// دالّةٍ ثالثةٍ في القاعدة تفعل بعضَ ما تفعله أختُها.
+  static Future<void> updateMyPhone(String phone) async {
+    final me = await myProfile();
+    await updateProfile(fullName: me?.fullName ?? '', phone: phone);
+  }
+
   /// يرفع الصورة ويعيد مسارها داخل السلّة.
   ///
   /// اسمٌ ثابت `avatar.<ext>` مع `upsert`: صورةُ الملف واحدةٌ تُستبدل، ولو
@@ -1899,5 +1909,97 @@ class Api {
     } catch (_) {
       return const [];
     }
+  }
+
+  // ── تحقّقُ رقم الجوال ─────────────────────────────────────────────────────
+  //
+  // **ولا مفتاحَ مُرسِلٍ في التطبيق.** حزمةُ أندرويد تُفكّ ويُستخرج ما فيها،
+  // ومفتاحُ Authentica يُرسل على رصيدٍ مدفوع — فمن أخذه أنفقه. فالنداءُ إلى
+  // دالّة الحافة `phone-otp`، وهي وحدها تعرف المفتاح، وتفرض الحدَّ في
+  // القاعدة، وتُعرف صاحبَ الجلسة من رمزه لا من جسم الطلب.
+
+  /// حالُ الحاجز: أواجبٌ هو، وأمؤكَّدٌ رقمي، وما هو رقمي.
+  ///
+  /// **وقاعدةٌ لم يُطبَّق عليها `phone_verify.sql` تُقرأ «لا حاجز»** — نافذةُ
+  /// التحديث بين تطبيقٍ أحدثَ وقاعدةٍ أقدمَ يجب أن تنقص فيها ميزةٌ لا أن
+  /// يُحبس الناسُ خارج التطبيق.
+  static Future<PhoneGate> phoneGate() async {
+    if (!isSupabaseConfigured) {
+      return PhoneGate(
+        required_: demoPhoneGateRequired,
+        verified: demoPhoneVerified,
+        phone: demoProfile()?.phone ?? '',
+      );
+    }
+    final uid = db.auth.currentUser?.id;
+    if (uid == null) return PhoneGate.none;
+
+    return whenColumnMissing<PhoneGate>(
+      () async {
+        final settings = await db
+            .from('app_settings')
+            .select('require_phone_verification')
+            .eq('id', 1)
+            .maybeSingle();
+        final me = await db
+            .from('app_users')
+            .select('phone, phone_verified_at')
+            .eq('auth_user_id', uid)
+            .maybeSingle();
+        return PhoneGate.fromMaps(settings, me);
+      },
+      () async => PhoneGate.none,
+    );
+  }
+
+  /// يطلب رمزاً على واتساب. يرمي نصّاً عربيّاً جاهزاً للعرض عند الردّ.
+  static Future<void> sendPhoneOtp(String phone) async {
+    if (!isSupabaseConfigured) {
+      demoSendPhoneOtp(phone);
+      return;
+    }
+    try {
+      await db.functions.invoke(
+        'phone-otp',
+        body: {'action': 'send', 'phone': phone},
+      );
+    } on FunctionException catch (e) {
+      _rethrowOtp(e);
+    }
+  }
+
+  /// يتحقّق من الرمز. `false` تعني رمزاً خاطئاً أو منتهياً — لا عطباً.
+  static Future<bool> verifyPhoneOtp(String phone, String otp) async {
+    if (!isSupabaseConfigured) return demoVerifyPhoneOtp(phone, otp);
+    try {
+      final res = await db.functions.invoke(
+        'phone-otp',
+        body: {'action': 'verify', 'phone': phone, 'otp': otp},
+      );
+      final data = res.data;
+      return data is Map && data['verified'] == true;
+    } on FunctionException catch (e) {
+      // **ورمزٌ خاطئٌ ليس عطباً.** الدالّةُ تردّه بـ400، ولو رُمي كعطبٍ
+      // لَرأى صاحبُه رسالةً حمراء تقول «تعذّر» بدل «الرمزُ غير صحيح».
+      if (e.status == 400) return false;
+      _rethrowOtp(e);
+    }
+  }
+
+  /// يرمي نصَّ الدالّة العربيَّ إن كتبته، وإلّا رمى العطبَ كما هو.
+  ///
+  /// **ولا نصَّ واجهةٍ في طبقة البيانات.** هذا الملفُّ لا ينادي `tr` في سطرٍ
+  /// واحدٍ منه — فالبديلُ عند غياب رسالة الخادم يُكتب في الشاشة حيث يُترجَم.
+  ///
+  /// **والردُّ يُقرأ ولا يُلفَظ كما هو:** `details` قد تكون خريطةً فيها
+  /// `error`، وقد تكون نصّاً خاماً حين يسقط الوسيطُ قبل الدالّة — ولفظُ
+  /// الخام في وجه صاحب الجهاز يُريه أقواساً ورموزَ حالة.
+  static Never _rethrowOtp(FunctionException e) {
+    final details = e.details;
+    if (details is Map) {
+      final message = details['error'];
+      if (message is String && message.trim().isNotEmpty) throw message;
+    }
+    throw e;
   }
 }
