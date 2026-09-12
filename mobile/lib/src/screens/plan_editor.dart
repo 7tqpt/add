@@ -138,25 +138,46 @@ class _PlanEditorScreenState extends State<PlanEditorScreen> {
                   hintText: '2000000',
                 ),
               ),
-              const SizedBox(height: Space.lg),
-              Align(alignment: AlignmentDirectional.centerStart, child: Muted(tr('المحافظة'))),
-              const SizedBox(height: Space.sm),
+              const SizedBox(height: Space.md),
+              // **جدارُ الشرائح سقط.** عشرون محافظةً كنّ يملأن البطاقةَ
+              // ويدفعن «إنشاء الخطة» إلى أسفلها، فلا يُرى النموذجُ كلُّه في
+              // شاشةٍ واحدة. وهو آخرُ جدارٍ للمحافظات في التطبيق.
+              //
+              // **وعنوانُ الحقل يطفو** فيبقى «المحافظة» مقروءاً بعد الاختيار:
+              // كان سطراً منفصلاً فوق الجدار، فصار عنوانَ الحقل نفسِه.
               FutureBuilder<List<Governorate>>(
                 future: _governorates,
                 builder: (context, snap) {
                   final rows = snap.data ?? const <Governorate>[];
-                  if (rows.isEmpty) return const Muted('…');
-                  return Wrap(
-                    spacing: Space.sm,
-                    runSpacing: Space.sm,
-                    children: [
+                  // **والقيمةُ لا تُمرَّر إلّا إن كانت في القائمة.** الخطّةُ
+                  // المعدَّلةُ تحمل محافظتَها قبل أن تصل القائمةُ من الخادم،
+                  // ومنسدلةٌ قيمتُها ليست في خياراتها تُسقط الشاشةَ بدعوى.
+                  final value =
+                      rows.any((g) => g.name == _governorate) ? _governorate : null;
+                  return DropdownButtonFormField<String>(
+                    key: const ValueKey('plan-governorate-field'),
+                    initialValue: value,
+                    isExpanded: true,
+                    decoration: InputDecoration(
+                      labelText: tr('المحافظة'),
+                      floatingLabelBehavior: FloatingLabelBehavior.always,
+                    ),
+                    hint: Text(
+                      rows.isEmpty ? '…' : tr('اختر محافظة العرس'),
+                      style: const TextStyle(color: AppColors.muted),
+                    ),
+                    items: [
                       for (final g in rows)
-                        PickChip(
-                          label: g.name,
-                          active: _governorate == g.name,
-                          onTap: () => setState(() => _governorate = g.name),
+                        DropdownMenuItem<String>(
+                          value: g.name,
+                          child: Text(g.name, overflow: TextOverflow.ellipsis),
                         ),
                     ],
+                    // **ولا تُفتح فارغةً وهي تُحمَّل**: منسدلةٌ تُضغط فلا
+                    // تُظهر شيئاً تُقرأ عاطلة.
+                    onChanged: rows.isEmpty
+                        ? null
+                        : (v) => setState(() => _governorate = v),
                   );
                 },
               ),

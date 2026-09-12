@@ -164,16 +164,19 @@ void main() {
 
   final out = Platform.environment['SHOTS'] ?? '/tmp/shots';
 
-  testWidgets('القائم — جدارُ الشرائح', (tester) async {
+  testWidgets('الشاشةُ بعد التنفيذ', (tester) async {
     phone(tester);
     await tester.pumpWidget(_wrap(PlanEditorScreen(session: _session())));
     await settle(tester);
 
-    // **وهذا هو المقيس لا الصورة:** الشرائحُ موجودةٌ ولا منسدلةَ في الشاشة.
-    expect(find.byType(PickChip), findsWidgets);
-    expect(find.byType(DropdownButtonFormField<String>), findsNothing);
+    // **وصارت هذه هي الحقيقةَ لا المقترح.** اختار صاحبُ المنصّة (أ)،
+    // فسقط الجدارُ وقامت المنسدلة. **والمقيسُ شجرةُ العناصر لا الصورة.**
+    expect(find.byType(PickChip), findsNothing);
+    expect(find.byKey(const ValueKey('plan-governorate-field')), findsOneWidget);
+    expect(find.text('اختر محافظة العرس'), findsOneWidget);
+    expect(tester.takeException(), isNull);
     await _shoot(
-        tester, find.byKey(const ValueKey('shot')), '$out/plan-now.png');
+        tester, find.byKey(const ValueKey('shot')), '$out/plan-done.png');
   });
 
   testWidgets('المقترح — منسدلة', (tester) async {
