@@ -18,6 +18,40 @@ if (googleServices) {
     apply(plugin = "com.google.gms.google-services")
 }
 
+// ــــ مفتاحُ التوقيع ــــــــــــــــــــــــــــــــــــــــــــــــــــــــــ
+//
+// **هويّةُ التطبيق في أندرويد هي توقيعُه لا اسمُه.** وكان البناءُ يوقّع
+// بمفتاح التنقيح — وهذا المفتاحُ **يُخلَق جديداً على كلّ آلةِ بناء**. فحزمةُ
+// كلّ جولةٍ تخرج بهويّةٍ أخرى، ومن ثبّت السابقةَ لا يستطيع تثبيتَ التاليةَ
+// فوقها: يردّها النظامُ لاختلاف التوقيع، فيحذف التطبيقَ ويفقد ما فيه. ومع
+// ذلك تردّها Google Play أصلاً.
+//
+// **ويُقرأ الملفُّ ولا يُشترَط.** لو أُسقط البناءُ عند غيابه لَانكسر عند كلّ
+// من استنسخ المشروعَ ولم يُنشئ مفتاحاً بعد — وهي الحجّةُ نفسُها التي بها
+// صار `google-services.json` اختياريّاً فوقه. فبلا الملفِّ يبقى مفتاحُ
+// التنقيح كما كان، ومعه تُوقَّع الحزمةُ بمفتاح صاحبها.
+//
+// والملفُّ مُهمَلٌ في `.gitignore` قبل أن يوجد، وموضعُه `android/key.properties`:
+//
+//   storeFile=/المسار/المطلق/إلى/farhati.jks
+//   storePassword=…
+//   keyAlias=farhati
+//   keyPassword=…
+val keyPropsFile = rootProject.file("key.properties")
+val keyProps = java.util.Properties().apply {
+    if (keyPropsFile.exists()) keyPropsFile.inputStream().use { load(it) }
+}
+
+// **وسطرٌ ناقصٌ يُسمّى.** بلا هذا يعيد `getProperty` فراغاً فيسقط البناءُ
+// بـ`NullPointerException` في عمق AGP — ومن كتب الملفَّ بيده وسها عن سطرٍ لا
+// يفهم من الرسالة أنّ علّتَه سطرٌ سها عنه.
+fun keyProp(name: String): String =
+    keyProps.getProperty(name)?.takeIf { it.isNotBlank() }
+        ?: throw GradleException(
+            "android/key.properties موجودٌ ولا سطرَ «$name» فيه. " +
+                "الأسطرُ الأربعةُ مكتوبةٌ في mobile/android/SIGNING.md.",
+        )
+
 android {
     namespace = "ye.aras.aras"
     compileSdk = flutter.compileSdkVersion
@@ -43,11 +77,24 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        if (keyPropsFile.exists()) {
+            create("release") {
+                storeFile = file(keyProp("storeFile"))
+                storePassword = keyProp("storePassword")
+                keyAlias = keyProp("keyAlias")
+                keyPassword = keyProp("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            // بمفتاح صاحبها إن وُجد، وبمفتاح التنقيح إن لم يوجد — والحجّةُ
+            // مكتوبةٌ عند قراءة `key.properties` أعلاه.
+            signingConfig = signingConfigs.getByName(
+                if (keyPropsFile.exists()) "release" else "debug",
+            )
 
             // R8 وتقليمُ الموارد.
             //
