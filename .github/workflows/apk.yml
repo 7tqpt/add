@@ -524,7 +524,12 @@ jobs:
         working-directory: mobile
         run: flutter build appbundle --release --dart-define-from-file=env.json
 
+      # **و`always()` لأنّ الحزمةَ تُبنى قبل أن تُنشَر.** سقط نشرُ الإصدار
+      # مرّةً بـ403 بعد أن تمّ البناءُ كلُّه — سبعُ دقائقَ من عملٍ ضاعت لأنّ
+      # هذه الخطوةَ تلي الناشرَ ولا تعمل إن سقط. والحزمةُ المبنيّةُ سليمةٌ
+      # مهما كان عطبُ النشر، فتُرفع أثراً يُنزَّل من صفحة التشغيل.
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: farhati-android
           path: |
