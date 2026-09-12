@@ -161,23 +161,42 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       hintText: '+967 7XX XXX XXX',
                     ),
                   ),
-                  const SizedBox(height: Space.lg),
-                  Align(
-                    alignment: AlignmentDirectional.centerStart,
-                    child: Muted(tr('المحافظة')),
-                  ),
-                  const SizedBox(height: Space.sm),
-                  Wrap(
-                    spacing: Space.sm,
-                    runSpacing: Space.sm,
-                    children: [
+                  const SizedBox(height: Space.md),
+
+                  // ── المحافظة ────────────────────────────────────────────
+                  //
+                  // **قائمةٌ منسدلةٌ لا جدارُ شرائح.** المحافظاتُ عشرون في
+                  // `seed.sql`، فكانت سبعةَ صفوفٍ تدفع زرَّ «متابعة» تحت
+                  // الطيّة — ومن فتح الشاشةَ لا يرى كم بقي عليه. وصار
+                  // النموذجُ كلُّه أربعةَ أسطرٍ في شاشةٍ واحدة.
+                  //
+                  // وهي الصورةُ نفسُها في «تقديم خدمة» و«عنوان جديد»
+                  // و«تعديل الملف» — فصارت الشاشاتُ الأربعُ على شكلٍ واحد،
+                  // وهذه آخرُ جدارِ شرائحَ للمحافظة في التطبيق.
+                  //
+                  // **وعنوانُ الحقل يطفو** فيبقى مقروءاً بعد الاختيار:
+                  // سطرُ «المحافظة» كان فوق الجدار منفصلاً، فصار عنوانَ
+                  // الحقل نفسِه.
+                  DropdownButtonFormField<String>(
+                    key: const ValueKey('governorate-field'),
+                    initialValue: _governorate,
+                    isExpanded: true,
+                    decoration: InputDecoration(
+                      labelText: tr('المحافظة'),
+                      floatingLabelBehavior: FloatingLabelBehavior.always,
+                    ),
+                    hint: Text(
+                      tr('اختر محافظتك'),
+                      style: const TextStyle(color: AppColors.muted),
+                    ),
+                    items: [
                       for (final g in governorates)
-                        PickChip(
-                          label: g.name,
-                          active: _governorate == g.name,
-                          onTap: () => setState(() => _governorate = g.name),
+                        DropdownMenuItem<String>(
+                          value: g.name,
+                          child: Text(g.name, overflow: TextOverflow.ellipsis),
                         ),
                     ],
+                    onChanged: (v) => setState(() => _governorate = v),
                   ),
                   if (_error != null) ...[
                     const SizedBox(height: Space.md),

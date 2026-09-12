@@ -693,6 +693,7 @@ class MyProfile {
   MyProfile copyWith({
     String? fullName,
     String? phone,
+    String? governorate,
     String? avatarPath,
     String? weddingRole,
   }) => MyProfile(
@@ -700,7 +701,7 @@ class MyProfile {
     fullName: fullName ?? this.fullName,
     email: email,
     phone: phone ?? this.phone,
-    governorate: governorate,
+    governorate: governorate ?? this.governorate,
     governorateId: governorateId,
     avatarPath: avatarPath ?? this.avatarPath,
     weddingRole: weddingRole ?? this.weddingRole,
