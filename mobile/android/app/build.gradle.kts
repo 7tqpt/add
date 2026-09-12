@@ -1,3 +1,10 @@
+// **ويُستورَد `Properties` ولا يُكتب مؤهَّلاً.** كتبتُ `java.util.Properties()`
+// أوّلَ مرّة فسقط البناءُ بـ«Unresolved reference 'util'»: في سكربت Gradle
+// بلغة Kotlin يعرف الاسمُ `java` **امتدادَ مشروعِ Java** لا حزمةَ اللغة، فيحجب
+// الحزمةَ عن أن تُقرأ مؤهَّلةً. ولا يُمسك هذا محلّلٌ ولا اختبار — يُمسكه بناءٌ
+// حقيقيّ، وقد أُطلق على الفرع قبل الدمج لهذا بعينه.
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
@@ -38,7 +45,7 @@ if (googleServices) {
 //   keyAlias=farhati
 //   keyPassword=…
 val keyPropsFile = rootProject.file("key.properties")
-val keyProps = java.util.Properties().apply {
+val keyProps = Properties().apply {
     if (keyPropsFile.exists()) keyPropsFile.inputStream().use { load(it) }
 }
 
