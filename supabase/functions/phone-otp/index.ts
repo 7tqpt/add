@@ -222,8 +222,21 @@ Deno.serve(async (request) => {
         body: JSON.stringify({ phone, otp }),
       })
 
-      const result = await checked.json().catch(() => ({})) as { verified?: boolean }
+      // **ويُقرأ نصّاً ثمّ يُحلَّل.** الردُّ إن لم يكن JSON ضاع كلُّه بـ
+      // `.json()` وحدَها، فلا يبقى ما يُقرأ في السجلّ حين يُسأل «لماذا رُدّ؟».
+      const raw = await checked.text()
+      let result: { verified?: boolean } = {}
+      try {
+        result = JSON.parse(raw)
+      } catch {
+        // يبقى فارغاً، ويُكتب النصُّ كما جاء أدناه.
+      }
+
       if (!checked.ok || result.verified !== true) {
+        // **وسببُ الردّ يُكتب في السجلّ.** كان هذا الفرعُ صامتاً، فلمّا رُدَّ
+        // رمزٌ بعد رمزٍ لم يكن في الدنيا ما يُقال به لماذا — لا عندنا ولا
+        // عند المُرسِل. وصمتُ الحارس عن سببِ ردّه عطبٌ في القياس لا في الردّ.
+        console.error('رُدَّ الرمز:', checked.status, raw.slice(0, 400))
         // **ولا يُفرَّق بين «رمزٌ خاطئ» و«رمزٌ انتهى» في الرسالة.** الفرقُ
         // يفيد من يجرّب الرموزَ أكثرَ ممّا يفيد صاحبَها.
         return json({ verified: false, error: 'الرمزُ غير صحيح أو انتهت مدّته.' }, 400)
