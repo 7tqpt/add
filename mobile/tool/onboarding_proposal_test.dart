@@ -189,4 +189,28 @@ void main() {
     await _shoot(tester, find.byKey(const ValueKey('shot')),
         '$out/onboard-proposed.png');
   });
+
+  testWidgets('ورقمٌ ناقصٌ يُردّ', (tester) async {
+    phone(tester);
+    await tester.pumpWidget(_wrap(OnboardingScreen(session: _session())));
+    await settle(tester);
+    await tester.tap(find.text('أنا عروس'));
+    await settle(tester);
+
+    await tester.enterText(find.byType(TextField).at(0), 'محمد الصنعاني');
+    // **الرقمُ الذي أوقعنا هنا بعينه** — مفتاحُ السعوديّة وبعده ثمانِ خانات.
+    await tester.enterText(find.byType(TextField).at(1), '+96657671431');
+
+    await tester.tap(find.byKey(const ValueKey('governorate-field')));
+    await settle(tester);
+    await tester.tap(find.text(demoGovernorates[0].name).last);
+    await settle(tester);
+
+    await tester.tap(find.widgetWithText(FilledButton, 'متابعة'));
+    await settle(tester);
+
+    expect(find.textContaining('غير مكتمل'), findsOneWidget);
+    await _shoot(tester, find.byKey(const ValueKey('shot')),
+        '$out/onboard-bad-phone.png');
+  });
 }

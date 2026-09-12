@@ -84,11 +84,35 @@ function normalisePhone(raw: string): string | null {
 
   if (s.startsWith('00')) s = `+${s.slice(2)}`
   if (!s.startsWith('+')) {
-    if (s.startsWith('967')) s = `+${s}`
+    if (s.startsWith('967') || s.startsWith('966')) s = `+${s}`
     else if (s.startsWith('0')) s = `+967${s.slice(1)}`
     else s = `+967${s}`
   }
-  return /^\+\d{8,15}$/.test(s) ? s : null
+  if (!/^\+\d+$/.test(s)) return null
+  const body = s.slice(1)
+
+  // **وحدٌّ عامٌّ وحدَه لا يكفي، وقد أثبته الواقع.** كان الفحصُ
+  // `\+\d{8,15}` فمرّ `+96657671431` — مفتاحُ السعوديّة وبعده ثمانِ خاناتٍ
+  // لا تسع — وهو ليس رقماً على أيّ شبكة. فطُلب له رمزٌ ولم يجد إلى أين
+  // يذهب، وذهبت رسالةٌ من الرصيد في طلبٍ لا يمكن أن ينجح.
+  //
+  // فما عُرف بلدُه يُقاس بقاعدة بلده، وما لم يُعرف بالحدّ العامّ — فمن
+  // يسجّل من بلدٍ لم نكتبه لا يُحبس خارج المنصّة.
+  //
+  // وهذه صورةُ ما في `mobile/lib/src/core/phone.dart`، والتكرارُ مقصود:
+  // الشاشةُ تُساعد من يكتب، والخادمُ يحكم على من نادى بلا شاشة.
+  const known: Record<string, { length: number; starts: string }> = {
+    '967': { length: 9, starts: '7' }, // اليمن: تسعٌ تبدأ بـ7
+    '966': { length: 9, starts: '5' }, // السعوديّة: تسعٌ تبدأ بـ5
+  }
+  for (const [code, rule] of Object.entries(known)) {
+    if (!body.startsWith(code)) continue
+    const local = body.slice(code.length)
+    if (local.length !== rule.length) return null
+    if (!local.startsWith(rule.starts)) return null
+    return s
+  }
+  return body.length >= 10 && body.length <= 15 ? s : null
 }
 
 function json(body: unknown, status = 200): Response {

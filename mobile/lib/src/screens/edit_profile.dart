@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../core/i18n.dart';
+import '../core/phone.dart';
 import '../core/session.dart';
 import '../core/theme.dart';
 import '../data/api.dart';
@@ -131,6 +132,15 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       setState(() => _error = tr('اكتب اسمك كاملاً.'));
       return;
     }
+    // **ورقمٌ فارغٌ حالٌ صحيحة هنا** — بخلاف «أكمل ملفك»: من فتح الشاشةَ
+    // ليبدّل اسمَه أو صورتَه لا يُلزَم برقم. أمّا المكتوبُ فيُفحص شكلُه
+    // ويُحفظ مطهَّراً، وإلّا بدّل رقمَه الصحيحَ بناقصٍ من حيث لا يدري.
+    final typed = _phone.text.trim();
+    final phone = typed.isEmpty ? '' : normalisePhone(typed);
+    if (phone == null) {
+      setState(() => _error = tr('رقم الجوال غير مكتمل. اكتبه مع مفتاح الدولة، مثل +967 7XX XXX XXX.'));
+      return;
+    }
     setState(() {
       _saving = true;
       _error = null;
@@ -149,7 +159,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       }
       await Api.updateProfile(
         fullName: name,
-        phone: _phone.text.trim(),
+        phone: phone,
         governorateId: _governorateId,
         avatarPath: avatarPath,
       );

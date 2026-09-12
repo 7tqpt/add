@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../core/i18n.dart';
+import '../core/phone.dart';
 import '../core/session.dart';
 import '../core/theme.dart';
 import '../data/api.dart';
@@ -67,6 +68,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       setState(() => _error = tr('اكتب اسمك ورقمك واختر محافظتك.'));
       return;
     }
+    // **والرقمُ يُفحص شكلُه لا وجودُه.** كان الحقلُ يقبل أيَّ شيءٍ غيرِ
+    // فارغ، فسُجّل رقمٌ ناقصٌ بخانةٍ في ملفٍّ حقيقيّ — والرقمُ هو ما
+    // يُتواصل به في كلّ حجز، فناقصٌ منه يعني عرساً يُتّصل بصاحبه فلا يُوجد.
+    final phone = normalisePhone(_phone.text);
+    if (phone == null) {
+      setState(() => _error = tr('رقم الجوال غير مكتمل. اكتبه مع مفتاح الدولة، مثل +967 7XX XXX XXX.'));
+      return;
+    }
     setState(() {
       _error = null;
       _busy = true;
@@ -74,7 +83,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     try {
       await Api.registerProfile(
         fullName: _name.text.trim(),
-        phone: _phone.text.trim(),
+        // **ويُحفظ مطهَّراً لا كما كُتب.** من كتب «0771 234 567» يُحفظ له
+        // `+967771234567` — فيصلح للواتساب وللاتّصال ولمقارنةِ رقمين.
+        phone: phone,
         governorate: _governorate!,
         platform: Theme.of(context).platform == TargetPlatform.iOS ? 'ios' : 'android',
       );

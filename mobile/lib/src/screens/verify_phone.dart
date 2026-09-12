@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../core/i18n.dart';
+import '../core/phone.dart';
 import '../core/session.dart';
 import '../core/theme.dart';
 import '../data/api.dart';
@@ -236,6 +237,73 @@ class _VerifyPhoneScreenState extends State<VerifyPhoneScreen> {
   }
 }
 
+/// زرُّ حفظ الرقم — بفحصٍ ورسالةٍ في الورقة نفسِها.
+class _PhoneEditButton extends StatefulWidget {
+  const _PhoneEditButton({required this.controller});
+  final TextEditingController controller;
+
+  @override
+  State<_PhoneEditButton> createState() => _PhoneEditButtonState();
+}
+
+class _PhoneEditButtonState extends State<_PhoneEditButton> {
+  bool _busy = false;
+  String? _error;
+
+  Future<void> _save() async {
+    final phone = normalisePhone(widget.controller.text);
+    if (phone == null) {
+      setState(() => _error = tr('رقم الجوال غير مكتمل. اكتبه مع مفتاح الدولة، مثل +967 7XX XXX XXX.'));
+      return;
+    }
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      await Api.updateMyPhone(phone);
+      if (mounted) Navigator.of(context).pop(phone);
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = _sheetMessage(e);
+          _busy = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (_error != null) ...[
+            Text(_error!,
+                style: const TextStyle(
+                    color: AppColors.critical, fontSize: 13, height: 1.6)),
+            const SizedBox(height: Space.md),
+          ],
+          FilledButton(
+            key: const ValueKey('phone-edit-save'),
+            onPressed: _busy ? null : _save,
+            child: _busy
+                ? const SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: AppColors.accentInk),
+                  )
+                : Text(tr('حفظ')),
+          ),
+        ],
+      );
+}
+
+String _sheetMessage(Object error) =>
+    error is String && error.trim().isNotEmpty
+        ? error
+        : tr('تعذّر حفظ الرقم. أعد المحاولة.');
+
 /// ورقةٌ لتبديل الرقم من داخل الحاجز.
 ///
 /// **ولا تُستعار شاشةُ «تعديل الملفّ»:** تلك تعدّل الاسمَ والصورةَ والمحافظة
@@ -273,16 +341,10 @@ Future<String?> showPhoneEditSheet(
             ),
           ),
           const SizedBox(height: Space.lg),
-          FilledButton(
-            key: const ValueKey('phone-edit-save'),
-            onPressed: () async {
-              final value = controller.text.trim();
-              if (value.isEmpty) return;
-              await Api.updateMyPhone(value);
-              if (sheetContext.mounted) Navigator.of(sheetContext).pop(value);
-            },
-            child: Text(tr('حفظ')),
-          ),
+          // **ويُفحص هنا أشدَّ ما يُفحص.** من وصل إلى هذه الورقة وصلها
+          // لأنّ رقمَه لم يصله رمز — فحفظُ رقمٍ ناقصٍ ثانياً يُعيده إلى
+          // الحلقة نفسِها. والرسالةُ تُعرض في الورقة لا خلفها.
+          _PhoneEditButton(controller: controller),
           const SizedBox(height: Space.sm),
         ],
       ),
