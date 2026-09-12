@@ -112,12 +112,50 @@ const row = await one(
 ok('الرقمُ هو ما أُكّد', row.phone === '+967771234567')
 ok('والوقتُ مكتوب', row.v !== null)
 
-console.log('=== ولا يُزحف تاريخُ التأكيد بنداءٍ ثانٍ ===')
+console.log('=== ولا يُزحف التاريخُ بتأكيدِ الرقم نفسِه ===')
 const firstAt = row.v
-await one(`select public.otp_mark_verified($1, $2) v`, [A, '+967779999999'])
-const again = await one(
-  `select phone, phone_verified_at v from public.app_users where auth_user_id = $1`, [A])
+await one(`select public.otp_mark_verified($1, $2) v`, [A, '+967771234567'])
+const again = await one(`select phone_verified_at v from public.app_users where auth_user_id = $1`, [A])
 ok('التاريخُ كما هو', String(again.v) === String(firstAt))
+
+console.log('=== وتبديلُ الرقم يُبطل تأكيدَه ===')
+// **وهي ثغرةٌ تُفرِغ الحاجزَ من معناه:** من أكّد رقماً يملكه ثمّ بدّله بقي
+// «مؤكَّداً» على رقمٍ لم يشهد له أحد. والمنعُ في القاعدة لا في الشاشة —
+// `api_update_profile` تُنادى بلا شاشةٍ أصلاً.
+await db.query(
+  `update public.app_users set phone = $2 where auth_user_id = $1`,
+  [A, '+967770000009'])
+const afterEdit = await one(
+  `select phone, phone_verified_at v from public.app_users where auth_user_id = $1`, [A])
+ok('الرقمُ تبدّل', afterEdit.phone === '+967770000009')
+ok('**والتأكيدُ بُطل**', afterEdit.v === null,
+   'وبلا هذا تشهد الرايةُ لرقمٍ لم يُؤكَّد')
+
+console.log('=== ولا يُبطَل بحفظِ الرقم نفسِه ===')
+// من فتح «تعديل الملف» ليبدّل اسمَه أو صورتَه لا يُعاد إلى الحاجز.
+await one(`select public.otp_mark_verified($1, $2) v`, [A, '+967770000009'])
+const before2 = await one(
+  `select phone_verified_at v from public.app_users where auth_user_id = $1`, [A])
+await db.query(
+  `update public.app_users set phone = $2, full_name = 'أيمن الحرازي'
+    where auth_user_id = $1`, [A, '+967770000009'])
+const same = await one(
+  `select phone_verified_at v from public.app_users where auth_user_id = $1`, [A])
+ok('التأكيدُ باقٍ', same.v !== null && String(same.v) === String(before2.v))
+
+console.log('=== والرقمُ الجديدُ تأكيدُه جديد ===')
+// وكانت `coalesce` تُبقي تاريخَ الأوّل، فيُقرأ أنّ هذا الرقمَ مؤكَّدٌ منذ
+// حينٍ وهو لم يُؤكَّد إلّا الآن.
+await db.query(
+  `update public.app_users set phone_verified_at = now() - interval '10 days'
+    where auth_user_id = $1`, [A])
+const oldStamp = await one(
+  `select phone_verified_at v from public.app_users where auth_user_id = $1`, [A])
+await one(`select public.otp_mark_verified($1, $2) v`, [A, '+967770000011'])
+const fresh = await one(
+  `select phone, phone_verified_at v from public.app_users where auth_user_id = $1`, [A])
+ok('الرقمُ هو الجديد', fresh.phone === '+967770000011')
+ok('والتاريخُ جُدّد', new Date(fresh.v) > new Date(oldStamp.v))
 
 console.log('=== ومن أكّد لا تُرسَل إليه رسالةٌ أخرى ===')
 // رسالةٌ لمن أكّد مالٌ يُنفَق بلا سبب، و«مرّةً واحدة» هو القرار.

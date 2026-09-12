@@ -197,9 +197,15 @@ begin
     return false;
   end if;
 
+  -- **ورقمٌ جديدٌ تأكيدٌ جديد.** كانت `coalesce` تُبقي تاريخَ التأكيد
+  -- الأوّلَ ولو تبدّل الرقم — فيُقرأ أنّ هذا الرقمَ مؤكَّدٌ منذ ذلك الحين،
+  -- وهو لم يُؤكَّد إلّا الآن. ومع المُشغِّل أدناه كان يُبطله أصلاً.
   update public.app_users
      set phone             = p_phone,
-         phone_verified_at = coalesce(phone_verified_at, now())
+         phone_verified_at = case
+                               when phone is distinct from p_phone then now()
+                               else coalesce(phone_verified_at, now())
+                             end
    where id = v_user;
 
   return true;
@@ -207,7 +213,52 @@ end;
 $$;
 
 -- ----------------------------------------------------------------------------
--- ٦. الصلاحيات — للخدمة وحدها
+-- ٦. وتبديلُ الرقم يُبطل تأكيدَه
+--
+-- **وهذه ثغرةٌ تُفرِغ الحاجزَ من معناه**، أخرجها صاحبُ المنصّة: من أكّد رقمه
+-- ثمّ بدّله من «تعديل الملف» بقي `phone_verified_at` موضوعاً — فالرايةُ تشهد
+-- لرقمٍ لم يشهد له أحد. ويكفي أن يؤكّد المرءُ رقماً يملكه مرّةً، ثمّ يكتب أيَّ
+-- رقمٍ شاء.
+--
+-- **والمنعُ في القاعدة لا في الشاشة:** `api_update_profile` تُنادى من أيّ
+-- مستخدمٍ مسجَّلٍ بلا شاشةٍ أصلاً، فحرزٌ في الشاشة زينةٌ تُتجاوز بنداءٍ واحد.
+--
+-- ── وكيف يُفرَّق بين تبديلٍ وتأكيد ──────────────────────────────────────────
+--
+-- الجملتان تُبدّلان العمودَ نفسَه:
+--
+--   · «تعديلُ الملفّ» يكتب `phone` ولا يمسّ `phone_verified_at`.
+--   · و`otp_mark_verified` تكتبهما معاً.
+--
+-- فالشرطُ: يُبطَل التأكيدُ إن تبدّل الرقمُ **وبقي تاريخُ التأكيد كما هو** —
+-- أي أنّ الكاتبَ لم يدّعِ تأكيداً. ومن كتبهما معاً فقد أكّد، فيُترك.
+--
+-- ولا يُبطَل بكتابة الرقم نفسِه: من حفظ ملفَّه بلا تبديلٍ لا يُعاد إلى
+-- الحاجز.
+-- ----------------------------------------------------------------------------
+create or replace function public.unverify_on_phone_change()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if new.phone is distinct from old.phone
+     and new.phone_verified_at is not distinct from old.phone_verified_at then
+    new.phone_verified_at := null;
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists app_users_unverify_on_phone_change on public.app_users;
+create trigger app_users_unverify_on_phone_change
+  before update of phone on public.app_users
+  for each row
+  execute function public.unverify_on_phone_change();
+
+-- ----------------------------------------------------------------------------
+-- ٧. الصلاحيات — للخدمة وحدها
 --
 -- **وهذا هو موضعُ الخطر كلِّه.** لو مُنحت `otp_mark_verified` للمسجَّلين
 -- لَأكّد كلُّ مستخدمٍ رقمَ من شاء بنداءٍ واحدٍ بلا رمز — فيصير الحاجزُ زينةً.
