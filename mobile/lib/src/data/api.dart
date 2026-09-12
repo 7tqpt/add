@@ -292,7 +292,14 @@ class Api {
     required String governorate,
     required String platform,
   }) async {
-    if (!isSupabaseConfigured) return;
+    if (!isSupabaseConfigured) {
+      // **ويُسجَّل في وضع العرض ليُقاس.** كان يعود صامتاً، فلا أثرَ لِما
+      // أُرسل — واختبارٌ يملأ «أكمل ملفك» لا يستطيع أن يسأل أيُّ محافظةٍ
+      // وصلت، فيُسأل الحقلُ عمّا يعرضه وهو يعرض ولو لم يصل شيء.
+      demoRegisterProfile(
+          fullName: fullName, phone: phone, governorate: governorate);
+      return;
+    }
     await db.rpc(
       'api_register_profile',
       params: {

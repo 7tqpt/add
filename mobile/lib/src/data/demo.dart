@@ -1147,6 +1147,24 @@ MyProfile demoSetWeddingRole(String role) {
   return _demoProfile;
 }
 
+/// تسجيلُ الملفّ في وضع العرض — **ليُقاس ما وصل الخادم**.
+///
+/// **وكان `Api.registerProfile` يعود صامتاً بلا قاعدة**، فلا أثرَ لِما
+/// أُرسل. فاختبارٌ يملأ «أكمل ملفك» ويضغط «متابعة» لا يستطيع أن يسأل: أيُّ
+/// محافظةٍ وصلت؟ — فيُسأل الحقلُ عمّا يعرضه، وهو يعرض اختيارَه ولو لم يصل
+/// `onChanged` شيئاً. وهذه ثغرةُ قياسٍ لا نقصُ ميزة.
+void demoRegisterProfile({
+  required String fullName,
+  required String phone,
+  required String governorate,
+}) {
+  _demoProfile = _demoProfile.copyWith(
+    fullName: fullName,
+    phone: phone,
+    governorate: governorate,
+  );
+}
+
 MyProfile demoUpdateProfile(String name, String? phone, String? govId, String? avatar) {
   _demoProfile = _demoProfile.copyWith(
     fullName: name,

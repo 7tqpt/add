@@ -155,7 +155,7 @@ void main() {
 
   final out = Platform.environment['SHOTS'] ?? '/tmp/shots';
 
-  testWidgets('القائم — جدارُ شرائح', (tester) async {
+  testWidgets('الشاشةُ بعد التنفيذ', (tester) async {
     phone(tester);
     await tester.pumpWidget(_wrap(OnboardingScreen(session: _session())));
     await settle(tester);
@@ -166,12 +166,13 @@ void main() {
     await tester.tap(find.text('أنا عروس'));
     await settle(tester);
 
-    // ولا يُصدَّق أنّ الشاشةَ رُسمت: يُسأل الجدارُ عن نفسه.
+    // **وصارت هذه هي الحقيقةَ لا المقترح.** الجدارُ سقط، والحقلُ منسدلة.
     expect(find.text('أكمل ملفك'), findsOneWidget);
-    expect(find.byType(PickChip), findsWidgets);
+    expect(find.byType(PickChip), findsNothing);
+    expect(find.byKey(const ValueKey('governorate-field')), findsOneWidget);
     expect(tester.takeException(), isNull);
     await _shoot(
-        tester, find.byKey(const ValueKey('shot')), '$out/onboard-now.png');
+        tester, find.byKey(const ValueKey('shot')), '$out/onboard-done.png');
   });
 
   testWidgets('المقترح — منسدلة', (tester) async {
