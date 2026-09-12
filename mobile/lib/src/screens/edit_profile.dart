@@ -157,12 +157,18 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           bytes: picked.bytes,
         );
       }
+      final was = _profile?.phone ?? '';
       await Api.updateProfile(
         fullName: name,
         phone: phone,
         governorateId: _governorateId,
         avatarPath: avatarPath,
       );
+      // **وإن تبدّل الرقمُ هبط الحاجزُ في الحال لا في الفتحة القادمة.**
+      // القاعدةُ أبطلت تأكيدَه، فمن بقي يتصفّح بعد الحفظ يتصفّح برقمٍ غيرِ
+      // مؤكَّد — وهو ما بُني الحاجزُ لمنعه. وتحديثُ الهويّة يُرفع الحاجزَ
+      // في `RootScreen` وحدَه.
+      if (phone != was) await widget.session.refreshIdentity();
       if (!mounted) return;
       Navigator.of(context).pop(true);
     } catch (e) {
@@ -209,6 +215,18 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       decoration: InputDecoration(
                         labelText: tr('رقم الجوال'),
                         prefixIcon: Icon(Icons.phone_outlined, size: 20),
+                        // **ويُقال قبل أن يبدّل لا بعده.** تبديلُ الرقم
+                        // يُبطل تأكيدَه في القاعدة، فيهبط الحاجزُ على
+                        // صاحبه فورَ الحفظ — ومن لم يُقَل له ذلك ظنّ
+                        // التطبيقَ أخرجه.
+                        //
+                        // **ولا يُقال إلّا إن كان صادقاً:** حين يكون
+                        // الحاجزُ مطفأً في إعدادات المنصّة لا يُطلب تأكيدٌ
+                        // أصلاً، وسطرٌ يقول غيرَ ذلك يُخيف بلا سبب.
+                        helperText: widget.session.phoneGate.required_
+                            ? tr('تبديلُ الرقم يُلزمك بتأكيده مرّةً أخرى على واتساب.')
+                            : null,
+                        helperMaxLines: 2,
                       ),
                     ),
                     const SizedBox(height: Space.md),

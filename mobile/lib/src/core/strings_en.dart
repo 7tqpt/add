@@ -352,6 +352,7 @@ const Map<String, String> englishStrings = {
   'تأكيد رقمك': 'Verify your number',
   'تأمين': 'Insurance',
   'تبدأ عميلاً، وإن أردت تقديم خدمة تطلبها من شاشة حسابك.': 'You start as a customer, and if you want to offer a service you apply from your account screen.',
+  'تبديلُ الرقم يُلزمك بتأكيده مرّةً أخرى على واتساب.': 'Changing your number requires verifying it again on WhatsApp.',
   'تجاوزت الميزانية بـ {0}.': 'You are over budget by {0}.',
   'تحقّق': 'Verify',
   'تحقّق من الرمز': 'Verify the code',
