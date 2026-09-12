@@ -81,7 +81,7 @@ void main() {
   // يشهد له أحد. فصارت القاعدةُ تُبطل التأكيدَ عند التبديل — وصار يُقال ذلك
   // لصاحبه **قبل** أن يبدّل، فلا يُفاجأ بحاجزٍ يظنّه إخراجاً من التطبيق.
 
-  Session _gated({required bool required_}) => Session()
+  Session gated({required bool required_}) => Session()
     ..userId = 'u1'
     ..email = 'demo@example.com'
     ..appUserId = 'a1'
@@ -90,7 +90,7 @@ void main() {
         required_: required_, verified: true, phone: '+967771234567');
 
   testWidgets('**ويُقال إنّ تبديلَ الرقم يُلزم بتأكيدٍ جديد**', (tester) async {
-    await tester.pumpWidget(_wrap(_gated(required_: true)));
+    await tester.pumpWidget(_wrap(gated(required_: true)));
     await tester.pumpAndSettle();
     expect(find.textContaining('يُلزمك بتأكيده'), findsOneWidget);
   });
@@ -98,7 +98,7 @@ void main() {
   testWidgets('**ولا يُقال حين لا تأكيدَ مطلوبٌ في المنصّة**', (tester) async {
     // سطرٌ يقول «ستُطالَب بتأكيد» والحاجزُ مطفأٌ يُخيف بلا سبب — وهو كذبٌ
     // صغيرٌ يُفقد الثقةَ بسائر ما تقوله الشاشة.
-    await tester.pumpWidget(_wrap(_gated(required_: false)));
+    await tester.pumpWidget(_wrap(gated(required_: false)));
     await tester.pumpAndSettle();
     expect(find.textContaining('يُلزمك بتأكيده'), findsNothing);
   });
