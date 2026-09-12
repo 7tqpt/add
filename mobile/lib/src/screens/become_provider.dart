@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../core/i18n.dart';
+import '../core/phone.dart';
 import '../core/session.dart';
 import '../core/theme.dart';
 import '../data/api.dart';
@@ -60,6 +61,13 @@ class _BecomeProviderScreenState extends State<BecomeProviderScreen> {
       setState(() => _error = tr('اكتب اسم المنشأة ورقمك، واختر محافظتك وقسمك.'));
       return;
     }
+    // ورقمُ المنشأة كرقم العميل: يُفحص شكلُه ويُحفظ مطهَّراً — وهو الرقمُ
+    // الذي يتّصل به من يريد أن يحجز.
+    final phone = normalisePhone(_phone.text);
+    if (phone == null) {
+      setState(() => _error = tr('رقم الجوال غير مكتمل. اكتبه مع مفتاح الدولة، مثل +967 7XX XXX XXX.'));
+      return;
+    }
     setState(() {
       _error = null;
       _busy = true;
@@ -67,7 +75,7 @@ class _BecomeProviderScreenState extends State<BecomeProviderScreen> {
     try {
       await Api.applyAsProvider(
         businessName: _name.text.trim(),
-        phone: _phone.text.trim(),
+        phone: phone,
         bio: _bio.text.trim(),
         governorate: _governorate!,
         categoryId: _category!,
