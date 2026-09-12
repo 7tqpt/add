@@ -46,14 +46,6 @@ Future<void> _shoot(WidgetTester tester, Finder of, String path) async {
   File(path).writeAsBytesSync(bytes!.buffer.asUint8List());
 }
 
-/// **ومتحكّمان خارج `build` يُتلَفان في الختام.**
-///
-/// كتبتُهما أوّلَ مرّة داخل `build` — `TextEditingController(text: …)` يُخلَق
-/// عند كلّ بناءٍ ولا يُتلَف — فوقف التشغيلُ بعد اللقطة الأولى ولم يُخرج
-/// الثانية. والشاشةُ المعروضةُ لا تتغيّر بهذا: هو تدبيرُ الراسم لا تصميمُها.
-final _empty = TextEditingController();
-final _filled = TextEditingController(text: '418027');
-
 Widget _wrap(Widget child) => MaterialApp(
       debugShowCheckedModeBanner: false,
       theme: buildTheme(),
@@ -99,8 +91,13 @@ class _VerifyScreen extends StatelessWidget {
                 style: const TextStyle(height: 1.8),
               ),
               const SizedBox(height: Space.lg),
-              TextField(
-                controller: filled ? _filled : _empty,
+              // **و`TextFormField` بقيمةٍ ابتدائيّةٍ لا `TextField` بمتحكّم.**
+              // متحكّمُ النصّ في هذا الراسم كان يُعلّق التشغيلَ بعد اللقطة
+              // الأولى فلا يُخرج الثانية — والحقلُ المرسومُ لا يتغيّر شكله.
+              // وأمّا الشاشةُ الحقيقيّةُ فستُبنى بمتحكّمٍ يُتلَف في `dispose`
+              // كسائر شاشات التطبيق.
+              TextFormField(
+                initialValue: filled ? '418027' : null,
                 keyboardType: TextInputType.number,
                 textDirection: TextDirection.ltr,
                 textAlign: TextAlign.center,
@@ -138,10 +135,6 @@ class _VerifyScreen extends StatelessWidget {
 
 void main() {
   setUpAll(_loadFonts);
-  tearDownAll(() {
-    _empty.dispose();
-    _filled.dispose();
-  });
 
   void phone(WidgetTester tester) {
     tester.view.physicalSize = const Size(1080, 2280);
