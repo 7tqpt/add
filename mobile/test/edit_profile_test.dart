@@ -8,6 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:aras/src/core/session.dart';
 import 'package:aras/src/core/theme.dart';
+import 'package:aras/src/data/models.dart';
 import 'package:aras/src/screens/edit_profile.dart';
 
 Widget _wrap(Session s) => MaterialApp(
@@ -72,5 +73,33 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('التقاط صورة'), findsOneWidget);
     expect(find.text('اختيار من المعرض'), findsOneWidget);
+  });
+
+  // ── تبديلُ الرقم ────────────────────────────────────────────────────────────
+  //
+  // **والثغرةُ التي سُدّت:** من أكّد رقمه ثمّ بدّله بقي «مؤكَّداً» على رقمٍ لم
+  // يشهد له أحد. فصارت القاعدةُ تُبطل التأكيدَ عند التبديل — وصار يُقال ذلك
+  // لصاحبه **قبل** أن يبدّل، فلا يُفاجأ بحاجزٍ يظنّه إخراجاً من التطبيق.
+
+  Session _gated({required bool required_}) => Session()
+    ..userId = 'u1'
+    ..email = 'demo@example.com'
+    ..appUserId = 'a1'
+    ..loading = false
+    ..phoneGate = PhoneGate(
+        required_: required_, verified: true, phone: '+967771234567');
+
+  testWidgets('**ويُقال إنّ تبديلَ الرقم يُلزم بتأكيدٍ جديد**', (tester) async {
+    await tester.pumpWidget(_wrap(_gated(required_: true)));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('يُلزمك بتأكيده'), findsOneWidget);
+  });
+
+  testWidgets('**ولا يُقال حين لا تأكيدَ مطلوبٌ في المنصّة**', (tester) async {
+    // سطرٌ يقول «ستُطالَب بتأكيد» والحاجزُ مطفأٌ يُخيف بلا سبب — وهو كذبٌ
+    // صغيرٌ يُفقد الثقةَ بسائر ما تقوله الشاشة.
+    await tester.pumpWidget(_wrap(_gated(required_: false)));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('يُلزمك بتأكيده'), findsNothing);
   });
 }
