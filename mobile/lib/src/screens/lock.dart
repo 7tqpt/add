@@ -111,8 +111,7 @@ class _LockScreenState extends State<LockScreen> {
     setState(() {
       _busy = false;
       _pin = '';
-      _error = trf('رمزٌ خاطئ — بقيت {0} محاولات.',
-          ['${widget.lock.attemptsLeft}']);
+      _error = trf('رمزٌ خاطئ — بقيت {0} محاولات.', ['${widget.lock.attemptsLeft}']);
     });
   }
 
@@ -120,9 +119,11 @@ class _LockScreenState extends State<LockScreen> {
     final yes = await confirmDanger(
       context,
       title: tr('نسيتَ الرمز؟'),
-      body: tr('سيُغلق حسابُك على هذا الجهاز ويُزال القفل. وتدخل من جديد '
-          'ببريدك وكلمة مرورك. ولا يضيع شيءٌ من حجوزاتك ولا محادثاتك — '
-          'كلُّها في حسابك لا في الجهاز.'),
+      body: tr(
+        'سيُغلق حسابُك على هذا الجهاز ويُزال القفل. وتدخل من جديد '
+        'ببريدك وكلمة مرورك. ولا يضيع شيءٌ من حجوزاتك ولا محادثاتك — '
+        'كلُّها في حسابك لا في الجهاز.',
+      ),
       confirm: tr('اخرج وأعد الدخول'),
     );
     if (yes != true) return;
@@ -132,69 +133,131 @@ class _LockScreenState extends State<LockScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // **ورأسٌ بنسبةٍ لا برقمٍ ثابت** — كشاشة الدخول، والعلّةُ واحدة: رقمٌ
+    // ثابتٌ يأكل نصفَ جوالٍ قصيرٍ فتُدفع لوحةُ الأرقام خارجَ المشهد.
+    final headerHeight = (MediaQuery.sizeOf(context).height * 0.26).clamp(140.0, 230.0);
+
     return Scaffold(
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(Space.xl),
-            // **وعرضٌ محدود.** على لوحٍ أو جوالٍ عريضٍ جدّاً تتباعد المفاتيحُ
-            // حتى لا تُدخَل أربعةُ أرقامٍ بإبهامٍ واحد.
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 380),
-              child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.lock_outline, size: 40, color: AppColors.accent),
-                const SizedBox(height: Space.md),
-                Text(
-                  tr('أدخل رمز القفل'),
-                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+      backgroundColor: AppColors.accent,
+      body: Column(
+        children: [
+          // ── الرأسُ الأحمر ───────────────────────────────────────────────
+          //
+          // **وهو شكلُ شاشة الدخول بعينه.** القفلُ والدخولُ الشاشتان
+          // الوحيدتان اللتان تُريان قبل التطبيق، فاختلافُهما يُقرأ تطبيقين.
+          // **ورمزُ القفل لا أيقونةُ التطبيق:** من رأى شاشةً حمراءَ باسم
+          // «فرحتي» ظنَّها شاشةَ دخولٍ فبحث عن بريده — والقفلُ يقول بصورته
+          // إنّ الحسابَ قائمٌ وإنّما البابُ مغلق.
+          SizedBox(
+            height: headerHeight,
+            child: SafeArea(
+              bottom: false,
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.lock_outline, size: 44, color: AppColors.accentInk),
+                    const SizedBox(height: Space.sm),
+                    Text(
+                      tr('فرحتي'),
+                      style: const TextStyle(
+                        fontSize: 30,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.accentInk,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: Space.xs),
-                Muted(tr('أربعة أرقام'), size: 12),
-                const SizedBox(height: Space.xl),
-
-                // النقاطُ الأربع — تُري ما أُدخل بلا أن تُظهر الرقم.
-                PinDots(key: const ValueKey('pin-dots'), filled: _pin.length),
-
-                if (_error != null) ...[
-                  const SizedBox(height: Space.lg),
-                  Text(
-                    _error!,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                        color: AppColors.critical, fontSize: 13, height: 1.7),
-                  ),
-                ],
-
-                const SizedBox(height: Space.xl),
-                _Pad(onDigit: _push, onBack: _back, busy: _busy),
-
-                // **والبصمةُ بابٌ ثانٍ لا بديلٌ عن الرمز** — واللوحةُ فوقها
-                // باقيةٌ لمن أخفق حسّاسُه أو ألغى الحوار.
-                if (_canBiometric) ...[
-                  const SizedBox(height: Space.lg),
-                  OutlinedButton.icon(
-                    key: const ValueKey('unlock-biometric'),
-                    onPressed: _busy ? null : _biometric,
-                    icon: const Icon(Icons.fingerprint, size: 26),
-                    label: Text(tr('افتح بالبصمة')),
-                  ),
-                  const SizedBox(height: Space.sm),
-                  Muted(tr('أو أدخل رمزك'), size: 12),
-                ],
-
-                const SizedBox(height: Space.lg),
-                TextButton(
-                  key: const ValueKey('forgot-pin'),
-                  onPressed: _busy ? null : _forgot,
-                  child: Text(tr('نسيتُ الرمز')),
-                ),
-                ],
               ),
             ),
           ),
-        ),
+          Expanded(
+            child: Container(
+              width: double.infinity,
+              decoration: const BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: SafeArea(
+                top: false,
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(Space.xl),
+                  // **وعرضٌ محدود.** على لوحٍ أو جوالٍ عريضٍ جدّاً تتباعد
+                  // المفاتيحُ حتى لا تُدخَل أربعةُ أرقامٍ بإبهامٍ واحد.
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 380),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            tr('أدخل رمز القفل'),
+                            style: const TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.ink,
+                            ),
+                          ),
+                          const SizedBox(height: Space.xs),
+                          Muted(tr('أربعة أرقام'), size: 12),
+                          const SizedBox(height: Space.xl),
+
+                          // النقاطُ الأربع — تُري ما أُدخل بلا أن تُظهر الرقم.
+                          PinDots(key: const ValueKey('pin-dots'), filled: _pin.length),
+
+                          if (_error != null) ...[
+                            const SizedBox(height: Space.lg),
+                            Text(
+                              _error!,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                color: AppColors.critical,
+                                fontSize: 13,
+                                height: 1.7,
+                              ),
+                            ),
+                          ],
+
+                          const SizedBox(height: Space.xl),
+                          _Pad(onDigit: _push, onBack: _back, busy: _busy),
+
+                          // **والبصمةُ بابٌ ثانٍ لا بديلٌ عن الرمز** — واللوحةُ فوقها
+                          // باقيةٌ لمن أخفق حسّاسُه أو ألغى الحوار.
+                          if (_canBiometric) ...[
+                            const SizedBox(height: Space.lg),
+                            OutlinedButton.icon(
+                              key: const ValueKey('unlock-biometric'),
+                              onPressed: _busy ? null : _biometric,
+                              // **ورمزُ البصمة نبيذيٌّ** — اختاره صاحبُ المنصّة
+                              // بالصورة. ولا يُترك للون الزرّ: `OutlinedButton` يصبغ
+                              // رمزَه بلون نصّه، وهو حبرٌ داكنٌ في هذه الثيمة.
+                              icon: const Icon(
+                                Icons.fingerprint,
+                                size: 26,
+                                color: AppColors.accent,
+                              ),
+                              label: Text(tr('افتح بالبصمة')),
+                            ),
+                            const SizedBox(height: Space.sm),
+                            Muted(tr('أو أدخل رمزك'), size: 12),
+                          ],
+
+                          const SizedBox(height: Space.lg),
+                          TextButton(
+                            key: const ValueKey('forgot-pin'),
+                            onPressed: _busy ? null : _forgot,
+                            child: Text(tr('نسيتُ الرمز')),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -270,7 +333,8 @@ class _Pad extends StatelessWidget {
               borderRadius: BorderRadius.circular(w / 2),
               onTap: busy ? null : (onTap ?? () => onDigit(label)),
               child: Center(
-                child: icon ??
+                child:
+                    icon ??
                     Text(
                       label,
                       style: TextStyle(
@@ -301,10 +365,11 @@ class _Pad extends StatelessWidget {
               children: [
                 SizedBox(width: w),
                 key('0'),
-                key('back',
-                    onTap: onBack,
-                    icon: Icon(Icons.backspace_outlined,
-                        size: digit * 0.82, color: AppColors.ink2)),
+                key(
+                  'back',
+                  onTap: onBack,
+                  icon: Icon(Icons.backspace_outlined, size: digit * 0.82, color: AppColors.ink2),
+                ),
               ],
             ),
           ],
@@ -331,22 +396,12 @@ Future<String?> askPin(
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
     ),
-    builder: (_) => _PinSheet(
-      title: title,
-      subtitle: subtitle,
-      step: step,
-      note: note,
-    ),
+    builder: (_) => _PinSheet(title: title, subtitle: subtitle, step: step, note: note),
   );
 }
 
 class _PinSheet extends StatefulWidget {
-  const _PinSheet({
-    required this.title,
-    this.subtitle,
-    this.step,
-    this.note,
-  });
+  const _PinSheet({required this.title, this.subtitle, this.step, this.note});
 
   final String title;
   final String? subtitle;
@@ -371,62 +426,59 @@ class _PinSheetState extends State<_PinSheet> {
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 380),
         child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 46,
-            height: 46,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: AppColors.accent.withValues(alpha: Tint.disc),
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 46,
+              height: 46,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppColors.accent.withValues(alpha: Tint.disc),
+              ),
+              child: const Icon(Icons.lock_outline, size: 22, color: AppColors.accent),
             ),
-            child: const Icon(Icons.lock_outline,
-                size: 22, color: AppColors.accent),
-          ),
-          const SizedBox(height: Space.md),
-          if (widget.step != null) ...[
-            Muted(widget.step!, size: 11),
-            const SizedBox(height: Space.xs),
-          ],
-          Text(widget.title,
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
-          if (widget.subtitle != null) ...[
-            const SizedBox(height: Space.xs),
-            Muted(widget.subtitle!, size: 12),
-          ],
-          if (widget.note != null) ...[
-            const SizedBox(height: Space.sm),
+            const SizedBox(height: Space.md),
+            if (widget.step != null) ...[
+              Muted(widget.step!, size: 11),
+              const SizedBox(height: Space.xs),
+            ],
             Text(
-              widget.note!,
+              widget.title,
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                  color: AppColors.critical, fontSize: 12.5, height: 1.6),
+              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
             ),
+            if (widget.subtitle != null) ...[
+              const SizedBox(height: Space.xs),
+              Muted(widget.subtitle!, size: 12),
+            ],
+            if (widget.note != null) ...[
+              const SizedBox(height: Space.sm),
+              Text(
+                widget.note!,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: AppColors.critical, fontSize: 12.5, height: 1.6),
+              ),
+            ],
+            const SizedBox(height: Space.lg),
+            PinDots(filled: _pin.length),
+            const SizedBox(height: Space.lg),
+            _Pad(
+              busy: false,
+              onDigit: (d) {
+                if (_pin.length >= 4) return;
+                setState(() => _pin += d);
+                // **ويُغلق من نفسه عند الرابع.** زرُّ «تمّ» بعد أربعة أرقامٍ
+                // خطوةٌ زائدةٌ لا تضيف شيئاً.
+                if (_pin.length == 4) Navigator.of(context).pop(_pin);
+              },
+              onBack: () {
+                if (_pin.isEmpty) return;
+                setState(() => _pin = _pin.substring(0, _pin.length - 1));
+              },
+            ),
+            const SizedBox(height: Space.sm),
+            TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(tr('إلغاء'))),
           ],
-          const SizedBox(height: Space.lg),
-          PinDots(filled: _pin.length),
-          const SizedBox(height: Space.lg),
-          _Pad(
-            busy: false,
-            onDigit: (d) {
-              if (_pin.length >= 4) return;
-              setState(() => _pin += d);
-              // **ويُغلق من نفسه عند الرابع.** زرُّ «تمّ» بعد أربعة أرقامٍ
-              // خطوةٌ زائدةٌ لا تضيف شيئاً.
-              if (_pin.length == 4) Navigator.of(context).pop(_pin);
-            },
-            onBack: () {
-              if (_pin.isEmpty) return;
-              setState(() => _pin = _pin.substring(0, _pin.length - 1));
-            },
-          ),
-          const SizedBox(height: Space.sm),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text(tr('إلغاء')),
-          ),
-        ],
         ),
       ),
     );

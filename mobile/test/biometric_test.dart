@@ -209,6 +209,34 @@ void main() {
       expect(find.textContaining('بقيت'), findsNothing);
     });
 
+    testWidgets('**ورأسٌ أحمرُ وورقةٌ بيضاء — كشاشة الدخول**', (tester) async {
+      // القفلُ والدخولُ الشاشتان الوحيدتان اللتان تُريان قبل التطبيق،
+      // فاختلافُهما يُقرأ تطبيقين.
+      final lock = await _lock(biometric: true);
+      fake.ok = false;
+      await tester.pumpWidget(_wrap(LockScreen(lock: lock, onSignOut: () async {})));
+      await _settle(tester);
+
+      final scaffold = tester.widget<Scaffold>(find.byType(Scaffold));
+      expect(scaffold.backgroundColor, AppColors.accent);
+      expect(find.text('فرحتي'), findsOneWidget);
+    });
+
+    testWidgets('**ورمزُ البصمة نبيذيّ**', (tester) async {
+      // اختاره صاحبُ المنصّة بالصورة. ولا يُترك للون الزرّ:
+      // `OutlinedButton` يصبغ رمزَه بلون نصّه، وهو حبرٌ داكنٌ في الثيمة.
+      final lock = await _lock(biometric: true);
+      fake.ok = false;
+      await tester.pumpWidget(_wrap(LockScreen(lock: lock, onSignOut: () async {})));
+      await _settle(tester);
+
+      final icon = tester.widget<Icon>(find.descendant(
+        of: find.byKey(_button),
+        matching: find.byIcon(Icons.fingerprint),
+      ));
+      expect(icon.color, AppColors.accent);
+    });
+
     testWidgets('والرمزُ يفتح القفلَ والبصمةُ مشغّلة', (tester) async {
       final lock = await _lock(biometric: true);
       fake.ok = false;
