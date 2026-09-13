@@ -41,6 +41,7 @@ const _translated = <String>[
   'lib/src/ui/kit.dart',
   'lib/src/ui/share_button.dart',
   'lib/src/core/app_lock.dart',
+  'lib/src/core/biometrics.dart',
   'lib/src/screens/customer_shell.dart',
   'lib/src/screens/home.dart',
   'lib/src/screens/lock.dart',

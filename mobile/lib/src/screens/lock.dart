@@ -6,6 +6,7 @@
 import 'package:flutter/material.dart';
 
 import '../core/app_lock.dart';
+import '../core/biometrics.dart';
 import '../core/i18n.dart';
 import '../core/theme.dart';
 import '../ui/kit.dart';
@@ -27,6 +28,53 @@ class _LockScreenState extends State<LockScreen> {
   String _pin = '';
   bool _busy = false;
   String? _error;
+
+  /// أفي الجهاز بصمةٌ مسجّلةٌ **وشُغِّلت** لهذا القفل؟
+  ///
+  /// **وسؤالان لا واحد:** التفضيلُ في الخزنة، والحسّاسُ في الجهاز. ومن شغّلها
+  /// ثمّ محا بصماتِه من إعدادات جهازه يرى زرّاً لا يفتح شيئاً — فلا يُعرض.
+  bool _canBiometric = false;
+
+  // **وكانت هنا رايةٌ «لا تُسأل مرّتين» فحُذفت.**
+  //
+  // كتبتُها خوفاً من أن يُعاد بناءُ الشاشة فيدور حوارُ البصمة على نفسه.
+  // ثمّ كسرتُها بضابطٍ سالبٍ — نُزعت الرايةُ — **فبقيت الحزمةُ خضراء**.
+  // والسببُ أنّ الطلبَ يقع في `initState` وحدَه، وهو لا يُنادى إلّا مرّةً
+  // في عمر الحال مهما أُعيد البناء. فكانت حرزاً من شيءٍ لا يقع.
+  //
+  // وحرزٌ لا يسقط بكسره **لا يُقاس**، فلا يُعرف أحيٌّ هو أم ميّت — وبقاؤه
+  // يُوهم بحمايةٍ لا وجودَ لها. فإن صار يوماً طلبٌ ثانٍ (عند العودة من
+  // الخلفيّة مثلاً) عاد معه حرزُه ومعهما ضابطٌ يُسقطه.
+
+  @override
+  void initState() {
+    super.initState();
+    _offerBiometric();
+  }
+
+  Future<void> _offerBiometric() async {
+    if (!widget.lock.biometricEnabled) return;
+    final ok = await biometrics.available();
+    if (!mounted || !ok) return;
+    setState(() => _canBiometric = true);
+    await _biometric();
+  }
+
+  /// يسأل الجهازَ البصمة — **وإخفاقُها ليس خطأً يُصرَخ به**.
+  ///
+  /// من ألغى الحوارَ أراد أن يكتب رمزَه، ورسالةٌ حمراءُ في وجهه تقول إنّه
+  /// أخطأ شيئاً وهو لم يخطئ. فيُترك الرمزُ مفتوحاً بلا كلمة.
+  Future<void> _biometric() async {
+    if (_busy) return;
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    final ok = await widget.lock.unlockWithBiometrics();
+    if (!mounted) return;
+    setState(() => _busy = false);
+    if (!ok) return;
+  }
 
   Future<void> _push(String digit) async {
     if (_busy || _pin.length >= 4) return;
@@ -121,6 +169,20 @@ class _LockScreenState extends State<LockScreen> {
 
                 const SizedBox(height: Space.xl),
                 _Pad(onDigit: _push, onBack: _back, busy: _busy),
+
+                // **والبصمةُ بابٌ ثانٍ لا بديلٌ عن الرمز** — واللوحةُ فوقها
+                // باقيةٌ لمن أخفق حسّاسُه أو ألغى الحوار.
+                if (_canBiometric) ...[
+                  const SizedBox(height: Space.lg),
+                  OutlinedButton.icon(
+                    key: const ValueKey('unlock-biometric'),
+                    onPressed: _busy ? null : _biometric,
+                    icon: const Icon(Icons.fingerprint, size: 26),
+                    label: Text(tr('افتح بالبصمة')),
+                  ),
+                  const SizedBox(height: Space.sm),
+                  Muted(tr('أو أدخل رمزك'), size: 12),
+                ],
 
                 const SizedBox(height: Space.lg),
                 TextButton(

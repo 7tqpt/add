@@ -32,6 +32,7 @@ import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+import 'biometrics.dart';
 import 'i18n.dart';
 
 // **ولا مهلةَ تُختار بعد اليوم — يُقفل فورَ المغادرة.**
@@ -60,6 +61,12 @@ const lockMaxAttempts = 5;
 
 const _keyHash = 'lock_pin_hash';
 const _keySalt = 'lock_pin_salt';
+/// **أشغّل صاحبُ الجهاز البصمةَ لهذا القفل؟**
+///
+/// وهو تفضيلٌ لا سرّ — لكنّه يسكن الخزنةَ نفسَها: لو سكن
+/// `shared_preferences` لَأمكن إطفاؤه من خارج التطبيق على جهازٍ مكسور،
+/// ولا فائدةَ من خزنةٍ للرمز ومِلفٍّ عاديٍّ لمن يفتحه.
+const _keyBiometric = 'lock_biometric';
 // **ويُمسح مفتاحا العهد القديم عند الإزالة.** «lock_after» و«lock_left_at»
 // لم يعودا يُقرآن، لكنّهما باقيان في خزائن الأجهزة التي حدّثت. ومفتاحٌ
 // مهجورٌ في الخزنة لا يضرّ اليوم، لكنّه يضرّ يومَ يُكتب مفتاحٌ باسمٍ يشبهه.
@@ -127,12 +134,28 @@ Future<void> lockSetPin(String pin) async {
   await _write(_keyHash, _digest(pin, salt));
 }
 
-/// يزيل القفل.
+/// يزيل القفل — **والبصمةُ تسقط معه**.
+///
+/// ولولا ذلك لَبقي تفضيلُ البصمة قائماً لقفلٍ لا وجودَ له، فيعود من فعّل
+/// القفلَ بعد شهرٍ فيجد بصمةً يُسأل عنها ولم يطلبها اليوم.
 Future<void> lockClear() async {
   await _write(_keyHash, null);
   await _write(_keySalt, null);
+  await _write(_keyBiometric, null);
   await _write(_keyLegacyAfter, null);
   await _write(_keyLegacyLeftAt, null);
+}
+
+/// أشُغِّلت البصمةُ لهذا القفل على هذا الجهاز؟
+Future<bool> lockBiometricIsOn() async => (await _read(_keyBiometric)) == '1';
+
+/// يشغّل البصمةَ أو يطفئها — **ولا تُشغَّل بلا رمزٍ مضبوط**.
+///
+/// القفلُ واحدٌ والبابان يفتحانه، فبصمةٌ بلا رمزٍ تحتها قفلٌ لا مخرجَ منه
+/// إن أخفق الحسّاس.
+Future<void> lockSetBiometric(bool on) async {
+  if (on && !await lockIsSet()) throw tr('فعّل قفل التطبيق أولاً.');
+  await _write(_keyBiometric, on ? '1' : null);
 }
 
 /// أيطابق هذا الرمزُ المضبوط؟
@@ -166,11 +189,15 @@ class AppLock extends ChangeNotifier {
   /// وهي تقع في بعض الأجهزة.
   bool _left = false;
   int _wrong = 0;
+  bool _biometric = false;
 
   bool get enabled => _enabled;
   bool get locked => _enabled && _locked;
   int get wrongAttempts => _wrong;
   int get attemptsLeft => lockMaxAttempts - _wrong;
+
+  /// أشُغِّلت البصمةُ لهذا القفل؟ — **ولا معنى لها بلا قفل**.
+  bool get biometricEnabled => _enabled && _biometric;
 
   /// يُقرأ عند الإقلاع — **وكلُّ إقلاعٍ مقفل**.
   ///
@@ -178,6 +205,7 @@ class AppLock extends ChangeNotifier {
   /// يد من كان الجوال.
   Future<void> boot() async {
     _enabled = await lockIsSet();
+    _biometric = _enabled && await lockBiometricIsOn();
     _locked = _enabled;
     _left = false;
     notifyListeners();
@@ -217,6 +245,29 @@ class AppLock extends ChangeNotifier {
     return false;
   }
 
+  /// يفتح بالبصمة — ويعيد `true` إن طابقت.
+  ///
+  /// **ولا تُعدّ محاولةً خاطئة.** عدُّ المحاولات في `unlock` حرزٌ من تجريب
+  /// عشرةِ آلاف رمز، والبصمةُ لا تُجرَّب: من وضع إصبعاً لا يملكه لم يقترب
+  /// من الرمز شيئاً. ولو عُدَّت لَأخرجت حسابَ من أخفق حسّاسُه خمسَ مرّاتٍ
+  /// وهو صاحبُه.
+  Future<bool> unlockWithBiometrics() async {
+    if (!biometricEnabled) return false;
+    if (!await biometrics.authenticate()) return false;
+    _locked = false;
+    _wrong = 0;
+    _left = false;
+    notifyListeners();
+    return true;
+  }
+
+  /// يشغّل البصمةَ أو يطفئها — ويعيد الحالَ بعد الكتابة.
+  Future<void> setBiometric(bool on) async {
+    await lockSetBiometric(on);
+    _biometric = on;
+    notifyListeners();
+  }
+
   bool get exhausted => _wrong >= lockMaxAttempts;
 
   /// يفعّل القفل بالرمز — **ولا يُقفل عليه في اللحظة نفسِها**.
@@ -226,6 +277,9 @@ class AppLock extends ChangeNotifier {
   Future<void> enable(String pin) async {
     await lockSetPin(pin);
     _enabled = true;
+    // **ولا تُشغَّل البصمةُ بلا طلب.** من فعّل القفلَ اختار رمزاً، ولم
+    // يختر بعدُ أن يفتحه بإصبعه.
+    _biometric = false;
     _locked = false;
     _left = false;
     _wrong = 0;
@@ -237,6 +291,9 @@ class AppLock extends ChangeNotifier {
     _enabled = false;
     _locked = false;
     _wrong = 0;
+    // **والبصمةُ تسقط في الذاكرة كما سقطت في الخزنة** — ولولا هذا السطر
+    // لَبقيت الرايةُ مرفوعةً حتى الإقلاع التالي.
+    _biometric = false;
     notifyListeners();
   }
 
