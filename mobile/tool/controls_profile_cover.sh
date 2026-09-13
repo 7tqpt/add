@@ -145,5 +145,27 @@ run "ن) غلافُ المزوّد يمحو شعارَه" sub "$I" \
   "    final path = '\$authUserId/provider_cover.\$ext';" \
   "    final path = '\$authUserId/provider.\$ext';"
 
+# س) **والشريطُ يعود لا يُضغط** — تبقى حبّةٌ عرضُها تسعون بكسلاً في طرف
+#    شريطٍ عرضُه الشاشةُ كلُّها، وهو عيبُ الاكتشاف الذي أخرجه صاحبُ المنصّة.
+run "س) الشريطُ لا يُضغط" sub "$K" \
+  "          Positioned.fill(
+            child: Material(
+              type: MaterialType.transparency,
+              child: InkWell(
+                key: const ValueKey('cover-tap'),
+                onTap: busy ? null : onEdit,
+                child: const SizedBox.expand(),
+              ),
+            ),
+          )," \
+  ""
+
+# ع) **ويُضغط الشريطُ والرفعُ جارٍ** — فيُرفع مرّتين على شبكةٍ يمنية.
+run "ع) الشريطُ يُضغط والرفعُ جارٍ" sub "$K" \
+  "                onTap: busy ? null : onEdit,
+                child: const SizedBox.expand()," \
+  "                onTap: onEdit,
+                child: const SizedBox.expand(),"
+
 echo; echo "== الحصيلة: $PASS سقطت، $FAIL لم تسقط =="
 [ "$FAIL" -eq 0 ]

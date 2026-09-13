@@ -522,6 +522,7 @@ const Map<String, String> englishStrings = {
   'سبت': 'Sat',
   'ستحتاج إلى بريدك وكلمة مرورك للدخول مرّةً أخرى.': 'You will need your email and password to sign in again.',
   'ستصلك هنا حجوزات العملاء على خدماتك بعد توثيق ملفك.': 'Customer bookings for your services will arrive here once your profile is verified.',
+  'سجّل الدخول أولاً.': 'Sign in first.',
   'سجّل رسالة صوتية': 'Record a voice note',
   'سجّل منشأتك': 'Register your business',
   'سفر، مناسبة عائلية، صيانة…': 'Travel, a family occasion, maintenance…',
