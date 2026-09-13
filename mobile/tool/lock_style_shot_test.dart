@@ -1,13 +1,9 @@
-// راسمُ شاشة الدخول بعد التنفيذ — **لقطةٌ حقيقيّةٌ واحدة**.
+// راسمُ شاشة القفل بعد التنفيذ — **لقطةٌ حقيقيّةٌ واحدة**.
 //
-//   SHOTS=<مجلّد> flutter test tool/auth_shot_test.dart
+//   SHOTS=<مجلّد> flutter test tool/lock_style_shot_test.dart
 //
-// كان مقترحاً عُرض على صاحب المنصّة بلقطتين قبل أن يُلمَس `lib/`، فقال:
-// «نفس هذا». فسقط المرسومُ وبقيت الشاشةُ الحقيقيّة.
-//
-// **وشعارُ «فرحتي» الذهبيُّ ليس في المستودع بعد**: لا صورةَ مجمّعةً في
-// الحزمة أصلاً، وما في `assets/brand/` أيقوناتُ تطبيقٍ لا شعارُ سطر. فمكانَه
-// أيقونةٌ واسمٌ بالأبيض حتى يصل الملفّ.
+// كان مقترحاً عُرض على صاحب المنصّة بلقطتين قبل أن يُلمَس `lib/`، فاختاره
+// وزاد: **«خليه لون نبيذ»** — رمزَ البصمة على الزرّ.
 
 import 'dart:io';
 import 'dart:ui' as ui;
@@ -18,9 +14,10 @@ import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:aras/src/core/session.dart';
+import 'package:aras/src/core/app_lock.dart';
+import 'package:aras/src/core/biometrics.dart';
 import 'package:aras/src/core/theme.dart';
-import 'package:aras/src/screens/auth.dart';
+import 'package:aras/src/screens/lock.dart';
 
 Future<void> _load(String family, List<String> paths) async {
   final loader = FontLoader(family);
@@ -68,6 +65,19 @@ Widget _wrap(Widget child) => MaterialApp(
       ),
     );
 
+/// حسّاسٌ مركَّب — **لا حسّاسَ في `flutter test`**.
+class _Sensor implements Biometrics {
+  const _Sensor({this.has = true, this.ok = true});
+  final bool has;
+  final bool ok;
+
+  @override
+  Future<bool> available() async => has;
+
+  @override
+  Future<bool> authenticate() async => ok;
+}
+
 /// **وتُمهَل الصورةُ زمناً حقيقيّاً حتى تُفكَّ.**
 ///
 /// `Image.asset` تقرأ من الحزمة وتفكّ الترميزَ في خيطٍ آخر، وذلك يحتاج
@@ -83,16 +93,21 @@ Future<void> _settleImages(WidgetTester tester) async {
 void main() {
   setUpAll(_loadFonts);
 
+  setUp(() => lockStorageOverride = {});
+  tearDown(() {
+    lockStorageOverride = null;
+    biometricsOverride = null;
+  });
+
   void phone(WidgetTester tester) {
     tester.view.physicalSize = const Size(1080, 2280);
     tester.view.devicePixelRatio = 3.0;
     addTearDown(tester.view.reset);
   }
 
-  // **ولا `pumpAndSettle`:** في الشاشة حقولُ نصّ، ومؤشّرُ الكتابة ينبض فلا
-  // تسكن الإطاراتُ أبداً.
   Future<void> settle(WidgetTester tester) async {
     await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
     await tester.pump(const Duration(milliseconds: 400));
   }
 
@@ -100,46 +115,26 @@ void main() {
 
   testWidgets('الشاشةُ بعد التنفيذ', (tester) async {
     phone(tester);
-    await tester.pumpWidget(_wrap(AuthScreen(session: Session()..loading = false)));
+    biometricsOverride = const _Sensor(has: true, ok: false);
+    final lock = AppLock();
+    await lock.enable('1234');
+    await lock.setBiometric(true);
+    lock.onLeave();
+    lock.onReturn();
+
+    await tester.pumpWidget(
+        _wrap(LockScreen(lock: lock, onSignOut: () async {})));
     await settle(tester);
     await _settleImages(tester);
 
     // **والمقيسُ شجرةُ العناصر لا الصورة** — والتفصيلُ في
-    // `test/auth_layout_test.dart` بخمسة ضوابطَ سالبةٍ تسقط بها.
-    expect(find.text('دخول الحساب'), findsOneWidget);
-    expect(find.byKey(const ValueKey('remember-me')), findsOneWidget);
-    expect(find.widgetWithText(OutlinedButton, 'إنشاء حساب'), findsOneWidget);
+    // `test/lock_style_test.dart` بضوابطَ سالبةٍ تسقط بها.
+    final scaffold = tester.widget<Scaffold>(find.byType(Scaffold));
+    expect(scaffold.backgroundColor, AppColors.accent);
+    expect(find.byKey(const ValueKey('pin-dots')), findsOneWidget);
+    expect(find.byKey(const ValueKey('unlock-biometric')), findsOneWidget);
     expect(tester.takeException(), isNull);
     await _shoot(
-        tester, find.byKey(const ValueKey('shot')), '$out/auth-done.png');
-  });
-
-  testWidgets('وجهُ الإنشاء', (tester) async {
-    phone(tester);
-    await tester.pumpWidget(_wrap(AuthScreen(
-        session: Session()..loading = false, startOnSignUp: true)));
-    await settle(tester);
-    await _settleImages(tester);
-    expect(find.widgetWithText(FilledButton, 'إنشاء الحساب'), findsOneWidget);
-    await _shoot(
-        tester, find.byKey(const ValueKey('shot')), '$out/auth-signup.png');
-  });
-
-  testWidgets('ووجهُ استعادة الكلمة', (tester) async {
-    phone(tester);
-    await tester.pumpWidget(_wrap(AuthScreen(session: Session()..loading = false)));
-    await settle(tester);
-    await _settleImages(tester);
-    // **والبريدُ يُكتب أوّلاً:** «نسيت كلمة المرور» تردّ «اكتب بريدك أوّلاً»
-    // على الفارغ، فتبقى الشاشةُ على وجه الدخول ولا تُصوَّر الاستعادة.
-    await tester.enterText(find.byType(TextField).at(0), 'a@b.co');
-    await tester.tap(find.text('نسيت كلمة المرور'));
-    await settle(tester);
-    await _settleImages(tester);
-    await tester.pump(const Duration(seconds: 1));
-    await tester.pump(const Duration(milliseconds: 400));
-    expect(find.text('استعادة كلمة المرور'), findsOneWidget);
-    await _shoot(
-        tester, find.byKey(const ValueKey('shot')), '$out/auth-recover.png');
+        tester, find.byKey(const ValueKey('shot')), '$out/lock-style.png');
   });
 }

@@ -1,15 +1,11 @@
-// **مقترحٌ لا تنفيذ.** حقلُ رمز التأكيد: أربعُ خاناتٍ لا ستّ.
+// راسمُ شاشة «تأكيد رقمك» — **لقطةٌ حقيقيّةٌ بعد الإطار الجديد**.
 //
-//   SHOTS=<مجلّد> flutter test tool/otp_field_proposal_test.dart
+//   SHOTS=<مجلّد> flutter test tool/verify_phone_shot_test.dart
 //
-// وأصلُه أنّ صاحبَ المنصّة أخرج رسالةَ واتساب الواصلة وفيها **رمزٌ من أربع
-// خانات**، والحقلُ يعرض `------` — ستَّ شُرَطٍ تقول للعين «اكتب ستّاً».
-//
-// **واللقطةُ الأولى حقيقيّةٌ مصوَّرة:** `VerifyPhoneScreen` نفسُها في وضع
-// العرض، تُضغط فيها «أرسل الرمز» فتنتقل إلى خطوة الكتابة.
-// **والثانيةُ مرسومةٌ** — بطاقةٌ بثيمة التطبيق وحقلٌ حقيقيٌّ، والفرقُ
-// الشاهدُ وحدَه. ولا تُصوَّر الشاشةُ الثانيةُ من `lib/` لأنّ `lib/` لا
-// يُلمس قبل أن يُعرض ويُسأل.
+// كان مقترحاً لحقل الرمز (أربعُ شُرَطٍ لا ستّ) ولم يُجَب عنه بعد. ثمّ قال
+// صاحبُ المنصّة **«أُلحقها بالإطار نفسِه»**، فصارت الشاشةُ برأسٍ أحمرَ
+// وورقةٍ بيضاءَ كأختيها — الدخولِ والقفل.
+
 import 'dart:io';
 import 'dart:ui' as ui;
 
@@ -19,13 +15,11 @@ import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:aras/src/core/i18n.dart';
 import 'package:aras/src/core/session.dart';
 import 'package:aras/src/core/theme.dart';
 import 'package:aras/src/data/demo.dart';
 import 'package:aras/src/data/models.dart';
 import 'package:aras/src/screens/verify_phone.dart';
-import 'package:aras/src/ui/kit.dart';
 
 Future<void> _load(String family, List<String> paths) async {
   final loader = FontLoader(family);
@@ -89,47 +83,16 @@ Widget _wrap(Widget child) => MaterialApp(
       ),
     );
 
-/// المقترح — **حقلٌ حقيقيٌّ بثيمة التطبيق، والفرقُ في الشاهد والحدّ**.
-class _Proposed extends StatelessWidget {
-  const _Proposed();
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text(tr('تأكيد رقمك'))),
-      body: ListView(
-        padding: const EdgeInsets.all(Space.lg),
-        children: [
-          AppCard(
-            children: [
-              SectionTitle(tr('رقمك يؤكَّد مرّةً واحدة')),
-              const SizedBox(height: Space.sm),
-              Text(
-                'أرسلنا رمزاً على واتساب إلى +967781447184. اكتبه هنا.',
-                style: const TextStyle(height: 1.8),
-              ),
-              const SizedBox(height: Space.lg),
-              TextField(
-                keyboardType: TextInputType.number,
-                textDirection: TextDirection.ltr,
-                textAlign: TextAlign.center,
-                maxLength: 4,
-                style: const TextStyle(fontSize: 22, letterSpacing: 8),
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                decoration: InputDecoration(
-                  labelText: tr('رمز التأكيد'),
-                  hintText: '----',
-                  counterText: '',
-                ),
-              ),
-              const SizedBox(height: Space.md),
-              FilledButton(onPressed: () {}, child: Text(tr('تأكيد الرقم'))),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
+/// **وتُمهَل الصورةُ زمناً حقيقيّاً حتى تُفكَّ.**
+///
+/// `Image.asset` تقرأ من الحزمة وتفكّ الترميزَ في خيطٍ آخر، وذلك يحتاج
+/// زمناً حقيقيّاً لا زمنَ الاختبار المصطنَع. فبلا هذا خرج الرأسُ بلا أيقونة
+/// — وهي في الحزمة وتُرسم على الجهاز.
+Future<void> _settleImages(WidgetTester tester) async {
+  await tester.runAsync(() => Future<void>.delayed(
+      const Duration(milliseconds: 300)));
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 200));
 }
 
 void main() {
@@ -153,38 +116,26 @@ void main() {
 
   final out = Platform.environment['SHOTS'] ?? '/tmp/shots';
 
-  testWidgets('القائم — ستُّ شُرَط', (tester) async {
+  testWidgets('الشاشةُ بعد الإطار', (tester) async {
     phone(tester);
     await tester.pumpWidget(_wrap(VerifyPhoneScreen(session: _session())));
     await settle(tester);
+    await _settleImages(tester);
 
     await tester.tap(find.byKey(const ValueKey('otp-action')));
     await settle(tester);
+    await _settleImages(tester);
 
+    // **والمقيسُ شجرةُ العناصر لا الصورة.**
+    final scaffold = tester.widget<Scaffold>(find.byType(Scaffold));
+    expect(scaffold.backgroundColor, AppColors.accent);
     expect(find.byKey(const ValueKey('otp-field')), findsOneWidget);
-    final field = tester.widget<TextField>(find.byKey(const ValueKey('otp-field')));
-    // **وهذا هو المقيس لا الصورة:** الشاهدُ ستُّ شُرَطٍ والرمزُ أربعُ خانات.
-    expect(field.decoration!.hintText, '------');
-    expect(field.maxLength, isNull);
     await _shoot(
-        tester, find.byKey(const ValueKey('shot')), '$out/otp-now.png');
+        tester, find.byKey(const ValueKey('shot')), '$out/verify-phone.png');
 
-    // **والشاشةُ تُهدَم قبل الخروج.** فيها `Timer.periodic` لعدّاد إعادة
-    // الإرسال، و`flutter test` ينتظر المؤقّتاتِ المعلّقةَ فلا ينتهي أبداً —
-    // وقد خرجت اللقطةُ وبقي الراسمُ معلّقاً حتى قُتل. و`dispose` يُلغي
-    // المؤقّت، ولا يُنادى إلّا إذا خرجت الشاشةُ من الشجرة.
+    // **والشاشةُ تُهدَم قبل الخروج:** فيها `Timer.periodic` لعدّاد إعادة
+    // الإرسال، و`flutter test` ينتظر المؤقّتاتِ المعلّقةَ فلا ينتهي.
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump();
-  });
-
-  testWidgets('المقترح — أربعُ شُرَط', (tester) async {
-    phone(tester);
-    await tester.pumpWidget(_wrap(const _Proposed()));
-    await settle(tester);
-
-    expect(find.text('----'), findsOneWidget);
-    expect(tester.takeException(), isNull);
-    await _shoot(
-        tester, find.byKey(const ValueKey('shot')), '$out/otp-proposed.png');
   });
 }

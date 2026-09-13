@@ -134,89 +134,176 @@ class _VerifyPhoneScreenState extends State<VerifyPhoneScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // **ورأسٌ بنسبةٍ لا برقمٍ ثابت** — كشاشتي الدخول والقفل.
+    final headerHeight = (MediaQuery.sizeOf(context).height * 0.26).clamp(140.0, 230.0);
+
     return Scaffold(
-      appBar: AppBar(title: Text(tr('تأكيد رقمك'))),
-      body: ListView(
-        padding: const EdgeInsets.all(Space.lg),
+      backgroundColor: AppColors.accent,
+      body: Column(
         children: [
-          AppCard(
-            children: [
-              SectionTitle(tr('رقمك يؤكَّد مرّةً واحدة')),
-              const SizedBox(height: Space.sm),
-              Text(
-                _sent
-                    ? trf('أرسلنا رمزاً على واتساب إلى {0}. اكتبه هنا.', [_phone])
-                    : trf('سنرسل رمزاً على واتساب إلى {0} لتأكيد أنّه رقمك.',
-                        [_phone]),
-                style: const TextStyle(height: 1.8),
-              ),
-              if (_sent) ...[
-                const SizedBox(height: Space.lg),
-                TextField(
-                  key: const ValueKey('otp-field'),
-                  controller: _code,
-                  keyboardType: TextInputType.number,
-                  textDirection: TextDirection.ltr,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 22, letterSpacing: 8),
-                  decoration: InputDecoration(
-                    labelText: tr('رمز التأكيد'),
-                    hintText: '------',
+          // ── الرأسُ الأحمر ───────────────────────────────────────────────
+          //
+          // **وهي ثالثةُ ثلاثٍ تُرى قبل التطبيق**: الدخولُ والقفلُ وهذه.
+          // فاختلافُ واحدةٍ منها يُقرأ تطبيقاً آخر.
+          //
+          // **ورمزُ واتساب لا أيقونةُ التطبيق:** الشاشةُ كلُّها عن رمزٍ
+          // يصل في محادثة، والصورةُ تقول ذلك قبل أن يُقرأ سطر.
+          SizedBox(
+            height: headerHeight,
+            child: SafeArea(
+              bottom: false,
+              // **ويُصغَّر ما لا يتّسع.** رأسٌ بارتفاعٍ محدودٍ وخطُّ جهازٍ
+              // مضاعَفٌ يفيض — وقد فاض باثني عشر بكسلاً أوّلَ ما وُضعت
+              // الأيقونةُ مكانَ الرمز، فأمسكه اختبارُ «لا يفيض بخطّ الجهاز
+              // الكبير». والتصغيرُ أصدقُ من قصّ الاسم أو حبسِ مقياس الخطّ:
+              // من كبّر خطَّ جهازه كبّره ليقرأ، لا ليُقصَّ عليه.
+              child: Center(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // **وأيقونةُ التطبيق نفسُها لا رمزٌ مرسوم.** اختارها
+                      // صاحبُ المنصّة وقال: «في كل مكان». وهي `app_mark.png`
+                      // — النسخةُ المشحونةُ من الأيقونة، ٢٥٦ بكسلاً تكفي
+                      // رأساً يُرسم في ٦٨.
+                      Image.asset(
+                        'assets/brand/app_mark.png',
+                        width: 68,
+                        height: 68,
+                        filterQuality: FilterQuality.medium,
+                      ),
+                      const SizedBox(height: Space.sm),
+                      Text(
+                        tr('تأكيد رقمك'),
+                        style: const TextStyle(
+                          fontSize: 26,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.accentInk,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ],
-              if (_note != null) ...[
-                const SizedBox(height: Space.sm),
-                Text(_note!,
-                    style: const TextStyle(
-                        color: AppColors.good, fontSize: 13, height: 1.6)),
-              ],
-              if (_error != null) ...[
-                const SizedBox(height: Space.md),
-                Text(_error!,
-                    style: const TextStyle(
-                        color: AppColors.critical, fontSize: 13, height: 1.6)),
-              ],
-              const SizedBox(height: Space.lg),
-              FilledButton(
-                key: const ValueKey('otp-action'),
-                onPressed: _busy ? null : (_sent ? _verify : _send),
-                child: _busy
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(
-                            strokeWidth: 2, color: AppColors.accentInk),
-                      )
-                    : Text(_sent
-                        ? tr('تأكيد الرقم')
-                        : tr('أرسل الرمز على واتساب')),
               ),
-              if (_sent)
-                TextButton(
-                  key: const ValueKey('otp-resend'),
-                  onPressed: _busy || _wait > 0 ? null : _send,
-                  child: Text(_wait > 0
-                      ? trf('أعد الإرسال بعد {0} ثانية', ['$_wait'])
-                      : tr('لم يصلني — أعد الإرسال')),
+            ),
+          ),
+          Expanded(
+            child: Container(
+              width: double.infinity,
+              decoration: const BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: SafeArea(
+                top: false,
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(Space.lg, Space.xl, Space.lg, Space.lg),
+                  children: [
+                    // **وعلى الورقة مباشرةً لا في بطاقة:** بطاقةٌ بيضاءُ فوق
+                    // ورقةٍ بيضاءَ إطارٌ بلا معنى — وهو ما أُصلح في وجه
+                    // استعادة كلمة المرور قبلها.
+                    Text(
+                      tr('رقمك يؤكَّد مرّةً واحدة'),
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.ink,
+                      ),
+                    ),
+                    const SizedBox(height: Space.md),
+                    Text(
+                      _sent
+                          ? trf('أرسلنا رمزاً على واتساب إلى {0}. اكتبه هنا.', [_phone])
+                          : trf('سنرسل رمزاً على واتساب إلى {0} لتأكيد أنّه رقمك.', [_phone]),
+                      style: const TextStyle(height: 1.8),
+                    ),
+                    if (_sent) ...[
+                      const SizedBox(height: Space.lg),
+                      TextField(
+                        key: const ValueKey('otp-field'),
+                        controller: _code,
+                        keyboardType: TextInputType.number,
+                        textDirection: TextDirection.ltr,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(fontSize: 22, letterSpacing: 8),
+                        decoration: InputDecoration(
+                          labelText: tr('رمز التأكيد'),
+                          hintText: '------',
+                        ),
+                      ),
+                    ],
+                    if (_note != null) ...[
+                      const SizedBox(height: Space.sm),
+                      Text(
+                        _note!,
+                        style: const TextStyle(color: AppColors.good, fontSize: 13, height: 1.6),
+                      ),
+                    ],
+                    if (_error != null) ...[
+                      const SizedBox(height: Space.md),
+                      Text(
+                        _error!,
+                        style: const TextStyle(
+                          color: AppColors.critical,
+                          fontSize: 13,
+                          height: 1.6,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: Space.lg),
+                    FilledButton(
+                      key: const ValueKey('otp-action'),
+                      onPressed: _busy ? null : (_sent ? _verify : _send),
+                      child: _busy
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: AppColors.accentInk,
+                              ),
+                            )
+                          : Text(_sent ? tr('تأكيد الرقم') : tr('أرسل الرمز على واتساب')),
+                    ),
+                    if (_sent)
+                      TextButton(
+                        key: const ValueKey('otp-resend'),
+                        onPressed: _busy || _wait > 0 ? null : _send,
+                        child: Text(
+                          _wait > 0
+                              ? trf('أعد الإرسال بعد {0} ثانية', ['$_wait'])
+                              : tr('لم يصلني — أعد الإرسال'),
+                        ),
+                      ),
+                    const SizedBox(height: Space.xs),
+                    Muted(
+                      tr('الرقم يُستعمل لتأكيد حجوزاتك والتواصل معك، ولا يُؤكَّد مرّةً ثانية.'),
+                    ),
+
+                    // **ومخرجان لا واحد.** من كتب رقمه خطأً يبدّله من
+                    // «حسابي» — وهو خلف الحاجز، فلا يصله. فيُفتح له بابُ
+                    // الملفّ من هنا، وبابُ الخروج لمن أراد حساباً آخر.
+                    // وبلا هذين يُحبس على شاشةٍ تنتظر رمزاً لا يأتي إلى
+                    // رقمٍ ليس له.
+                    //
+                    // **وزرٌّ محاطٌ لا سطرٌ رفيع** — كنظيره في شاشة الدخول.
+                    const SizedBox(height: Space.lg),
+                    OutlinedButton(
+                      key: const ValueKey('otp-edit-phone'),
+                      onPressed: _busy ? null : () => _editPhone(context),
+                      child: Text(tr('رقمي خطأ — بدّله')),
+                    ),
+                    TextButton(
+                      onPressed: _busy ? null : widget.session.signOut,
+                      child: Text(tr('تسجيل الخروج')),
+                    ),
+                  ],
                 ),
-              const SizedBox(height: Space.xs),
-              Muted(tr('الرقم يُستعمل لتأكيد حجوزاتك والتواصل معك، ولا يُؤكَّد مرّةً ثانية.')),
-            ],
-          ),
-          const SizedBox(height: Space.md),
-          // **ومخرجان لا واحد.** من كتب رقمه خطأً يبدّله من «حسابي» — وهو
-          // خلف الحاجز، فلا يصله. فيُفتح له بابُ الملفّ من هنا، وبابُ
-          // الخروج لمن أراد حساباً آخر. وبلا هذين يُحبس على شاشةٍ تنتظر
-          // رمزاً لا يأتي إلى رقمٍ ليس له.
-          TextButton(
-            key: const ValueKey('otp-edit-phone'),
-            onPressed: _busy ? null : () => _editPhone(context),
-            child: Text(tr('رقمي خطأ — بدّله')),
-          ),
-          TextButton(
-            onPressed: _busy ? null : widget.session.signOut,
-            child: Text(tr('تسجيل الخروج')),
+              ),
+            ),
           ),
         ],
       ),
@@ -253,7 +340,9 @@ class _PhoneEditButtonState extends State<_PhoneEditButton> {
   Future<void> _save() async {
     final phone = normalisePhone(widget.controller.text);
     if (phone == null) {
-      setState(() => _error = tr('رقم الجوال غير مكتمل. اكتبه مع مفتاح الدولة، مثل +967 7XX XXX XXX.'));
+      setState(
+        () => _error = tr('رقم الجوال غير مكتمل. اكتبه مع مفتاح الدولة، مثل +967 7XX XXX XXX.'),
+      );
       return;
     }
     setState(() {
@@ -275,43 +364,35 @@ class _PhoneEditButtonState extends State<_PhoneEditButton> {
 
   @override
   Widget build(BuildContext context) => Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          if (_error != null) ...[
-            Text(_error!,
-                style: const TextStyle(
-                    color: AppColors.critical, fontSize: 13, height: 1.6)),
-            const SizedBox(height: Space.md),
-          ],
-          FilledButton(
-            key: const ValueKey('phone-edit-save'),
-            onPressed: _busy ? null : _save,
-            child: _busy
-                ? const SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: CircularProgressIndicator(
-                        strokeWidth: 2, color: AppColors.accentInk),
-                  )
-                : Text(tr('حفظ')),
-          ),
-        ],
-      );
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      if (_error != null) ...[
+        Text(_error!, style: const TextStyle(color: AppColors.critical, fontSize: 13, height: 1.6)),
+        const SizedBox(height: Space.md),
+      ],
+      FilledButton(
+        key: const ValueKey('phone-edit-save'),
+        onPressed: _busy ? null : _save,
+        child: _busy
+            ? const SizedBox(
+                height: 20,
+                width: 20,
+                child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.accentInk),
+              )
+            : Text(tr('حفظ')),
+      ),
+    ],
+  );
 }
 
 String _sheetMessage(Object error) =>
-    error is String && error.trim().isNotEmpty
-        ? error
-        : tr('تعذّر حفظ الرقم. أعد المحاولة.');
+    error is String && error.trim().isNotEmpty ? error : tr('تعذّر حفظ الرقم. أعد المحاولة.');
 
 /// ورقةٌ لتبديل الرقم من داخل الحاجز.
 ///
 /// **ولا تُستعار شاشةُ «تعديل الملفّ»:** تلك تعدّل الاسمَ والصورةَ والمحافظة
 /// معاً، وهي خلف الحاجز. والمطلوبُ هنا حقلٌ واحد.
-Future<String?> showPhoneEditSheet(
-  BuildContext context, {
-  required String current,
-}) async {
+Future<String?> showPhoneEditSheet(BuildContext context, {required String current}) async {
   final controller = TextEditingController(text: current);
   final result = await showModalBottomSheet<String>(
     context: context,
@@ -335,10 +416,7 @@ Future<String?> showPhoneEditSheet(
             keyboardType: TextInputType.phone,
             textDirection: TextDirection.ltr,
             autofocus: true,
-            decoration: InputDecoration(
-              labelText: tr('رقم الجوال'),
-              hintText: '+967 7XX XXX XXX',
-            ),
+            decoration: InputDecoration(labelText: tr('رقم الجوال'), hintText: '+967 7XX XXX XXX'),
           ),
           const SizedBox(height: Space.lg),
           // **ويُفحص هنا أشدَّ ما يُفحص.** من وصل إلى هذه الورقة وصلها
