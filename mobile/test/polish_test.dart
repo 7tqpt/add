@@ -169,7 +169,8 @@ void main() {
 
       // والقفلُ مفعَّلٌ هنا — وهي الحالُ التي كانت تُعرض فيها الأزرار.
       expect(appLock.enabled, isTrue, reason: 'الاختبارُ لا يقيس ما يدّعي');
-      expect(find.text('قفل التطبيق', skipOffstage: false), findsOneWidget);
+      // **وصار اسمُ القسم «الخصوصية والأمان»** — اتّسع للبصمة التي دخلت عليه.
+      expect(find.text('الخصوصية والأمان', skipOffstage: false), findsOneWidget);
 
       for (final gone in [
         'بعد دقيقة',

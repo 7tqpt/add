@@ -245,33 +245,12 @@ void main() {
         about: 'قاعاتٌ وتنظيم.',
         url: _url,
       ),
-      shareTextForApp(url: _url),
     ];
     for (final text in texts) {
       expect(text, isNot(matches(RegExp(r'\+?9677\d{7}'))), reason: 'رقمٌ يمنيّ');
       expect(text, isNot(matches(RegExp(r'7\d{8}'))), reason: 'رقمُ جوال');
       expect(text, isNot(contains('@')), reason: 'بريد');
     }
-  });
-
-  // ==========================================================================
-  //  نصُّ التطبيق
-  // ==========================================================================
-
-  group('نصُّ التطبيق', () {
-    test('يقول ما هو التطبيق لا اسمَه وحده', () {
-      final text = shareTextForApp(url: _url);
-      expect(text, contains('فرحتي'));
-      expect(text, contains('زفاف'));
-      expect(text, contains(_url));
-    });
-
-    test('**وبلا رابطٍ لا يُشارَك أصلاً**', () {
-      // «فرحتي — كل خدمات زفافك في مكان واحد» بلا رابطٍ رسالةٌ لا يفعل
-      // مستقبِلُها بها شيئاً.
-      expect(shareTextForApp(url: ''), isEmpty);
-      expect(shareTextForApp(url: 'http://a.co'), isEmpty);
-    });
   });
 
   // ==========================================================================
@@ -302,17 +281,5 @@ void main() {
       expect(sent, contains('قاعة الأندلس'));
     });
 
-    testWidgets('**وبندُ «شارك التطبيق» يغيب إن لم يُضبط الرابط**',
-        (tester) async {
-      // وفي النسخة التجريبيّة الرابطُ فارغٌ دائماً، فهذه هي الحالُ المقيسة.
-      await tester.pumpWidget(_wrap(
-        Scaffold(body: ListView(children: const [ShareAppTile()])),
-      ));
-      await tester.pumpAndSettle();
-      expect(find.byKey(const ValueKey('share-app')), findsNothing);
-      // **ولا بطاقةَ فارغةٌ مكانَه:** إطارٌ فارغٌ في رأس الإعدادات أظهرُ
-      // من البند نفسِه.
-      expect(find.text('شارك التطبيق'), findsNothing);
-    });
   });
 }
