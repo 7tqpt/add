@@ -14,6 +14,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:aras/src/core/session.dart';
 import 'package:aras/src/core/theme.dart';
 import 'package:aras/src/screens/account.dart';
+import 'package:aras/src/ui/kit.dart';
 
 Session _session({required bool provider, String mail = 'ayman@sdd.company'}) => Session()
   ..userId = 'u1'
@@ -115,8 +116,16 @@ void main() {
     await tester.pumpWidget(_wrap(_session(provider: false), observer: pushes));
     await tester.pumpAndSettle();
 
+    // **والمعدودُ صفوفُ الورقة لا كلُّ ما يُضغط في الشاشة.**
+    //
+    // كان `of: AccountScreen`، فلمّا صار في الرأس زرُّ «تغيير الغلاف» دخل
+    // العدَّ — وهو ليس باباً يفتح شاشة. والأسوأُ أنّ العدد صار **يتبدّل
+    // بالتمرير**: `ListView` لا يبني ما خرج عن الشاشة، فيُحسب الزرُّ وهو في
+    // الأعلى ويسقط من الحساب حين يُمرَّر إلى آخر الأبواب — فينهار الاختبارُ
+    // بـ`RangeError` لا بعيبٍ في المنتج. والغلافُ يُقاس في
+    // `profile_cover_test.dart`.
     Finder rows() => find.descendant(
-      of: find.byType(AccountScreen),
+      of: find.byType(MenuSheet),
       matching: find.byType(InkWell),
       skipOffstage: false,
     );

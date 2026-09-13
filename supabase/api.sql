@@ -77,6 +77,7 @@ select
   p.full_name,
   p.bio,
   p.logo_path,
+  p.cover_path,
   p.governorate,
   p.coverage_areas,
   p.rating,

@@ -149,6 +149,13 @@ left join public.cancellation_policies pol on pol.id = s.cancellation_policy_id;
 
 grant select on public.v_services to anon, authenticated;
 
+-- **وعمودُ الغلاف يُضمن قبل أن يُسرد.** هذا الملفُّ يُعيد بناءَ الطريقة
+-- بكامل أعمدتها، فمن شغّله **بعد** `profile_cover.sql` كان الغلافُ عنده
+-- ومن شغّله قبله لم يكن — ولو سُرد بلا ضمانٍ لسقط على الثاني، ولو أُسقط من
+-- السرد لَمحاه هذا الملفُّ من الطريقة على الأوّل بصمت.
+alter table public.service_providers
+  add column if not exists cover_path text not null default '';
+
 drop view if exists public.v_providers;
 
 create view public.v_providers
@@ -159,6 +166,7 @@ select
   p.full_name,
   p.bio,
   p.logo_path,
+  p.cover_path,
   p.governorate,
   p.coverage_areas,
   p.rating,

@@ -18,7 +18,6 @@
 // خارجَ البؤرة على أرضيّةٍ نبيذيّة)، لا مأخوذةٌ من الشبكة ولا صورةُ قاعةٍ
 // حقيقيّة — فلا حقَّ لأحدٍ فيها.
 import 'dart:io';
-import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';

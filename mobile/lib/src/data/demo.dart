@@ -620,6 +620,7 @@ void demoUpdateProviderProfile({
   String? businessName,
   String? bio,
   String? logoPath,
+  String? coverPath,
   GeoPoint? point,
   bool setPoint = false,
 }) {
@@ -632,6 +633,7 @@ void demoUpdateProviderProfile({
     governorate: p.governorate,
     bio: bio ?? p.bio,
     logoPath: logoPath ?? p.logoPath,
+    coverPath: coverPath ?? p.coverPath,
     status: p.status,
     rating: p.rating,
     reviewsCount: p.reviewsCount,
@@ -965,6 +967,21 @@ MyProfile _demoProfile = const MyProfile(
 
 MyProfile? demoProfile() => _demoProfile;
 
+/// يعيد الملفَّ التجريبيَّ إلى حاله الأولى.
+///
+/// **ولأنّه حالٌ في الذاكرة يبقى بين اختبارٍ وآخر:** من كتب فيه غلافاً ثمّ
+/// ترك الحزمةَ تُكمل وجده الاختبارُ التالي مكتوباً — فيمرّ وهو لا يقيس شيئاً،
+/// أو يسقط وليس فيه عيب.
+void demoResetProfile() => _demoProfile = const MyProfile(
+  id: 'demo-user',
+  fullName: 'مستخدم تجريبي',
+  email: 'demo@example.com',
+  phone: '770000000',
+  governorate: 'أمانة العاصمة',
+  governorateId: null,
+  avatarPath: '',
+);
+
 // ── العناوين والمحافظ والإعدادات — في الذاكرة، للوضع التجريبي ───────────────
 List<SavedAddress> demoAddresses = [
   const SavedAddress(
@@ -1165,11 +1182,13 @@ void demoRegisterProfile({
   );
 }
 
-MyProfile demoUpdateProfile(String name, String? phone, String? govId, String? avatar) {
+MyProfile demoUpdateProfile(
+    String name, String? phone, String? govId, String? avatar, String? cover) {
   _demoProfile = _demoProfile.copyWith(
     fullName: name,
     phone: phone,
     avatarPath: avatar,
+    coverPath: cover,
   );
   return _demoProfile;
 }
