@@ -71,6 +71,71 @@ if (after.length !== 1) throw new Error('الغلافُ سقط من الطريق
 // عن قصد: من شغّل `nearby.sql` ثمّ هذا الملفّ يجب ألّا يفقد «الأقرب إليّ».
 // فيُقاس الوجودُ لا الترتيب.
 
+// ── ٢ب. **وفوق قاعدةٍ شُغِّل عليها `nearby.sql` — وهي حالُ القاعدة الحيّة** ──
+//
+// **وهذا الاختبارُ كُتب بعد أن سقط الملفُّ على صاحب المنصّة.**
+// `api_providers_nearby` تُعيد `setof public.v_providers`، فهي تابعةٌ لنوع
+// الطريقة — ولا تُحذف الطريقةُ وهي قائمة. فرُدَّ بـ«cannot drop view
+// v_providers because other objects depend on it»، والملفُّ لم يُشغَّل.
+//
+// والقاعدةُ أعلاه لم يُشغَّل عليها `nearby.sql`، فمرّ الملفُّ فيها ولم يُقس
+// ما يقع فعلاً. **فتُبنى قاعدةٌ ثانيةٌ بالترتيب الحقيقيّ.**
+{
+  const live = new PGlite()
+  await live.exec(`
+    create schema if not exists auth;
+    create schema if not exists storage;
+    create table if not exists auth.users (id uuid primary key, email text);
+    create or replace function auth.uid() returns uuid language sql stable as $$
+      select nullif(current_setting('test.uid', true), '')::uuid $$;
+    create table if not exists storage.buckets (
+      id text primary key, name text, public boolean,
+      file_size_limit bigint, allowed_mime_types text[]);
+    create table if not exists storage.objects (
+      id uuid primary key default gen_random_uuid(), bucket_id text, name text);
+    create or replace function storage.foldername(p text) returns text[]
+      language sql immutable as $$ select string_to_array(p, '/') $$;
+    create role anon; create role authenticated;
+  `)
+  // نفسُ ترتيب `nearby.test.mjs` — وهو الترتيبُ الذي عند صاحب المنصّة.
+  for (const f of ['install.sql', 'seed.sql', 'apply.sql', 'support.sql', 'roles.sql',
+                   'invitations.sql', 'service_media.sql', 'availability.sql',
+                   'settlements.sql', 'profile.sql', 'profile_extras.sql',
+                   'coupons.sql', 'location.sql', 'nearby.sql']) {
+    await live.exec(read(f))
+  }
+
+  const has = async () => (await live.query(`
+    select 1 from pg_proc where pronamespace = 'public'::regnamespace
+       and proname = 'api_providers_nearby'`)).rows.length
+  if (await has() !== 1) throw new Error('nearby.sql لم يُنشئ الدالّة — اختبارٌ لا يقيس شيئاً')
+
+  // **والملفُّ يُشغَّل مرّتين**: الأولى هي التي سقطت، والثانية تُثبت أنّه
+  // آمنٌ عند التكرار فوق هذا الترتيب أيضاً.
+  await live.exec(read('profile_cover.sql'))
+  await live.exec(read('profile_cover.sql'))
+  console.log('✅ **والملفُّ يمرّ فوق `nearby.sql`** — لا خطأَ تبعيّة')
+
+  if (await has() !== 1) {
+    throw new Error('«الأقرب إليّ» اختفت — حُذفت مع الطريقة ولم تُعَد')
+  }
+  const [c] = (await live.query(`
+    select count(*)::int as n from information_schema.columns
+     where table_schema='public' and table_name='v_providers'
+       and column_name='cover_path'`)).rows
+  if (c.n !== 1) throw new Error('الغلافُ ليس في الطريقة بعد إعادة بنائها')
+
+  // **وتُنادى فعلاً لا يُكتفى بوجودها.** دالّةٌ أُعيدت بجسمٍ مكسورٍ تبقى في
+  // `pg_proc` وتسقط أوّلَ ندائها — وأوّلُ ندائها يقع على جهاز مستخدم.
+  const near = (await live.query(
+    `select * from public.api_providers_nearby(15.33, 44.19, null, '', 5, null)`)).rows
+  if (near.length === 0) throw new Error('«الأقرب إليّ» لا تُعيد شيئاً بعد إعادتها')
+  if (!('cover_path' in near[0])) throw new Error('الدالّةُ لا تحمل الغلاف')
+  console.log('✅ **و«الأقربُ إليّ» تعمل وتحمل الغلاف** — لا `cascade` صامتة')
+
+  await live.close()
+}
+
 // ── ٣. والعمودان كلاهما في الجدولين ─────────────────────────────────────────
 for (const [table, label] of [['app_users', 'العميل'], ['service_providers', 'المزوّد']]) {
   const [col] = await rows(`

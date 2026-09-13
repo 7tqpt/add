@@ -175,9 +175,43 @@ grant execute on function public.api_update_profile(text, text, uuid, text, text
 --    والنقطةُ، والقصرُ على الموثّقين. ولو أُعيدت هنا إلى شكلٍ أقدمَ لَسقطت
 --    «الأقرب إليّ» ولَظهر غيرُ الموثّقين — فيُصلَح عمودٌ ويُكسَر بابان.
 --
---    ولا `cascade`: لو تعلّق بها شيءٌ لم أعلم به فليقل ذلك الآن، لا أن
---    يسقط صامتاً.
+--    **وتُحذف الدالّةُ التابعةُ أوّلاً — وهذا سقط منّي أوّلَ مرّة.**
+--    `api_providers_nearby` تُعيد `setof public.v_providers`، فهي تابعةٌ
+--    لنوع الطريقة ولا تُحذف الطريقةُ وهي قائمة. فرُدَّ الملفُّ على صاحب
+--    المنصّة بـ«cannot drop view v_providers because other objects depend
+--    on it» — و`nearby.sql` كان يحتاط لهذا منذ كُتب، ونسيتُه هنا.
+--
+--    **ولا `cascade`** — وهو الذي يقترحه الخادمُ في سطر `HINT`: يمسح
+--    الدالّةَ صامتاً فتسقط «الأقربُ إليّ» ولا يعلم أحد. فتُحذف بالاسم،
+--    وتُعاد بعد الطريقة كما كانت.
+--
+--    **وتُحذف بالاسم لا بالتوقيع:** زيادةُ معاملٍ في Postgres تصنع دالّةً
+--    ثانيةً لا تستبدل الأولى، و`drop function` بتوقيعٍ مكتوبٍ بيدٍ يُخطئ
+--    التوقيعَ القديم فيتركه. (وقع هذا في هذا المشروع مرّتين.)
 -- ----------------------------------------------------------------------------
+
+-- **أكانت قائمةً قبل الحذف؟** من لم يشغّل `nearby.sql` بعدُ لا دالّةَ عنده
+-- ولا `distance_km` تحتها — فإعادتُها عليه تسقط بخطأ «لا دالّةَ بهذا الاسم»
+-- داخل جسمٍ يُتحقَّق منه عند الإنشاء. فيُحفظ الجوابُ قبل الحذف.
+select set_config(
+  'farhati.had_nearby',
+  case when to_regprocedure(
+         'public.api_providers_nearby(numeric,numeric,text,text,integer,text)'
+       ) is null then 'no' else 'yes' end,
+  false);
+
+do $drop$
+declare r record;
+begin
+  for r in select oid::regprocedure as sig
+             from pg_proc
+            where pronamespace = 'public'::regnamespace
+              and proname = 'api_providers_nearby'
+  loop
+    execute 'drop function ' || r.sig;
+  end loop;
+end $drop$;
+
 drop view if exists public.v_providers;
 
 create view public.v_providers
@@ -209,6 +243,50 @@ from public.service_providers p
 where p.status = 'verified';
 
 grant select on public.v_providers to anon, authenticated;
+
+-- ----------------------------------------------------------------------------
+-- ٥. وتُعاد الدالّةُ التابعةُ كما كانت — **إن كانت**
+--
+--    ونصُّها هو نصُّها في `nearby.sql` حرفاً بحرف. ولا تُكتب هنا نسخةٌ
+--    «محسَّنة»: من شغّل الملفّين بأيّ ترتيبٍ يجب أن يخرج بدالّةٍ واحدةٍ
+--    لا بدالّتين تختلفان بحسب أيُّهما شُغِّل أخيراً.
+-- ----------------------------------------------------------------------------
+do $restore$
+begin
+  if current_setting('farhati.had_nearby', true) <> 'yes' then return; end if;
+
+  execute $f$
+    create or replace function public.api_providers_nearby(
+      p_latitude     numeric,
+      p_longitude    numeric,
+      p_category     text default null,
+      p_search       text default '',
+      p_limit        integer default 40,
+      p_governorate  text default null
+    )
+    returns setof public.v_providers
+    language sql stable security invoker as $body$
+      select v.*
+        from public.v_providers v
+       where (p_category is null or p_category = any(v.categories))
+         and (p_governorate is null or v.governorate = p_governorate)
+         and (
+           btrim(coalesce(p_search, '')) = ''
+           or v.business_name ilike '%' || btrim(p_search) || '%'
+         )
+       order by
+         public.distance_km(p_latitude, p_longitude, v.latitude, v.longitude) nulls last,
+         v.is_featured desc,
+         v.rating desc
+       limit greatest(coalesce(p_limit, 40), 1)
+    $body$
+  $f$;
+
+  execute 'revoke all on function public.api_providers_nearby'
+       || '(numeric, numeric, text, text, integer, text) from public';
+  execute 'grant execute on function public.api_providers_nearby'
+       || '(numeric, numeric, text, text, integer, text) to anon, authenticated';
+end $restore$;
 
 commit;
 
@@ -247,6 +325,16 @@ select 'دالّةُ التعديل — حِملٌ واحد',
   from information_schema.routines
  where routine_schema = 'public'
    and routine_name = 'api_update_profile'
+union all
+-- **و«الأقربُ إليّ» ما زالت قائمة.** هي التابعةُ التي تمنع حذفَ الطريقة،
+-- فتُحذف وتُعاد هنا — ولو سقطت في الطريق لَاختفى الترتيبُ بالمسافة من
+-- التطبيق كلِّه بلا رسالةٍ واحدة. ويُتوقَّع ١ لمن شغّل `nearby.sql`، و٠ لمن
+-- لم يشغّله بعد — وكلاهما صحيح.
+select 'الأقرب إليّ (1 إن شُغِّل nearby.sql)',
+       count(*)::text, '1'
+  from information_schema.routines
+ where routine_schema = 'public'
+   and routine_name = 'api_providers_nearby'
 union all
 select 'سلّة الصور',
        count(*)::text, '1'
