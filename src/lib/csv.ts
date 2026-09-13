@@ -14,11 +14,15 @@ export interface CsvTable {
 /**
  * Serialises the table to CSV text.
  *
+ * Exported for `test/csv.test.ts`: the saving half runs through the browser or
+ * the desktop Save dialog, neither of which is ours to measure — but the text
+ * that lands in the file is, and it is where a stray comma breaks a report.
+ *
  * The leading BOM is what makes Excel read the file as UTF-8; without it Arabic
  * column headers and names arrive as mojibake. CRLF line endings are what Excel
  * expects on every platform.
  */
-function serialise(table: CsvTable): string {
+export function serialise(table: CsvTable): string {
   const lines = [table.columns, ...table.rows].map((row) => row.map(escapeCell).join(','))
   return '﻿' + lines.join('\r\n')
 }
