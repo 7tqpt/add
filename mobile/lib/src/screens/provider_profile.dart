@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 
 import '../core/i18n.dart';
 import '../core/format.dart';
@@ -10,6 +9,7 @@ import '../data/api.dart';
 import '../data/models.dart';
 import '../data/supabase.dart';
 import '../ui/kit.dart';
+import '../ui/pick_image.dart';
 import 'documents.dart';
 import 'labels.dart';
 import 'map_picker.dart';
@@ -27,6 +27,13 @@ class ProviderProfileScreen extends StatefulWidget {
 
 class _ProviderProfileScreenState extends State<ProviderProfileScreen> {
   late Future<ProviderProfile?> _future;
+
+  /// الغلافُ يُرفع الآن.
+  bool _coverBusy = false;
+
+  /// ختمٌ يُلحق برابط الغلاف — السلّةُ عامّةٌ والاسمُ ثابت، فبلا فرقٍ في
+  /// العنوان يعرض التطبيقُ القديمةَ من ذاكرته بعد الاستبدال.
+  int _coverVersion = 0;
 
   @override
   void initState() {
@@ -50,6 +57,38 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen> {
     if (saved == true) _reload();
   }
 
+  /// يبدّل غلافَ الصفحة — يُختار ويُرفع ويُحفظ بلا شاشةِ تعديل.
+  ///
+  /// **والرفعُ قبل الحفظ:** لو حُفظ المسارُ ونجح ثمّ سقط الرفعُ لأشار الصفُّ
+  /// إلى صورةٍ لا وجود لها — ويراها كلُّ عميلٍ يفتح صفحته مكسورة.
+  Future<void> _changeCover(ProviderProfile p) async {
+    try {
+      final picked = await pickImage(
+        context,
+        maxWidth: coverMaxWidth,
+        maxHeight: coverMaxHeight,
+      );
+      if (picked == null) return; // إلغاءٌ لا خطأ
+      if (!mounted) return;
+      setState(() => _coverBusy = true);
+
+      final path = await Api.uploadProviderCover(
+        authUserId: widget.session.userId ?? p.id,
+        fileName: picked.name,
+        bytes: picked.bytes,
+      );
+      await Api.updateProviderProfile(providerId: p.id, coverPath: path);
+      if (!mounted) return;
+      setState(() => _coverVersion++);
+      _reload();
+      if (mounted) showMessage(context, tr('حُفظ الغلاف'));
+    } catch (e) {
+      if (mounted) showMessage(context, messageOf(e));
+    } finally {
+      if (mounted) setState(() => _coverBusy = false);
+    }
+  }
+
   void _approveInDemo() {
     Api.approveProviderInDemo();
     setState(() {
@@ -61,7 +100,10 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen> {
   void _push(String title, Widget body) {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => Scaffold(appBar: AppBar(title: Text(title)), body: body),
+        builder: (_) => Scaffold(
+          appBar: AppBar(title: Text(title)),
+          body: body,
+        ),
       ),
     );
   }
@@ -93,7 +135,11 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen> {
         if (p == null) {
           return ListView(
             padding: EdgeInsets.fromLTRB(
-              Space.lg, glassHeaderTop(context), Space.lg, glassNavSpace),
+              Space.lg,
+              glassHeaderTop(context),
+              Space.lg,
+              glassNavSpace,
+            ),
             children: [
               AppCard(
                 children: [
@@ -116,19 +162,23 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen> {
           padding: EdgeInsets.only(bottom: glassNavSpace),
           children: [
             ProfileHeader(
+              // **وغلافُه هو ما يراه العميل** — العمودُ نفسُه يُقرأ في
+              // `PublicProviderScreen`. فما يضعه هنا واجهةُ متجره هناك.
+              coverUrl: Api.avatarUrl(p.coverPath, version: _coverVersion),
+              onEditCover: () => _changeCover(p),
+              coverBusy: _coverBusy,
               // الشعارُ يُضغط فيُبدَّل: مكانُ تغيير الصورة هو الصورةُ نفسها،
               // لا زرٌّ في آخر الشاشة يُبحث عنه.
               avatar: _Logo(
                 profile: p,
                 authUserId: widget.session.userId,
                 onDone: _reload,
-                size: 64,
+                size: profileAvatarSize,
               ),
               title: p.businessName.isEmpty ? p.fullName : p.businessName,
               // علامةُ التوثيق إلى جانب اسمه هو أيضاً: هي ما يراه العميل،
               // فيعرف صاحبُها ما ربحه بتوثيقه.
-              titleTrailing:
-                  p.status == 'verified' ? const VerifiedMark(size: 17) : null,
+              titleTrailing: p.status == 'verified' ? const VerifiedMark(size: 17) : null,
               subtitle: p.governorate,
               badge: providerStatusLabel(p.status),
               // **والحالُ العالقة تُقال في الرأس لا تُدفن في بطاقة.** من طلبه
@@ -138,8 +188,9 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen> {
                 'pending' => _HeaderNote(
                   tr('طلبك قيد المراجعة — لن تستقبل حجوزات حتى تُقبل مستنداتك.'),
                 ),
-                'rejected' when p.rejectionReason.isNotEmpty =>
-                  _HeaderNote(p.rejectionReason),
+                'rejected' when p.rejectionReason.isNotEmpty => _HeaderNote(
+                  p.rejectionReason,
+                ),
                 _ => null,
               },
             ),
@@ -179,14 +230,14 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen> {
                 MenuRow(
                   icon: Icons.workspace_premium_outlined,
                   label: tr('الباقات والاشتراك'),
-                  onTap: () => _push(
-                    tr('اشتراكك'), SubscriptionScreen(session: widget.session)),
+                  onTap: () =>
+                      _push(tr('اشتراكك'), SubscriptionScreen(session: widget.session)),
                 ),
                 MenuRow(
                   icon: Icons.account_balance_wallet_outlined,
                   label: tr('مستحقّاتي'),
-                  onTap: () => _push(
-                    tr('مستحقّاتي'), EarningsScreen(session: widget.session)),
+                  onTap: () =>
+                      _push(tr('مستحقّاتي'), EarningsScreen(session: widget.session)),
                   last: true,
                 ),
 
@@ -227,7 +278,10 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen> {
               child: AppCard(
                 children: [
                   SectionTitle(tr('أرقامك')),
-                  KeyValue(tr('التقييم'), p.rating > 0 ? '${p.rating}' : tr('لا تقييم بعد')),
+                  KeyValue(
+                    tr('التقييم'),
+                    p.rating > 0 ? '${p.rating}' : tr('لا تقييم بعد'),
+                  ),
                   KeyValue(tr('عدد التقييمات'), formatNumber(p.reviewsCount)),
                   KeyValue(tr('حجوزات منفّذة'), formatNumber(p.completedBookings)),
                   KeyValue(tr('إجمالي الأرباح'), formatMoney(p.totalEarnings)),
@@ -264,16 +318,20 @@ class _HeaderNote extends StatelessWidget {
   final String text;
 
   @override
+  // **وأرضيّتُه صارت فاتحةً لأنّ ما تحته صار فاتحاً.** كان أبيضَ شفّافاً على
+  // الرأس النبيذيّ وحبرُه أبيض، فلمّا صار الاسمُ وما تحته على ورقةٍ بيضاء
+  // خرج الأبيضُ على الأبيض — سطرٌ يقول لصاحبه إنّ طلبَه معلَّقٌ ولا يُرى.
+  @override
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.all(Space.md),
     decoration: BoxDecoration(
-      color: Colors.white.withValues(alpha: 0.14),
+      color: AppColors.surface2,
       borderRadius: BorderRadius.circular(12),
     ),
     child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Icon(Icons.info_outline, size: 18, color: AppColors.goldOnAccent),
+        const Icon(Icons.info_outline, size: 18, color: AppColors.accent),
         const SizedBox(width: Space.sm),
         Expanded(
           child: Text(
@@ -281,7 +339,7 @@ class _HeaderNote extends StatelessWidget {
             style: const TextStyle(
               fontSize: 12.5,
               height: 1.7,
-              color: OnAccent.ink,
+              color: AppColors.ink2,
               fontFamilyFallback: arabicFallback,
             ),
           ),
@@ -315,43 +373,11 @@ class _LogoState extends State<_Logo> {
   bool _busy = false;
 
   Future<void> _choose() async {
-    final source = await showModalBottomSheet<ImageSource>(
-      context: context,
-      builder: (sheet) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.photo_camera_outlined, color: AppColors.accent),
-              title: Text(tr('التقاط صورة')),
-              onTap: () => Navigator.of(sheet).pop(ImageSource.camera),
-            ),
-            ListTile(
-              leading: const Icon(Icons.photo_library_outlined, color: AppColors.accent),
-              title: Text(tr('اختيار من المعرض')),
-              onTap: () => Navigator.of(sheet).pop(ImageSource.gallery),
-            ),
-            const SizedBox(height: Space.sm),
-          ],
-        ),
-      ),
-    );
-    if (source == null) return;
-    await _pickAndSave(source);
-  }
-
-  Future<void> _pickAndSave(ImageSource source) async {
     try {
-      // يُقاس ويُضغط عند الالتقاط لا بعده: صورةُ كاميرا الجوال تتجاوز خمسة
-      // ميجابايت، وحدُّ السلّة اثنان — ورفعُها على شبكةٍ يمنية عذاب.
-      final file = await ImagePicker().pickImage(
-        source: source,
-        maxWidth: 800,
-        maxHeight: 800,
-        imageQuality: 85,
-      );
-      if (file == null) return; // إلغاءٌ لا خطأ
-      final bytes = await file.readAsBytes();
+      // **والورقةُ والقياسُ في `pick_image.dart` لا هنا** — كانت مكتوبةً
+      // ثلاثَ مرّات، فحدٌّ يُرفع في واحدةٍ يُنسى في أختيها.
+      final picked = await pickImage(context, maxWidth: 800, maxHeight: 800);
+      if (picked == null) return; // إلغاءٌ لا خطأ
       if (!mounted) return;
       setState(() => _busy = true);
 
@@ -359,8 +385,8 @@ class _LogoState extends State<_Logo> {
       // صورةٍ لا وجود لها.
       final path = await Api.uploadProviderLogo(
         authUserId: widget.authUserId ?? widget.profile.id,
-        fileName: file.name,
-        bytes: bytes,
+        fileName: picked.name,
+        bytes: picked.bytes,
       );
       await Api.updateProviderProfile(providerId: widget.profile.id, logoPath: path);
       if (!mounted) return;
@@ -410,7 +436,11 @@ class _LogoState extends State<_Logo> {
                         color: AppColors.accentInk,
                       ),
                     )
-                  : const Icon(Icons.photo_camera_rounded, size: 12, color: AppColors.accentInk),
+                  : const Icon(
+                      Icons.photo_camera_rounded,
+                      size: 12,
+                      color: AppColors.accentInk,
+                    ),
             ),
           ),
         ],
@@ -506,10 +536,7 @@ class _ProfileEditorState extends State<_ProfileEditor> {
               ),
             ),
             const SizedBox(height: Space.sm),
-            Muted(
-              tr('هذا ما يقرؤه العميل في صفحتك قبل أن يحجز.'),
-              size: 11,
-            ),
+            Muted(tr('هذا ما يقرؤه العميل في صفحتك قبل أن يحجز.'), size: 11),
             const SizedBox(height: Space.lg),
             SectionTitle(tr('موقع محلّك')),
             const SizedBox(height: Space.sm),
@@ -530,7 +557,11 @@ class _ProfileEditorState extends State<_ProfileEditor> {
               const SizedBox(height: Space.sm),
               Text(
                 _error!,
-                style: const TextStyle(color: AppColors.critical, fontSize: 13, height: 1.7),
+                style: const TextStyle(
+                  color: AppColors.critical,
+                  fontSize: 13,
+                  height: 1.7,
+                ),
               ),
             ],
             const SizedBox(height: Space.lg),

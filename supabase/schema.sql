@@ -196,6 +196,9 @@ create table if not exists public.service_providers (
   -- مسارٌ لا رابطٌ كامل: السلّة عامّة فيُشتقّ الرابط عند العرض، ولو خُزّن
   -- الرابط لتعطّل يوم تتغيّر السلّة أو نطاقُها.
   logo_path          text not null default '',
+  -- غلافُ صفحته كما يراها العميل — مسارٌ داخل السلّة نفسِها.
+  -- وغيرُ الشعار: ذاك قرصٌ صغير، وهذا شريطٌ عريضٌ يملأ أعلى الصفحة.
+  cover_path         text not null default '',
   governorate_id     uuid references public.governorates (id) on delete set null,
   governorate        text not null default '',
   coverage_areas     text[] not null default '{}',

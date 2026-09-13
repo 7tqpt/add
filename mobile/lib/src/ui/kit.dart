@@ -245,6 +245,7 @@ class BigHeroCard extends StatefulWidget {
 
   /// نسبة ما دُفع — تُترك فارغةً فيغيب الشريط ويرتفع النصّ مكانه.
   final double? progress;
+
   /// تُترك فارغةً حين تكون البطاقةُ **في** الشاشة التي تشير إليها: بطاقةٌ
   /// تُضغط فتفتح ما هو مفتوحٌ أصلاً تُعلّم المستخدم أنّ ضغطها لا يفعل شيئاً.
   final VoidCallback? onTap;
@@ -292,11 +293,7 @@ class _BigHeroCardState extends State<BigHeroCard> {
                 children: [
                   // قرصان زجاجيّان في الزاوية: عمقٌ بلا صورة — والصورة تحتاج
                   // شبكةً وتحميلاً وقد لا تصل.
-                  Positioned(
-                    top: -46,
-                    left: -30,
-                    child: _Blob(size: 150, alpha: 0.10),
-                  ),
+                  Positioned(top: -46, left: -30, child: _Blob(size: 150, alpha: 0.10)),
                   Positioned(
                     bottom: -60,
                     right: -24,
@@ -316,7 +313,9 @@ class _BigHeroCardState extends State<BigHeroCard> {
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
                                 color: Colors.white.withValues(alpha: 0.20),
-                                border: Border.all(color: Colors.white.withValues(alpha: 0.28)),
+                                border: Border.all(
+                                  color: Colors.white.withValues(alpha: 0.28),
+                                ),
                               ),
                               child: Icon(widget.icon, size: 20, color: Colors.white),
                             ),
@@ -519,14 +518,27 @@ class MenuGap extends StatelessWidget {
       Container(height: Space.sm, color: AppColors.page);
 }
 
-/// الرأسُ النبيذيّ في أعلى شاشة الملفّ — «حسابي» وملفّ مقدّم الخدمة.
+/// مقاسُ القرص في رأس الملفّ.
 ///
-/// **وواحدٌ للشاشتين لا نسختان.** الصورةُ بطوقٍ ذهبيّ، والاسمُ، وسطرٌ ثانويّ،
-/// وشارةٌ ذهبيّة. وما يفترق بين الشاشتين محتوىً لا شكل: العميلُ اسمُه وجوالُه
-/// ودورُه، والمزوّدُ اسمُ عمله ومحافظتُه وحالُ توثيقه.
+/// **ثابتٌ واحدٌ لا رقمان.** الرأسُ يحسب بمقداره كم يزيح القرصَ فوق حافّة
+/// الغلاف، والشاشةُ تبني القرصَ به. ولو كتبت كلٌّ رقمَها لَطلّ القرصُ بمقدارٍ
+/// لا يطابق مقاسَه فوقع نصفُه في البياض ونصفُه في الصورة بلا محاذاة.
+const double profileAvatarSize = 92;
+
+/// الرأسُ في أعلى شاشة الملفّ — «حسابي» وملفّ مقدّم الخدمة.
+///
+/// **وواحدٌ للشاشتين لا نسختان.** غلافٌ يملأ عرضَ الشاشة، والقرصُ يطلّ على
+/// حافّته السفلى، والاسمُ وسطرٌ ثانويٌّ وشارةٌ ذهبيّةٌ تحته على البياض. وما
+/// يفترق بين الشاشتين محتوىً لا شكل: العميلُ اسمُه وجوالُه ودورُه، والمزوّدُ
+/// اسمُ عمله ومحافظتُه وحالُ توثيقه.
+///
+/// **والغلافُ صورةُ صاحبه إن رفعها، وإلّا فالتدرّجُ النبيذيّ.** اختار صاحبُ
+/// المنصّة هذا الشكل — «(ب) غلافٌ مستقلٌّ فوق الرأس» — بعد أن عُرض عليه
+/// الشكلان. وأكثرُ الناس لن يرفعوا شيئاً، فحالُ الفراغ ليست حالَ عطبٍ تُعالج
+/// بمربّعٍ رماديّ: هي الرأسُ القديمُ كما كان.
 ///
 /// ويمتدّ إلى حافّتَي الشاشة ويبدأ من أعلاها — فيمرّ تحت الشريط الزجاجي بدل
-/// أن يقف تحته بحاشيةٍ بيضاء تقطع النبيذيّ نصفين.
+/// أن يقف تحته بحاشيةٍ بيضاء تقطعه.
 class ProfileHeader extends StatelessWidget {
   const ProfileHeader({
     super.key,
@@ -538,6 +550,9 @@ class ProfileHeader extends StatelessWidget {
     this.titleLtr = false,
     this.subtitleLtr = false,
     this.footer,
+    this.coverUrl,
+    this.onEditCover,
+    this.coverBusy = false,
   });
 
   final Widget avatar;
@@ -559,110 +574,240 @@ class ProfileHeader extends StatelessWidget {
   /// سطرٌ تحت الشارة — تحذيرٌ أو سببُ رفض.
   final Widget? footer;
 
+  /// رابطُ الغلاف — `null` لمن لم يرفع، وهم الأكثرون.
+  final String? coverUrl;
+
+  /// يُنادى حين يُطلب تبديلُ الغلاف. `null` يُخفي الزرَّ كلَّه — فلا يُعرض
+  /// زرٌّ في شاشةٍ لا تملك رفعاً.
+  final VoidCallback? onEditCover;
+
+  /// الرفعُ جارٍ — يُستبدل بالرمز دوّارةٌ، فلا يضغط مرّتين ولا يظنّه معلَّقاً.
+  final bool coverBusy;
+
+  /// ارتفاعُ شريط الغلاف تحت شريط الحالة.
+  static const double coverBand = 152;
+
   @override
   Widget build(BuildContext context) {
+    // **ويمتدّ تحت شريط الحالة.** الصورةُ تبدأ من أعلى الشاشة كما كان
+    // التدرّجُ يبدأ، وإلّا ظهرت حاشيةٌ بيضاء فوق الغلاف تقطعه عن الحافّة.
+    final band = MediaQuery.paddingOf(context).top + coverBand;
+
     return Container(
-      width: double.infinity,
-      padding: EdgeInsets.fromLTRB(
-        Space.lg, glassHeaderTop(context), Space.lg, Space.xl),
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topRight,
-          end: Alignment.bottomLeft,
-          colors: [AppColors.accentLift, AppColors.accentDeep],
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+      color: AppColors.surface,
+      child: Stack(
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Flexible(
-                          child: Text(
-                            title,
-                            textDirection: titleLtr ? TextDirection.ltr : null,
-                            textAlign: titleLtr ? TextAlign.left : null,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontSize: 19,
-                              fontWeight: FontWeight.w700,
-                              color: OnAccent.ink,
-                              fontFamilyFallback: arabicFallback,
+          Positioned(
+            top: 0,
+            right: 0,
+            left: 0,
+            height: band,
+            child: _Cover(url: coverUrl, onEdit: onEditCover, busy: coverBusy),
+          ),
+          // **وعرضُه يُفرض فرضاً.** الطفلُ غيرُ المموضَع في `Stack` يأخذ
+          // قيوداً مرنة، فعمودٌ بلا هذا ينكمش إلى عرض أطولِ نصٍّ فيه —
+          // فتنزاح الحشوةُ الجانبيّةُ والأرضيّةُ البيضاء معه.
+          SizedBox(
+            width: double.infinity,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(height: band - profileAvatarSize / 2),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: Space.lg),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // **والطوقُ أبيضُ لا ذهبيّ.** القرصُ يقع على حدّ
+                      // الصورة والبياض، فطوقٌ بلون الورقة يفصله عن كليهما —
+                      // وذهبيٌّ هنا يضيع في غلافٍ ذهبيّ الإضاءة.
+                      Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: const BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: AppColors.surface,
+                        ),
+                        child: avatar,
+                      ),
+                      const SizedBox(height: Space.sm),
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              title,
+                              textDirection: titleLtr ? TextDirection.ltr : null,
+                              textAlign: titleLtr ? TextAlign.left : null,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 21,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.ink,
+                                fontFamilyFallback: arabicFallback,
+                              ),
                             ),
                           ),
-                        ),
-                        if (titleTrailing != null) ...[
-                          const SizedBox(width: 5),
-                          titleTrailing!,
+                          if (titleTrailing != null) ...[
+                            const SizedBox(width: 5),
+                            titleTrailing!,
+                          ],
                         ],
+                      ),
+                      if (subtitle.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          subtitle,
+                          // **والاتجاهُ يتبع ما يُعرض لا الصفحة:** جوالٌ أو
+                          // بريدٌ لاتينيٌّ بلا `ltr` تتقدّم نقطتُه وامتدادُه
+                          // إلى غير موضعهما فيُقرأ مقلوباً.
+                          textDirection: subtitleLtr ? TextDirection.ltr : null,
+                          textAlign: subtitleLtr ? TextAlign.left : null,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: AppColors.muted,
+                            fontFamilyFallback: arabicFallback,
+                          ),
+                        ),
                       ],
-                    ),
-                    if (subtitle.isNotEmpty) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        subtitle,
-                        // **والاتجاهُ يتبع ما يُعرض لا الصفحة:** جوالٌ أو
-                        // بريدٌ لاتينيٌّ بلا `ltr` تتقدّم نقطتُه وامتدادُه إلى
-                        // غير موضعهما فيُقرأ مقلوباً.
-                        textDirection: subtitleLtr ? TextDirection.ltr : null,
-                        textAlign: subtitleLtr ? TextAlign.left : null,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: OnAccent.inkSoft,
-                          fontFamilyFallback: arabicFallback,
+                      const SizedBox(height: Space.sm),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: AppColors.goldOnAccent,
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Text(
+                          badge,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.accentDeep,
+                            fontFamilyFallback: arabicFallback,
+                          ),
                         ),
                       ),
+                      if (footer != null) ...[const SizedBox(height: Space.md), footer!],
+                      const SizedBox(height: Space.lg),
                     ],
-                    const SizedBox(height: Space.sm),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: AppColors.goldOnAccent,
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      child: Text(
-                        badge,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.accentDeep,
-                          fontFamilyFallback: arabicFallback,
-                        ),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
-              ),
-              const SizedBox(width: Space.lg),
-              // **والطوقُ الذهبيُّ ليس زينةً وحده:** صورةٌ داكنةٌ على نبيذيٍّ
-              // داكنٍ تذوب فيه بلا حدٍّ يفصلها.
-              Container(
-                padding: const EdgeInsets.all(3),
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: AppColors.goldOnAccent, width: 2),
-                ),
-                child: avatar,
-              ),
-            ],
+              ],
+            ),
           ),
-          if (footer != null) ...[
-            const SizedBox(height: Space.md),
-            footer!,
-          ],
         ],
       ),
     );
   }
+}
+
+/// شريطُ الغلاف: صورةُ صاحبه، أو التدرّجُ النبيذيّ لمن لم يرفع.
+class _Cover extends StatelessWidget {
+  const _Cover({required this.url, required this.onEdit, required this.busy});
+
+  final String? url;
+  final VoidCallback? onEdit;
+  final bool busy;
+
+  static const _gradient = DecoratedBox(
+    decoration: BoxDecoration(
+      gradient: LinearGradient(
+        begin: Alignment.topRight,
+        end: Alignment.bottomLeft,
+        colors: [AppColors.accentLift, AppColors.accentDeep],
+      ),
+    ),
+    child: SizedBox.expand(),
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    final link = url;
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        if (link == null)
+          _gradient
+        else ...[
+          Image.network(
+            link,
+            fit: BoxFit.cover,
+            // **وشبكةٌ تسقط لا تُخرج مربّعاً مكسوراً**، ولا تُخرج فراغاً
+            // أبيضَ يطفو فيه القرص: يعود التدرّجُ كأنّ لا غلاف.
+            errorBuilder: (_, _, _) => _gradient,
+          ),
+          // حجابٌ في الأسفل — يفصل الصورةَ عن البياض تحتها ولا يطفئها،
+          // ويُبقي الزرَّ الأبيضَ مقروءاً على غلافٍ فاتح.
+          const DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Colors.transparent, Color(0x595C0820)],
+              ),
+            ),
+            child: SizedBox.expand(),
+          ),
+        ],
+        if (onEdit != null)
+          PositionedDirectional(
+            bottom: 10,
+            // **في الجهة المقابلة للقرص.** القرصُ في جهة البداية ويطلّ على
+            // الحافّة نفسِها، فزرٌّ بجانبه يختفي تحته.
+            end: Space.lg,
+            child: _CoverButton(onTap: busy ? null : onEdit, busy: busy),
+          ),
+      ],
+    );
+  }
+}
+
+class _CoverButton extends StatelessWidget {
+  const _CoverButton({required this.onTap, required this.busy});
+  final VoidCallback? onTap;
+  final bool busy;
+
+  @override
+  Widget build(BuildContext context) => Material(
+    // أسودُ شفّافٌ لا لونُ العلامة: الزرُّ يقع على صورةٍ لا نتحكّم في ألوانها،
+    // وأيُّ لونٍ من اللوح قد يقع على مثله في الصورة فيختفي.
+    color: const Color(0x73000000),
+    borderRadius: BorderRadius.circular(999),
+    child: InkWell(
+      key: const ValueKey('cover-edit'),
+      borderRadius: BorderRadius.circular(999),
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (busy)
+              const SizedBox(
+                width: 14,
+                height: 14,
+                child: CircularProgressIndicator(strokeWidth: 1.8, color: Colors.white),
+              )
+            else
+              const Icon(Icons.photo_camera_outlined, size: 15, color: Colors.white),
+            const SizedBox(width: 5),
+            Text(
+              busy ? tr('جارٍ الرفع…') : tr('تغيير الغلاف'),
+              style: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: Colors.white,
+                fontFamilyFallback: arabicFallback,
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
 }
 
 class SectionTitle extends StatelessWidget {
@@ -671,7 +816,11 @@ class SectionTitle extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Text(
     text,
-    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.ink),
+    style: const TextStyle(
+      fontSize: 16,
+      fontWeight: FontWeight.w600,
+      color: AppColors.ink,
+    ),
   );
 }
 
@@ -705,7 +854,12 @@ class Muted extends StatelessWidget {
 /// غير معروف» — سطرٌ يشغل مكاناً ولا يحمل خبراً، وهو حالُ كلِّ مستخدمٍ لم
 /// يفتح التطبيق منذ إضافة النبضة.
 class PresenceLine extends StatelessWidget {
-  const PresenceLine({super.key, required this.lastSeen, this.size = 12, this.center = false});
+  const PresenceLine({
+    super.key,
+    required this.lastSeen,
+    this.size = 12,
+    this.center = false,
+  });
 
   final DateTime? lastSeen;
   final double size;
@@ -728,7 +882,10 @@ class PresenceLine extends StatelessWidget {
           Container(
             width: 7,
             height: 7,
-            decoration: const BoxDecoration(color: AppColors.good, shape: BoxShape.circle),
+            decoration: const BoxDecoration(
+              color: AppColors.good,
+              shape: BoxShape.circle,
+            ),
           ),
           const SizedBox(width: 5),
           Text(
@@ -851,11 +1008,7 @@ class VerifiedMark extends StatelessWidget {
         painter: _VerifiedPainter(color: color),
         child: Center(
           // الأبيضُ على هذا الأزرق ‎٣٫٠٩:١‎ — وهو حدُّ النصّ الكبير والرموز.
-          child: Icon(
-            Icons.check_rounded,
-            size: size * 0.56,
-            color: Colors.white,
-          ),
+          child: Icon(Icons.check_rounded, size: size * 0.56, color: Colors.white),
         ),
       ),
     ),
@@ -985,7 +1138,11 @@ class KeyValue extends StatelessWidget {
           child: Text(
             value,
             textAlign: TextAlign.left,
-            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.ink),
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: AppColors.ink,
+            ),
           ),
         ),
       ],
@@ -1051,8 +1208,7 @@ class BrandSpinner extends StatefulWidget {
   State<BrandSpinner> createState() => _BrandSpinnerState();
 }
 
-class _BrandSpinnerState extends State<BrandSpinner>
-    with SingleTickerProviderStateMixin {
+class _BrandSpinnerState extends State<BrandSpinner> with SingleTickerProviderStateMixin {
   AnimationController? _c;
 
   @override
@@ -1066,10 +1222,8 @@ class _BrandSpinnerState extends State<BrandSpinner>
       _c = null;
       return;
     }
-    _c ??= AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1500),
-    )..repeat();
+    _c ??= AnimationController(vsync: this, duration: const Duration(milliseconds: 1500))
+      ..repeat();
   }
 
   @override
@@ -1094,10 +1248,7 @@ class _BrandSpinnerState extends State<BrandSpinner>
     // **ولمن أطفأ الحركةَ قوسٌ ساكنٌ لا فراغ.** غيابُ الدوّار يُقرأ «لا شيء
     // يحدث»، وهو أسوأ ما يُقال لمن ينتظر.
     if (c == null) return _paint(0.28);
-    return AnimatedBuilder(
-      animation: c,
-      builder: (context, _) => _paint(c.value),
-    );
+    return AnimatedBuilder(animation: c, builder: (context, _) => _paint(c.value));
   }
 }
 
@@ -1271,12 +1422,7 @@ class EmptyBlock extends StatelessWidget {
 }
 
 class ErrorBlock extends StatelessWidget {
-  const ErrorBlock({
-    super.key,
-    required this.message,
-    this.onRetry,
-    this.details,
-  });
+  const ErrorBlock({super.key, required this.message, this.onRetry, this.details});
   final String message;
   final VoidCallback? onRetry;
 
@@ -1314,8 +1460,7 @@ class ErrorBlock extends StatelessWidget {
             if (technical != null && technical.isNotEmpty) ...[
               const SizedBox(height: Space.md),
               Theme(
-                data: Theme.of(context)
-                    .copyWith(dividerColor: Colors.transparent),
+                data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
                 child: ExpansionTile(
                   key: const ValueKey('error-details'),
                   tilePadding: EdgeInsets.zero,
@@ -1327,7 +1472,10 @@ class ErrorBlock extends StatelessWidget {
                       textDirection: TextDirection.ltr,
                       textAlign: TextAlign.start,
                       style: const TextStyle(
-                          fontSize: 11, height: 1.6, color: AppColors.muted),
+                        fontSize: 11,
+                        height: 1.6,
+                        color: AppColors.muted,
+                      ),
                     ),
                   ],
                 ),
@@ -1384,10 +1532,7 @@ class ErrorBlock extends StatelessWidget {
           ),
           if (onRetry != null) ...[
             const SizedBox(height: Space.lg),
-            FilledButton(
-              onPressed: onRetry,
-              child: Text(tr('إعادة المحاولة')),
-            ),
+            FilledButton(onPressed: onRetry, child: Text(tr('إعادة المحاولة'))),
           ],
         ],
       ),
@@ -1427,7 +1572,6 @@ IconData categoryIcon(String slug) => switch (slug) {
   'printing' => Icons.print_outlined,
   _ => Icons.category_outlined,
 };
-
 
 /// صبغة القسم.
 ///
@@ -1581,9 +1725,7 @@ class _CategoryCardState extends State<CategoryCard> {
                   // منها لون. واللونُ الآن في القرص وحده، والبياضُ حوله يخدمه.
                   color: Colors.white,
                   border: Border.all(
-                    color: active
-                        ? tone.withValues(alpha: 0.55)
-                        : AppColors.hairline,
+                    color: active ? tone.withValues(alpha: 0.55) : AppColors.hairline,
                     width: active ? 1.5 : 1,
                   ),
                   borderRadius: BorderRadius.circular(16),
@@ -1647,7 +1789,12 @@ class _CategoryCardState extends State<CategoryCard> {
 
 /// شريحة اختيار — للأقسام والمحافظات.
 class PickChip extends StatelessWidget {
-  const PickChip({super.key, required this.label, required this.active, required this.onTap});
+  const PickChip({
+    super.key,
+    required this.label,
+    required this.active,
+    required this.onTap,
+  });
   final String label;
   final bool active;
   final VoidCallback onTap;
@@ -1676,8 +1823,9 @@ class PickChip extends StatelessWidget {
 }
 
 void showMessage(BuildContext context, String message) {
-  ScaffoldMessenger.of(context)
-      .showSnackBar(SnackBar(content: Text(message), behavior: SnackBarBehavior.floating));
+  ScaffoldMessenger.of(
+    context,
+  ).showSnackBar(SnackBar(content: Text(message), behavior: SnackBarBehavior.floating));
 }
 
 /// ارتفاع الشريط الزجاجي مع هامشه — تحتاجه القوائم لتُنهي محتواها فوقه.
@@ -1694,7 +1842,12 @@ const double glassNavSpace = 96;
 /// مقيسٌ على الزجاج نفسه لا مقدَّر. والزجاج الأبيض بأيقوناتٍ بيضاء إنما يصلح
 /// فوق خلفيةٍ داكنة.
 class GlassNavBar extends StatelessWidget {
-  const GlassNavBar({super.key, required this.index, required this.onSelect, required this.items});
+  const GlassNavBar({
+    super.key,
+    required this.index,
+    required this.onSelect,
+    required this.items,
+  });
 
   final int index;
   final ValueChanged<int> onSelect;
@@ -1776,7 +1929,9 @@ class _GlassNavCell extends StatelessWidget {
             curve: Curves.easeOut,
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
             decoration: BoxDecoration(
-              color: active ? AppColors.accent.withValues(alpha: 0.14) : Colors.transparent,
+              color: active
+                  ? AppColors.accent.withValues(alpha: 0.14)
+                  : Colors.transparent,
               borderRadius: BorderRadius.circular(999),
             ),
             child: Icon(active ? item.activeIcon : item.icon, size: 21, color: tone),
@@ -1989,10 +2144,7 @@ class GlassHeader extends StatelessWidget {
         //
         // فـ`sigma` صفرٌ في السكون: لا مزجَ ولا حافّةَ تبيضّ. والتبديلُ يقع
         // مرّتين في التمريرة لا في كلّ إطار.
-        filter: ImageFilter.blur(
-          sigmaX: scrolled ? 20 : 0,
-          sigmaY: scrolled ? 20 : 0,
-        ),
+        filter: ImageFilter.blur(sigmaX: scrolled ? 20 : 0, sigmaY: scrolled ? 20 : 0),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 160),
           curve: Curves.easeOut,
@@ -2034,10 +2186,8 @@ class GlassHeader extends StatelessWidget {
                     ),
                   ),
                 ),
-                if (start != null)
-                  PositionedDirectional(start: Space.xs, child: start!),
-                if (end != null)
-                  PositionedDirectional(end: Space.xs, child: end!),
+                if (start != null) PositionedDirectional(start: Space.xs, child: start!),
+                if (end != null) PositionedDirectional(end: Space.xs, child: end!),
               ],
             ),
           ),
@@ -2099,24 +2249,24 @@ class _GlassHeaderHostState extends State<GlassHeaderHost> {
 
   @override
   Widget build(BuildContext context) => NotificationListener<ScrollNotification>(
-        onNotification: _onScroll,
-        child: Stack(
-          children: [
-            widget.child,
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              child: GlassHeader(
-                title: widget.title,
-                start: widget.start,
-                end: widget.end,
-                scrolled: _under,
-              ),
-            ),
-          ],
+    onNotification: _onScroll,
+    child: Stack(
+      children: [
+        widget.child,
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          child: GlassHeader(
+            title: widget.title,
+            start: widget.start,
+            end: widget.end,
+            scrolled: _under,
+          ),
         ),
-      );
+      ],
+    ),
+  );
 }
 
 /// يشقّ اسمَ القسم عند أوّل واوٍ مبتدئةٍ كلمةً: أصلٌ وتتمّة.
@@ -2146,11 +2296,7 @@ class _GlassHeaderHostState extends State<GlassHeaderHost> {
 
 /// اسمُ القسم: أصلُه غامقاً وتتمّتُه تحته.
 class _CategoryLabel extends StatelessWidget {
-  const _CategoryLabel({
-    required this.label,
-    required this.active,
-    required this.tone,
-  });
+  const _CategoryLabel({required this.label, required this.active, required this.tone});
 
   final String label;
   final bool active;
@@ -2202,11 +2348,7 @@ class _CategoryLabel extends StatelessWidget {
 
 /// ما داخل دائرة بطاقة القسم: صورتُه إن كانت، وإلّا أيقونتُه.
 class _CategoryGlyph extends StatelessWidget {
-  const _CategoryGlyph({
-    required this.imageUrl,
-    required this.icon,
-    required this.tone,
-  });
+  const _CategoryGlyph({required this.imageUrl, required this.icon, required this.tone});
 
   final String? imageUrl;
   final IconData icon;
@@ -2231,8 +2373,7 @@ class _CategoryGlyph extends StatelessWidget {
         // حكم على التطبيق كلِّه.
         errorBuilder: (_, _, _) => fallback,
         // وأثناء التحميل تبقى الأيقونةُ مكانها، فلا تومض الدائرةُ فارغةً.
-        loadingBuilder: (context, child, progress) =>
-            progress == null ? child : fallback,
+        loadingBuilder: (context, child, progress) => progress == null ? child : fallback,
       ),
     );
   }

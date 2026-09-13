@@ -5,8 +5,10 @@ import '../core/session.dart';
 import '../core/app_version.dart';
 import '../core/theme.dart';
 import '../ui/kit.dart';
+import '../ui/pick_image.dart';
 import '../data/api.dart';
 import '../data/models.dart';
+import '../data/supabase.dart' show messageOf;
 import 'account_extras.dart';
 import 'become_provider.dart';
 import 'disputes.dart';
@@ -14,7 +16,6 @@ import 'favourites.dart';
 import 'edit_profile.dart';
 import 'money.dart';
 import 'support.dart';
-
 
 class AccountScreen extends StatefulWidget {
   const AccountScreen({super.key, required this.session});
@@ -37,6 +38,9 @@ class _AccountScreenState extends State<AccountScreen> {
   /// السلّة عامّة والاسم ثابت (`<uid>/avatar.jpg`)، فبعد استبدال الصورة يعرض
   /// التطبيق القديمةَ من ذاكرته. والختم يغيّر العنوان فيُجبره على الجلب.
   int _avatarVersion = 0;
+
+  /// الغلافُ يُرفع الآن — يُعطَّل الزرّ وتدور دوّارةٌ مكان الرمز.
+  bool _coverBusy = false;
 
   @override
   void initState() {
@@ -69,11 +73,19 @@ class _AccountScreenState extends State<AccountScreen> {
         // ويمتدّ إلى حافّتَي الشاشة ويبدأ من أعلاها — فيمرّ تحت الشريط
         // الزجاجي بدل أن يقف تحته بحاشيةٍ بيضاء تقطع النبيذيّ نصفين.
         ProfileHeader(
+          // **والغلافُ لمن له ملفٌّ وحده.** قبل وصوله لا يُعرف اسمُه،
+          // و`api_update_profile` تشترط اسماً — فزرٌّ يُضغط فيردّ «الاسم قصير
+          // جداً» على من لم يكتب شيئاً أسوأُ من زرٍّ يتأخّر لحظة.
+          coverUrl: profile == null
+              ? null
+              : Api.avatarUrl(profile.coverPath, version: _avatarVersion),
+          onEditCover: profile == null ? null : () => _changeCover(profile),
+          coverBusy: _coverBusy,
           avatar: _AccountAvatar(
             profile: profile,
             fallbackEmail: session.email,
             version: _avatarVersion,
-            size: 64,
+            size: profileAvatarSize,
           ),
           title: (profile?.fullName.trim().isNotEmpty ?? false)
               ? profile!.fullName.trim()
@@ -101,11 +113,8 @@ class _AccountScreenState extends State<AccountScreen> {
             MenuRow(
               icon: Icons.receipt_long_outlined,
               label: tr('فواتيري'),
-              onTap: () => _push(
-                context,
-                tr('فواتيري'),
-                InvoicesScreen(session: session),
-              ),
+              onTap: () =>
+                  _push(context, tr('فواتيري'), InvoicesScreen(session: session)),
             ),
             MenuRow(
               icon: Icons.favorite_border_rounded,
@@ -116,24 +125,23 @@ class _AccountScreenState extends State<AccountScreen> {
             MenuRow(
               icon: Icons.location_on_outlined,
               label: tr('العناوين'),
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const AddressesScreen()),
-              ),
+              onTap: () =>
+                  Navigator.of(context)
+                      .push(MaterialPageRoute(builder: (_) => const AddressesScreen())),
             ),
             MenuRow(
               icon: Icons.credit_card_outlined,
               label: tr('طرق الدفع'),
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const PaymentMethodsScreen()),
-              ),
+              onTap: () => Navigator.of(context)
+                  .push(MaterialPageRoute(builder: (_) => const PaymentMethodsScreen())),
             ),
             // مقدّمُ الخدمة: بابٌ واحدٌ بوجهين — من له ملفٌّ يبدّل الوضع، ومن
             // لا ملفَّ له يطلبه. ولا يُعرض البابان معاً فيحتار أيَّهما له.
             MenuRow(
-              icon: provider
-                  ? Icons.storefront_outlined
-                  : Icons.add_business_outlined,
-              label: provider ? tr('التبديل إلى وضع مقدّم الخدمة') : tr('أريد تقديم خدمة'),
+              icon: provider ? Icons.storefront_outlined : Icons.add_business_outlined,
+              label: provider
+                  ? tr('التبديل إلى وضع مقدّم الخدمة')
+                  : tr('أريد تقديم خدمة'),
               onTap: provider
                   ? () => session.switchTo(provider: true)
                   : () => Navigator.of(context).push(
@@ -149,23 +157,23 @@ class _AccountScreenState extends State<AccountScreen> {
             MenuRow(
               icon: Icons.settings_outlined,
               label: tr('الإعدادات'),
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => SettingsScreen(session: session)),
-              ),
+              onTap: () => Navigator.of(
+                context,
+              ).push(MaterialPageRoute(builder: (_) => SettingsScreen(session: session))),
             ),
             MenuRow(
               icon: Icons.support_agent_outlined,
               label: tr('الدعم'),
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => SupportScreen(session: session)),
-              ),
+              onTap: () => Navigator.of(
+                context,
+              ).push(MaterialPageRoute(builder: (_) => SupportScreen(session: session))),
             ),
             MenuRow(
               icon: Icons.gavel_rounded,
               label: tr('النزاعات'),
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => DisputesScreen(session: session)),
-              ),
+              onTap: () => Navigator.of(
+                context,
+              ).push(MaterialPageRoute(builder: (_) => DisputesScreen(session: session))),
             ),
             // الخروجُ بصبغة التحذير وآخرَ القائمة: هو الإجراء الوحيد هنا
             // الذي يُخرجك، فيُعرَف قبل أن يُضغط. ويُسأل عنه لأن ضغطةً بالخطأ
@@ -187,11 +195,53 @@ class _AccountScreenState extends State<AccountScreen> {
     );
   }
 
+  /// يبدّل غلافَ الملفّ — يُختار ويُرفع ويُحفظ في نداءٍ واحدٍ بلا شاشة.
+  ///
+  /// **ومكانُ تغيير الصورة هو الصورةُ نفسها** — كما في شعار المزوّد، لا حقلٌ
+  /// في شاشةِ تعديلٍ يُبحث عنه.
+  ///
+  /// **والرفعُ قبل الحفظ:** لو حُفظ المسارُ أوّلاً ونجح ثمّ سقط الرفعُ لأشار
+  /// الملفُّ إلى صورةٍ لا وجود لها — فيرى صاحبُه غلافاً مكسوراً كلَّ مرّة.
+  Future<void> _changeCover(MyProfile profile) async {
+    final userId = widget.session.userId;
+    if (userId == null) return;
+    try {
+      final picked = await pickImage(
+        context,
+        maxWidth: coverMaxWidth,
+        maxHeight: coverMaxHeight,
+      );
+      if (picked == null) return; // إلغاءٌ لا خطأ
+      if (!mounted) return;
+      setState(() => _coverBusy = true);
+
+      final path = await Api.uploadCover(
+        authUserId: userId,
+        fileName: picked.name,
+        bytes: picked.bytes,
+      );
+      await Api.updateProfile(fullName: profile.fullName, coverPath: path);
+      if (!mounted) return;
+      // الختمُ يتغيّر فيُجبر التطبيقَ على جلب الجديدة: السلّةُ عامّةٌ
+      // والاسمُ ثابت، فبلا فرقٍ في العنوان يعرض القديمةَ من ذاكرته.
+      setState(() => _avatarVersion++);
+      await _load();
+      if (mounted) showMessage(context, tr('حُفظ الغلاف'));
+    } catch (e) {
+      if (mounted) showMessage(context, messageOf(e));
+    } finally {
+      if (mounted) setState(() => _coverBusy = false);
+    }
+  }
+
   /// يفتح شاشةً لها شريطُ عنوانٍ خاصّ بها.
   void _push(BuildContext context, String title, Widget body) {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => Scaffold(appBar: AppBar(title: Text(title)), body: body),
+        builder: (_) => Scaffold(
+          appBar: AppBar(title: Text(title)),
+          body: body,
+        ),
       ),
     );
   }
@@ -233,7 +283,6 @@ class _AccountScreenState extends State<AccountScreen> {
     );
     if (yes == true) widget.session.signOut();
   }
-
 }
 
 /// قرص الصورة في بطاقة الهويّة.

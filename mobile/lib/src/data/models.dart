@@ -385,6 +385,7 @@ class ProviderProfile {
     required this.governorate,
     required this.bio,
     required this.logoPath,
+    this.coverPath = '',
     required this.status,
     required this.rating,
     required this.reviewsCount,
@@ -400,6 +401,10 @@ class ProviderProfile {
   final String governorate;
   final String bio;
   final String logoPath;
+
+  /// غلافُ صفحته — وهو ما يراه العميل، لا ما يراه هو وحدَه.
+  final String coverPath;
+
   final String status;
   final num rating;
   final int reviewsCount;
@@ -420,6 +425,7 @@ class ProviderProfile {
     governorate: (m['governorate'] ?? '') as String,
     bio: (m['bio'] ?? '') as String,
     logoPath: (m['logo_path'] ?? '') as String,
+    coverPath: (m['cover_path'] ?? '') as String,
     status: (m['status'] ?? 'pending') as String,
     rating: (m['rating'] ?? 0) as num,
     reviewsCount: ((m['reviews_count'] ?? 0) as num).toInt(),
@@ -445,6 +451,7 @@ class PublicProvider {
     required this.businessName,
     required this.bio,
     required this.logoPath,
+    this.coverPath = '',
     required this.governorate,
     required this.coverageAreas,
     required this.rating,
@@ -462,6 +469,10 @@ class PublicProvider {
 
   /// مسارُ الشعار داخل سلّة `avatars` — لا رابطٌ كامل.
   final String logoPath;
+
+  /// غلافُ صفحته. **وفراغُه هو حالُ الأكثرين**، فتبقى واجهتُهم التدرّجَ
+  /// النبيذيَّ بقرصيه — لا مربّعاً رماديّاً ولا أيقونةَ صورةٍ مكسورة.
+  final String coverPath;
 
   final String governorate;
 
@@ -488,6 +499,7 @@ class PublicProvider {
     businessName: (m['business_name'] ?? '') as String,
     bio: (m['bio'] ?? '') as String,
     logoPath: (m['logo_path'] ?? '') as String,
+    coverPath: (m['cover_path'] ?? '') as String,
     governorate: (m['governorate'] ?? '') as String,
     coverageAreas: _texts(m['coverage_areas']),
     rating: (m['rating'] ?? 0) as num,
@@ -662,6 +674,7 @@ class MyProfile {
     required this.governorate,
     required this.governorateId,
     required this.avatarPath,
+    this.coverPath = '',
     this.weddingRole = '',
   });
 
@@ -672,6 +685,12 @@ class MyProfile {
   final String governorate;
   final String? governorateId;
   final String avatarPath;
+
+  /// غلافُ الملفّ — مسارٌ داخل سلّة `avatars`.
+  ///
+  /// **وفراغُه حالٌ صحيحة لا نقص**، وهي حالُ كلّ من لم يرفع غلافاً: الرأسُ
+  /// حينئذٍ تدرّجُه النبيذيُّ كما كان. ولا يُقرأ الفراغُ «صورةٌ مكسورة».
+  final String coverPath;
 
   /// `bride` أو `groom` — أو فراغٌ لمن لا عرسَ له.
   ///
@@ -687,6 +706,9 @@ class MyProfile {
     governorate: (m['governorate'] ?? '') as String,
     governorateId: m['governorate_id'] as String?,
     avatarPath: (m['avatar_path'] ?? '') as String,
+    // **والغياب يُقرأ فراغاً لا خطأً:** من لم يشغّل `profile_cover.sql` بعدُ
+    // لا يصله العمودُ أصلاً، وشاشتُه يجب أن تعمل كما كانت.
+    coverPath: (m['cover_path'] ?? '') as String,
     weddingRole: (m['wedding_role'] ?? '') as String,
   );
 
@@ -695,6 +717,7 @@ class MyProfile {
     String? phone,
     String? governorate,
     String? avatarPath,
+    String? coverPath,
     String? weddingRole,
   }) => MyProfile(
     id: id,
@@ -704,6 +727,7 @@ class MyProfile {
     governorate: governorate ?? this.governorate,
     governorateId: governorateId,
     avatarPath: avatarPath ?? this.avatarPath,
+    coverPath: coverPath ?? this.coverPath,
     weddingRole: weddingRole ?? this.weddingRole,
   );
 }

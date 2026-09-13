@@ -143,7 +143,9 @@ class _PublicProviderScreenState extends State<PublicProviderScreen> {
           if (p == null) {
             return EmptyBlock(
               title: tr('الملفّ غير متاح'),
-              description: tr('قد يكون مقدّم الخدمة قد أوقف عرضه أو لم تُوثّقه الإدارة بعد.'),
+              description: tr(
+                'قد يكون مقدّم الخدمة قد أوقف عرضه أو لم تُوثّقه الإدارة بعد.',
+              ),
             );
           }
 
@@ -196,9 +198,13 @@ class _PublicProviderScreenState extends State<PublicProviderScreen> {
               body: TabBarView(
                 children: [
                   _About(provider: p, alsoServes: _alsoServes(p)),
-                  _TabList(children: [_Services(future: _services, onRetry: _reload)]),
+                  _TabList(
+                    children: [_Services(future: _services, onRetry: _reload)],
+                  ),
                   _Gallery(future: _gallery),
-                  _TabList(children: [_Reviews(future: _reviews, total: p.reviewsCount)]),
+                  _TabList(
+                    children: [_Reviews(future: _reviews, total: p.reviewsCount)],
+                  ),
                 ],
               ),
             ),
@@ -211,8 +217,10 @@ class _PublicProviderScreenState extends State<PublicProviderScreen> {
   static List<String> _alsoServes(PublicProvider p) =>
       p.coverageAreas.where((a) => a != p.governorate).toList();
 
-  static Widget _pad(Widget child) =>
-      Padding(padding: const EdgeInsets.symmetric(horizontal: Space.lg), child: child);
+  static Widget _pad(Widget child) => Padding(
+    padding: const EdgeInsets.symmetric(horizontal: Space.lg),
+    child: child,
+  );
 }
 
 /// الغلافُ والشعارُ والاسمُ وعلامتُه، ثم ثلاثةُ أرقام.
@@ -233,23 +241,21 @@ class _Head extends StatelessWidget {
     final p = provider;
     return Stack(
       children: [
-        // الغلاف: تدرّجٌ من لون العلامة لا صورة — الجدول لا يحمل غلافاً،
-        // وصورةٌ عامّة من الشبكة تُشبه صورةَ كل ملفٍّ آخر وتحتاج تحميلاً قد
-        // لا يصل.
+        // **الغلافُ صورتُه إن رفعها، وإلّا فالتدرّج.**
+        //
+        // كان تدرّجاً دائماً — والتعليلُ يومَها أنّ الجدول لا يحمل غلافاً.
+        // فصار يحمله (`profile_cover.sql`)، ويرفعه صاحبُه من شاشته. وصورةُ
+        // الصالة ليلةَ عرسٍ تقول عن صاحبها ما لا يقوله سطرُ تعريف.
+        //
+        // **والفراغُ ليس عطباً**: أكثرُهم لن يرفعوا شيئاً، فتبقى واجهتُهم
+        // التدرّجَ بقرصيه كما كانت — لا مربّعاً رماديّاً يقول «ناقص».
         Positioned(
           top: 0,
           left: 0,
           right: 0,
-          child: Container(
+          child: SizedBox(
             height: _cover,
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topRight,
-                end: Alignment.bottomLeft,
-                colors: [AppColors.accentLift, AppColors.accentDeep],
-              ),
-            ),
-            child: const _CoverBlobs(),
+            child: _CoverArt(url: Api.avatarUrl(p.coverPath)),
           ),
         ),
         Padding(
@@ -320,6 +326,53 @@ class _Head extends StatelessWidget {
               ),
             ],
           ),
+        ),
+      ],
+    );
+  }
+}
+
+/// الغلاف: صورةُ صاحبه، أو التدرّجُ بقرصيه لمن لم يرفع.
+class _CoverArt extends StatelessWidget {
+  const _CoverArt({required this.url});
+  final String? url;
+
+  static const _fallback = DecoratedBox(
+    decoration: BoxDecoration(
+      gradient: LinearGradient(
+        begin: Alignment.topRight,
+        end: Alignment.bottomLeft,
+        colors: [AppColors.accentLift, AppColors.accentDeep],
+      ),
+    ),
+    child: _CoverBlobs(),
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    final link = url;
+    if (link == null) return _fallback;
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Image.network(
+          link,
+          fit: BoxFit.cover,
+          // **وشبكةٌ تسقط تعود بالتدرّج لا بمربّعٍ مكسور.** والشريطُ العلويُّ
+          // شفّافٌ فوقه بحبرٍ فاتح، فأرضيّةٌ بيضاءُ هنا تُخفي زرّ المشاركة.
+          errorBuilder: (_, _, _) => _fallback,
+        ),
+        // حجابٌ في الأسفل — يفصل الصورةَ عمّا تحتها ويُبقي حبرَ الشريط
+        // العلويّ مقروءاً على غلافٍ فاتح.
+        const DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [Color(0x405C0820), Color(0x735C0820)],
+            ),
+          ),
+          child: SizedBox.expand(),
         ),
       ],
     );
@@ -400,7 +453,12 @@ class _Divider extends StatelessWidget {
 }
 
 class _Cell extends StatelessWidget {
-  const _Cell({required this.value, required this.label, required this.icon, required this.tone});
+  const _Cell({
+    required this.value,
+    required this.label,
+    required this.icon,
+    required this.tone,
+  });
   final String value;
   final String label;
   final IconData icon;
@@ -416,7 +474,11 @@ class _Cell extends StatelessWidget {
         Text(
           value,
           maxLines: 1,
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.ink),
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+            color: AppColors.ink,
+          ),
         ),
         Muted(label, size: 10.5),
       ],
@@ -437,7 +499,11 @@ class _Tag extends StatelessWidget {
     ),
     child: Text(
       label,
-      style: const TextStyle(fontSize: 11.5, color: AppColors.accent, fontWeight: FontWeight.w600),
+      style: const TextStyle(
+        fontSize: 11.5,
+        color: AppColors.accent,
+        fontWeight: FontWeight.w600,
+      ),
     ),
   );
 }
@@ -474,7 +540,9 @@ class _Services extends StatelessWidget {
                 // اسمُ المزوّد لا يُكرَّر في صفحته: القارئ فيها يعرف عند من هو.
                 showProvider: false,
                 onOpen: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => ServiceDetailScreen(serviceId: item.id)),
+                  MaterialPageRoute(
+                    builder: (_) => ServiceDetailScreen(serviceId: item.id),
+                  ),
                 ),
               ),
               const SizedBox(height: Space.md),
@@ -572,10 +640,7 @@ class _ProviderTabs extends StatelessWidget implements PreferredSizeWidget {
         fontWeight: FontWeight.w600,
         fontFamilyFallback: arabicFallback,
       ),
-      unselectedLabelStyle: TextStyle(
-        fontSize: 13,
-        fontFamilyFallback: arabicFallback,
-      ),
+      unselectedLabelStyle: TextStyle(fontSize: 13, fontFamilyFallback: arabicFallback),
       tabs: [
         Tab(text: tr('النبذة')),
         Tab(text: tr('الخدمات')),

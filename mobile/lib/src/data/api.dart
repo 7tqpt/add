@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart' show FileOptions, Functi
 import '../core/app_update.dart';
 import '../core/app_version.dart';
 import '../core/geo.dart';
+import '../core/i18n.dart' show tr;
 import '../core/share.dart' show pickShareUrl;
 import 'models.dart';
 import 'supabase.dart';
@@ -368,18 +369,22 @@ class Api {
     const base = 'id, full_name, business_name, governorate, bio, status, rating, '
         'reviews_count, completed_bookings, total_earnings, rejection_reason';
 
-    // **وثلاثةُ مستويات، لا اثنان.** القاعدةُ قد ينقصها الشعارُ وحده، أو
-    // الشعارُ والنقطة، أو النقطةُ وحدها — فمن شغّل `provider_logo.sql` ولم
-    // يشغّل `nearby.sql` بعدُ يجب أن تعمل شاشتُه كاملةً إلّا الموقع.
+    // **وأربعةُ مستويات، لا اثنان.** القاعدةُ قد ينقصها الغلافُ وحده، أو هو
+    // والشعار، أو هما والنقطة — فمن شغّل `provider_logo.sql` ولم يشغّل
+    // `nearby.sql` ولا `profile_cover.sql` بعدُ يجب أن تعمل شاشتُه كاملةً
+    // إلّا ما لم يُشغَّل.
     //
     // ولولا هذا لَقُرئ ملفُّ المزوّد بلا نقطةٍ أبداً: **العمودان لم يكونا في
     // قائمة الأعمدة أصلاً**، فكان صاحبُ القاعة يضع دبّوسه ويحفظ، ثمّ يفتح
     // الورقةَ فيجد «لم يُحدَّد موقع» — ويظنّ الحفظَ لم يقع.
     final row = await whenColumnMissing(
-      () => read('$base, logo_path, latitude, longitude'),
+      () => read('$base, logo_path, cover_path, latitude, longitude'),
       () => whenColumnMissing(
-        () => read('$base, logo_path'),
-        () => read(base),
+        () => read('$base, logo_path, cover_path'),
+        () => whenColumnMissing(
+          () => read('$base, logo_path'),
+          () => read(base),
+        ),
       ),
     );
     return row == null ? null : ProviderProfile.fromMap(row);
@@ -406,6 +411,28 @@ class Api {
     return path;
   }
 
+  /// يرفع غلافَ صفحة المزوّد ويعيد مساره.
+  ///
+  /// **واسمُه غيرُ اسم الشعار وغيرُ اسم صورة الملفّ**، وكلُّها في المجلّد
+  /// نفسِه: `avatar.*` و`provider.*` و`cover.*` و`provider_cover.*`. ولو
+  /// تشاركت اسماً لَمحا رفعُ الغلاف شعارَ صاحبه من حيث لا يدري — و`upsert`
+  /// يمحو بلا سؤال.
+  static Future<String> uploadProviderCover({
+    required String authUserId,
+    required String fileName,
+    required Uint8List bytes,
+  }) async {
+    final ext = fileName.contains('.') ? fileName.split('.').last.toLowerCase() : 'jpg';
+    final path = '$authUserId/provider_cover.$ext';
+    if (!isSupabaseConfigured) return path;
+    await db.storage.from('avatars').uploadBinary(
+      path,
+      bytes,
+      fileOptions: FileOptions(contentType: _mimeOf(ext), upsert: true),
+    );
+    return path;
+  }
+
   /// يحفظ ما يعرضه المزوّد عن نفسه.
   ///
   /// `update` مباشر لا دالّة `api_*`: سياسةُ `providers_self_update` تحصره في
@@ -423,6 +450,7 @@ class Api {
     String? businessName,
     String? bio,
     String? logoPath,
+    String? coverPath,
     GeoPoint? point,
     bool setPoint = false,
   }) async {
@@ -430,6 +458,7 @@ class Api {
       'business_name': ?businessName,
       'bio': ?bio,
       'logo_path': ?logoPath,
+      'cover_path': ?coverPath,
       if (setPoint) 'latitude': point?.lat,
       if (setPoint) 'longitude': point?.lng,
     };
@@ -439,6 +468,7 @@ class Api {
         businessName: businessName,
         bio: bio,
         logoPath: logoPath,
+        coverPath: coverPath,
         point: point,
         setPoint: setPoint,
       );
@@ -450,15 +480,20 @@ class Api {
       // ونصٌّ عربيٌّ يقول ما يُفعل بدل رسالةِ Postgres: صاحبُ القاعة لا يعرف
       // ما «42703»، ويعرف تماماً معنى «شغّل هذا الملف».
       if (e.code == undefinedColumn && e.message.contains('logo_path')) {
-        throw 'قاعدتك لم تُحدَّث بعد: شغّل ملف supabase/provider_logo.sql ثم أعد المحاولة.';
+        throw tr('قاعدتك لم تُحدَّث بعد: شغّل ملف supabase/provider_logo.sql ثم أعد المحاولة.');
+      }
+      // **والغلافُ كذلك** — ولا تُخلط رسالتُه برسالة الشعار: الملفّان
+      // مختلفان، ومن أُرسل إلى الملفّ الخطأ شغّله فلم يتغيّر شيء.
+      if (e.code == undefinedColumn && e.message.contains('cover_path')) {
+        throw tr('قاعدتك لم تُحدَّث بعد: شغّل ملف supabase/profile_cover.sql ثم أعد المحاولة.');
       }
       // **والموقعُ كذلك.** ومن حفظ دبّوسه على قاعدةٍ لم يُشغَّل عليها
       // `nearby.sql` كان يُردّ برسالةِ Postgres الإنجليزيّة — وصاحبُ القاعة
       // لا يعرف ما «42703»، ويعرف تماماً معنى «شغّل هذا الملف».
       if (e.code == undefinedColumn &&
           (e.message.contains('latitude') || e.message.contains('longitude'))) {
-        throw 'قاعدتك لم تُحدَّث بعد: شغّل ملفَّي supabase/location.sql ثم '
-            'supabase/nearby.sql، ثم أعد المحاولة.';
+        throw tr('قاعدتك لم تُحدَّث بعد: شغّل ملفَّي supabase/location.sql ثم '
+            'supabase/nearby.sql، ثم أعد المحاولة.');
       }
       rethrow;
     }
@@ -1394,17 +1429,54 @@ class Api {
     String? phone,
     String? governorateId,
     String? avatarPath,
+    String? coverPath,
   }) async {
     if (!isSupabaseConfigured) {
-      return demoUpdateProfile(fullName, phone, governorateId, avatarPath);
+      return demoUpdateProfile(
+          fullName, phone, governorateId, avatarPath, coverPath);
     }
-    final row = await db.rpc('api_update_profile', params: {
-      'p_full_name': fullName,
-      'p_phone': phone,
-      'p_governorate_id': governorateId,
-      'p_avatar_path': avatarPath,
-    });
-    return MyProfile.fromMap(Map<String, dynamic>.from(row as Map));
+    try {
+      final row = await db.rpc('api_update_profile', params: {
+        'p_full_name': fullName,
+        'p_phone': phone,
+        'p_governorate_id': governorateId,
+        'p_avatar_path': avatarPath,
+        // **ولا يُحذف حين يكون فارغاً.** الوسيطُ المحذوف يُلقي القاعدةَ على
+        // حِمل الأربعة القديم إن كان باقياً، فيُحفظ الاسمُ بلا غلاف بصمت.
+        'p_cover_path': coverPath,
+      });
+      return MyProfile.fromMap(Map<String, dynamic>.from(row as Map));
+    } on PostgrestException catch (e) {
+      // **ومن لم يشغّل الملفَّ بعدُ لا يُردّ برسالة PostgREST الإنجليزيّة.**
+      // الدالّةُ القديمةُ لا تعرف `p_cover_path`، فيردّ الخادمُ ‏`PGRST202`‏
+      // «لا دالّةَ في المخطّط بهذا الاسم» — وهي رسالةٌ تقول لصاحب القاعة إنّ
+      // التطبيقَ معطوب، والحقيقةُ أنّ ملفّاً لم يُشغَّل.
+      if (e.code == 'PGRST202' || e.message.contains('p_cover_path')) {
+        throw tr('قاعدتك لم تُحدَّث بعد: شغّل ملف supabase/profile_cover.sql ثم أعد المحاولة.');
+      }
+      rethrow;
+    }
+  }
+
+  /// يرفع غلافَ ملفّ العميل ويعيد مساره.
+  ///
+  /// في سلّة `avatars` وفي مجلّد صاحب الحساب — سياستُها تحصر الكتابة في
+  /// `<auth_user_id>/…`، فلا يكتب أحدٌ فوق غلاف غيره. واسمٌ ثابتٌ مع `upsert`
+  /// كي لا تتراكم الأغلفةُ القديمة بلا حذف.
+  static Future<String> uploadCover({
+    required String authUserId,
+    required String fileName,
+    required Uint8List bytes,
+  }) async {
+    final ext = fileName.contains('.') ? fileName.split('.').last.toLowerCase() : 'jpg';
+    final path = '$authUserId/cover.$ext';
+    if (!isSupabaseConfigured) return path;
+    await db.storage.from('avatars').uploadBinary(
+      path,
+      bytes,
+      fileOptions: FileOptions(contentType: _mimeOf(ext), upsert: true),
+    );
+    return path;
   }
 
   /// يبدّل الرقمَ وحدَه — من داخل حاجز التحقّق.
