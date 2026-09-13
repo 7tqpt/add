@@ -26,6 +26,10 @@ class _AuthScreenState extends State<AuthScreen> {
   final _newPassword = TextEditingController();
   late bool _signUp = widget.startOnSignUp;
   bool _busy = false;
+
+  /// مربّعُ «تذكّرني» — **مرفوعٌ ابتداءً**، وهو ما يفعله التطبيقُ اليوم.
+  bool _remember = true;
+
   String? _error;
   String? _note;
 
@@ -65,7 +69,8 @@ class _AuthScreenState extends State<AuthScreen> {
           });
         }
       } else {
-        await widget.session.signIn(mail, _password.text);
+        await widget.session.signIn(mail, _password.text,
+            remember: _remember);
       }
     } catch (e) {
       if (mounted) setState(() => _error = messageOf(e));
@@ -183,9 +188,12 @@ class _AuthScreenState extends State<AuthScreen> {
   });
 
   /// خطوة الرمز: تحلّ محلّ حقلي البريد وكلمة المرور بعد إنشاء الحساب.
-  Widget _codeCard() {
-    return AppCard(
-      children: [
+  ///
+  /// **وعلى الورقة مباشرةً لا في بطاقة.** بقيت هذه في `AppCard` حين نُقل
+  /// نموذجُ الدخول إلى الورقة البيضاء، فصارت بطاقةً مؤطَّرةً داخلَ ورقةٍ
+  /// بيضاء — صندوقٌ في صندوق. وأخرجه صاحبُ المنصّة بسؤالٍ قبل الدمج.
+  List<Widget> _codeStep() {
+    return [
         Text(
           trf('أرسلنا رمزاً إلى {0}. اكتبه هنا لتفعيل حسابك.', ['$_pendingEmail']),
           style: const TextStyle(height: 1.7),
@@ -218,28 +226,31 @@ class _AuthScreenState extends State<AuthScreen> {
                 )
               : Text(tr('تفعيل الحساب')),
         ),
-        TextButton(onPressed: _busy ? null : _resend, child: Text(tr('لم يصلني — أعد الإرسال'))),
-        TextButton(
-          // مخرجٌ ممّن أخطأ بريده: بدونه يُحبس في شاشةٍ تنتظر رمزاً لن يأتي.
-          onPressed: _busy
-              ? null
-              : () => setState(() {
+      TextButton(
+          onPressed: _busy ? null : _resend,
+          child: Text(tr('لم يصلني — أعد الإرسال'))),
+      const SizedBox(height: Space.sm),
+      OutlinedButton(
+        key: const ValueKey('back-from-code'),
+        // مخرجٌ ممّن أخطأ بريده: بدونه يُحبس في شاشةٍ تنتظر رمزاً لن يأتي.
+        // **وزرٌّ محاطٌ لا سطرٌ رفيع** — كنظيره في وجه الدخول.
+        onPressed: _busy
+            ? null
+            : () => setState(() {
                   _pendingEmail = null;
                   _code.clear();
                   _error = null;
                   _note = null;
                 }),
-          child: Text(tr('بريدي خطأ — ارجع')),
-        ),
-      ],
-    );
+        child: Text(tr('بريدي خطأ — ارجع')),
+      ),
+    ];
   }
 
-  /// خطوةُ الرمز ثم خطوةُ الكلمة الجديدة.
-  Widget _recoverCard() {
+  /// خطوةُ الرمز ثم خطوةُ الكلمة الجديدة — **على الورقة مباشرةً**.
+  List<Widget> _recoverStep() {
     final onCode = _recover == _Recover.code;
-    return AppCard(
-      children: [
+    return [
         Text(
           onCode
               ? trf('اكتب الرمز الواصل إلى {0}.', [_email.text.trim()])
@@ -285,150 +296,214 @@ class _AuthScreenState extends State<AuthScreen> {
                 )
               : Text(onCode ? tr('تحقّق من الرمز') : tr('حفظ الكلمة الجديدة')),
         ),
-        if (onCode)
-          TextButton(onPressed: _busy ? null : _askCode, child: Text(tr('لم يصلني — أعد الإرسال'))),
+      if (onCode)
         TextButton(
-          onPressed: _busy ? null : _leaveRecovery,
-          child: Text(tr('رجوع إلى تسجيل الدخول')),
-        ),
-      ],
-    );
+            onPressed: _busy ? null : _askCode,
+            child: Text(tr('لم يصلني — أعد الإرسال'))),
+      const SizedBox(height: Space.sm),
+      OutlinedButton(
+        key: const ValueKey('back-from-recover'),
+        onPressed: _busy ? null : _leaveRecovery,
+        child: Text(tr('رجوع إلى تسجيل الدخول')),
+      ),
+    ];
   }
 
   @override
   Widget build(BuildContext context) {
+    // **ورأسٌ بنسبةٍ لا برقمٍ ثابت.** التصميمُ المرسَل من آيفونَ طويل،
+    // ورقمٌ ثابتٌ يأكل نصفَ جوالٍ قصيرٍ فيدفع «دخول» تحت لوحة المفاتيح.
+    final height = MediaQuery.sizeOf(context).height;
+    final headerHeight = (height * 0.26).clamp(140.0, 230.0);
+
     return Scaffold(
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(Space.lg),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 420),
-              child: Column(
-                children: [
-                  // أيقونة لا إيموجي: «💍» يحتاج خطّ رموزٍ ملوّناً لا تحمله كل
-                  // الأجهزة ولا يحمله الويب، فيظهر مربّعاً فارغاً في أوّل ما
-                  // يراه المستخدم من التطبيق.
-                  Container(
-                    width: 56,
-                    height: 56,
-                    decoration: BoxDecoration(
-                      color: AppColors.accent.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(16),
+      backgroundColor: AppColors.accent,
+      body: Column(
+        children: [
+          SizedBox(
+            height: headerHeight,
+            child: SafeArea(
+              bottom: false,
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // أيقونة لا إيموجي: «💍» يحتاج خطّ رموزٍ ملوّناً لا
+                    // تحمله كل الأجهزة، فيظهر مربّعاً فارغاً في أوّل ما يراه
+                    // المستخدم من التطبيق.
+                    const Icon(Icons.celebration_outlined,
+                        size: 44, color: AppColors.accentInk),
+                    const SizedBox(height: Space.sm),
+                    Text(
+                      tr('فرحتي'),
+                      style: const TextStyle(
+                        fontSize: 30,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.accentInk,
+                      ),
                     ),
-                    child: const Icon(
-                      Icons.celebration_outlined,
-                      size: 30,
-                      color: AppColors.accent,
-                    ),
-                  ),
-                  const SizedBox(height: Space.sm),
-                  Text(
-                    tr('فرحتي'),
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.ink,
-                    ),
-                  ),
-                  const SizedBox(height: Space.xs),
-                  Muted(
-                    _pendingEmail != null
-                        ? tr('خطوة أخيرة — أكّد بريدك')
-                        : _recover != _Recover.none
-                        ? tr('استعادة كلمة المرور')
-                        : _signUp
-                        ? tr('أنشئ حسابك لتبدأ تجهيز عرسك')
-                        : tr('سجّل الدخول لمتابعة حجوزاتك'),
-                  ),
-                  const SizedBox(height: Space.xl),
-                  if (_pendingEmail != null)
-                    _codeCard()
-                  else if (_recover != _Recover.none)
-                    _recoverCard()
-                  else
-                    AppCard(
-                      children: [
-                        TextField(
-                          controller: _email,
-                          keyboardType: TextInputType.emailAddress,
-                          autocorrect: false,
-                          // البريد لاتيني: يُترك من اليسار وإلا تبعثرت رموزه.
-                          textDirection: TextDirection.ltr,
-                          // **ولا مثالَ داخل الحقل.** كان فيه
-                          // `you@example.com` — حروفٌ لاتينيّةٌ باهتةٌ في
-                          // شاشةٍ عربيّةٍ كلُّها، تُقرأ لأوّل وهلةٍ نصّاً
-                          // مكتوباً فعلاً فيمسحه صاحبُها قبل أن يكتب.
-                          // والعنوانُ فوق الحقل يقول ما يُكتب فيه.
-                          decoration: InputDecoration(
-                            labelText: tr('البريد الإلكتروني'),
-                          ),
-                        ),
-                        const SizedBox(height: Space.md),
-                        TextField(
-                          controller: _password,
-                          obscureText: true,
-                          textDirection: TextDirection.ltr,
-                          // وثمانُ نقاطٍ في حقلٍ مخفيٍّ أصلاً لا تقول شيئاً:
-                          // ما يُكتب فيه يخرج نقاطاً على كلّ حال.
-                          decoration: InputDecoration(
-                            labelText: tr('كلمة المرور'),
-                            helperText: _signUp ? tr('ثمانية أحرف فأكثر.') : null,
-                          ),
-                        ),
-                        if (_error != null) ...[
-                          const SizedBox(height: Space.md),
-                          Text(
-                            _error!,
-                            style: const TextStyle(color: AppColors.critical, fontSize: 13),
-                          ),
-                        ],
-                        const SizedBox(height: Space.lg),
-                        FilledButton(
-                          onPressed: _busy ? null : _submit,
-                          child: _busy
-                              ? const SizedBox(
-                                  height: 20,
-                                  width: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: AppColors.accentInk,
-                                  ),
-                                )
-                              : Text(_signUp ? tr('إنشاء الحساب') : tr('دخول')),
-                        ),
-                        TextButton(
-                          onPressed: () => setState(() {
-                            _signUp = !_signUp;
-                            _error = null;
-                          }),
-                          child: Text(
-                            _signUp ? tr('عندي حساب — سجّل الدخول') : tr('ما عندي حساب — أنشئ واحداً'),
-                          ),
-                        ),
-                        // في شاشة الدخول وحدها: من يُنشئ حساباً جديداً لا كلمةَ
-                        // له تُنسى، وزرٌّ لا معنى له في موضعه يُشتّت لا يساعد.
-                        if (!_signUp)
-                          TextButton(
-                            onPressed: _busy ? null : _askCode,
-                            child: Text(tr('نسيت كلمة المرور')),
-                          ),
-                      ],
-                    ),
-                  const SizedBox(height: Space.lg),
-                  Text(
-                    tr('تبدأ عميلاً، وإن أردت تقديم خدمة تطلبها من شاشة حسابك.'),
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 13, color: AppColors.muted, height: 1.7),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
-        ),
+          // ── الورقةُ البيضاء ────────────────────────────────────────────
+          //
+          // **وتأخذ ما بقي من الشاشة مهما طال النموذج.** خطوةُ الرمز
+          // وخطوةُ الاستعادة أطولُ من الدخول، فلو كان ارتفاعُها من المحتوى
+          // لَتحرّك الرأسُ بين خطوةٍ وأخرى.
+          Expanded(
+            child: Container(
+              width: double.infinity,
+              decoration: const BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: SafeArea(
+                top: false,
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(
+                      Space.lg, Space.xl, Space.lg, Space.lg),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        _pendingEmail != null
+                            ? tr('خطوة أخيرة — أكّد بريدك')
+                            : _recover != _Recover.none
+                                ? tr('استعادة كلمة المرور')
+                                : _signUp
+                                    ? tr('إنشاء حساب')
+                                    : tr('دخول الحساب'),
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.ink,
+                        ),
+                      ),
+                      const SizedBox(height: Space.lg),
+                      if (_pendingEmail != null)
+                        ..._codeStep()
+                      else if (_recover != _Recover.none)
+                        ..._recoverStep()
+                      else
+                        ..._form(),
+                      const SizedBox(height: Space.lg),
+                      Text(
+                        tr('تبدأ عميلاً، وإن أردت تقديم خدمة تطلبها من شاشة حسابك.'),
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                            fontSize: 13,
+                            color: AppColors.muted,
+                            height: 1.7),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
+
+  /// نموذجُ الدخول أو الإنشاء — **على الورقة مباشرةً لا في بطاقةٍ ثانية**.
+  ///
+  /// بطاقةٌ بيضاءُ فوق ورقةٍ بيضاءَ إطارٌ بلا معنى.
+  List<Widget> _form() => [
+        TextField(
+          controller: _email,
+          keyboardType: TextInputType.emailAddress,
+          autocorrect: false,
+          // البريد لاتيني: يُترك من اليسار وإلا تبعثرت رموزه.
+          textDirection: TextDirection.ltr,
+          // **ولا مثالَ داخل الحقل.** كان فيه `you@example.com` — حروفٌ
+          // لاتينيّةٌ باهتةٌ في شاشةٍ عربيّةٍ كلُّها، تُقرأ لأوّل وهلةٍ نصّاً
+          // مكتوباً فعلاً فيمسحه صاحبُها قبل أن يكتب.
+          decoration: InputDecoration(labelText: tr('البريد الإلكتروني')),
+        ),
+        const SizedBox(height: Space.md),
+        TextField(
+          controller: _password,
+          obscureText: true,
+          textDirection: TextDirection.ltr,
+          decoration: InputDecoration(
+            labelText: tr('كلمة المرور'),
+            helperText: _signUp ? tr('ثمانية أحرف فأكثر.') : null,
+          ),
+        ),
+
+        // ── صفُّ «نسيت» و«تذكّرني» — في وجه الدخول وحدَه ─────────────────
+        //
+        // من يُنشئ حساباً جديداً لا كلمةَ له تُنسى، ولا جلسةَ سابقةً تُذكر.
+        if (!_signUp)
+          Row(
+            children: [
+              TextButton(
+                onPressed: _busy ? null : _askCode,
+                child: Text(tr('نسيت كلمة المرور')),
+              ),
+              const Spacer(),
+              Text(tr('تذكّرني'),
+                  style: const TextStyle(fontSize: 13, color: AppColors.ink2)),
+              Checkbox(
+                key: const ValueKey('remember-me'),
+                value: _remember,
+                onChanged:
+                    _busy ? null : (v) => setState(() => _remember = v ?? true),
+              ),
+            ],
+          )
+        else
+          const SizedBox(height: Space.md),
+
+        if (_error != null) ...[
+          const SizedBox(height: Space.sm),
+          Text(
+            _error!,
+            style: const TextStyle(color: AppColors.critical, fontSize: 13),
+          ),
+          const SizedBox(height: Space.sm),
+        ],
+
+        FilledButton(
+          onPressed: _busy ? null : _submit,
+          child: _busy
+              ? const SizedBox(
+                  height: 20,
+                  width: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: AppColors.accentInk,
+                  ),
+                )
+              : Text(_signUp ? tr('إنشاء الحساب') : tr('دخول')),
+        ),
+
+        // ── البابُ إلى الوجه الآخر ────────────────────────────────────────
+        //
+        // **وزرٌّ محاطٌ لا سطرٌ صغير.** من ليس له حسابٌ يقف عند شاشة دخولٍ
+        // لا يجد فيها بابَه، وسطرٌ رفيعٌ في القاع لا يُرى.
+        const SizedBox(height: Space.lg),
+        Muted(
+          _signUp ? tr('عندك حساب؟') : tr('ما عندك حساب؟'),
+          size: 12,
+        ),
+        const SizedBox(height: Space.sm),
+        OutlinedButton(
+          key: const ValueKey('switch-face'),
+          onPressed: _busy
+              ? null
+              : () => setState(() {
+                    _signUp = !_signUp;
+                    _error = null;
+                  }),
+          child: Text(_signUp ? tr('دخول') : tr('إنشاء حساب')),
+        ),
+      ];
 }
 
 /// أين نحن من استعادة كلمة المرور.

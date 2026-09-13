@@ -113,7 +113,8 @@ void main() {
     await tester.tap(find.text('ابدأ رحلتك'));
     await _settle(tester);
 
-    await tester.tap(find.text('عندي حساب — سجّل الدخول'));
+    // **وصار البابُ زرّاً محاطاً** بدل سطرٍ رفيعٍ في القاع.
+    await tester.tap(find.byKey(const ValueKey('switch-face')));
     await _settle(tester);
     expect(find.text('دخول'), findsWidgets);
   });

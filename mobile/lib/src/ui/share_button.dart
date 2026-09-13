@@ -11,10 +11,8 @@ import 'package:share_plus/share_plus.dart';
 
 import '../core/i18n.dart';
 import '../core/share.dart';
-import '../core/theme.dart';
 import '../data/api.dart';
 import '../data/models.dart';
-import 'kit.dart';
 
 /// ما ينفّذ المشاركة فعلاً — يُبدَّل في الاختبار.
 typedef ShareSink = Future<void> Function(String text);
@@ -94,49 +92,4 @@ class ShareServiceButton extends StatelessWidget {
   Widget build(BuildContext context) => ShareIconButton(
     compose: (url) => shareTextForService(item, url: url),
   );
-}
-
-/// بندُ «شارك التطبيق» في الإعدادات.
-///
-/// **ويغيب إن لم يُضبط الرابط.** بندٌ يُضغط فلا يقع شيء أسوأ من غيابه:
-/// يُقرأ عطباً في التطبيق. و`share_url` فارغةٌ في القاعدة حتى يضعها صاحبُ
-/// المنصّة، وفي النسخة التجريبيّة فارغةٌ دائماً.
-class ShareAppTile extends StatelessWidget {
-  const ShareAppTile({super.key});
-
-  @override
-  Widget build(BuildContext context) => FutureBuilder<String>(
-    future: cachedShareUrl(),
-    builder: (context, snap) {
-      final url = snap.data ?? '';
-      // **ويأخذ البندُ بطاقتَه وفراغَه معه.** لو تركهما لمن يعرضه لَبقيت
-      // بطاقةٌ فارغةٌ مؤطَّرةٌ في رأس الإعدادات حين يغيب — وهي أظهرُ من
-      // البند نفسِه.
-      if (!isShareUrlValid(url)) return const SizedBox.shrink();
-      return Padding(
-        padding: const EdgeInsets.only(bottom: Space.md),
-        child: AppCard(children: [_tile(context, url)]),
-      );
-    },
-  );
-
-  Widget _tile(BuildContext context, String url) => ListTile(
-        key: const ValueKey('share-app'),
-        contentPadding: EdgeInsets.zero,
-        leading: const Icon(Icons.ios_share_rounded, color: AppColors.accent),
-        title: Text(tr('شارك التطبيق')),
-        subtitle: Muted(tr('أرسل «فرحتي» لمن يجهّز عرسه')),
-        onTap: () async {
-          final messenger = ScaffoldMessenger.of(context);
-          final text = shareTextForApp(url: url);
-          if (text.isEmpty) return;
-          try {
-            await shareSink(text);
-          } catch (_) {
-            messenger.showSnackBar(
-              SnackBar(content: Text(tr('تعذّرت المشاركة من هذا الجهاز.'))),
-            );
-          }
-        },
-      );
 }

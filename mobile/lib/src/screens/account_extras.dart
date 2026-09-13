@@ -23,7 +23,6 @@ import '../data/supabase.dart' show messageOf;
 import 'lock.dart';
 import 'map_picker.dart';
 import '../ui/kit.dart';
-import '../ui/share_button.dart';
 
 /// اسمُ وسيلة التحويل كما تُعرض.
 /// **ودالّةٌ لا ثابت:** الثابتُ يُحسب مرّةً عند تحميل التطبيق، فلو بدّل
@@ -739,11 +738,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
           : ListView(
               padding: const EdgeInsets.all(Space.lg),
               children: [
-                // **وأوّلَ القائمة عمداً.** كلُّ رسالةٍ تُرسَل دعوةٌ إلى
-                // التطبيق، وبندٌ في القاع لا يراه أحد. ويغيب من نفسه إن لم
-                // يُضبط الرابط في إعدادات المنصّة.
-                const ShareAppTile(),
-
                 SectionTitle(tr('الإشعارات')),
                 const SizedBox(height: Space.sm),
                 AppCard(
@@ -765,18 +759,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       subtitle: Muted(tr('خصومات المزوّدين والحملات')),
                       contentPadding: EdgeInsets.zero,
                     ),
-                  ],
-                ),
-
-                const SizedBox(height: Space.sm),
-                // ── نغمةُ الإشعار ─────────────────────────────────────────
-                //
-                // **ولا تُختار هنا بل في شاشة النظام.** أندرويد يثبّت نغمةَ
-                // القناة عند إنشائها ولا تتغيّر بعدها من الشيفرة. وشاشةُ
-                // النظام تعطي أكثرَ ممّا نستطيع: النغمة والاهتزاز والأولويّة
-                // ونقطةَ الأيقونة — وكلُّها بيد صاحب الجهاز حيث يتوقّعها.
-                AppCard(
-                  children: [
+                    const Divider(height: 1, color: AppColors.hairline),
+                    // ── نغمةُ الإشعار ─────────────────────────────────────
+                    //
+                    // **ولا تُختار هنا بل في شاشة النظام.** أندرويد يثبّت
+                    // نغمةَ القناة عند إنشائها ولا تتغيّر بعدها من الشيفرة.
+                    // وشاشةُ النظام تعطي أكثرَ ممّا نستطيع: النغمةَ والاهتزازَ
+                    // والأولويّةَ ونقطةَ الأيقونة — وكلُّها بيد صاحب الجهاز
+                    // حيث يتوقّعها.
+                    //
+                    // **وهي في بطاقة «الإشعارات» لا في ثانيةٍ تحتها.** كانت
+                    // بطاقةً مستقلّةً تحت العنوان نفسِه، فتُقرأ قسماً بلا
+                    // اسم — والعينُ تعدّ البطاقةَ قسماً قبل أن تقرأ عنوانه.
                     InkWell(
                       key: const ValueKey('notification-sound'),
                       borderRadius: BorderRadius.circular(12),
@@ -870,7 +864,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ],
 
                 const SizedBox(height: Space.lg),
-                SectionTitle(tr('قفل التطبيق')),
+                // **واسمُ القسم اتّسع للبصمة.** كان «قفل التطبيق» وحدَه،
+                // فلمّا دخلت البصمةُ عليه صار الاسمُ أضيقَ ممّا يحمل.
+                SectionTitle(tr('الخصوصية والأمان')),
                 const SizedBox(height: Space.sm),
                 AppCard(
                   children: [
@@ -1041,11 +1037,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       label: tr('طلب حذف الحساب'),
                       url: 'https://sdd.company/#/delete-account',
                     ),
+                    const Divider(height: 1, color: AppColors.hairline),
+                    // **ورقمُ النسخة داخلَ البطاقة لا معلّقاً في الفراغ.**
+                    // كان سطراً وحيداً تحت آخر بطاقةٍ يفصله فراغٌ واسع،
+                    // فيُقرأ بقيّةً نُسيت لا خبراً عن التطبيق. وموضعُه هنا:
+                    // من يسأل «أيُّ نسخةٍ عندي؟» يسأل في «عن التطبيق».
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: Space.md),
+                      child: Muted(appVersionLabel, size: 11),
+                    ),
                   ],
                 ),
-
-                const SizedBox(height: Space.xl),
-                Center(child: Muted(appVersionLabel, size: 11)),
               ],
             ),
     );
