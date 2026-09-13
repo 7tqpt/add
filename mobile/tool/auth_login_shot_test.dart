@@ -68,6 +68,18 @@ Widget _wrap(Widget child) => MaterialApp(
       ),
     );
 
+/// **وتُمهَل الصورةُ زمناً حقيقيّاً حتى تُفكَّ.**
+///
+/// `Image.asset` تقرأ من الحزمة وتفكّ الترميزَ في خيطٍ آخر، وذلك يحتاج
+/// زمناً حقيقيّاً لا زمنَ الاختبار المصطنَع. فبلا هذا خرج الرأسُ بلا أيقونة
+/// — وهي في الحزمة وتُرسم على الجهاز.
+Future<void> _settleImages(WidgetTester tester) async {
+  await tester.runAsync(() => Future<void>.delayed(
+      const Duration(milliseconds: 300)));
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 200));
+}
+
 void main() {
   setUpAll(_loadFonts);
 
@@ -90,6 +102,7 @@ void main() {
     phone(tester);
     await tester.pumpWidget(_wrap(AuthScreen(session: Session()..loading = false)));
     await settle(tester);
+    await _settleImages(tester);
 
     // **والمقيسُ شجرةُ العناصر لا الصورة** — والتفصيلُ في
     // `test/auth_layout_test.dart` بخمسة ضوابطَ سالبةٍ تسقط بها.
@@ -106,6 +119,7 @@ void main() {
     await tester.pumpWidget(_wrap(AuthScreen(
         session: Session()..loading = false, startOnSignUp: true)));
     await settle(tester);
+    await _settleImages(tester);
     expect(find.widgetWithText(FilledButton, 'إنشاء الحساب'), findsOneWidget);
     await _shoot(
         tester, find.byKey(const ValueKey('shot')), '$out/auth-signup.png');
@@ -115,11 +129,13 @@ void main() {
     phone(tester);
     await tester.pumpWidget(_wrap(AuthScreen(session: Session()..loading = false)));
     await settle(tester);
+    await _settleImages(tester);
     // **والبريدُ يُكتب أوّلاً:** «نسيت كلمة المرور» تردّ «اكتب بريدك أوّلاً»
     // على الفارغ، فتبقى الشاشةُ على وجه الدخول ولا تُصوَّر الاستعادة.
     await tester.enterText(find.byType(TextField).at(0), 'a@b.co');
     await tester.tap(find.text('نسيت كلمة المرور'));
     await settle(tester);
+    await _settleImages(tester);
     await tester.pump(const Duration(seconds: 1));
     await tester.pump(const Duration(milliseconds: 400));
     expect(find.text('استعادة كلمة المرور'), findsOneWidget);

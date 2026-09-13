@@ -152,21 +152,38 @@ class _LockScreenState extends State<LockScreen> {
             height: headerHeight,
             child: SafeArea(
               bottom: false,
+              // **ويُصغَّر ما لا يتّسع.** رأسٌ بارتفاعٍ محدودٍ وخطُّ جهازٍ
+              // مضاعَفٌ يفيض — وقد فاض باثني عشر بكسلاً أوّلَ ما وُضعت
+              // الأيقونةُ مكانَ الرمز، فأمسكه اختبارُ «لا يفيض بخطّ الجهاز
+              // الكبير». والتصغيرُ أصدقُ من قصّ الاسم أو حبسِ مقياس الخطّ:
+              // من كبّر خطَّ جهازه كبّره ليقرأ، لا ليُقصَّ عليه.
               child: Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.lock_outline, size: 44, color: AppColors.accentInk),
-                    const SizedBox(height: Space.sm),
-                    Text(
-                      tr('فرحتي'),
-                      style: const TextStyle(
-                        fontSize: 30,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.accentInk,
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // **وأيقونةُ التطبيق نفسُها لا رمزٌ مرسوم.** اختارها
+                      // صاحبُ المنصّة وقال: «في كل مكان». وهي `app_mark.png`
+                      // — النسخةُ المشحونةُ من الأيقونة، ٢٥٦ بكسلاً تكفي
+                      // رأساً يُرسم في ٦٤.
+                      Image.asset(
+                        'assets/brand/app_mark.png',
+                        width: 68,
+                        height: 68,
+                        filterQuality: FilterQuality.medium,
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: Space.sm),
+                      Text(
+                        tr('فرحتي'),
+                        style: const TextStyle(
+                          fontSize: 30,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.accentInk,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),

@@ -25,7 +25,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # وقد بقي `1.0.0+1` من أوّل دفعةٍ للتطبيق حتى ٥٧ حزمةً بُنيت كلُّها تقول
 # «أنا الأولى». ويحرسه `app_update_test.dart`: يقرأ هذا السطر ويقارنه
 # بثابتَي `app_version.dart`.
-version: 1.35.0+49
+version: 1.36.0+50
 
 environment:
   sdk: ^3.13.0
@@ -144,6 +144,15 @@ dev_dependencies:
 # The following section is specific to Flutter packages.
 flutter:
   uses-material-design: true
+
+  # ── أصولُ العلامة المشحونة ──────────────────────────────────────────────
+  #
+  # **وواحدةٌ لا مجلَّد.** `assets/brand/` فيه الأصلُ الذي وصل (١ م.ب)
+  # والأيقونةُ التي تُبنى منها المقاسات (١ م.ب) وهويّةٌ سابقةٌ محفوظةٌ
+  # للتاريخ — ولا شأنَ للحزمة بشيءٍ منها. فتُشحن `app_mark.png` وحدَها:
+  # ٢٥٦ بكسلاً تكفي رأساً يُرسم في ٦٤، وحجمُها مئةُ كيلوبايت لا ألفان.
+  assets:
+    - assets/brand/app_mark.png
 
   # خطّ عربي مرفق بالتطبيق لا مُعتمَد على الجهاز.
   #

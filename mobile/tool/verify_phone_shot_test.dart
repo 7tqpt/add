@@ -83,6 +83,18 @@ Widget _wrap(Widget child) => MaterialApp(
       ),
     );
 
+/// **وتُمهَل الصورةُ زمناً حقيقيّاً حتى تُفكَّ.**
+///
+/// `Image.asset` تقرأ من الحزمة وتفكّ الترميزَ في خيطٍ آخر، وذلك يحتاج
+/// زمناً حقيقيّاً لا زمنَ الاختبار المصطنَع. فبلا هذا خرج الرأسُ بلا أيقونة
+/// — وهي في الحزمة وتُرسم على الجهاز.
+Future<void> _settleImages(WidgetTester tester) async {
+  await tester.runAsync(() => Future<void>.delayed(
+      const Duration(milliseconds: 300)));
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 200));
+}
+
 void main() {
   setUpAll(_loadFonts);
   setUp(resetDemoPhoneGate);
@@ -108,9 +120,11 @@ void main() {
     phone(tester);
     await tester.pumpWidget(_wrap(VerifyPhoneScreen(session: _session())));
     await settle(tester);
+    await _settleImages(tester);
 
     await tester.tap(find.byKey(const ValueKey('otp-action')));
     await settle(tester);
+    await _settleImages(tester);
 
     // **والمقيسُ شجرةُ العناصر لا الصورة.**
     final scaffold = tester.widget<Scaffold>(find.byType(Scaffold));
