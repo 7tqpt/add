@@ -41,6 +41,8 @@
 
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 
+import { otpVerified } from './verdict.mjs'
+
 const AUTHENTICA = 'https://api.authentica.sa/api/v2'
 
 /// ما يُقال لصاحب الجهاز عن كلّ ردٍّ من دالّة الحدّ.
@@ -225,14 +227,11 @@ Deno.serve(async (request) => {
       // **ويُقرأ نصّاً ثمّ يُحلَّل.** الردُّ إن لم يكن JSON ضاع كلُّه بـ
       // `.json()` وحدَها، فلا يبقى ما يُقرأ في السجلّ حين يُسأل «لماذا رُدّ؟».
       const raw = await checked.text()
-      let result: { verified?: boolean } = {}
-      try {
-        result = JSON.parse(raw)
-      } catch {
-        // يبقى فارغاً، ويُكتب النصُّ كما جاء أدناه.
-      }
 
-      if (!checked.ok || result.verified !== true) {
+      // **والقرارُ في `verdict.mjs` لا هنا.** كان سطراً بين نداءَي شبكةٍ لا
+      // يبلغه اختبار، وكان يسأل عن `verified` والخادمُ يردّ `status` — فكان
+      // يردّ كلَّ رمزٍ صحيح. وهو الآن مقيسٌ بردٍّ حقيقيٍّ منسوخٍ من السجلّ.
+      if (!otpVerified(checked.ok, raw)) {
         // **وسببُ الردّ يُكتب في السجلّ.** كان هذا الفرعُ صامتاً، فلمّا رُدَّ
         // رمزٌ بعد رمزٍ لم يكن في الدنيا ما يُقال به لماذا — لا عندنا ولا
         // عند المُرسِل. وصمتُ الحارس عن سببِ ردّه عطبٌ في القياس لا في الردّ.
