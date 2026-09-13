@@ -188,9 +188,12 @@ class _AuthScreenState extends State<AuthScreen> {
   });
 
   /// خطوة الرمز: تحلّ محلّ حقلي البريد وكلمة المرور بعد إنشاء الحساب.
-  Widget _codeCard() {
-    return AppCard(
-      children: [
+  ///
+  /// **وعلى الورقة مباشرةً لا في بطاقة.** بقيت هذه في `AppCard` حين نُقل
+  /// نموذجُ الدخول إلى الورقة البيضاء، فصارت بطاقةً مؤطَّرةً داخلَ ورقةٍ
+  /// بيضاء — صندوقٌ في صندوق. وأخرجه صاحبُ المنصّة بسؤالٍ قبل الدمج.
+  List<Widget> _codeStep() {
+    return [
         Text(
           trf('أرسلنا رمزاً إلى {0}. اكتبه هنا لتفعيل حسابك.', ['$_pendingEmail']),
           style: const TextStyle(height: 1.7),
@@ -223,28 +226,31 @@ class _AuthScreenState extends State<AuthScreen> {
                 )
               : Text(tr('تفعيل الحساب')),
         ),
-        TextButton(onPressed: _busy ? null : _resend, child: Text(tr('لم يصلني — أعد الإرسال'))),
-        TextButton(
-          // مخرجٌ ممّن أخطأ بريده: بدونه يُحبس في شاشةٍ تنتظر رمزاً لن يأتي.
-          onPressed: _busy
-              ? null
-              : () => setState(() {
+      TextButton(
+          onPressed: _busy ? null : _resend,
+          child: Text(tr('لم يصلني — أعد الإرسال'))),
+      const SizedBox(height: Space.sm),
+      OutlinedButton(
+        key: const ValueKey('back-from-code'),
+        // مخرجٌ ممّن أخطأ بريده: بدونه يُحبس في شاشةٍ تنتظر رمزاً لن يأتي.
+        // **وزرٌّ محاطٌ لا سطرٌ رفيع** — كنظيره في وجه الدخول.
+        onPressed: _busy
+            ? null
+            : () => setState(() {
                   _pendingEmail = null;
                   _code.clear();
                   _error = null;
                   _note = null;
                 }),
-          child: Text(tr('بريدي خطأ — ارجع')),
-        ),
-      ],
-    );
+        child: Text(tr('بريدي خطأ — ارجع')),
+      ),
+    ];
   }
 
-  /// خطوةُ الرمز ثم خطوةُ الكلمة الجديدة.
-  Widget _recoverCard() {
+  /// خطوةُ الرمز ثم خطوةُ الكلمة الجديدة — **على الورقة مباشرةً**.
+  List<Widget> _recoverStep() {
     final onCode = _recover == _Recover.code;
-    return AppCard(
-      children: [
+    return [
         Text(
           onCode
               ? trf('اكتب الرمز الواصل إلى {0}.', [_email.text.trim()])
@@ -290,14 +296,17 @@ class _AuthScreenState extends State<AuthScreen> {
                 )
               : Text(onCode ? tr('تحقّق من الرمز') : tr('حفظ الكلمة الجديدة')),
         ),
-        if (onCode)
-          TextButton(onPressed: _busy ? null : _askCode, child: Text(tr('لم يصلني — أعد الإرسال'))),
+      if (onCode)
         TextButton(
-          onPressed: _busy ? null : _leaveRecovery,
-          child: Text(tr('رجوع إلى تسجيل الدخول')),
-        ),
-      ],
-    );
+            onPressed: _busy ? null : _askCode,
+            child: Text(tr('لم يصلني — أعد الإرسال'))),
+      const SizedBox(height: Space.sm),
+      OutlinedButton(
+        key: const ValueKey('back-from-recover'),
+        onPressed: _busy ? null : _leaveRecovery,
+        child: Text(tr('رجوع إلى تسجيل الدخول')),
+      ),
+    ];
   }
 
   @override
@@ -376,9 +385,9 @@ class _AuthScreenState extends State<AuthScreen> {
                       ),
                       const SizedBox(height: Space.lg),
                       if (_pendingEmail != null)
-                        _codeCard()
+                        ..._codeStep()
                       else if (_recover != _Recover.none)
-                        _recoverCard()
+                        ..._recoverStep()
                       else
                         ..._form(),
                       const SizedBox(height: Space.lg),

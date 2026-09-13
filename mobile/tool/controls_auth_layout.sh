@@ -83,5 +83,22 @@ run "هـ) الزرُّ لا يقلب الوجه" sub "$A" \
   "                    _signUp = !_signUp;" \
   "                    _signUp = false;"
 
+# و) **والبطاقةُ تعود داخلَ الورقة في وجه الاستعادة** — صندوقٌ في صندوق،
+#    وهو ما أخرجه صاحبُ المنصّة بسؤالٍ قبل الدمج.
+run "و) بطاقةٌ داخل الورقة" sub "$A" \
+  "  List<Widget> _recoverStep() {
+    final onCode = _recover == _Recover.code;
+    return [" \
+  "  List<Widget> _recoverStep() {
+    final onCode = _recover == _Recover.code;
+    return [AppCard(children: ["
+
+# ز) **والرجوعُ يعود سطراً رفيعاً** — بينما نظيرُه في وجه الدخول زرٌّ محاط.
+run "ز) الرجوعُ سطرٌ رفيع" sub "$A" \
+  "      OutlinedButton(
+        key: const ValueKey('back-from-recover')," \
+  "      TextButton(
+        key: const ValueKey('back-from-recover'),"
+
 echo; echo "== الحصيلة: $PASS سقطت، $FAIL لم تسقط =="
 [ "$FAIL" -eq 0 ]

@@ -18,6 +18,7 @@ import 'package:aras/src/core/remember.dart';
 import 'package:aras/src/core/session.dart';
 import 'package:aras/src/core/theme.dart';
 import 'package:aras/src/screens/auth.dart';
+import 'package:aras/src/ui/kit.dart';
 
 Widget _wrap(Widget child) => MaterialApp(
   theme: buildTheme(),
@@ -99,6 +100,43 @@ void main() {
       await tester.pumpWidget(_wrap(AuthScreen(session: _guest())));
       await _settle(tester);
       expect(tester.widget<Checkbox>(find.byKey(_remember)).value, isTrue);
+    });
+  });
+
+  group('وجهُ استعادة الكلمة', () {
+    /// يمشي إلى وجه الاستعادة — **والبريدُ يُكتب أوّلاً**، وإلّا ردّت
+    /// الشاشةُ «اكتب بريدك أوّلاً» وبقيت على وجه الدخول.
+    Future<void> go(WidgetTester tester) async {
+      _phone(tester);
+      await tester.pumpWidget(_wrap(AuthScreen(session: _guest())));
+      await _settle(tester);
+      await tester.enterText(find.byType(TextField).at(0), 'a@b.co');
+      await tester.tap(find.text('نسيت كلمة المرور'));
+      await _settle(tester);
+      await tester.pump(const Duration(seconds: 1));
+      await _settle(tester);
+      expect(find.text('استعادة كلمة المرور'), findsOneWidget);
+    }
+
+    testWidgets('**ولا بطاقةَ داخلَ الورقة**', (tester) async {
+      // بقيت هذه الخطوةُ في `AppCard` حين نُقل نموذجُ الدخول إلى الورقة
+      // البيضاء، فصارت بطاقةً مؤطَّرةً داخلَ ورقةٍ بيضاء — **صندوقٌ في
+      // صندوق**. وأخرجه صاحبُ المنصّة بسؤالٍ قبل الدمج.
+      await go(tester);
+      expect(find.byType(AppCard), findsNothing);
+    });
+
+    testWidgets('والرجوعُ زرٌّ محاطٌ يعمل', (tester) async {
+      // **وزرٌّ محاطٌ لا سطرٌ رفيع** — كنظيره في وجه الدخول.
+      await go(tester);
+      expect(find.byKey(const ValueKey('back-from-recover')), findsOneWidget);
+      expect(
+          find.widgetWithText(OutlinedButton, 'رجوع إلى تسجيل الدخول'),
+          findsOneWidget);
+
+      await tester.tap(find.byKey(const ValueKey('back-from-recover')));
+      await _settle(tester);
+      expect(find.text('دخول الحساب'), findsOneWidget);
     });
   });
 
