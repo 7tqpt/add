@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart' show OtpType, UserAttrib
 
 import '../data/api.dart';
 import '../data/models.dart';
+import 'remember.dart';
 import 'push.dart';
 import '../data/supabase.dart';
 
@@ -52,16 +53,35 @@ class Session extends ChangeNotifier {
       signedIn && !needsProfile && phoneGate.blocks;
 
   Future<void> boot() async {
+    // **و«تذكّرني» تُنفَّذ هنا وحدَها — عند الإقلاع البارد.**
+    //
+    // من خفض المربّعَ حين دخل أراد ألّا تبقى جلستُه بعد إغلاق التطبيق،
+    // والجلسةُ محفوظةٌ في الجهاز فلا بدّ من إسقاطها بيدٍ.
+    //
+    // **وقبل كلّ شيءٍ في الإقلاع**: لو أُسقطت بعد قراءة الجلسة لَرأى
+    // صاحبُها شاشةَ التطبيق لحظةً ثمّ طُرد منها.
+    //
+    // **وقبل فرع العرض كذلك، وهذا مقصود:** وضعُ العرض يُقلّد مستخدماً
+    // داخلاً، فلو تخطّى الرايةَ لَصار الوعدُ الذي في الشاشة غيرَ مقيسٍ في
+    // الحزمة كلِّها — ولا يُقاس في وضع الخادم لأنّ لا خادمَ في الاختبار.
+    //
+    // ولا يقع هذا عند العودة من الخلفيّة: `boot` لا تُنادى إلّا من `main`.
+    final remember = await rememberIsOn();
+
     if (!isSupabaseConfigured) {
       // الوضع التجريبي: هوية محلّية بلا خادم، فتُتصفَّح الشاشات كلها.
-      userId = 'demo-user';
-      email = 'demo@example.com';
-      appUserId = 'demo-user';
-      providerId = await Api.myProviderId('demo-user');
+      if (remember) {
+        userId = 'demo-user';
+        email = 'demo@example.com';
+        appUserId = 'demo-user';
+        providerId = await Api.myProviderId('demo-user');
+      }
       loading = false;
       notifyListeners();
       return;
     }
+
+    if (!remember) await db.auth.signOut();
 
     db.auth.onAuthStateChange.listen((state) {
       final session = state.session;
@@ -160,7 +180,14 @@ class Session extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> signIn(String mail, String password) async {
+  /// يدخل الحساب — و`remember` هو مربّعُ «تذكّرني» في الشاشة.
+  ///
+  /// **ويُكتب التفضيلُ قبل الدخول لا بعده.** لو كُتب بعده لَسبق مستمعُ
+  /// `onAuthStateChange` الكتابةَ، ولا ضررَ اليوم — لكنّ الترتيبَ الأوضحَ
+  /// أن يكون الاختيارُ محفوظاً قبل أن تقوم جلسةٌ تُحتكم إليه فيها.
+  Future<void> signIn(String mail, String password,
+      {bool remember = true}) async {
+    await setRemember(remember);
     if (!isSupabaseConfigured) {
       if (password.length < 4) throw 'كلمة المرور قصيرة جداً (4 أحرف على الأقل).';
       userId = 'demo-user';

@@ -74,7 +74,8 @@ void main() {
 
     expect(find.text('نسيت كلمة المرور'), findsOneWidget);
 
-    await tester.tap(find.text('ما عندي حساب — أنشئ واحداً'));
+    // **وصار البابُ زرّاً محاطاً** بدل سطرٍ رفيعٍ في القاع.
+    await tester.tap(find.byKey(const ValueKey('switch-face')));
     await tester.pumpAndSettle();
     expect(find.text('نسيت كلمة المرور'), findsNothing);
   });
