@@ -100,4 +100,30 @@ void main() {
     await _shoot(
         tester, find.byKey(const ValueKey('shot')), '$out/auth-done.png');
   });
+
+  testWidgets('وجهُ الإنشاء', (tester) async {
+    phone(tester);
+    await tester.pumpWidget(_wrap(AuthScreen(
+        session: Session()..loading = false, startOnSignUp: true)));
+    await settle(tester);
+    expect(find.widgetWithText(FilledButton, 'إنشاء الحساب'), findsOneWidget);
+    await _shoot(
+        tester, find.byKey(const ValueKey('shot')), '$out/auth-signup.png');
+  });
+
+  testWidgets('ووجهُ استعادة الكلمة', (tester) async {
+    phone(tester);
+    await tester.pumpWidget(_wrap(AuthScreen(session: Session()..loading = false)));
+    await settle(tester);
+    // **والبريدُ يُكتب أوّلاً:** «نسيت كلمة المرور» تردّ «اكتب بريدك أوّلاً»
+    // على الفارغ، فتبقى الشاشةُ على وجه الدخول ولا تُصوَّر الاستعادة.
+    await tester.enterText(find.byType(TextField).at(0), 'a@b.co');
+    await tester.tap(find.text('نسيت كلمة المرور'));
+    await settle(tester);
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.text('استعادة كلمة المرور'), findsOneWidget);
+    await _shoot(
+        tester, find.byKey(const ValueKey('shot')), '$out/auth-recover.png');
+  });
 }
