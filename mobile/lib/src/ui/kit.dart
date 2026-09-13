@@ -752,7 +752,30 @@ class _Cover extends StatelessWidget {
             child: SizedBox.expand(),
           ),
         ],
-        if (onEdit != null)
+        if (onEdit != null) ...[
+          // **والغلافُ كلُّه يُضغط لا حبّةٌ في زاويته.**
+          //
+          // أخرج صاحبُ المنصّة عيباً: «ما يقدر العميل ولا مقدم الخدمة تحديد
+          // الصورة». وقِيس الزرُّ في القشرة الحقيقيّة فوُجد ويُضغط وتُفتح به
+          // الورقة — فالطبقةُ البرمجيّةُ سليمة. **والباقي أنّه لم يُرَ**:
+          // شريطٌ عريضٌ كلُّه صورة، وحبّةٌ عرضُها تسعون بكسلاً في طرفه.
+          //
+          // ومبدأُ التطبيق مكتوبٌ عند قرص الصورة منذ كُتب: «مكانُ تغيير
+          // الصورة هو الصورةُ نفسها». فلزم الغلافَ ما لزم القرص.
+          //
+          // **ولا يُرفع الزرُّ الصغير.** هو العلامةُ التي تقول إنّ الشريطَ
+          // يُضغط — ولولاها لَصار الغلافُ يُبدَّل بلمسةٍ لا يعرف أحدٌ أنّها
+          // هناك، وهو عيبُ الاكتشاف نفسُه مقلوباً.
+          Positioned.fill(
+            child: Material(
+              type: MaterialType.transparency,
+              child: InkWell(
+                key: const ValueKey('cover-tap'),
+                onTap: busy ? null : onEdit,
+                child: const SizedBox.expand(),
+              ),
+            ),
+          ),
           PositionedDirectional(
             bottom: 10,
             // **في الجهة المقابلة للقرص.** القرصُ في جهة البداية ويطلّ على
@@ -760,6 +783,7 @@ class _Cover extends StatelessWidget {
             end: Space.lg,
             child: _CoverButton(onTap: busy ? null : onEdit, busy: busy),
           ),
+        ],
       ],
     );
   }

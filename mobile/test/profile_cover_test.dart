@@ -187,7 +187,41 @@ void main() {
       expect(find.text('جارٍ الرفع…'), findsOneWidget);
       await tester.tap(find.byKey(_cameraKey), warnIfMissed: false);
       await _settle(tester);
-      expect(taps, 0);
+      expect(taps, 0, reason: 'الحبّةُ تُضغط والرفعُ جارٍ');
+
+      // **والشريطُ كذلك — ويُقاس وحدَه.** الحبّةُ تعلوه فتبتلع اللمسةَ
+      // عندها، فاختبارٌ يضغطها وحدَها يمرّ ولو كان الشريطُ تحته مفتوحاً.
+      // (وقد وقع: سقط الضابطُ السالبُ على هذا بعينه.)
+      final band = _statusBar + ProfileHeader.coverBand;
+      final width = tester.getSize(find.byType(ProfileHeader)).width;
+      await tester.tapAt(Offset(width / 2, band / 2));
+      await _settle(tester);
+      expect(taps, 0, reason: 'الشريطُ يُضغط والرفعُ جارٍ');
+    });
+
+    testWidgets('**والغلافُ كلُّه يُضغط لا حبّةٌ في زاويته**', (tester) async {
+      // أخرج صاحبُ المنصّة عيباً: «ما يقدر العميل ولا مقدم الخدمة تحديد
+      // الصورة». وقِيس الزرُّ في القشرة الحقيقيّة فوُجد ويُضغط وتُفتح به
+      // الورقة — فالباقي أنّه لم يُرَ: حبّةٌ عرضُها تسعون بكسلاً في طرف
+      // شريطٍ عرضُه الشاشةُ كلُّها.
+      //
+      // **ويُضغط بعيداً عن الحبّة عمداً** — ولو ضُغط عليها لَمرّ الاختبارُ
+      // سواءٌ كان الشريطُ يُضغط أو لا.
+      _phone(tester);
+      var taps = 0;
+      await tester.pumpWidget(_wrap(_header(onEditCover: () => taps++)));
+      await _settle(tester);
+
+      final band = _statusBar + ProfileHeader.coverBand;
+      final pill = tester.getRect(find.byKey(_cameraKey));
+      final width = tester.getSize(find.byType(ProfileHeader)).width;
+      // وسطُ الشريط أفقيّاً، وفوق الحبّة رأسيّاً.
+      final spot = Offset(width / 2, band / 2);
+      expect(pill.contains(spot), isFalse, reason: 'الضغطةُ وقعت على الحبّة');
+
+      await tester.tapAt(spot);
+      await _settle(tester);
+      expect(taps, 1, reason: 'الشريطُ لا يُضغط');
     });
 
     testWidgets('**والزرُّ في الجهة المقابلة للقرص**', (tester) async {
