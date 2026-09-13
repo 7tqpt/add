@@ -163,6 +163,40 @@ void main() {
       expect(find.widgetWithText(FilledButton, 'تأكيد الرقم'), findsOneWidget);
     });
 
+    testWidgets('**وحقلُ الرمز أربعُ خاناتٍ لا ستّ**', (tester) async {
+      // أخرج صاحبُ المنصّة رسالةَ واتساب وفيها **أربعةُ أرقام**، والشاهدُ
+      // كان `------` ستَّ شُرَط — فيكتب أربعةً ثمّ ينتظر خانتين لا تأتيان،
+      // ويظنّ أنّ الرمزَ ناقص. واختار (أ): أربعُ شُرَطٍ وحدٌّ بأربع.
+      await open(tester);
+      await tester.tap(find.byKey(const ValueKey('otp-action')));
+      await _settle(tester);
+
+      final field = tester.widget<TextField>(
+          find.byKey(const ValueKey('otp-field')));
+      expect(field.decoration?.hintText, '----', reason: 'الشاهدُ لا يطابق الطول');
+      expect(field.maxLength, 4);
+
+      // **ولا عدّادَ تحت الحقل** — «0/4» رقمٌ لا يعني لصاحبه شيئاً.
+      expect(find.text('0/4'), findsNothing);
+    });
+
+    testWidgets('**والحدُّ يقطع ما زاد فعلاً**', (tester) async {
+      // **ولا يُسأل الحقلُ عمّا فيه بل يُقاس ما بقي.** `maxLength` وحدَها
+      // في الشجرة لا تعني أنّ القصَّ يقع: يقع بمُنسّقٍ يُركَّب معها، ولو
+      // ضُبط `maxLengthEnforcement` إلى `none` يوماً لبقيت القيمةُ ولم يُقصّ
+      // شيء — والاختبارُ الذي يسأل عن الرقم وحدَه يمرّ عليه.
+      await open(tester);
+      await tester.tap(find.byKey(const ValueKey('otp-action')));
+      await _settle(tester);
+
+      await tester.enterText(find.byKey(const ValueKey('otp-field')), '12345678');
+      await _settle(tester);
+
+      final field = tester.widget<TextField>(
+          find.byKey(const ValueKey('otp-field')));
+      expect(field.controller!.text, '1234', reason: 'لم يُقصَّ ما زاد');
+    });
+
     testWidgets('**و«أعد الإرسال» محجوبٌ بمهلةٍ بعد الإرسال**', (tester) async {
       await open(tester);
       await tester.tap(find.byKey(const ValueKey('otp-action')));
@@ -180,7 +214,7 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('otp-action')));
       await _settle(tester);
 
-      await tester.enterText(find.byKey(const ValueKey('otp-field')), '000000');
+      await tester.enterText(find.byKey(const ValueKey('otp-field')), '0000');
       await tester.tap(find.byKey(const ValueKey('otp-action')));
       await _settle(tester);
 

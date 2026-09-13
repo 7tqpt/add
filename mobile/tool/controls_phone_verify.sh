@@ -136,5 +136,25 @@ run "الإطارُ يسقط" sub "$V" \
   "      backgroundColor: AppColors.accent," \
   "      backgroundColor: AppColors.surface,"
 
+# ط) **والشاهدُ يعود ستَّ شُرَط** — فيكتب صاحبُه أربعةً وينتظر خانتين لا
+#    تأتيان، ويظنّ أنّ الرمزَ ناقص. وهو العيبُ الذي أخرجه صاحبُ المنصّة
+#    بصورة رسالة واتساب.
+run "ط) الشاهدُ ستُّ شُرَط" sub "$V" \
+  "                          hintText: '-' * otpLength," \
+  "                          hintText: '------',"
+
+# ي) **والحدُّ يسقط** — فيُلصق رقمٌ أطولُ بالخطأ ويُردّ.
+run "ي) لا حدَّ على الطول" sub "$V" \
+  "                        maxLength: otpLength," \
+  ""
+
+# ك) **والحدُّ يبقى رقماً في الشجرة ولا يقصّ شيئاً.** `maxLengthEnforcement`
+#    إلى `none` تُبقي `maxLength` كما هي ويمرّ اختبارٌ يسأل عن الرقم وحدَه —
+#    فيُقاس ما بقي في المتحكّم لا ما كُتب في الحقل.
+run "ك) الحدُّ لا يقصّ" sub "$V" \
+  "                        maxLength: otpLength," \
+  "                        maxLength: otpLength,
+                        maxLengthEnforcement: MaxLengthEnforcement.none,"
+
 echo; echo "== الحصيلة: $PASS سقطت، $FAIL لم تسقط =="
 [ "$FAIL" -eq 0 ]

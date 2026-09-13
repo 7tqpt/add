@@ -204,7 +204,13 @@ class _AccountScreenState extends State<AccountScreen> {
   /// الملفُّ إلى صورةٍ لا وجود لها — فيرى صاحبُه غلافاً مكسوراً كلَّ مرّة.
   Future<void> _changeCover(MyProfile profile) async {
     final userId = widget.session.userId;
-    if (userId == null) return;
+    // **ولا بابٌ صامت.** كان `return` وحدَه: يُضغط الزرُّ فلا يقع شيءٌ ولا
+    // يُقال شيء، وصاحبُه يظنّ التطبيقَ معطوباً — وهو أسوأُ من رسالةِ خطأ.
+    // وكلُّ طريقٍ في هذه الدالّة يجب أن ينتهي إمّا بصورةٍ أو بكلمة.
+    if (userId == null) {
+      showMessage(context, tr('سجّل الدخول أولاً.'));
+      return;
+    }
     try {
       final picked = await pickImage(
         context,
