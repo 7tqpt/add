@@ -25,7 +25,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # وقد بقي `1.0.0+1` من أوّل دفعةٍ للتطبيق حتى ٥٧ حزمةً بُنيت كلُّها تقول
 # «أنا الأولى». ويحرسه `app_update_test.dart`: يقرأ هذا السطر ويقارنه
 # بثابتَي `app_version.dart`.
-version: 1.29.0+43
+version: 1.30.0+44
 
 environment:
   sdk: ^3.13.0
@@ -113,6 +113,20 @@ dependencies:
   # فيه. و١٠٫٣٫١ تشترط ٣٦ بالضبط، وواجهتُها هي هي.
   flutter_secure_storage: ^10.3.1
   crypto: ^3.0.7
+
+  # البصمةُ وقفلُ الشاشة — بابٌ ثانٍ لقفل التطبيق لا بديلٌ عن رمزه.
+  #
+  # **وهي حزمةٌ أصليّةٌ تشترط شرطاً في أندرويد:** `MainActivity` يرث
+  # `FlutterFragmentActivity` لا `FlutterActivity`، وإلّا رمت
+  # `no_fragment_activity` عند أوّل نداء. ولا يقرأ ذلك محلّلٌ ولا اختبار —
+  # يظهر على جهازٍ حقيقيٍّ وحدَه، فبُني على الفرع قبل الدمج.
+  local_auth: ^2.3.0
+
+  # **ورسائلُ حوار البصمة عربيّةٌ، ولذلك تُذكر هذه صراحةً.**
+  # `AndroidAuthMessages` تسكن حزمةَ المنصّة لا الواجهةَ العامّة، واستيرادُ
+  # حزمةٍ غيرِ مذكورةٍ في `pubspec` يُحمِّر المحلّل — وهو محقّ: حزمةٌ تأتي
+  # تبعاً قد تسقط في ترقيةٍ فتنكسر الشيفرةُ بلا سببٍ ظاهر.
+  local_auth_android: ^1.0.56
 dev_dependencies:
   flutter_test:
     sdk: flutter

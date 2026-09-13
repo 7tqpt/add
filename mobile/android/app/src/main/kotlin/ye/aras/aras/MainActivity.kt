@@ -9,11 +9,23 @@ import android.os.Build
 import android.os.PowerManager
 import android.os.Bundle
 import android.provider.Settings
-import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
-class MainActivity : FlutterActivity() {
+/**
+ * **ويرث `FlutterFragmentActivity` لا `FlutterActivity`.**
+ *
+ * حزمةُ `local_auth` تعرض حوارَ البصمة بـ`BiometricPrompt`، وهو يحتاج
+ * `FragmentManager` — ولا يملكه إلّا نشاطٌ يرث `FragmentActivity`. فمن ورّثه
+ * `FlutterActivity` خرج بـ`no_fragment_activity` عند **أوّل** نداءٍ للبصمة،
+ * لا عند البناء.
+ *
+ * **ولا يقرأ هذا محلّلٌ ولا اختبار:** `flutter analyze` لا يرى `android/`،
+ * والاختباراتُ تعمل على سطح المكتب بلا نشاطٍ أصلاً. فالذي يمسكه بناءٌ حقيقيٌّ
+ * وتجربةٌ على جهاز — وهو صنفُ العطب الذي أسقط جولةَ البناء ٨٥.
+ */
+class MainActivity : FlutterFragmentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

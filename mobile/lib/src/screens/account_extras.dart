@@ -7,6 +7,7 @@ import 'package:app_settings/app_settings.dart';
 import 'package:flutter/material.dart';
 
 import '../core/app_lock.dart';
+import '../core/biometrics.dart';
 import '../core/i18n.dart';
 import '../core/notification_tone.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -581,11 +582,48 @@ class _SettingsScreenState extends State<SettingsScreen> {
   /// قبل أن يُسأل الجهازُ ويردّ.
   bool _batteryOk = true;
 
+  /// أفي الجهاز بصمةٌ مسجّلة. ومبدؤه `false`: **لا يُعرض مفتاحٌ لا يعمل**،
+  /// فمن لا حسّاسَ في جهازه — أو لم يسجّل بصمةً — يشغّله فلا يقع شيء.
+  bool _canBiometric = false;
+
   @override
   void initState() {
     super.initState();
     _load();
     _probeBattery();
+    _probeBiometric();
+  }
+
+  Future<void> _probeBiometric() async {
+    final ok = await biometrics.available();
+    if (mounted) setState(() => _canBiometric = ok);
+  }
+
+  /// يشغّل فتحَ القفل بالبصمة أو يطفئه.
+  ///
+  /// **ولا يُشغَّل حتى تُقرأ بصمةٌ فعلاً.** مفتاحٌ يُرفع بلا تجربةٍ يَعِد
+  /// صاحبَه بما لم يُختبَر — فإن أخفق الحسّاسُ يومَ الحاجة وجد نفسه أمام
+  /// وعدٍ لم يُوفَّ به. فتُطلب البصمةُ الآن، ولا يُكتب التفضيلُ إن أخفقت.
+  Future<void> _toggleBiometric(bool on) async {
+    setState(() => _busy = true);
+    try {
+      if (on && !await biometrics.authenticate()) {
+        if (mounted) showMessage(context, tr('لم تُقرأ البصمة. لم يتغيّر شيء.'));
+        return;
+      }
+      await appLock.setBiometric(on);
+      if (mounted) {
+        showMessage(
+            context,
+            on
+                ? tr('صار القفل يُفتح ببصمتك — والرمز باقٍ تحتها.')
+                : tr('أُطفئ فتحُ القفل بالبصمة.'));
+      }
+    } catch (e) {
+      if (mounted) showMessage(context, messageOf(e));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
   /// **ويُسأل عند كلِّ عودةٍ إلى الشاشة لا مرّةً واحدة:** من فتح الإعدادات
@@ -888,6 +926,38 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ),
                         ],
                       ),
+                      // **والبصمةُ لا تُعرض إلّا لمن جهازُه يقرؤها** — ومفتاحٌ
+                      // يُرفع فلا يقع شيءٌ أسوأُ من مفتاحٍ غائب.
+                      if (_canBiometric) ...[
+                        const Divider(
+                            height: Space.lg, color: AppColors.hairline),
+                        Row(
+                          children: [
+                            const Icon(Icons.fingerprint,
+                                size: 20, color: AppColors.accent),
+                            const SizedBox(width: Space.md),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(tr('افتح بالبصمة')),
+                                  const SizedBox(height: 2),
+                                  // **ويُقال إنّ الرمزَ باقٍ.** من ظنّ البصمةَ
+                                  // بديلاً عن الرمز نسيه، ثمّ أخفق حسّاسُه.
+                                  Muted(tr('والرمز يبقى لمن أخفقت بصمته'),
+                                      size: 11),
+                                ],
+                              ),
+                            ),
+                            Switch(
+                              key: const ValueKey('biometric-toggle'),
+                              value: appLock.biometricEnabled,
+                              onChanged:
+                                  _busy ? null : (v) => _toggleBiometric(v),
+                            ),
+                          ],
+                        ),
+                      ],
                     ],
                   ],
                 ),
