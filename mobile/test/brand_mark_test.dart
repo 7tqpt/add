@@ -7,6 +7,10 @@
 // **والمقيسُ أنّ الصورةَ من الحزمة لا أنّ في الرأس صورةً ما**: أصلٌ غيرُ
 // مشحونٍ يرسم مربّعاً فارغاً على الجهاز، ويمرّ في اختبارٍ يسأل «أثَمّ
 // `Image`؟».
+import 'dart:io';
+import 'dart:typed_data';
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -46,6 +50,40 @@ void _phone(WidgetTester tester) {
 }
 
 void main() {
+  testWidgets('**والشعارُ بلا خلفيّة**', (tester) async {
+    // قال صاحبُ المنصّة: «شيل الخلفيه… خليه الشعار بس». والمربّعُ النبيذيُّ
+    // أرضيّةُ أيقونةِ الجهاز، ووضعُه على رأسٍ نبيذيٍّ يُخرج مربّعاً في مربّع.
+    //
+    // **ويُسأل الملفُّ نفسُه لا الشيفرة:** أصلٌ بخلفيّةٍ يُرفع بالسطر نفسِه،
+    // فاختبارٌ يسأل «أيُرفع `app_mark.png`؟» يمرّ عليه.
+    late ui.Image image;
+    await tester.runAsync(() async {
+      final bytes = await File('assets/brand/app_mark.png').readAsBytes();
+      final codec = await ui.instantiateImageCodec(bytes);
+      image = (await codec.getNextFrame()).image;
+    });
+
+    late ByteData data;
+    await tester.runAsync(() async {
+      data = (await image.toByteData(format: ui.ImageByteFormat.rawRgba))!;
+    });
+
+    int alphaAt(int x, int y) => data.getUint8((y * image.width + x) * 4 + 3);
+
+    // الزوايا الأربع شفّافة — ولو بقي المربّعُ لَكُنّ معتماتٍ كلَّهنّ.
+    for (final p in [
+      (2, 2),
+      (image.width - 3, 2),
+      (2, image.height - 3),
+      (image.width - 3, image.height - 3),
+    ]) {
+      expect(alphaAt(p.$1, p.$2), 0, reason: 'زاويةٌ غيرُ شفّافة');
+    }
+
+    // **وفي وسطه شعارٌ فعلاً** — ولا يمرّ ملفٌّ شفّافٌ كلُّه.
+    expect(alphaAt(image.width ~/ 2, image.height ~/ 2), greaterThan(0));
+  });
+
   setUp(() {
     lockStorageOverride = {};
     resetDemoPhoneGate();
