@@ -125,10 +125,16 @@ run "ز) رمزٌ خاطئٌ يُقبل" sub "$V" \
 # ح) ويُشال المخرجُ لمن كتب رقمه خطأً — فيُحبس على شاشةٍ تنتظر رمزاً لا
 #    يأتي أبداً إلى رقمٍ ليس له، و«حسابي» خلف الحاجز.
 run "ح) لا مخرجَ لمن أخطأ رقمَه" sub "$V" \
-  "          TextButton(
-            key: const ValueKey('otp-edit-phone')," \
-  "          if (false) TextButton(
-            key: const ValueKey('otp-edit-phone'),"
+  "                    OutlinedButton(
+                      key: const ValueKey('otp-edit-phone')," \
+  "                    if (false) OutlinedButton(
+                      key: const ValueKey('otp-edit-phone'),"
+
+# **والإطارُ يسقط** — الأرضيّةُ تعود بيضاءَ فتفترق الشاشةُ عن أختيها
+# (الدخول والقفل)، وهما الثلاثُ اللواتي يُرَين قبل التطبيق.
+run "الإطارُ يسقط" sub "$V" \
+  "      backgroundColor: AppColors.accent," \
+  "      backgroundColor: AppColors.surface,"
 
 echo; echo "== الحصيلة: $PASS سقطت، $FAIL لم تسقط =="
 [ "$FAIL" -eq 0 ]

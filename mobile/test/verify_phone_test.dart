@@ -20,6 +20,7 @@ import 'package:aras/src/data/demo.dart';
 import 'package:aras/src/data/models.dart';
 import 'package:aras/src/screens/root.dart';
 import 'package:aras/src/screens/verify_phone.dart';
+import 'package:aras/src/ui/kit.dart';
 
 Session _session() => Session()
   ..userId = 'u1'
@@ -210,6 +211,26 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('otp-edit-phone')));
       await _settle(tester);
       expect(find.byKey(const ValueKey('phone-edit-field')), findsOneWidget);
+    });
+
+    testWidgets('**ورأسٌ أحمرُ وورقةٌ بيضاء — كشاشتي الدخول والقفل**',
+        (tester) async {
+      // **وهي ثالثةُ ثلاثٍ تُرى قبل التطبيق**، فاختلافُ واحدةٍ منها يُقرأ
+      // تطبيقاً آخر.
+      demoPhoneGateRequired = true;
+      _phone(tester);
+      await tester.pumpWidget(_wrap(VerifyPhoneScreen(session: _session())));
+      await _settle(tester);
+
+      final scaffold = tester.widget<Scaffold>(find.byType(Scaffold));
+      expect(scaffold.backgroundColor, AppColors.accent);
+      // **ولا بطاقةَ داخلَ الورقة** — بطاقةٌ بيضاءُ فوق ورقةٍ بيضاءَ إطارٌ
+      // بلا معنى، وهو ما أُصلح في وجه استعادة كلمة المرور قبلها.
+      expect(find.byType(AppCard), findsNothing);
+      // **وزرٌّ محاطٌ لا سطرٌ رفيع** — وهو المخرجُ الوحيدُ لمن رقمُه خطأ.
+      expect(
+          find.widgetWithText(OutlinedButton, 'رقمي خطأ — بدّله'),
+          findsOneWidget);
     });
 
     testWidgets('ولا يفيض بخطّ الجهاز الكبير', (tester) async {
