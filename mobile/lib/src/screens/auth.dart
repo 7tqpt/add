@@ -24,6 +24,7 @@ class _AuthScreenState extends State<AuthScreen> {
   final _email = TextEditingController();
   final _password = TextEditingController();
   final _code = TextEditingController();
+  final _confirmPassword = TextEditingController();
   late bool _signUp = widget.startOnSignUp;
   bool _busy = false;
 
@@ -41,6 +42,7 @@ class _AuthScreenState extends State<AuthScreen> {
     _email.dispose();
     _password.dispose();
     _code.dispose();
+    _confirmPassword.dispose();
     super.dispose();
   }
 
@@ -48,6 +50,15 @@ class _AuthScreenState extends State<AuthScreen> {
     final mail = _email.text.trim();
     if (mail.isEmpty || _password.text.isEmpty) {
       setState(() => _error = tr('اكتب البريد وكلمة المرور.'));
+      return;
+    }
+    // **وتُقارَن الكلمتان قبل أن يُنادى الخادم** — وفي الإنشاء وحدَه.
+    //
+    // حرفٌ زائدٌ هنا يُنشئ الحسابَ فعلاً بكلمةٍ لا يعرفها صاحبُها، وينجح
+    // الدخولُ في حينه لأنّ الجلسةَ تُفتح من التسجيل نفسِه — فلا يظهر
+    // الخطأُ إلّا يومَ يخرج فلا يعود.
+    if (_signUp && _confirmPassword.text != _password.text) {
+      setState(() => _error = tr('الكلمتان غير متطابقتين.'));
       return;
     }
     setState(() {
@@ -312,6 +323,25 @@ class _AuthScreenState extends State<AuthScreen> {
       ),
     ),
 
+    // ── التأكيدُ في وجه الإنشاء وحدَه ─────────────────────────────────
+    //
+    // **ومن يدخل لا يُسأل مرّتين:** كلمتُه معروفةٌ عنده، وخطؤه يُردّ في
+    // اللحظة بـ«بيانات الدخول غير صحيحة» فيعيد.
+    //
+    // **وأمّا المُنشئ فخطؤه لا يُردّ عليه أبداً.** يُكتب الحرفُ الزائدُ
+    // فيُحفظ، وينجح الحساب، ويدخل — ثمّ يخرج بعد شهرٍ فلا يعود. ويذهب
+    // إلى «نسيت كلمة المرور» ليصلح خطأً وقع أوّلَ يوم.
+    if (_signUp) ...[
+      const SizedBox(height: Space.md),
+      TextField(
+        key: const ValueKey('signup-confirm-password'),
+        controller: _confirmPassword,
+        obscureText: true,
+        textDirection: TextDirection.ltr,
+        decoration: InputDecoration(labelText: tr('أعِد كتابة كلمة المرور')),
+      ),
+    ],
+
     // ── صفُّ «نسيت» و«تذكّرني» — في وجه الدخول وحدَه ─────────────────
     //
     // من يُنشئ حساباً جديداً لا كلمةَ له تُنسى، ولا جلسةَ سابقةً تُذكر.
@@ -366,6 +396,10 @@ class _AuthScreenState extends State<AuthScreen> {
           : () => setState(() {
               _signUp = !_signUp;
               _error = null;
+              // **والتأكيدُ يُمسح مع قلب الوجه.** حقلٌ يغيب عن العين ويبقى
+              // فيه ما كُتب يُقارَن بكلمةٍ جديدةٍ فيردّ «غير متطابقتين»
+              // على شيءٍ لا يراه صاحبُه.
+              _confirmPassword.clear();
             }),
       child: Text(_signUp ? tr('دخول') : tr('إنشاء حساب')),
     ),

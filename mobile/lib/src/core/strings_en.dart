@@ -176,6 +176,9 @@ const Map<String, String> englishStrings = {
   'اكتب بريدك الإلكترونيّ، ونرسل إليه رمزاً تستعيد به كلمتك.':
       'Enter your email and we will send you a code to reset your password.',
   'أرسل رمز الاستعادة': 'Send reset code',
+  'أعِد كتابة الكلمة الجديدة': 'Re-enter the new password',
+  'أعِد كتابة كلمة المرور': 'Re-enter your password',
+  'الكلمتان غير متطابقتين.': 'The two passwords do not match.',
   'نسيت كلمتك؟': 'Forgot your password?',
   'حُفظت كلمتك الجديدة.': 'Your new password has been saved.',
   'استكشف': 'Explore',

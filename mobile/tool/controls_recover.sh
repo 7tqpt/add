@@ -160,6 +160,66 @@ run "(ل) الكلمةُ القصيرةُ تُرسَل" \
 "      await widget.session.setPassword(_newPassword.text);" \
 '      await widget.session.setPassword("12345678");'
 
+# ── م) وحقلُ التأكيد يُشال من خطوة الكلمة ────────────────────────────────────
+run "(م) لا حقلَ تأكيدٍ في الاستعادة" \
+  sub "$R" \
+"            const SizedBox(height: Space.md),
+            TextField(
+              key: const ValueKey('recover-confirm-password')," \
+"            const SizedBox(height: Space.md),
+            TextField(
+              key: const ValueKey('recover-confirm-password-x'),"
+
+# ── ن) والمختلفتان تمضيان إلى الخادم ─────────────────────────────────────────
+#
+# **وهذا هو المقصودُ كلُّه.** حقلٌ يُعرض ولا يُقارَن زينةٌ تُطمئن ولا تحرس.
+run "(ن) المختلفتان تُبدّلان الكلمة" \
+  sub "$R" \
+"    if (_confirmPassword.text != _newPassword.text) {" \
+"    if (false) {"
+
+# ── س) والفارغُ يُقبل تأكيداً ────────────────────────────────────────────────
+#
+# من كتب الأولى وترك الثانية لم يؤكّد شيئاً، والقبولُ هنا يُلغي الحقلَ من
+# أصله ويُبقيه في الشاشة زينةً.
+run "(س) الفارغُ يُقبل تأكيداً" \
+  sub "$R" \
+"    if (_confirmPassword.text != _newPassword.text) {" \
+"    if (_confirmPassword.text.isNotEmpty &&
+        _confirmPassword.text != _newPassword.text) {"
+
+# ── ع) وتأكيدُ الإنشاء يُشال ─────────────────────────────────────────────────
+run "(ع) لا حقلَ تأكيدٍ في إنشاء الحساب" \
+  sub "$A" \
+"        key: const ValueKey('signup-confirm-password')," \
+"        key: const ValueKey('signup-confirm-password-x'),"
+
+# ── ف) والمختلفتان تُنشئان حساباً ────────────────────────────────────────────
+run "(ف) المختلفتان تُنشئان الحساب" \
+  sub "$A" \
+"    if (_signUp && _confirmPassword.text != _password.text) {" \
+"    if (false) {"
+
+# ── ص) والتأكيدُ يُعرض في وجه الدخول كذلك ───────────────────────────────────
+#
+# من يدخل كلمتُه معروفةٌ عنده، وحقلٌ ثالثٌ يُطيل شاشةً تُفتح كلَّ يوم.
+run "(ص) التأكيدُ يُعرض في وجه الدخول" \
+  sub "$A" \
+"    if (_signUp) ...[
+      const SizedBox(height: Space.md),
+      TextField(
+        key: const ValueKey('signup-confirm-password')," \
+"    ...[
+      const SizedBox(height: Space.md),
+      TextField(
+        key: const ValueKey('signup-confirm-password'),"
+
+# ── ق) وما كُتب في التأكيد يبقى بعد قلب الوجه ────────────────────────────────
+run "(ق) قلبُ الوجه يترك التأكيدَ مملوءاً" \
+  sub "$A" \
+"              _confirmPassword.clear();" \
+"              _error = null;"
+
 echo
 echo "الساقط: $PASS — الباقي: $FAIL"
 [ "$FAIL" = 0 ]

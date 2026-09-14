@@ -58,9 +58,18 @@ void _phone(WidgetTester tester) {
 /// أخرى، فسترت الكسر.
 class _SpySession extends Session {
   String? sentTo;
+  String? savedPassword;
 
   @override
   Future<void> sendPasswordReset(String mail) async => sentTo = mail;
+
+  @override
+  Future<void> setPassword(String password) async {
+    // القِصَرُ يُردّ في الجلسة الحقيقيّة، فيُحاكى هنا — وإلّا صار الاختبارُ
+    // يقيس شيئاً ألينَ ممّا يقع.
+    if (password.length < 8) throw 'كلمة المرور قصيرة جداً (8 أحرف على الأقل).';
+    savedPassword = password;
+  }
 }
 
 class _LiveSession extends Session {
@@ -332,10 +341,94 @@ void main() {
       expect(find.text('كلمة المرور الجديدة'), findsOneWidget);
       await tester.enterText(
           find.byKey(const ValueKey('recover-new-password')), 'قصيرة');
+      await tester.enterText(
+          find.byKey(const ValueKey('recover-confirm-password')), 'قصيرة');
       await tester.tap(find.byKey(const ValueKey('recover-go')));
       await tester.pumpAndSettle();
 
       expect(find.textContaining('قصيرة جداً'), findsOneWidget);
+    });
+  });
+
+  // ==========================================================================
+  //  تأكيدُ الكلمة الجديدة
+  // ==========================================================================
+  //
+  //  خطأٌ مطبعيٌّ واحدٌ هنا يُبدّل الكلمةَ فعلاً إلى ما لا يعرفه صاحبُها،
+  //  وينجح — ولا يكتشفه إلّا يومَ يخرج فلا يعود.
+
+  group('التأكيد', () {
+    /// يسوق إلى خطوة الكلمة الجديدة على جلسةٍ تسجّل ما وصلها.
+    Future<_SpySession> reachPassword(WidgetTester tester) async {
+      _phone(tester);
+      final session = _SpySession();
+      await tester.pumpWidget(_wrapped(AuthScreen(session: session)));
+      await tester.pumpAndSettle();
+      await _openRecover(tester, email: 'ayman@sdd.company');
+      await tester.tap(find.byKey(const ValueKey('recover-go')));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+          find.byKey(const ValueKey('recover-code')), '123456');
+      await tester.tap(find.byKey(const ValueKey('recover-go')));
+      await tester.pumpAndSettle();
+      return session;
+    }
+
+    testWidgets('**وحقلان لا حقلٌ واحد**', (tester) async {
+      await reachPassword(tester);
+
+      expect(find.byKey(const ValueKey('recover-new-password')), findsOneWidget);
+      expect(find.byKey(const ValueKey('recover-confirm-password')),
+          findsOneWidget);
+      expect(find.text('أعِد كتابة الكلمة الجديدة'), findsOneWidget);
+    });
+
+    testWidgets('**والمختلفتان لا تصلان الخادمَ أصلاً**', (tester) async {
+      // **ولا يُسأل الحقلُ عمّا فيه:** رسالةُ خطأٍ على الشاشة لا تثبت أنّ
+      // شيئاً لم يُرسَل. فتُسأل الجلسةُ عمّا وصلها.
+      final session = await reachPassword(tester);
+
+      await tester.enterText(
+          find.byKey(const ValueKey('recover-new-password')), 'كلمةٌ طويلةٌ جدّاً');
+      await tester.enterText(
+          find.byKey(const ValueKey('recover-confirm-password')),
+          'كلمةٌ طويلةٌ جدا');
+      await tester.tap(find.byKey(const ValueKey('recover-go')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('الكلمتان غير متطابقتين.'), findsOneWidget);
+      expect(session.savedPassword, isNull,
+          reason: 'بُدّلت الكلمةُ رغم اختلاف الحقلين');
+      expect(find.byType(RecoverPasswordScreen), findsOneWidget,
+          reason: 'طُويت الشاشةُ وكأنّ شيئاً حُفظ');
+    });
+
+    testWidgets('**والفارغُ ليس تأكيداً**', (tester) async {
+      // من كتب الأولى وترك الثانية لم يؤكّد شيئاً — والقبولُ هنا يُلغي
+      // الحقلَ من أصله.
+      final session = await reachPassword(tester);
+
+      await tester.enterText(
+          find.byKey(const ValueKey('recover-new-password')), 'كلمةٌ طويلةٌ جدّاً');
+      await tester.tap(find.byKey(const ValueKey('recover-go')));
+      await tester.pumpAndSettle();
+
+      expect(session.savedPassword, isNull);
+      expect(find.text('الكلمتان غير متطابقتين.'), findsOneWidget);
+    });
+
+    testWidgets('والمتطابقتان تمضيان', (tester) async {
+      final session = await reachPassword(tester);
+
+      await tester.enterText(
+          find.byKey(const ValueKey('recover-new-password')), 'كلمةٌ طويلةٌ جدّاً');
+      await tester.enterText(
+          find.byKey(const ValueKey('recover-confirm-password')),
+          'كلمةٌ طويلةٌ جدّاً');
+      await tester.tap(find.byKey(const ValueKey('recover-go')));
+      await tester.pumpAndSettle();
+
+      expect(session.savedPassword, 'كلمةٌ طويلةٌ جدّاً');
     });
   });
 
@@ -404,6 +497,9 @@ void main() {
 
       await tester.enterText(
           find.byKey(const ValueKey('recover-new-password')), 'كلمةٌ طويلةٌ كافية');
+      await tester.enterText(
+          find.byKey(const ValueKey('recover-confirm-password')),
+          'كلمةٌ طويلةٌ كافية');
       await tester.tap(find.byKey(const ValueKey('recover-go')));
       await _settle(tester);
       await _settle(tester);

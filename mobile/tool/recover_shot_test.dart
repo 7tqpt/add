@@ -180,7 +180,7 @@ void main() {
   final out = Platform.environment['SHOTS'] ?? '/tmp/shots';
 
   testWidgets('اللوح', (tester) async {
-    tester.view.physicalSize = const Size(5000, 2400);
+    tester.view.physicalSize = const Size(6260, 2400);
     tester.view.devicePixelRatio = 3.0;
     addTearDown(tester.view.reset);
 
@@ -201,9 +201,14 @@ void main() {
         screen: _pushed(RecoverPasswordScreen(session: _guest())),
       ),
       (
-        label: '٣) ثمّ الكلمةُ الجديدة — بلا سهم رجوع',
-        sub: 'الجلسةُ فُتحت بالرمز، والخروجُ هنا يترك صاحبَها بكلمةٍ لا يعرفها',
+        label: '٣) ثمّ الكلمةُ الجديدة ومعها تأكيدُها',
+        sub: 'ولا سهمَ رجوع: الجلسةُ فُتحت بالرمز، والخروجُ هنا يترك صاحبَها بكلمةٍ لا يعرفها',
         screen: _pushed(RecoverPasswordScreen(session: _guest())),
+      ),
+      (
+        label: '٤) وإنشاءُ الحساب — وفيه التأكيدُ كذلك',
+        sub: 'وخطأُ المُنشئ لا يُردّ عليه أبداً: يُحفظ كلمةً وينجح الحساب',
+        screen: AuthScreen(session: _guest(), startOnSignUp: true),
       ),
     ])));
     await _settle(tester);
@@ -228,7 +233,9 @@ void main() {
     expect(_in(1, const ValueKey('recover-email')), findsOneWidget);
     expect(_in(2, const ValueKey('recover-code')), findsOneWidget);
     expect(_in(3, const ValueKey('recover-new-password')), findsOneWidget);
-    // وسهمُ الرجوع في الأوليين لا في الأخيرة.
+    expect(_in(3, const ValueKey('recover-confirm-password')), findsOneWidget);
+    expect(_in(4, const ValueKey('signup-confirm-password')), findsOneWidget);
+    // وسهمُ الرجوع في الأوليين لا في الثالثة.
     expect(find.byType(BackButton), findsNWidgets(2));
     expect(find.text('نسيت كلمة المرور'), findsOneWidget);
     expect(find.text('اكتب بريدك أوّلاً.'), findsNothing);

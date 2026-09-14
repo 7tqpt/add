@@ -78,6 +78,7 @@ class _RecoverPasswordScreenState extends State<RecoverPasswordScreen> {
   late final _email = TextEditingController(text: widget.seedEmail);
   final _code = TextEditingController();
   final _newPassword = TextEditingController();
+  final _confirmPassword = TextEditingController();
 
   RecoverStep _step = RecoverStep.email;
   bool _busy = false;
@@ -89,6 +90,7 @@ class _RecoverPasswordScreenState extends State<RecoverPasswordScreen> {
     _email.dispose();
     _code.dispose();
     _newPassword.dispose();
+    _confirmPassword.dispose();
     super.dispose();
   }
 
@@ -142,6 +144,18 @@ class _RecoverPasswordScreenState extends State<RecoverPasswordScreen> {
   }
 
   Future<void> _save() async {
+    // **وتُقارَن الكلمتان قبل أن يُنادى الخادم.**
+    //
+    // خطأٌ مطبعيٌّ واحدٌ هنا يُبدّل الكلمةَ فعلاً إلى ما لا يعرفه صاحبُها،
+    // وينجح — ولا يكتشفه إلّا يومَ يخرج فلا يعود. فالمقارنةُ في الجهاز،
+    // ولا يُرسَل شيءٌ قبلها.
+    //
+    // **وقبل قياس الطول:** من كتب كلمتين مختلفتين لم يقصد إحداهما، وقياسُ
+    // طولِ ما لم يُقصَد يقول له ما لا ينفعه.
+    if (_confirmPassword.text != _newPassword.text) {
+      setState(() => _error = tr('الكلمتان غير متطابقتين.'));
+      return;
+    }
     await _guard(() async {
       await widget.session.setPassword(_newPassword.text);
       if (!mounted) return;
@@ -299,6 +313,16 @@ class _RecoverPasswordScreenState extends State<RecoverPasswordScreen> {
               decoration: InputDecoration(
                 labelText: tr('كلمة المرور الجديدة'),
                 helperText: tr('ثمانية أحرف فأكثر.'),
+              ),
+            ),
+            const SizedBox(height: Space.md),
+            TextField(
+              key: const ValueKey('recover-confirm-password'),
+              controller: _confirmPassword,
+              obscureText: true,
+              textDirection: TextDirection.ltr,
+              decoration: InputDecoration(
+                labelText: tr('أعِد كتابة الكلمة الجديدة'),
               ),
             ),
           ],

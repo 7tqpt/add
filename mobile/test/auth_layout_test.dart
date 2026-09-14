@@ -47,6 +47,19 @@ void _phone(WidgetTester tester) {
 
 Session _guest() => Session()..loading = false;
 
+/// جلسةٌ تسجّل ما وصلها — **فيُقاس ما مضى لا ما عُرض**.
+///
+/// رسالةُ خطأٍ على الشاشة لا تثبت أنّ شيئاً لم يُرسَل.
+class _SpySession extends Session {
+  String? signedUpWith;
+
+  @override
+  Future<bool> signUp(String mail, String password) async {
+    signedUpWith = password;
+    return false;
+  }
+}
+
 const _remember = ValueKey('remember-me');
 const _switch = ValueKey('switch-face');
 
@@ -197,6 +210,97 @@ void main() {
       final session = Session();
       await session.boot();
       expect(session.userId, isNotNull);
+    });
+  });
+
+  // ==========================================================================
+  //  تأكيدُ الكلمة في وجه الإنشاء
+  // ==========================================================================
+  //
+  //  **وخطأُ المُنشئ لا يُردّ عليه أبداً.** من أخطأ حرفاً وهو يدخل يُردّ في
+  //  اللحظة بـ«بيانات الدخول غير صحيحة» فيعيد. ومن أخطأ حرفاً وهو يُنشئ
+  //  حسابَه يُحفظ خطؤه كلمةً، وينجح الحساب، ويدخل — لأنّ الجلسةَ تُفتح من
+  //  التسجيل نفسِه. ثمّ يخرج بعد شهرٍ فلا يعود، ويذهب إلى «نسيت كلمة
+  //  المرور» ليصلح خطأً وقع أوّلَ يوم.
+
+  group('تأكيدُ الكلمة في الإنشاء', () {
+    const confirm = ValueKey('signup-confirm-password');
+
+    Future<_SpySession> signUpFace(WidgetTester tester) async {
+      _phone(tester);
+      final session = _SpySession()..loading = false;
+      await tester.pumpWidget(
+          _wrap(AuthScreen(session: session, startOnSignUp: true)));
+      await _settle(tester);
+      return session;
+    }
+
+    testWidgets('**وهو في الإنشاء وحدَه**', (tester) async {
+      // من يدخل كلمتُه معروفةٌ عنده، وحقلٌ ثانٍ يُطيل شاشةً تُفتح كلَّ يوم.
+      final session = await signUpFace(tester);
+      expect(find.byKey(confirm), findsOneWidget);
+
+      await tester.tap(find.byKey(_switch));
+      await _settle(tester);
+      expect(find.byKey(confirm), findsNothing);
+      expect(session.signedUpWith, isNull);
+    });
+
+    testWidgets('**والمختلفتان لا تصلان الخادمَ أصلاً**', (tester) async {
+      final session = await signUpFace(tester);
+
+      await tester.enterText(find.byType(TextField).at(0), 'a@b.co');
+      await tester.enterText(find.byType(TextField).at(1), 'كلمةٌ طويلةٌ جدّاً');
+      await tester.enterText(find.byKey(confirm), 'كلمةٌ طويلةٌ جدا');
+      await tester.tap(find.widgetWithText(FilledButton, 'إنشاء الحساب'));
+      await _settle(tester);
+
+      expect(find.text('الكلمتان غير متطابقتين.'), findsOneWidget);
+      expect(session.signedUpWith, isNull, reason: 'أُنشئ الحسابُ رغم اختلافهما');
+    });
+
+    testWidgets('**والفارغُ ليس تأكيداً**', (tester) async {
+      final session = await signUpFace(tester);
+
+      await tester.enterText(find.byType(TextField).at(0), 'a@b.co');
+      await tester.enterText(find.byType(TextField).at(1), 'كلمةٌ طويلةٌ جدّاً');
+      await tester.tap(find.widgetWithText(FilledButton, 'إنشاء الحساب'));
+      await _settle(tester);
+
+      expect(session.signedUpWith, isNull);
+    });
+
+    testWidgets('والمتطابقتان تمضيان', (tester) async {
+      final session = await signUpFace(tester);
+
+      await tester.enterText(find.byType(TextField).at(0), 'a@b.co');
+      await tester.enterText(find.byType(TextField).at(1), 'كلمةٌ طويلةٌ جدّاً');
+      await tester.enterText(find.byKey(confirm), 'كلمةٌ طويلةٌ جدّاً');
+      await tester.tap(find.widgetWithText(FilledButton, 'إنشاء الحساب'));
+      await _settle(tester);
+
+      expect(session.signedUpWith, 'كلمةٌ طويلةٌ جدّاً');
+    });
+
+    testWidgets('**وقلبُ الوجه يمسح ما كُتب في التأكيد**', (tester) async {
+      // حقلٌ يغيب عن العين ويبقى فيه ما كُتب يُقارَن بكلمةٍ جديدةٍ فيردّ
+      // «غير متطابقتين» على شيءٍ لا يراه صاحبُه.
+      final session = await signUpFace(tester);
+
+      await tester.enterText(find.byKey(confirm), 'قديمة');
+      await tester.tap(find.byKey(_switch));
+      await _settle(tester);
+      await tester.tap(find.byKey(_switch));
+      await _settle(tester);
+
+      expect(tester.widget<TextField>(find.byKey(confirm)).controller?.text, '');
+
+      await tester.enterText(find.byType(TextField).at(0), 'a@b.co');
+      await tester.enterText(find.byType(TextField).at(1), 'كلمةٌ طويلةٌ جدّاً');
+      await tester.enterText(find.byKey(confirm), 'كلمةٌ طويلةٌ جدّاً');
+      await tester.tap(find.widgetWithText(FilledButton, 'إنشاء الحساب'));
+      await _settle(tester);
+      expect(session.signedUpWith, 'كلمةٌ طويلةٌ جدّاً');
     });
   });
 }
