@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -27,6 +28,35 @@ class WelcomeScreen extends StatefulWidget {
   State<WelcomeScreen> createState() => _WelcomeScreenState();
 }
 
+/// مدّةُ مشهد الافتتاح — **واحدةٌ للشاشتين**.
+const introDuration = Duration(milliseconds: 1700);
+
+/// لحظةُ بدء المشهد. `null` تعني أنّه لم يبدأ بعد.
+DateTime? _introStart;
+
+/// كم مضى من المشهد — ٠ لأوّل من سأل، ثمّ ما مضى فعلاً لمن جاء بعده.
+///
+/// **وهذه الساعةُ هي التي تجعله مشهداً واحداً لا مشهدين.** شاشةُ الإقلاع
+/// تُعرض ثمّ تحلّ محلَّها شاشةُ الترحيب، وكلتاهما ترسم العلامةَ نفسَها. فلو
+/// بدأت كلٌّ من أوّلها لَرُئي المشهدُ مرّتين: يُقطع في منتصفه ويُستأنف من
+/// الصفر — وهو تعثّرٌ لا ترحيب. وهذا بعينه ما منع القوسَ من شاشة الإقلاع
+/// قبل اليوم، فصار له جوابٌ غيرُ الحذف.
+///
+/// **ولا تُؤخَّر الشاشةُ ولا جزءاً من ثانية.** المشهدُ يمضي فوق ما يقع، فمن
+/// عاد تحقّقُه في مئتي جزءٍ من الثانية مضى إلى شاشته ورأى بقيّةَ المشهد
+/// هناك؛ ومن طال انتظارُه رآه كلَّه. والحبسُ ثانيتين في كلّ فتحةٍ ضريبةٌ
+/// يوميّةٌ على من يفتح التطبيق كلَّ يوم.
+double introProgress() {
+  final now = DateTime.now();
+  final start = _introStart ??= now;
+  return (now.difference(start).inMilliseconds / introDuration.inMilliseconds)
+      .clamp(0.0, 1.0);
+}
+
+/// تُعيد الساعةَ إلى ما قبل البدء — **للاختبار وحدَه**.
+@visibleForTesting
+void resetIntroClock() => _introStart = null;
+
 class _WelcomeScreenState extends State<WelcomeScreen>
     with SingleTickerProviderStateMixin {
   /// **ومقودٌ واحدٌ لكلّ ما في الشاشة.** لو كان لكلّ عنصرٍ مقودُه لَبدأ كلٌّ
@@ -34,7 +64,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
   /// لها بدايةٌ ونهاية.
   late final AnimationController _c = AnimationController(
     vsync: this,
-    duration: Duration(milliseconds: 1700),
+    duration: introDuration,
   );
   bool _started = false;
 
@@ -48,7 +78,9 @@ class _WelcomeScreenState extends State<WelcomeScreen>
       _c.value = 1;
       return;
     }
-    _c.forward();
+    // **ويُستأنَف من حيث وصل لا من الصفر.** شاشةُ الإقلاع قبلها ترسم
+    // العلامةَ نفسَها، فبدءٌ من الصفر هنا يُعيد المشهدَ مرّتين.
+    _c.forward(from: introProgress());
   }
 
   @override
@@ -75,13 +107,10 @@ class _WelcomeScreenState extends State<WelcomeScreen>
               Spacer(),
               Expanded(flex: 6, child: ArchMark(t: _c)),
               Spacer(),
-              // زرٌّ ذهبيٌّ بحبرٍ نبيذيّ — لا نبيذيٌّ على نبيذيّ فيختفي.
-              // والأبيضُ على الذهب لا يُقرأ (‎١٫٦٦:١‎)، والنبيذيُّ عليه
-              // ‎٨٫٢٨:١‎.
-              //
-              // **ويصعد آخرَ الجميع.** الزرُّ دعوةٌ إلى الفعل، ودعوةٌ تسبق
-              // التعريفَ بالنفس تُضغط قبل أن يُقرأ ما فوقها.
               // ── بابان لا بابٌ واحد ────────────────────────────────────
+              //
+              // **ويصعدان آخرَ الجميع.** الزرُّ دعوةٌ إلى الفعل، ودعوةٌ تسبق
+              // التعريفَ بالنفس تُضغط قبل أن يُقرأ ما فوقها.
               //
               // كان زرّاً واحداً اسمُه «ابدأ رحلتك» يفتح **إنشاء الحساب**،
               // والعائدُ يبحث عن بابه في قاع شاشةٍ ليست له. فقال صاحبُ
@@ -178,33 +207,231 @@ class BrandBackdrop extends StatelessWidget {
   );
 }
 
-/// شاشةُ الدخول — ما يُرى وحسابُ صاحب الجهاز يُتحقَّق منه.
+/// شاشةُ الانطلاق — أوّلُ ما يراه من فتح التطبيق.
 ///
-/// **وهي أوّلُ ما يراه من فتح التطبيق، وأقصرُ ما يراه.** فلا قوسَ يُرسم فيها
-/// ولا اسمَ يصعد: التحقّقُ يعود في جزءٍ من ثانيةٍ غالباً، وحركةٌ تبدأ ثمّ
-/// تُقطع في منتصفها ثمّ تُستأنف من أوّلها في شاشة الترحيب تُقرأ تعثّراً لا
-/// ترحيباً. فالذي فيها أرضيّةُ الهويّة — تظهر فوراً بلا ومضةٍ بيضاء — ثمّ
-/// دوّارٌ يُكشف بعد مهلةٍ لمن طال انتظارُه وحده.
-class BootScreen extends StatelessWidget {
+/// طلب صاحبُ المنصّة شعاراً نبيذيّاً متحرّكاً هنا، وعُرض عليه فيديوٌ بخيارين
+/// قبل أن يُلمَس `lib/`، فاختار **(أ) نبضٌ وتوهّج**.
+///
+/// ── وما كان قبلها، ولماذا تبدّل ────────────────────────────────────────────
+///
+/// كان فيها دوّارٌ وسطرٌ ولا قوسَ ولا اسم، **وكان لذلك سببٌ صحيح**: التحقّقُ
+/// يعود في جزءٍ من ثانيةٍ غالباً، وحركةٌ تبدأ ثمّ تُقطع ثمّ تُستأنف من أوّلها
+/// في شاشة الترحيب تُقرأ تعثّراً لا ترحيباً.
+///
+/// **والسببُ لم يسقط، بل وُجد له جوابٌ غيرُ الحذف**: `introProgress()` ساعةٌ
+/// واحدةٌ للشاشتين — فالمشهدُ لا يُستأنف من الصفر بل من حيث وصل، ويُرى مشهداً
+/// واحداً متّصلاً عبر الشاشتين.
+///
+/// **ولا تُحبس الشاشةُ ولا جزءاً من ثانية.** المشهدُ يمضي فوق ما يقع تحته.
+class BootScreen extends StatefulWidget {
   const BootScreen({super.key, this.label});
 
-  /// السطرُ تحت الدوّار — يُترك فارغاً فيكون «جارٍ التحقق…».
+  /// السطرُ تحت العلامة — يُترك فارغاً فيكون «جارٍ التحقق…».
   ///
   /// **وفارغاً لا نصّاً افتراضيّاً:** المُنشئُ `const` فلا تُنادى فيه
   /// `tr()`، والنداءُ يقع عند البناء حيث تُعرف لغةُ الشاشة.
   final String? label;
 
+  /// متى يُكشف الدوّارُ والسطر.
+  ///
+  /// **وبعد المشهد لا قبله.** كانت المهلةُ ‎٢٢٠‎ جزءاً من الثانية لأنّ
+  /// الشاشةَ لم يكن فيها غيرُ الدوّار؛ وصار فيها ما يُنظر إليه، فالدوّارُ
+  /// إنّما يُكشف لمن **طال** انتظارُه فعلاً. ومن عاد تحقّقُه في نصف ثانيةٍ
+  /// لا يرى دوّاراً ولا سطراً — ولا يحتاجهما.
+  static const slowAfter = Duration(milliseconds: 1700);
+
+  /// كم ظهرت العلامةُ عند القيمة [v].
+  ///
+  /// **ومقدَّمةٌ على الاسم عمداً.** أكثرُ الإقلاعات تنتهي قبل نصف الثانية،
+  /// فعلامةٌ تبدأ بعدها لا يراها أحد. وتُخرَج من البناء لتُقاس: ما يُحسب
+  /// داخل `builder` لا يُسأل عنه إلّا بقراءة البكسلات.
+  static double markAt(double v) =>
+      Curves.easeOutCubic.transform((v / 0.38).clamp(0.0, 1.0));
+
+  /// كم صعد الاسمُ عند القيمة [v].
+  static double nameAt(double v) => Curves.easeOutCubic
+      .transform(((v - 0.34) / 0.36).clamp(0.0, 1.0));
+
   @override
-  Widget build(BuildContext context) => Scaffold(
-    body: BrandBackdrop(
-      child: LoadingBlock(
-        label: label ?? tr('جارٍ التحقق…'),
-        color: AppColors.goldOnAccent,
-        tint: Colors.white,
-        labelColor: Colors.white70,
+  State<BootScreen> createState() => _BootScreenState();
+}
+
+class _BootScreenState extends State<BootScreen>
+    with TickerProviderStateMixin {
+  /// مقودُ الدخول — يمشي مرّةً ويقف.
+  late final AnimationController _c =
+      AnimationController(vsync: this, duration: introDuration);
+
+  /// مقودُ الحياة — يدور بلا انقطاع: نَفَسٌ وشريطُ ضوء.
+  ///
+  /// `null` تعني أنّ صاحب الجهاز طلب تقليلَ الحركة.
+  AnimationController? _amb;
+
+  Timer? _slowTimer;
+  bool _slow = false;
+  bool _started = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _slowTimer = Timer(BootScreen.slowAfter, () {
+      if (mounted) setState(() => _slow = true);
+    });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // **يُبدأ هنا لا في `initState`:** قراءةُ `MediaQuery` قبل هذه اللحظة ترمي.
+    if (_started) return;
+    _started = true;
+    if (reduceMotion(context)) {
+      _c.value = 1;
+      return;
+    }
+    _c.forward(from: introProgress());
+    _amb ??= AnimationController(vsync: this, duration: _ambienceCycle)
+      ..repeat();
+  }
+
+  @override
+  void dispose() {
+    _slowTimer?.cancel();
+    _amb?.dispose();
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final amb = _amb;
+    return Scaffold(
+      body: BrandBackdrop(
+        child: AnimatedBuilder(
+          animation: Listenable.merge([_c, ?amb]),
+          builder: (context, _) => _scene(context, _c.value, amb?.value),
+        ),
       ),
-    ),
-  );
+    );
+  }
+
+  Widget _scene(BuildContext context, double v, double? amb) {
+    final mark = BootScreen.markAt(v);
+    final name = BootScreen.nameAt(v);
+    // نَفَسٌ بطيءٌ لا يقف — الشاشةُ تبقى حيّةً ما دام الانتظار.
+    final breath = amb == null ? 1.0 : 1 + 0.025 * math.sin(amb * math.pi * 2);
+
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: CustomPaint(
+            painter: ArchPainter(progress: ArchMark.archAt(v)),
+          ),
+        ),
+        Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Opacity(
+                opacity: mark,
+                child: Transform.scale(
+                  scale: (0.72 + 0.28 * mark) * breath,
+                  child: _Sheen(
+                    // شريطُ الضوء يمرّ في ثلث الدورة ويستريح ثلثيها —
+                    // بريقٌ لا يهدأ يصير وميضاً يُتعب العين.
+                    progress: amb == null ? 0 : (amb * 3).clamp(0.0, 1.0),
+                    child: Image.asset(
+                      'assets/brand/app_mark.png',
+                      width: 104,
+                      height: 104,
+                      filterQuality: FilterQuality.medium,
+                    ),
+                  ),
+                ),
+              ),
+              SizedBox(height: Space.md),
+              Opacity(
+                opacity: name,
+                child: Transform.translate(
+                  offset: Offset(0, 14 * (1 - name)),
+                  child: Text(
+                    tr('فرحتي'),
+                    style: const TextStyle(
+                      fontSize: 32,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.accentInk,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        // ── الدوّارُ والسطر — لمن طال انتظارُه وحدَه ────────────────────
+        Positioned(
+          left: 0,
+          right: 0,
+          bottom: 72,
+          child: AnimatedOpacity(
+            key: const ValueKey('boot-slow'),
+            opacity: _slow ? 1 : 0,
+            duration: const Duration(milliseconds: 260),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const BrandSpinner(
+                  size: 26,
+                  stroke: 2.4,
+                  color: AppColors.goldOnAccent,
+                  tint: Colors.white,
+                ),
+                SizedBox(height: Space.sm),
+                Text(
+                  widget.label ?? tr('جارٍ التحقق…'),
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: Colors.white70,
+                    fontFamilyFallback: arabicFallback,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// شريطُ ضوءٍ يمرّ فوق ما تحته — ويُقصّ عليه فلا يسيل خارجَه.
+///
+/// **و`srcATop` لا `srcIn`:** الثانيةُ تستبدل لونَ الأيقونة بالتدرّج فتمحوها،
+/// والأولى تضع الضوءَ **فوقها** فتبقى الأيقونةُ وتلمع.
+class _Sheen extends StatelessWidget {
+  const _Sheen({required this.progress, required this.child});
+
+  /// ٠ و١ يعنيان: لا شريطَ الآن. وما بينهما موضعُه.
+  final double progress;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    if (progress <= 0 || progress >= 1) return child;
+    return ShaderMask(
+      blendMode: BlendMode.srcATop,
+      shaderCallback: (rect) => LinearGradient(
+        begin: Alignment(-3 + 6 * progress, -1),
+        end: Alignment(-2 + 6 * progress, 1),
+        colors: [
+          Colors.transparent,
+          AppColors.goldOnAccent.withValues(alpha: 0.8),
+          Colors.transparent,
+        ],
+        stops: const [0.35, 0.5, 0.65],
+      ).createShader(rect),
+      child: child,
+    );
+  }
 }
 
 /// عنصرٌ يظهر صاعداً في فترةٍ من مقودٍ مشترك.

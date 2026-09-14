@@ -77,6 +77,11 @@ Session _signedIn() => Session()
   ..loading = false;
 
 void main() {
+  // **وساعةُ المشهد تُعاد قبل كلّ اختبار.** هي ساكنةٌ في الوحدة، فاختبارٌ
+  // سابقٌ يتركها ماضيةً — ويأتي التالي فيجد المشهدَ منتهياً قبل أن يبدأ،
+  // فيمرّ على حركةٍ لم تقع.
+  setUp(resetIntroClock);
+
   testWidgets('البداية تعرض الاسم والوعد وبابين', (tester) async {
     _phone(tester);
     await tester.pumpWidget(_wrap(WelcomeScreen(session: _guest())));
