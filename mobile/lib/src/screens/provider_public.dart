@@ -11,6 +11,7 @@ import '../ui/kit.dart';
 import '../ui/share_button.dart';
 import '../ui/map_open.dart';
 import '../ui/media.dart';
+import '../ui/photo_view.dart';
 import '../ui/service_card.dart';
 import 'chat.dart';
 import 'service_detail.dart';
@@ -255,18 +256,31 @@ class _Head extends StatelessWidget {
           right: 0,
           child: SizedBox(
             height: _cover,
-            child: _CoverArt(url: Api.avatarUrl(p.coverPath)),
+            // **ويُضغط فيُعرض، ولا «تغيير»**: هذه صفحتُه عند غيره، والعميلُ
+            // لا يُبدّل غلافَ قاعةٍ ليست له. و`onEdit` فارغةٌ فيسقط الزرّ.
+            //
+            // **ومن لا غلافَ له لا يقع شيء** — لا شاشةَ سوداءُ فارغة، ولا
+            // رسالةَ خطأ: لم يُخطئ أحد.
+            child: GestureDetector(
+              key: const ValueKey('public-cover-tap'),
+              onTap: () => openPhoto(context, url: Api.avatarUrl(p.coverPath)),
+              child: _CoverArt(url: Api.avatarUrl(p.coverPath)),
+            ),
           ),
         ),
         Padding(
           padding: const EdgeInsets.only(top: _cover - _overlap),
           child: Column(
             children: [
-              ProviderAvatar(
-                name: p.businessName,
-                imageUrl: Api.avatarUrl(p.logoPath),
-                size: _avatar,
-                ring: 4,
+              GestureDetector(
+                key: const ValueKey('public-logo-tap'),
+                onTap: () => openPhoto(context, url: Api.avatarUrl(p.logoPath)),
+                child: ProviderAvatar(
+                  name: p.businessName,
+                  imageUrl: Api.avatarUrl(p.logoPath),
+                  size: _avatar,
+                  ring: 4,
+                ),
               ),
               const SizedBox(height: Space.sm),
               // الاسمُ والعلامةُ في صفٍّ واحد. و`Flexible` على النصّ وحده:

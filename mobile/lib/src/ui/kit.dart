@@ -10,6 +10,7 @@ import '../core/presence.dart';
 import '../core/theme.dart';
 import '../data/supabase.dart' show offlineMessage;
 import 'motion.dart';
+import 'photo_view.dart';
 
 /// عناصر الواجهة المشتركة.
 
@@ -602,7 +603,19 @@ class ProfileHeader extends StatelessWidget {
             right: 0,
             left: 0,
             height: band,
-            child: _Cover(url: coverUrl, onEdit: onEditCover, busy: coverBusy),
+            child: _Cover(
+              url: coverUrl,
+              // **والشريطُ يُعرض، والحبّةُ تُبدّل.** اختار صاحبُ المنصّة (ب):
+              // «يُضغط فتكبر ملءَ الشاشة». والحبّةُ مكتوبٌ عليها «تغيير»
+              // فتمضي إلى التبديل مباشرةً — ولو فتحت العارضَ لَخالف الزرُّ
+              // اسمَه.
+              //
+              // **ومن لا غلافَ له يمضي إلى التبديل**: شاشةٌ سوداءُ فارغةٌ لا
+              // تقول شيئاً، والضغطةُ عنده تعني «أضِف» لا «انظر».
+              onView: () => openPhoto(context, url: coverUrl, onEdit: onEditCover),
+              onEdit: onEditCover,
+              busy: coverBusy,
+            ),
           ),
           // **وعرضُه يُفرض فرضاً.** الطفلُ غيرُ المموضَع في `Stack` يأخذ
           // قيوداً مرنة، فعمودٌ بلا هذا ينكمش إلى عرض أطولِ نصٍّ فيه —
@@ -706,9 +719,18 @@ class ProfileHeader extends StatelessWidget {
 
 /// شريطُ الغلاف: صورةُ صاحبه، أو التدرّجُ النبيذيّ لمن لم يرفع.
 class _Cover extends StatelessWidget {
-  const _Cover({required this.url, required this.onEdit, required this.busy});
+  const _Cover({
+    required this.url,
+    required this.onView,
+    required this.onEdit,
+    required this.busy,
+  });
 
   final String? url;
+
+  /// ضغطةُ الشريط — تفتح العارضَ، أو تمضي إلى التبديل لمن لا غلافَ له.
+  final VoidCallback? onView;
+
   final VoidCallback? onEdit;
   final bool busy;
 
@@ -771,7 +793,7 @@ class _Cover extends StatelessWidget {
               type: MaterialType.transparency,
               child: InkWell(
                 key: const ValueKey('cover-tap'),
-                onTap: busy ? null : onEdit,
+                onTap: busy ? null : onView,
                 child: const SizedBox.expand(),
               ),
             ),

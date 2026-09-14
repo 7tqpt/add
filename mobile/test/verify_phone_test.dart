@@ -16,6 +16,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:aras/src/core/session.dart';
 import 'package:aras/src/core/theme.dart';
+import 'package:aras/src/screens/welcome.dart';
 import 'package:aras/src/data/demo.dart';
 import 'package:aras/src/data/models.dart';
 import 'package:aras/src/screens/root.dart';
@@ -57,6 +58,11 @@ void _phone(WidgetTester tester, {double height = 2600}) {
 }
 
 void main() {
+  // **وساعةُ المشهد تُعاد قبل كلّ اختبار.** هي ساكنةٌ في الوحدة، فاختبارٌ
+  // سابقٌ يتركها ماضيةً — ويأتي التالي فيجد المشهدَ منتهياً قبل أن يبدأ،
+  // فيمرّ على حركةٍ لم تقع.
+  setUp(resetIntroClock);
+
   setUp(resetDemoPhoneGate);
   tearDown(resetDemoPhoneGate);
 

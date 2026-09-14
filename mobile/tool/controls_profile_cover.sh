@@ -9,17 +9,18 @@ set -uo pipefail
 cd "$(dirname "$0")/.."
 command -v flutter >/dev/null || { echo "لا flutter في المسار"; exit 1; }
 
-SUITE=test/profile_cover_test.dart
+SUITE="test/profile_cover_test.dart test/photo_view_test.dart"
 K=lib/src/ui/kit.dart
 A=lib/src/screens/account.dart
 P=lib/src/screens/provider_profile.dart
 U=lib/src/screens/provider_public.dart
+W=lib/src/ui/photo_view.dart
 I=lib/src/data/api.dart
 D=lib/src/data/demo.dart
 
 BACKUP=$(mktemp -d)
-for f in "$K" "$A" "$P" "$U" "$I" "$D"; do cp "$f" "$BACKUP/$(basename "$f")"; done
-restore() { for f in "$K" "$A" "$P" "$U" "$I" "$D"; do cp "$BACKUP/$(basename "$f")" "$f"; done; }
+for f in "$K" "$A" "$P" "$U" "$I" "$D" "$W"; do cp "$f" "$BACKUP/$(basename "$f")"; done
+restore() { for f in "$K" "$A" "$P" "$U" "$I" "$D" "$W"; do cp "$BACKUP/$(basename "$f")" "$f"; done; }
 trap 'restore; rm -rf "$BACKUP"' EXIT
 PASS=0; FAIL=0
 
@@ -43,7 +44,7 @@ run() {
   local name="$1"; shift
   restore
   if ! "$@"; then echo "✗ $name — لم يقع الكسر"; FAIL=$((FAIL+1)); restore; return; fi
-  if timeout 300 flutter test "$SUITE" >/dev/null 2>&1; then
+  if timeout 300 flutter test $SUITE >/dev/null 2>&1; then
     echo "✗ $name — الحزمةُ خضراءُ والضمانةُ مكسورة"; FAIL=$((FAIL+1))
   else
     echo "✓ $name — سقط"; PASS=$((PASS+1))
@@ -52,7 +53,7 @@ run() {
 }
 
 echo "== الأساس =="
-if timeout 300 flutter test "$SUITE" >/dev/null 2>&1; then echo "أخضر."
+if timeout 300 flutter test $SUITE >/dev/null 2>&1; then echo "أخضر."
 else echo "الأساسُ أحمر — لا معنى للضوابط."; exit 1; fi
 
 echo; echo "== الضوابط =="
@@ -121,9 +122,9 @@ run "ط) سطرُ الحال أبيضُ على أبيض" sub "$P" \
 # ي) **وصفحةُ المزوّد العامّة تُهمل العمود** — يرفع صاحبُ القاعة غلافَه فيراه
 #    في شاشته هو، ولا يراه عميلٌ واحد. وهذا ما لا تكشفه الشجرةُ في الوضع
 #    التجريبيّ، فيُسأل الملفّ.
-run "ي) العامّةُ لا تقرأ العمود" sub "$U" \
-  "            child: _CoverArt(url: Api.avatarUrl(p.coverPath))," \
-  "            child: const _CoverArt(url: null),"
+run "ي) العامّةُ لا تعرض العمود" sub "$U" \
+  "              child: _CoverArt(url: Api.avatarUrl(p.coverPath))," \
+  "              child: const _CoverArt(url: null),"
 
 # ك) **والغلافُ لا يصل الخادمَ وهو معروضٌ في الشاشة** — وهذا هو الكذبُ الذي
 #    لا يكشفه سؤالُ الحقل عمّا فيه.
@@ -153,7 +154,7 @@ run "س) الشريطُ لا يُضغط" sub "$K" \
               type: MaterialType.transparency,
               child: InkWell(
                 key: const ValueKey('cover-tap'),
-                onTap: busy ? null : onEdit,
+                onTap: busy ? null : onView,
                 child: const SizedBox.expand(),
               ),
             ),
@@ -162,10 +163,56 @@ run "س) الشريطُ لا يُضغط" sub "$K" \
 
 # ع) **ويُضغط الشريطُ والرفعُ جارٍ** — فيُرفع مرّتين على شبكةٍ يمنية.
 run "ع) الشريطُ يُضغط والرفعُ جارٍ" sub "$K" \
-  "                onTap: busy ? null : onEdit,
+  "                onTap: busy ? null : onView,
                 child: const SizedBox.expand()," \
-  "                onTap: onEdit,
+  "                onTap: onView,
                 child: const SizedBox.expand(),"
+
+# ── وضغطُ الصور: العارضُ ملءَ الشاشة (اختار صاحبُ المنصّة «ب») ──────────────
+
+# ص) **والشريطُ يفتح الاختيارَ لا العارض** — فتعود الضغطةُ كما كانت، ولا
+#    يُرى الغلافُ كبيراً أبداً.
+run "ص) الشريطُ يفتح الاختيار" sub "$K" \
+  "                onTap: busy ? null : onView," \
+  "                onTap: busy ? null : onEdit,"
+
+# ض) **والحبّةُ تفتح العارضَ** — فيُخالف الزرُّ اسمَه: مكتوبٌ عليه «تغيير»
+#    ويعرض.
+run "ض) الحبّةُ تفتح العارض" sub "$K" \
+  "            child: _CoverButton(onTap: busy ? null : onEdit, busy: busy)," \
+  "            child: _CoverButton(onTap: busy ? null : onView, busy: busy),"
+
+# ط١) **ومن لا صورةَ له يُفتح له عارضٌ أسود** — شاشةٌ فارغةٌ لا تقول شيئاً،
+#     والضغطةُ عنده تعني «أضِف» لا «انظر».
+run "ط١) عارضٌ أسودُ لمن لا صورةَ له" sub "$W" \
+  "  if (url == null || url.isEmpty) {
+    onEdit?.call();
+    return;
+  }" \
+  ""
+
+# ظ) **و«تغيير» يُعرض لمن يرى صورةَ غيره** — في الصفحة العامّة، فيظنّ أنّه
+#    يملك ما لا يملك.
+run "ظ) «تغيير» لغير صاحبها" sub "$W" \
+  "          if (onEdit != null)" \
+  "          if (true)"
+
+# غ) **والعارضُ يبقى مفتوحاً تحت ورقة الاختيار** — فيعود صاحبُه بعد الرفع
+#    إلى صورةٍ قديمةٍ ملءَ الشاشة ويظنّ أنّ شيئاً لم يقع.
+run "غ) العارضُ لا يُغلق قبل التبديل" sub "$W" \
+  "                Navigator.of(context).pop();
+                onEdit!();" \
+  "                onEdit!();"
+
+# ف١) **ولا تُقرَّب بالإصبعين** — وهو معنى «ليس متحجراً» بعينه.
+run "ف١) لا تقريب" sub "$W" \
+  "          maxScale: 4," \
+  "          maxScale: 1,"
+
+# ق) **والأرضيّةُ تعود نبيذيّة** — فتصبغ ما يُنظر إليه ويُرى غيرَ لونه.
+run "ق) أرضيّةٌ نبيذيّة" sub "$W" \
+  "      backgroundColor: Colors.black," \
+  "      backgroundColor: AppColors.accent,"
 
 echo; echo "== الحصيلة: $PASS سقطت، $FAIL لم تسقط =="
 [ "$FAIL" -eq 0 ]

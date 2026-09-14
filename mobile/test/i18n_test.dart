@@ -71,6 +71,7 @@ const _translated = <String>[
   'lib/src/screens/documents.dart',
   'lib/src/screens/welcome.dart',
   'lib/src/screens/auth.dart',
+  'lib/src/screens/recover_password.dart',
   'lib/src/screens/onboarding.dart',
   'lib/src/screens/become_provider.dart',
   'lib/src/screens/edit_profile.dart',

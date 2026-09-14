@@ -5,6 +5,7 @@ import '../core/session.dart';
 import '../core/app_version.dart';
 import '../core/theme.dart';
 import '../ui/kit.dart';
+import '../ui/photo_view.dart';
 import '../ui/pick_image.dart';
 import '../data/api.dart';
 import '../data/models.dart';
@@ -81,11 +82,24 @@ class _AccountScreenState extends State<AccountScreen> {
               : Api.avatarUrl(profile.coverPath, version: _avatarVersion),
           onEditCover: profile == null ? null : () => _changeCover(profile),
           coverBusy: _coverBusy,
-          avatar: _AccountAvatar(
-            profile: profile,
-            fallbackEmail: session.email,
-            version: _avatarVersion,
-            size: profileAvatarSize,
+          // **والقرصُ يُضغط كالغلاف.** كان وحدَه المتحجّرَ في التطبيق:
+          // قرصُ المزوّد يُضغط، وقرصُ «تعديل بياناتي» يُضغط، وهذا لا.
+          avatar: GestureDetector(
+            key: const ValueKey('account-avatar-tap'),
+            onTap: profile == null
+                ? null
+                : () => openPhoto(
+                      context,
+                      url: Api.avatarUrl(profile.avatarPath,
+                          version: _avatarVersion),
+                      onEdit: () => _changeAvatar(profile),
+                    ),
+            child: _AccountAvatar(
+              profile: profile,
+              fallbackEmail: session.email,
+              version: _avatarVersion,
+              size: profileAvatarSize,
+            ),
           ),
           title: (profile?.fullName.trim().isNotEmpty ?? false)
               ? profile!.fullName.trim()
@@ -237,6 +251,38 @@ class _AccountScreenState extends State<AccountScreen> {
       if (mounted) showMessage(context, messageOf(e));
     } finally {
       if (mounted) setState(() => _coverBusy = false);
+    }
+  }
+
+  /// يبدّل صورةَ الملفّ — كما يُبدَّل الغلاف، من موضعها لا من شاشةٍ أخرى.
+  ///
+  /// **ومقاسُها ‎٨٠٠×٨٠٠‎ لا مقاسُ الغلاف:** قرصٌ قطرُه تسعون بكسلاً لا
+  /// يحتاج أكثر، ورفعُ ‎١٦٠٠×٩٠٠‎ على شبكةٍ يمنيّةٍ لأجله عذابٌ بلا مقابل.
+  Future<void> _changeAvatar(MyProfile profile) async {
+    final userId = widget.session.userId;
+    if (userId == null) {
+      showMessage(context, tr('سجّل الدخول أولاً.'));
+      return;
+    }
+    try {
+      final picked = await pickImage(context, maxWidth: 800, maxHeight: 800);
+      if (picked == null) return; // إلغاءٌ لا خطأ
+      if (!mounted) return;
+
+      // **والرفعُ قبل الحفظ:** لو حُفظ المسارُ ونجح ثمّ سقط الرفعُ لأشار
+      // الملفُّ إلى صورةٍ لا وجود لها.
+      final path = await Api.uploadAvatar(
+        authUserId: userId,
+        fileName: picked.name,
+        bytes: picked.bytes,
+      );
+      await Api.updateProfile(fullName: profile.fullName, avatarPath: path);
+      if (!mounted) return;
+      setState(() => _avatarVersion++);
+      await _load();
+      if (mounted) showMessage(context, tr('حُفظت صورتك.'));
+    } catch (e) {
+      if (mounted) showMessage(context, messageOf(e));
     }
   }
 

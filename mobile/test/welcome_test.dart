@@ -67,6 +67,9 @@ class _LiveSession extends Session {
   }
 }
 
+const _signIn = ValueKey('welcome-sign-in');
+const _signUpDoor = ValueKey('welcome-sign-up');
+
 Session _signedIn() => Session()
   ..userId = 'u1'
   ..email = 'c@sdd.company'
@@ -74,7 +77,12 @@ Session _signedIn() => Session()
   ..loading = false;
 
 void main() {
-  testWidgets('البداية تعرض الاسم والوعد وزرّاً واحداً', (tester) async {
+  // **وساعةُ المشهد تُعاد قبل كلّ اختبار.** هي ساكنةٌ في الوحدة، فاختبارٌ
+  // سابقٌ يتركها ماضيةً — ويأتي التالي فيجد المشهدَ منتهياً قبل أن يبدأ،
+  // فيمرّ على حركةٍ لم تقع.
+  setUp(resetIntroClock);
+
+  testWidgets('البداية تعرض الاسم والوعد وبابين', (tester) async {
     _phone(tester);
     await tester.pumpWidget(_wrap(WelcomeScreen(session: _guest())));
     await _settle(tester);
@@ -82,41 +90,81 @@ void main() {
     expect(find.text('فرحتي'), findsOneWidget);
     expect(find.text('للأعراس اليمنية'), findsOneWidget);
     expect(find.text('كل خدمات زفافك في مكان واحد'), findsOneWidget);
-    expect(find.text('ابدأ رحلتك'), findsOneWidget);
+    expect(find.byKey(_signIn), findsOneWidget);
+    expect(find.byKey(_signUpDoor), findsOneWidget);
   });
 
-  testWidgets('**و«ابدأ رحلتك» تفتح التسجيل مباشرةً**', (tester) async {
-    // حُذفت صفحةُ «اختر نوع الحساب» بأمر صاحب المنصّة — خطوةٌ تسبق
-    // التسجيلَ تُسأل قبل أن يُعرف السائلُ من هو.
-    _phone(tester);
-    await tester.pumpWidget(_wrap(WelcomeScreen(session: _guest())));
-    await _settle(tester);
+  group('البابان', () {
+    // كان زرّاً واحداً اسمُه «ابدأ رحلتك» يفتح **إنشاء الحساب**، فقال صاحبُ
+    // المنصّة: «عند ضغط ابدأ رحلتك خلّه ينطلق إلى تسجيل الدخول وليس العكس»،
+    // ثمّ اختار من ثلاثٍ عُرضت عليه **(ج): زرّان**.
 
-    await tester.tap(find.text('ابدأ رحلتك'));
-    await _settle(tester);
+    testWidgets('**والذهبيُّ يفتح الدخول لا الإنشاء**', (tester) async {
+      // **وهو ما بُدّل بعينه.** وشاشةُ الترحيب لا تُعرض إلّا لمن لا جلسةَ
+      // له: فمن يراها إمّا جديدٌ يأتي مرّةً في عمره، وإمّا عائدٌ خرج أو
+      // بدّل جهازَه — والعائدُ يعود.
+      _phone(tester);
+      await tester.pumpWidget(_wrap(WelcomeScreen(session: _guest())));
+      await _settle(tester);
 
-    expect(find.byType(AuthScreen), findsOneWidget);
-    // **وعلى التسجيل لا الدخول:** من ضغط «ابدأ رحلتك» ليس له حسابٌ بعد،
-    // وشاشةُ دخولٍ في وجهه تُقرأ جداراً.
-    expect(find.text('إنشاء الحساب'), findsOneWidget);
-    // ولا أثرَ للصفحة المحذوفة.
-    expect(find.text('اختر نوع الحساب'), findsNothing);
-    expect(find.text('أنا عروس'), findsNothing);
-  });
+      await tester.tap(find.byKey(_signIn));
+      await _settle(tester);
 
-  testWidgets('**وبابُ من له حسابٌ مفتوحٌ في الشاشة نفسِها**', (tester) async {
-    // الصفحةُ المحذوفةُ كانت تحمل «لديك حساب بالفعل؟ تسجيل الدخول» — فلو
-    // حُذفت بلا بديلٍ لَسُدّ بابُ العائدين. والبديلُ داخلَ شاشة التسجيل.
-    _phone(tester);
-    await tester.pumpWidget(_wrap(WelcomeScreen(session: _guest())));
-    await _settle(tester);
-    await tester.tap(find.text('ابدأ رحلتك'));
-    await _settle(tester);
+      expect(find.byType(AuthScreen), findsOneWidget);
+      expect(find.text('دخول الحساب'), findsOneWidget);
+      expect(find.text('إنشاء الحساب'), findsNothing);
+      // ومربّعُ «تذكّرني» لا يُعرض إلّا في وجه الدخول — فوجودُه شهادةٌ
+      // ثانيةٌ على أنّ الوجهَ هو المقصود.
+      expect(find.byKey(const ValueKey('remember-me')), findsOneWidget);
+    });
 
-    // **وصار البابُ زرّاً محاطاً** بدل سطرٍ رفيعٍ في القاع.
-    await tester.tap(find.byKey(const ValueKey('switch-face')));
-    await _settle(tester);
-    expect(find.text('دخول'), findsWidgets);
+    testWidgets('**والمحاطُ يفتح الإنشاء**', (tester) async {
+      // ولا يُسدّ بابُ القادم الجديد: هو كلُّ ما كانت الشاشةُ تفعله قبلُ.
+      _phone(tester);
+      await tester.pumpWidget(_wrap(WelcomeScreen(session: _guest())));
+      await _settle(tester);
+
+      await tester.tap(find.byKey(_signUpDoor));
+      await _settle(tester);
+
+      expect(find.byType(AuthScreen), findsOneWidget);
+      expect(find.widgetWithText(FilledButton, 'إنشاء الحساب'), findsOneWidget);
+      // ولا أثرَ للصفحة المحذوفة — «اختر نوع الحساب» شالها صاحبُ المنصّة.
+      expect(find.text('اختر نوع الحساب'), findsNothing);
+      expect(find.text('أنا عروس'), findsNothing);
+    });
+
+    testWidgets('**وكلاهما يُقرأ على التدرّج النبيذيّ**', (tester) async {
+      // إطارٌ باهتٌ أو حبرٌ نبيذيٌّ على نبيذيٍّ يُقرأ نصّاً لا باباً.
+      // **ولا تُسأل الصورة:** يُسأل ما أُعطي الزرُّ من لون.
+      _phone(tester);
+      await tester.pumpWidget(_wrap(WelcomeScreen(session: _guest())));
+      await _settle(tester);
+
+      final gold = tester.widget<FilledButton>(find.byKey(_signIn));
+      expect(gold.style?.backgroundColor?.resolve({}), AppColors.goldOnAccent);
+      expect(gold.style?.foregroundColor?.resolve({}), AppColors.accentDeep);
+
+      final outlined = tester.widget<OutlinedButton>(find.byKey(_signUpDoor));
+      expect(outlined.style?.foregroundColor?.resolve({}),
+          AppColors.goldOnAccent);
+      expect(outlined.style?.side?.resolve({})?.color, AppColors.goldOnAccent,
+          reason: 'إطارٌ باهتٌ على تدرّجٍ نبيذيٍّ لا يُرى');
+    });
+
+    testWidgets('وبابُ الوجه الآخر باقٍ داخلَ الشاشة كذلك', (tester) async {
+      // البابان في الترحيب لا يُغنيان عن الزرّ المحاط داخلَ `AuthScreen`:
+      // من دخلها بوجهٍ وأراد الآخرَ لا يُرَدّ إلى الوراء.
+      _phone(tester);
+      await tester.pumpWidget(_wrap(WelcomeScreen(session: _guest())));
+      await _settle(tester);
+      await tester.tap(find.byKey(_signIn));
+      await _settle(tester);
+
+      await tester.tap(find.byKey(const ValueKey('switch-face')));
+      await _settle(tester);
+      expect(find.widgetWithText(FilledButton, 'إنشاء الحساب'), findsOneWidget);
+    });
   });
 
   testWidgets('ومن لا جلسة له يبدأ من الترحيب', (tester) async {
@@ -134,7 +182,7 @@ void main() {
     await _settle(tester);
 
     expect(find.byType(WelcomeScreen), findsNothing);
-    expect(find.text('ابدأ رحلتك'), findsNothing);
+    expect(find.byKey(_signIn), findsNothing);
   });
 
   testWidgets('ونجاحُ الدخول يُخرج من شاشة الدخول لا يتركه فيها', (tester) async {
@@ -147,7 +195,7 @@ void main() {
     await tester.pumpWidget(_wrap(RootScreen(session: session)));
     await _settle(tester);
 
-    await tester.tap(find.text('ابدأ رحلتك'));
+    await tester.tap(find.byKey(_signUpDoor));
     await _settle(tester);
     expect(find.byType(AuthScreen), findsOneWidget);
 

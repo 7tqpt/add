@@ -26,6 +26,7 @@ import 'package:aras/src/screens/account.dart';
 import 'package:aras/src/screens/provider_profile.dart';
 import 'package:aras/src/screens/provider_public.dart';
 import 'package:aras/src/ui/kit.dart';
+import 'package:aras/src/ui/photo_view.dart';
 
 const _statusBar = 44.0;
 const _cameraKey = ValueKey('cover-edit');
@@ -199,6 +200,59 @@ void main() {
       expect(taps, 0, reason: 'الشريطُ يُضغط والرفعُ جارٍ');
     });
 
+    testWidgets('**وضغطةُ الشريط تفتح العارضَ لا الاختيار**', (tester) async {
+      // اختار صاحبُ المنصّة (ب): «يُضغط فتكبر ملءَ الشاشة». والحبّةُ مكتوبٌ
+      // عليها «تغيير» فتمضي إلى التبديل — ولو فتحت العارضَ لَخالف الزرُّ
+      // اسمَه.
+      _phone(tester);
+      var edits = 0;
+      await tester.pumpWidget(_wrap(_header(
+        coverUrl: 'https://example.test/u1/cover.jpg',
+        onEditCover: () => edits++,
+      )));
+      await _settle(tester);
+
+      final band = _statusBar + ProfileHeader.coverBand;
+      final width = tester.getSize(find.byType(ProfileHeader)).width;
+      await tester.tapAt(Offset(width / 2, band / 2));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(PhotoViewScreen), findsOneWidget);
+      expect(edits, 0, reason: 'فُتح الاختيارُ مكان العارض');
+    });
+
+    testWidgets('**والحبّةُ تمضي إلى التبديل لا إلى العارض**', (tester) async {
+      _phone(tester);
+      var edits = 0;
+      await tester.pumpWidget(_wrap(_header(
+        coverUrl: 'https://example.test/u1/cover.jpg',
+        onEditCover: () => edits++,
+      )));
+      await _settle(tester);
+
+      await tester.tap(find.byKey(_cameraKey));
+      await tester.pumpAndSettle();
+
+      expect(edits, 1);
+      expect(find.byType(PhotoViewScreen), findsNothing);
+    });
+
+    testWidgets('**ومن لا غلافَ له يمضي إلى التبديل لا إلى شاشةٍ سوداء**',
+        (tester) async {
+      _phone(tester);
+      var edits = 0;
+      await tester.pumpWidget(_wrap(_header(onEditCover: () => edits++)));
+      await _settle(tester);
+
+      final band = _statusBar + ProfileHeader.coverBand;
+      final width = tester.getSize(find.byType(ProfileHeader)).width;
+      await tester.tapAt(Offset(width / 2, band / 2));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(PhotoViewScreen), findsNothing);
+      expect(edits, 1);
+    });
+
     testWidgets('**والغلافُ كلُّه يُضغط لا حبّةٌ في زاويته**', (tester) async {
       // أخرج صاحبُ المنصّة عيباً: «ما يقدر العميل ولا مقدم الخدمة تحديد
       // الصورة». وقِيس الزرُّ في القشرة الحقيقيّة فوُجد ويُضغط وتُفتح به
@@ -290,10 +344,14 @@ void main() {
       // بقي الغلافُ تدرّجاً مرسوماً كما كان. وهي الحيلةُ نفسُها التي لزمت
       // في «شارك التطبيق».
       final src = File('lib/src/screens/provider_public.dart').readAsStringSync();
+      // **والمسؤولُ عنه سطرُ العرض بعينه لا ورودُ النصّ في الملفّ.** صار
+      // العمودُ يُقرأ مرّتين — مرّةً للعرض ومرّةً لفتح العارض عند الضغط —
+      // فسؤالٌ عن مجرّد وروده يمرّ ولو سقط العرض. (وقد سقط الضابطُ السالبُ
+      // على هذا بعينه.)
       expect(
         src,
-        contains('Api.avatarUrl(p.coverPath)'),
-        reason: 'الصفحةُ لا تقرأ عمودَ الغلاف',
+        contains('_CoverArt(url: Api.avatarUrl(p.coverPath))'),
+        reason: 'الصفحةُ لا تعرض عمودَ الغلاف',
       );
       expect(src, contains('_CoverArt'));
     });
