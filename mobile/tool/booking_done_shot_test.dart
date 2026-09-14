@@ -1,6 +1,5 @@
 // **تصويرُ ما صار.** لا مقترحَ ولا رسمٌ يشبه: `RequestsScreen` بعينها من
-// الشيفرة المدفوعة، وفيها حجزٌ منفَّذٌ مختومٌ بشريطٍ أخضرَ مصبوغٍ بلا زرِّ
-// مراسلة، وفوقه حجزٌ مؤكَّدٌ ما زال له بابُه.
+// الشيفرة المدفوعة، وفيها رحلةُ «تأكيد التنفيذ» كلُّها في لقطةٍ واحدة.
 //
 //   SHOTS=<مجلّد> flutter test tool/booking_done_shot_test.dart
 import 'dart:io';
@@ -83,6 +82,8 @@ Booking _booking({
   required int inDays,
   required BookingStatus status,
   required num price,
+  String requestedAt = '',
+  String rejectReason = '',
 }) => Booking(
       id: id,
       reference: 'BK-2026-000$id',
@@ -100,14 +101,16 @@ Booking _booking({
       totalPrice: price,
       depositAmount: price * 0.3,
       paidAmount: price,
+      completionRequestedAt: requestedAt,
+      completionRejectReason: rejectReason,
     );
 
 void main() {
   setUpAll(_loadFonts);
 
   setUp(() {
-    // **واثنان لا واحد:** مختومٌ وغيرُ مختومٍ في لقطةٍ واحدة، ليُرى الفرقُ
-    // لا الشكلُ وحدَه.
+    // **وأربعةٌ لا واحد:** الرحلةُ كلُّها في لقطةٍ واحدة — منفَّذٌ مختوم،
+    // وواحدٌ ينتظر الإدارة، وواحدٌ رُدَّ طلبُه بسبب، وواحدٌ لم يُطلب بعد.
     demoProviderRequests = [
       _booking(
         id: '1',
@@ -119,17 +122,33 @@ void main() {
       _booking(
         id: '2',
         user: 'سالم باحميد',
-        inDays: 34,
+        inDays: -4,
         status: BookingStatus.confirmed,
         price: 700000,
+        requestedAt: '2026-09-10T12:00:00Z',
+      ),
+      _booking(
+        id: '3',
+        user: 'نورة الحضرمي',
+        inDays: -6,
+        status: BookingStatus.confirmed,
+        price: 300000,
+        rejectReason: 'العربون لم يصل بعد — راجع إبلاغك بالحوالة.',
+      ),
+      _booking(
+        id: '4',
+        user: 'خالد التعزّي',
+        inDays: -2,
+        status: BookingStatus.confirmed,
+        price: 520000,
       ),
     ];
   });
 
   final out = Platform.environment['SHOTS'] ?? '/tmp/shots';
 
-  testWidgets('الطلبات — مختومٌ وغيرُ مختوم', (tester) async {
-    tester.view.physicalSize = const Size(1080, 2100);
+  testWidgets('الطلبات — الحالاتُ الأربع', (tester) async {
+    tester.view.physicalSize = const Size(1080, 3400);
     tester.view.devicePixelRatio = 3.0;
     addTearDown(tester.view.reset);
 
@@ -138,8 +157,10 @@ void main() {
 
     // **ولا يُصدَّق أنّ الفرقَ رُسم: تُسأل الشجرة.**
     expect(find.byKey(const ValueKey('booking-done')), findsOneWidget);
+    expect(find.byKey(const ValueKey('booking-under-review')), findsOneWidget);
+    expect(find.byKey(const ValueKey('completion-rejected')), findsOneWidget);
+    expect(find.byKey(const ValueKey('request-completion-4')), findsOneWidget);
     expect(find.text('راسل هدى المقطري'), findsNothing);
-    expect(find.text('راسل سالم باحميد'), findsOneWidget);
     expect(tester.takeException(), isNull);
 
     await _shoot(tester, '$out/booking-done.png');
