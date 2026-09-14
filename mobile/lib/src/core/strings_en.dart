@@ -427,6 +427,7 @@ const Map<String, String> englishStrings = {
   'تقييماً': 'reviews',
   'تكبير': 'Zoom in',
   'تم الحل': 'Resolved',
+  'تم تنفيذ الحجز': 'The booking is done',
   'تمّ الرفع': 'Uploaded',
   'تمّ حجزك': 'Your booking is done',
   'تُحتسب بعد تنفيذ الحجوزات وقبض مبالغها.': 'Counted after bookings are completed and their amounts collected.',

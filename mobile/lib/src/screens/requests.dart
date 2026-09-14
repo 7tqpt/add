@@ -203,14 +203,28 @@ class _RequestsScreenState extends State<RequestsScreen> {
                     ),
                   ],
                   const SizedBox(height: Space.sm),
-                  // على كل حجزٍ مهما كانت حاله: قبل القبول يُسأل العميل عن
-                  // تفصيلٍ ناقص، وبعده يُذكَّر بالعربون أو بموعد المعاينة.
-                  // والاعتذارُ نفسه أهونُ إذا سبقته كلمة.
-                  OutlinedButton.icon(
-                    onPressed: busy ? null : () => _message(b),
-                    icon: const Icon(Icons.forum_outlined, size: 19),
-                    label: Text(trf('راسل {0}', [b.userName])),
-                  ),
+                  // ── قاعُ البطاقة: خبرٌ أو باب ──────────────────────────
+                  //
+                  // **والمنفَّذُ وحدَه يُختم ولا يُراسَل من هنا.** طلب صاحبُ
+                  // المنصّة ذلك واختار من ثلاثةِ أشكالٍ عُرضت عليه:
+                  // **(ب) شريطٌ أخضرُ مصبوغ** — يملأ مكانَ الزرّ الذاهب فلا
+                  // يبقى القاعُ ناقصاً.
+                  //
+                  // **وما دون المنفَّذ يبقى له بابُه مهما كانت حاله:** قبل
+                  // القبول يُسأل العميل عن تفصيلٍ ناقص، وبعده يُذكَّر
+                  // بالعربون أو بموعد المعاينة. والاعتذارُ نفسه أهونُ إذا
+                  // سبقته كلمة.
+                  //
+                  // **والمحادثةُ لا تضيع بعد الختم** — تبقى في «الرسائل»،
+                  // لكنّها تبعد خطوتين. وقد قيل له ذلك قبل أن يختار.
+                  if (b.status == BookingStatus.completed)
+                    const _DoneBar()
+                  else
+                    OutlinedButton.icon(
+                      onPressed: busy ? null : () => _message(b),
+                      icon: const Icon(Icons.forum_outlined, size: 19),
+                      label: Text(trf('راسل {0}', [b.userName])),
+                    ),
                 ],
               ));
             },
@@ -222,3 +236,43 @@ class _RequestsScreenState extends State<RequestsScreen> {
 }
 
 
+
+/// خَتمُ الحجز المنفَّذ — شريطٌ أخضرُ مصبوغٌ في قاع البطاقة.
+///
+/// **وخبرٌ لا زرّ.** لا `onPressed` ولا شكلَ زرّ: ما يُشبه الزرَّ يُلمَس،
+/// ولمسةٌ لا تفعل شيئاً تُقرأ عطلاً.
+///
+/// **والأيقونةُ لا تحمل المعنى وحدَها.** «تم تنفيذ الحجز» مكتوبةٌ إلى
+/// جانبها، فمن لا يفرّق الأخضرَ من الأحمر يقرؤها — وهي العادةُ نفسُها في
+/// `StatusBadge`.
+class _DoneBar extends StatelessWidget {
+  const _DoneBar();
+
+  @override
+  Widget build(BuildContext context) => Container(
+    key: const ValueKey('booking-done'),
+    width: double.infinity,
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+    decoration: BoxDecoration(
+      // صبغةٌ خفيفةٌ لا خضرةٌ صمّاء: القاعُ يُملأ ولا يُصرَخ به، والحجزُ
+      // المنفَّذُ خبرٌ انتهى لا شيءٌ يُنتظر.
+      color: AppColors.good.withValues(alpha: Tint.chip),
+      borderRadius: BorderRadius.circular(12),
+    ),
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        const Icon(Icons.check_circle, size: 20, color: AppColors.good),
+        const SizedBox(width: Space.sm),
+        Text(
+          tr('تم تنفيذ الحجز'),
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: AppColors.good,
+          ),
+        ),
+      ],
+    ),
+  );
+}
