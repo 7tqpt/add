@@ -21,7 +21,7 @@ await db.exec(`
     language sql immutable as $$ select string_to_array(p, '/') $$;`)
 for (const f of ['install.sql', 'seed.sql', 'apply.sql', 'support.sql', 'roles.sql',
                  'invitations.sql', 'coupons.sql', 'category_images.sql',
-                 'app_download.sql']) {
+                 'app_download.sql', 'completion_review.sql']) {
   await db.exec(readFileSync(`../${f}`, 'utf8'))
 }
 
