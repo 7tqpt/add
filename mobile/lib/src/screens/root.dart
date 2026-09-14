@@ -9,6 +9,7 @@ import 'welcome.dart';
 import 'lock.dart';
 import 'update_prompt.dart';
 import 'onboarding.dart';
+import 'recover_password.dart';
 import 'verify_phone.dart';
 import 'customer_shell.dart';
 import 'provider_shell.dart';
@@ -85,7 +86,19 @@ class _RootScreenState extends State<RootScreen> with WidgetsBindingObserver {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       final nav = Navigator.of(context);
-      if (nav.canPop()) nav.popUntil((route) => route.isFirst);
+      // **واستعادةُ الكلمة تُستثنى — وهي الاستثناءُ الوحيد.**
+      //
+      // `verifyOTP(type: recovery)` **يفتح الجلسة** قبل أن تُكتب الكلمةُ
+      // الجديدة بحرف. فطيٌّ بلا استثناءٍ يلقي صاحبَها في التطبيق وهو لم
+      // يضع كلمتَه بعد — فيعود عند أوّل خروجٍ إلى البابِ نفسِه لا يعرف
+      // كلمتَه، وهكذا أبداً. وهو ما كان يقع.
+      //
+      // وشاشةُ الاستعادة تطوي نفسَها حين تُحفظ الكلمة.
+      if (nav.canPop()) {
+        nav.popUntil(
+          (route) => route.isFirst || route.settings.name == recoverRouteName,
+        );
+      }
     });
   }
 

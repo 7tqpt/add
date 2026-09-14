@@ -103,15 +103,16 @@ void main() {
     });
   });
 
-  group('وجهُ استعادة الكلمة', () {
-    /// يمشي إلى وجه الاستعادة — **والبريدُ يُكتب أوّلاً**، وإلّا ردّت
-    /// الشاشةُ «اكتب بريدك أوّلاً» وبقيت على وجه الدخول.
+  group('شاشةُ استعادة الكلمة', () {
+    /// يمشي إلى شاشة الاستعادة — **وصارت تُدفع فوق الدخول لا تحلّ محلَّه**.
+    ///
+    /// وكان البريدُ يُكتب أوّلاً وإلّا ردّت «اكتب بريدك أوّلاً» — وهو العطبُ
+    /// الذي أُصلح: الضغطةُ تفتح الحقلَ ولا تسأل عمّا لم يُكتب.
     Future<void> go(WidgetTester tester) async {
       _phone(tester);
       await tester.pumpWidget(_wrap(AuthScreen(session: _guest())));
       await _settle(tester);
-      await tester.enterText(find.byType(TextField).at(0), 'a@b.co');
-      await tester.tap(find.text('نسيت كلمة المرور'));
+      await tester.tap(find.byKey(const ValueKey('forgot-password')));
       await _settle(tester);
       await tester.pump(const Duration(seconds: 1));
       await _settle(tester);
@@ -119,23 +120,22 @@ void main() {
     }
 
     testWidgets('**ولا بطاقةَ داخلَ الورقة**', (tester) async {
-      // بقيت هذه الخطوةُ في `AppCard` حين نُقل نموذجُ الدخول إلى الورقة
+      // بقيت خطوةُ الاستعادة في `AppCard` حين نُقل نموذجُ الدخول إلى الورقة
       // البيضاء، فصارت بطاقةً مؤطَّرةً داخلَ ورقةٍ بيضاء — **صندوقٌ في
-      // صندوق**. وأخرجه صاحبُ المنصّة بسؤالٍ قبل الدمج.
+      // صندوق**. وأخرجه صاحبُ المنصّة بسؤالٍ قبل الدمج، والشاشةُ الجديدةُ
+      // ترثه.
       await go(tester);
       expect(find.byType(AppCard), findsNothing);
     });
 
-    testWidgets('والرجوعُ زرٌّ محاطٌ يعمل', (tester) async {
-      // **وزرٌّ محاطٌ لا سطرٌ رفيع** — كنظيره في وجه الدخول.
+    testWidgets('والرجوعُ سهمٌ في الرأس يعمل', (tester) async {
+      // **وصار سهماً لا زرّاً محاطاً في القاع**: الشاشةُ تُدفع، ولكلّ
+      // مدفوعةٍ سهمُها حيث تعوّدت العين.
       await go(tester);
-      expect(find.byKey(const ValueKey('back-from-recover')), findsOneWidget);
-      expect(
-          find.widgetWithText(OutlinedButton, 'رجوع إلى تسجيل الدخول'),
-          findsOneWidget);
+      expect(find.byType(BackButton), findsOneWidget);
 
-      await tester.tap(find.byKey(const ValueKey('back-from-recover')));
-      await _settle(tester);
+      await tester.tap(find.byType(BackButton));
+      await tester.pumpAndSettle();
       expect(find.text('دخول الحساب'), findsOneWidget);
     });
   });
