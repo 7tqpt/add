@@ -154,6 +154,9 @@ class _AuthScreenState extends State<AuthScreen> {
         textDirection: TextDirection.ltr,
         textAlign: TextAlign.center,
         style: const TextStyle(fontSize: 22, letterSpacing: 8),
+        // **ورمزُ الرسالة يُلتقط من شريط الإشعارات.** بلا هذا يحفظه
+        // صاحبُه في رأسه ويعود ليكتبه — وستُّ خاناتٍ تُنسى بين الشاشتين.
+        autofillHints: const [AutofillHints.oneTimeCode],
         decoration: InputDecoration(labelText: tr('رمز التفعيل'), hintText: '------'),
       ),
       if (_note != null) ...[
@@ -307,6 +310,9 @@ class _AuthScreenState extends State<AuthScreen> {
       autocorrect: false,
       // البريد لاتيني: يُترك من اليسار وإلا تبعثرت رموزه.
       textDirection: TextDirection.ltr,
+      // **ويعرض الجوّالُ ما حفظه.** بلا `autofillHints` لا يقترح شيئاً،
+      // فيُكتب البريدُ حرفاً حرفاً في كلّ دخول — ومن يكتب بيده يخطئ ويترك.
+      autofillHints: const [AutofillHints.email],
       // **ولا مثالَ داخل الحقل.** كان فيه `you@example.com` — حروفٌ
       // لاتينيّةٌ باهتةٌ في شاشةٍ عربيّةٍ كلُّها، تُقرأ لأوّل وهلةٍ نصّاً
       // مكتوباً فعلاً فيمسحه صاحبُها قبل أن يكتب.
@@ -317,6 +323,11 @@ class _AuthScreenState extends State<AuthScreen> {
       controller: _password,
       obscureText: true,
       textDirection: TextDirection.ltr,
+      // **والجديدةُ تُعرض على مدير كلمات المرور ليحفظها**، والقديمةُ
+      // تُملأ منه. وهما نيّتان مختلفتان فلا يصحّ خلطُهما.
+      autofillHints: [
+        _signUp ? AutofillHints.newPassword : AutofillHints.password,
+      ],
       decoration: InputDecoration(
         labelText: tr('كلمة المرور'),
         helperText: _signUp ? tr('ثمانية أحرف فأكثر.') : null,
@@ -338,6 +349,7 @@ class _AuthScreenState extends State<AuthScreen> {
         controller: _confirmPassword,
         obscureText: true,
         textDirection: TextDirection.ltr,
+        autofillHints: const [AutofillHints.newPassword],
         decoration: InputDecoration(labelText: tr('أعِد كتابة كلمة المرور')),
       ),
     ],

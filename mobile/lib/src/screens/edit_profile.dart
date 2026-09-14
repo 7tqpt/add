@@ -4,13 +4,13 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../core/i18n.dart';
-import '../core/phone.dart';
 import '../core/session.dart';
 import '../core/theme.dart';
 import '../data/api.dart';
 import '../data/models.dart';
 import '../data/supabase.dart';
 import '../ui/kit.dart';
+import 'verify_phone.dart';
 
 /// تعديل بياناتي.
 ///
@@ -28,7 +28,6 @@ class EditProfileScreen extends StatefulWidget {
 
 class _EditProfileScreenState extends State<EditProfileScreen> {
   final _name = TextEditingController();
-  final _phone = TextEditingController();
 
   MyProfile? _profile;
   List<Governorate> _governorates = const [];
@@ -41,11 +40,35 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   bool _loading = true;
   bool _saving = false;
+
+  /// خطأٌ عامٌّ من الخادم — يبقى في القاع لأنّه لا يخصّ حقلاً بعينه.
   String? _error;
+
+  /// **وخطأُ الحقل عند حقله.** كان «اكتب اسمك كاملاً» سطراً أحمرَ فوق زرّ
+  /// الحفظ والحقلُ سليمُ المظهر — فمن رآه لا يعرف أيَّ حقلٍ يُصلح، وقد
+  /// يكون السطرُ خارجَ الشاشة أصلاً.
+  String? _nameError;
+
+  /// أتغيّر شيءٌ عمّا حُمِّل؟
+  ///
+  /// **وبهذا وحده يُعرف أنّ هناك ما يُحفظ.** زرٌّ حيٌّ أبداً يُضغط ولم
+  /// يتغيّر شيء، فيُرسَل طلبٌ إلى الخادم بلا سبب؛ وخروجٌ بلا سؤالٍ يمحو
+  /// ما كُتب صمتاً.
+  bool _dirty = false;
+
+  void _markDirty() {
+    final p = _profile;
+    if (p == null) return;
+    final changed = _picked != null ||
+        _name.text.trim() != p.fullName.trim() ||
+        _governorateId != p.governorateId;
+    if (changed != _dirty) setState(() => _dirty = changed);
+  }
 
   @override
   void initState() {
     super.initState();
+    _name.addListener(_markDirty);
     _load();
   }
 
@@ -59,7 +82,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         _governorates = results[1] as List<Governorate>;
         _governorateId = profile?.governorateId;
         _name.text = profile?.fullName ?? '';
-        _phone.text = profile?.phone ?? '';
         _loading = false;
       });
     } catch (e) {
@@ -73,8 +95,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   @override
   void dispose() {
+    _name.removeListener(_markDirty);
     _name.dispose();
-    _phone.dispose();
     super.dispose();
   }
 
@@ -94,6 +116,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       setState(() {
         _picked = (name: file.name, bytes: bytes);
         _error = null;
+        _dirty = true;
       });
     } catch (e) {
       if (!mounted) return;
@@ -129,21 +152,18 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   Future<void> _save() async {
     final name = _name.text.trim();
     if (name.length < 2) {
-      setState(() => _error = tr('اكتب اسمك كاملاً.'));
+      setState(() {
+        _nameError = tr('اكتب اسمك كاملاً.');
+      });
       return;
     }
-    // **ورقمٌ فارغٌ حالٌ صحيحة هنا** — بخلاف «أكمل ملفك»: من فتح الشاشةَ
-    // ليبدّل اسمَه أو صورتَه لا يُلزَم برقم. أمّا المكتوبُ فيُفحص شكلُه
-    // ويُحفظ مطهَّراً، وإلّا بدّل رقمَه الصحيحَ بناقصٍ من حيث لا يدري.
-    final typed = _phone.text.trim();
-    final phone = typed.isEmpty ? '' : normalisePhone(typed);
-    if (phone == null) {
-      setState(() => _error = tr('رقم الجوال غير مكتمل. اكتبه مع مفتاح الدولة، مثل +967 7XX XXX XXX.'));
-      return;
-    }
+    // **والرقمُ لا يمرّ من هنا بعد اليوم.** له سطرُه وورقتُه، وتُحفظ فيها
+    // وحدَها بـ`api_update_my_phone`. فيُعاد كما هو لئلّا يُمحى بحفظ الاسم.
+    final phone = _profile?.phone ?? '';
     setState(() {
       _saving = true;
       _error = null;
+      _nameError = null;
     });
     try {
       // الصورة تُرفع أوّلاً ثم يُحفظ مسارها: لو حُفظ المسار قبل الرفع ونجح
@@ -157,18 +177,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           bytes: picked.bytes,
         );
       }
-      final was = _profile?.phone ?? '';
       await Api.updateProfile(
         fullName: name,
         phone: phone,
         governorateId: _governorateId,
         avatarPath: avatarPath,
       );
-      // **وإن تبدّل الرقمُ هبط الحاجزُ في الحال لا في الفتحة القادمة.**
-      // القاعدةُ أبطلت تأكيدَه، فمن بقي يتصفّح بعد الحفظ يتصفّح برقمٍ غيرِ
-      // مؤكَّد — وهو ما بُني الحاجزُ لمنعه. وتحديثُ الهويّة يُرفع الحاجزَ
-      // في `RootScreen` وحدَه.
-      if (phone != was) await widget.session.refreshIdentity();
       if (!mounted) return;
       Navigator.of(context).pop(true);
     } catch (e) {
@@ -180,8 +194,59 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     }
   }
 
+  /// تبديلُ الرقم — **في ورقةٍ مستقلّةٍ تحفظ بنفسها**.
+  ///
+  /// **وهي `showPhoneEditSheet` المشحونةُ نفسُها** التي تفتحها شاشةُ
+  /// التحقّق. فلا ورقةَ ثانيةٌ تشبهها وتفترق عنها بمرور الوقت.
+  ///
+  /// **والهويّةُ تُحدَّث بعدها في الحال لا في الفتحة القادمة.** القاعدةُ
+  /// أبطلت تأكيدَ الرقم، فمن بقي يتصفّح بعد التبديل يتصفّح برقمٍ غيرِ
+  /// مؤكَّد — وهو ما بُني الحاجزُ لمنعه.
+  Future<void> _editPhone() async {
+    final changed = await showPhoneEditSheet(
+      context,
+      current: _profile?.phone ?? '',
+    );
+    if (changed == null || !mounted) return;
+    await widget.session.refreshIdentity();
+    if (!mounted) return;
+    // ويُعاد تحميلُ الملفّ ليُعرض الرقمُ الجديد في سطره.
+    await _load();
+  }
+
+  /// **ولا يخرج بما كتبه صمتاً.** كان سهمُ الرجوع يمحو التعديلَ بلا كلمة:
+  /// يبدّل اسمَه، يصرفه شيءٌ، يضغط رجوعاً — فيذهب ما كتب ولا يعلم أنّه ذهب.
+  ///
+  /// والسؤالُ لا يُطرح إلّا إن كان هناك ما يضيع: من لم يلمس شيئاً يخرج
+  /// كما دخل.
+  Future<bool> _confirmLeave() async {
+    if (!_dirty || _saving) return true;
+    final leave = await confirmChoice(
+      context,
+      title: tr('تخرج ولم تحفظ؟'),
+      body: tr('عدّلتَ بياناتك ولم تحفظها. إن خرجتَ الآن ذهب ما كتبت.'),
+      confirm: tr('اخرج بلا حفظ'),
+      cancel: tr('أكمل التعديل'),
+    );
+    return leave == true;
+  }
+
   @override
   Widget build(BuildContext context) {
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        if (await _confirmLeave() && mounted) {
+          if (!context.mounted) return;
+          Navigator.of(context).pop();
+        }
+      },
+      child: _body(context),
+    );
+  }
+
+  Widget _body(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text(tr('تعديل بياناتي'))),
       body: _loading
@@ -195,38 +260,29 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 const SizedBox(height: Space.xl),
                 AppCard(
                   children: [
-                    SectionTitle(tr('بياناتي')),
+                    Row(
+                      children: [
+                        Expanded(child: SectionTitle(tr('بياناتي'))),
+                        // **وتُرى بلا نزولٍ إلى الزرّ.** من عدّل ثمّ صرفه
+                        // شيءٌ عن الشاشة يعود فلا يعرف أفيها ما لم يُحفظ.
+                        if (_dirty)
+                          StatusBadge(tr('تعديلٌ لم يُحفظ'),
+                              color: AppColors.warning),
+                      ],
+                    ),
                     const SizedBox(height: Space.lg),
                     TextField(
                       controller: _name,
                       textInputAction: TextInputAction.next,
+                      // **ويعرض الجوّالُ ما حفظه.** بلا `autofillHints` لا
+                      // يقترح شيئاً، فيُكتب كلُّ حرفٍ بيد — ومن يكتب بيده
+                      // يخطئ ويترك.
+                      autofillHints: const [AutofillHints.name],
                       decoration: InputDecoration(
                         labelText: tr('الاسم الكامل'),
                         prefixIcon: Icon(Icons.person_outline, size: 20),
-                      ),
-                    ),
-                    const SizedBox(height: Space.md),
-                    TextField(
-                      controller: _phone,
-                      keyboardType: TextInputType.phone,
-                      // الأرقام لاتينية والسياق عربيّ: بلا اتجاهٍ صريح يتقدّم
-                      // رمز الدولة إلى آخر الرقم.
-                      textDirection: TextDirection.ltr,
-                      decoration: InputDecoration(
-                        labelText: tr('رقم الجوال'),
-                        prefixIcon: Icon(Icons.phone_outlined, size: 20),
-                        // **ويُقال قبل أن يبدّل لا بعده.** تبديلُ الرقم
-                        // يُبطل تأكيدَه في القاعدة، فيهبط الحاجزُ على
-                        // صاحبه فورَ الحفظ — ومن لم يُقَل له ذلك ظنّ
-                        // التطبيقَ أخرجه.
-                        //
-                        // **ولا يُقال إلّا إن كان صادقاً:** حين يكون
-                        // الحاجزُ مطفأً في إعدادات المنصّة لا يُطلب تأكيدٌ
-                        // أصلاً، وسطرٌ يقول غيرَ ذلك يُخيف بلا سبب.
-                        helperText: widget.session.phoneGate.required_
-                            ? tr('تبديلُ الرقم يُلزمك بتأكيده مرّةً أخرى على واتساب.')
-                            : null,
-                        helperMaxLines: 2,
+                        errorText: _nameError,
+                        errorMaxLines: 2,
                       ),
                     ),
                     const SizedBox(height: Space.md),
@@ -241,40 +297,45 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         for (final g in _governorates)
                           DropdownMenuItem(value: g.id, child: Text(g.name)),
                       ],
-                      onChanged: (v) => setState(() => _governorateId = v),
+                      onChanged: (v) {
+                        setState(() => _governorateId = v);
+                        _markDirty();
+                      },
                     ),
                   ],
                 ),
                 const SizedBox(height: Space.md),
-                AppCard(
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(child: SectionTitle(tr('البريد الإلكتروني'))),
-                        StatusBadge(tr('لا يُعدَّل هنا')),
-                      ],
-                    ),
-                    const SizedBox(height: Space.sm),
-                    Text(
-                      _profile!.email,
-                      textDirection: TextDirection.ltr,
-                      textAlign: TextAlign.left,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.ink,
-                        fontFamilyFallback: arabicFallback,
-                      ),
-                    ),
-                    const SizedBox(height: Space.sm),
-                    Text(
-                      tr('به تدخل إلى حسابك، وتغييره يحتاج رسالة تأكيدٍ إلى '
-                          'العنوان الجديد. راسل الدعم لتغييره.'),
-                      style: const TextStyle(
-                          fontSize: 12, height: 1.7, color: AppColors.muted),
-                    ),
-                  ],
+                // ── الحقائقُ التي لا تُكتب في نموذج ────────────────────
+                //
+                // **والرقمُ ليس كسائر البيانات، فلا يُحفظ معها.** تبديلُه
+                // يُبطل تأكيدَه في القاعدة فيهبط حاجزُ واتساب على صاحبه
+                // فورَ الحفظ — وسطرٌ خافتٌ تحت حقلٍ يُقرأ **بعد** أن يُكتب
+                // لا قبله. فصار فعلاً صريحاً له ورقتُه.
+                _FactRow(
+                  key: const ValueKey('phone-row'),
+                  icon: Icons.phone_outlined,
+                  label: tr('رقم الجوال'),
+                  value: _profile!.phone.isEmpty
+                      ? tr('لم يُضَف بعد')
+                      : _profile!.phone,
+                  action: _profile!.phone.isEmpty ? tr('أضف') : tr('تعديل'),
+                  actionKey: const ValueKey('phone-edit'),
+                  onAction: _editPhone,
+                  // **ويُقال قبل أن يبدّل لا بعده.** تبديلُ الرقم يُبطل
+                  // تأكيدَه في القاعدة، فيهبط الحاجزُ على صاحبه فورَ
+                  // الحفظ — ومن لم يُقَل له ذلك ظنّ التطبيقَ أخرجه.
+                  //
+                  // **ولا يُقال إلّا إن كان صادقاً:** حين يكون الحاجزُ
+                  // مطفأً في إعدادات المنصّة لا يُطلب تأكيدٌ أصلاً، وسطرٌ
+                  // يقول غيرَ ذلك يُخيف بلا سبب.
+                  footer: widget.session.phoneGate.required_
+                      ? Muted(
+                          tr('تبديلُ الرقم يُلزمك بتأكيده مرّةً أخرى على واتساب.'),
+                          size: 12)
+                      : null,
                 ),
+                const SizedBox(height: Space.sm),
+                _EmailRow(email: _profile!.email),
                 if (_error != null) ...[
                   const SizedBox(height: Space.md),
                   Text(
@@ -284,7 +345,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 ],
                 const SizedBox(height: Space.lg),
                 FilledButton.icon(
-                  onPressed: _saving ? null : _save,
+                  key: const ValueKey('save-profile'),
+                  onPressed: _saving || !_dirty ? null : _save,
                   icon: _saving
                       ? const SizedBox(
                           width: 18,
@@ -299,6 +361,47 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             ),
     );
   }
+}
+
+/// البريدُ سطرٌ واحد — وشرحُه يُطوى خلف «لماذا؟».
+///
+/// **وحقيقةٌ لا تُعدَّل لا تأخذ بطاقةً كاملة.** كانت هنا بطاقةٌ فيها عنوانٌ
+/// وشارةٌ وبريدٌ وثلاثةُ أسطرٍ خافتة — بمساحة بطاقةِ التعديل كلِّها. فيزاحم
+/// ما لا يُلمَس ما جاء المستخدمُ ليلمسه.
+///
+/// **والشرحُ يبقى ولا يُحذف:** من يسأل «لماذا لا أعدّله؟» يجد الجواب —
+/// ومن لا يسأل لا يُثقَل به.
+class _EmailRow extends StatefulWidget {
+  const _EmailRow({required this.email});
+  final String email;
+
+  @override
+  State<_EmailRow> createState() => _EmailRowState();
+}
+
+class _EmailRowState extends State<_EmailRow> {
+  bool _open = false;
+
+  @override
+  Widget build(BuildContext context) => _FactRow(
+    key: const ValueKey('email-row'),
+    icon: Icons.mail_outline,
+    label: tr('البريد الإلكتروني'),
+    value: widget.email,
+    action: _open ? tr('إخفاء') : tr('لماذا؟'),
+    actionKey: const ValueKey('email-why'),
+    onAction: () => setState(() => _open = !_open),
+    // نصٌّ لا زرٌّ محاط: هذا يشرح منعاً ولا يفعل شيئاً.
+    strong: false,
+    footer: _open
+        ? Text(
+            tr('به تدخل إلى حسابك، وتغييره يحتاج رسالة تأكيدٍ إلى '
+                'العنوان الجديد. راسل الدعم لتغييره.'),
+            style: const TextStyle(
+                fontSize: 12, height: 1.7, color: AppColors.muted),
+          )
+        : null,
+  );
 }
 
 /// دائرة الصورة وزرُّ الكاميرا.
@@ -389,4 +492,99 @@ class _Avatar extends StatelessWidget {
       ),
     );
   }
+}
+
+/// سطرُ حقيقةٍ لا تُكتب في نموذج: أيقونةٌ واسمٌ وقيمةٌ وفعلٌ في الطرف.
+///
+/// **وواحدٌ للرقم والبريد معاً.** ولو رُسم لكلٍّ سطرُه لافترقا بمرور الوقت
+/// — تُعدَّل حشوةُ أحدهما فيصير في الشاشة سطران يختلفان بلا سبب.
+///
+/// **والفعلُ يفترق عن الشرح عمداً:** زرُّ الرقم **محاطٌ** لأنّه يفعل، وزرُّ
+/// البريد **نصٌّ** لأنّه يشرح منعاً. ولو تشابها لَظنّ صاحبُه أنّ البريد
+/// يُعدَّل أو أنّ الرقم لا يُعدَّل.
+class _FactRow extends StatelessWidget {
+  const _FactRow({
+    super.key,
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.action,
+    required this.onAction,
+    this.actionKey,
+    this.strong = true,
+    this.footer,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+  final String action;
+  final VoidCallback onAction;
+  final Key? actionKey;
+  final bool strong;
+  final Widget? footer;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+    decoration: BoxDecoration(
+      color: AppColors.surface2,
+      borderRadius: BorderRadius.circular(14),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(icon, size: 19, color: AppColors.muted),
+            const SizedBox(width: Space.sm),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Muted(label, size: 11),
+                  const SizedBox(height: 2),
+                  Text(
+                    value,
+                    textDirection: TextDirection.ltr,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.ink,
+                      fontFamilyFallback: arabicFallback,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // **ولا `textStyle` هنا بلا عائلة.** نمطُ الزرّ لا يرث
+            // `fontFamily` من الثيمة — يُستعمل كما هو، فتخرج الحروفُ
+            // مربّعاتٍ بيضاء. وقعتْ في راسم المقترح قبل أن تُكتب هنا.
+            if (strong)
+              OutlinedButton(
+                key: actionKey,
+                onPressed: onAction,
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(0, 36),
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                ),
+                child: Text(action),
+              )
+            else
+              TextButton(
+                key: actionKey,
+                onPressed: onAction,
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  minimumSize: const Size(0, 32),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: Text(action),
+              ),
+          ],
+        ),
+        if (footer != null) ...[const SizedBox(height: Space.sm), footer!],
+      ],
+    ),
+  );
 }

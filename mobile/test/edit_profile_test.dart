@@ -30,21 +30,33 @@ Session _session() => Session()
   ..loading = false;
 
 void main() {
-  testWidgets('الحقول القابلة للتعديل ثلاثة', (tester) async {
+  testWidgets('**ما يُكتب في النموذج اثنان، والرقمُ خرج منه**',
+      (tester) async {
+    // **والرقمُ ليس كسائر البيانات فلا يُحفظ معها:** تبديلُه يُبطل تأكيدَه
+    // في القاعدة فيهبط حاجزُ واتساب فورَ الحفظ. فصار سطراً بزرِّ تعديلٍ
+    // صريحٍ له ورقتُه — وهي `showPhoneEditSheet` المشحونةُ نفسُها.
     await tester.pumpWidget(_wrap(_session()));
     await tester.pumpAndSettle();
     expect(find.widgetWithText(TextField, 'الاسم الكامل'), findsOneWidget);
-    expect(find.widgetWithText(TextField, 'رقم الجوال'), findsOneWidget);
     expect(find.byType(DropdownButtonFormField<String>), findsOneWidget);
+
+    expect(find.widgetWithText(TextField, 'رقم الجوال'), findsNothing,
+        reason: 'ما زال الرقمُ حقلاً يُحفظ مع الاسم');
+    expect(find.byKey(const ValueKey('phone-row')), findsOneWidget);
+    expect(find.byKey(const ValueKey('phone-edit')), findsOneWidget);
   });
 
   testWidgets('والبريد يُعرض ولا يُكتب فيه', (tester) async {
     await tester.pumpWidget(_wrap(_session()));
     await tester.pumpAndSettle();
     // لا حقلَ نصٍّ للبريد بحال — عرضٌ فقط، ومعه سببُ ذلك.
+    //
+    // **وصار السببُ مطويّاً خلف «لماذا؟»** بعد أن كان بطاقةً كاملةً بشارةٍ
+    // وثلاثةِ أسطرٍ خافتة، تُزاحم بمساحتِها ما جاء المستخدمُ ليعدّله.
+    // والمقصودُ باقٍ: البريدُ يُعرض، ولا يُكتب فيه، والسببُ متاحٌ لمن سأل.
     expect(find.widgetWithText(TextField, 'البريد الإلكتروني'), findsNothing);
-    expect(find.text('لا يُعدَّل هنا'), findsOneWidget);
     expect(find.text('demo@example.com'), findsOneWidget);
+    expect(find.byKey(const ValueKey('email-why')), findsOneWidget);
   });
 
   testWidgets('اسمٌ قصير يُرفض قبل أن يُرسل', (tester) async {
@@ -58,6 +70,11 @@ void main() {
     await tester.pumpWidget(_wrap(_session()));
     await tester.pumpAndSettle();
     await tester.enterText(find.widgetWithText(TextField, 'الاسم الكامل'), 'أ');
+    // **ودفعةٌ بعد الكتابة.** صار زرُّ الحفظ مطفأً حتى يتغيّر شيء، ويُضاء
+    // في الإطار التالي للكتابة — فنقرةٌ قبل الدفعة تقع على زرٍّ ميّتٍ ولا
+    // تفعل شيئاً. وهذا تبدّلُ افتراضٍ في الاختبار لا في السلوك: من يكتب
+    // بإصبعه تمرّ بين حرفه ونقرته عشراتُ الإطارات.
+    await tester.pumpAndSettle();
     // النصّ لا النوع: `FilledButton.icon` تُنتج نوعاً مشتقّاً، و`find.byType`
     // يطابق النوع الحرفيّ وحده فلا يجده.
     final save = find.text('حفظ التعديلات');

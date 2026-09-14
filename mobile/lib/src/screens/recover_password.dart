@@ -275,6 +275,7 @@ class _RecoverPasswordScreenState extends State<RecoverPasswordScreen> {
               autofocus: true,
               // البريد لاتينيّ: يُترك من اليسار وإلّا تبعثرت رموزه.
               textDirection: TextDirection.ltr,
+              autofillHints: const [AutofillHints.email],
               decoration: InputDecoration(labelText: tr('البريد الإلكتروني')),
             ),
           ],
@@ -292,6 +293,7 @@ class _RecoverPasswordScreenState extends State<RecoverPasswordScreen> {
               textDirection: TextDirection.ltr,
               textAlign: TextAlign.center,
               style: const TextStyle(fontSize: 22, letterSpacing: 8),
+              autofillHints: const [AutofillHints.oneTimeCode],
               decoration: InputDecoration(
                 labelText: tr('رمز الاستعادة'),
                 hintText: '------',
@@ -310,6 +312,7 @@ class _RecoverPasswordScreenState extends State<RecoverPasswordScreen> {
               obscureText: true,
               autofocus: true,
               textDirection: TextDirection.ltr,
+              autofillHints: const [AutofillHints.newPassword],
               decoration: InputDecoration(
                 labelText: tr('كلمة المرور الجديدة'),
                 helperText: tr('ثمانية أحرف فأكثر.'),
@@ -321,6 +324,7 @@ class _RecoverPasswordScreenState extends State<RecoverPasswordScreen> {
               controller: _confirmPassword,
               obscureText: true,
               textDirection: TextDirection.ltr,
+              autofillHints: const [AutofillHints.newPassword],
               decoration: InputDecoration(
                 labelText: tr('أعِد كتابة الكلمة الجديدة'),
               ),
