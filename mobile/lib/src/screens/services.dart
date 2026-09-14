@@ -82,6 +82,49 @@ class _ServicesScreenState extends State<ServicesScreen> {
     }
   }
 
+  /// حذفُ خدمةٍ — بسؤالٍ قبله، وبمنعٍ إن كان عليها حجزٌ قادم.
+  ///
+  /// **والمنعُ يقع في القاعدة لا هنا.** سياسةُ `provider_services_owner`
+  /// تسمح لصاحب الخدمة بالحذف مباشرةً، فحارسٌ في هذه الشاشة يُتجاوَز بملفِّ
+  /// APK مفكوك. فتُنادى `api_delete_service` وتردّ **حقيقةً**: `deleted`
+  /// وتاريخَ الحجز المانع. وهذه الشاشةُ تصوغها بلغتها وتنسّق تاريخَها —
+  /// ولذلك لا تُرمى رسالةٌ عربيّةٌ من الخادم: تصل كما هي فلا تُترجَم.
+  Future<void> _delete(MyService service) async {
+    final ok = await confirmDanger(
+      context,
+      title: tr('حذف الخدمة'),
+      body: trf('هل تريد حذف «{0}»؟ لا رجعة بعدها — وتُحذف صورُها ومقاطعُها معها.',
+          [service.title]),
+      confirm: tr('نعم، احذفها'),
+    );
+    if (ok != true || !mounted) return;
+
+    setState(() => _busyId = service.id);
+    try {
+      final result = await Api.deleteService(service.id);
+      if (!mounted) return;
+      if (!result.deleted) {
+        // **ويُقال له ما يفعل بدلَها، لا «مُنعت» وحدَها.** الإيقافُ يُخفيها
+        // عن العملاء ويُبقي الحجزَ القائم.
+        final date = result.blockingDate;
+        showMessage(
+          context,
+          date == null
+              ? tr('عليها حجزٌ قادم. أوقِفها بدل أن تحذفها.')
+              : trf('عليها حجزٌ في {0}. أوقِفها بدل أن تحذفها.',
+                  [formatDay(date)]),
+        );
+        return;
+      }
+      showMessage(context, tr('حُذفت الخدمة'));
+      _reload();
+    } catch (e) {
+      if (mounted) showMessage(context, messageOf(e));
+    } finally {
+      if (mounted) setState(() => _busyId = null);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -169,6 +212,19 @@ class _ServicesScreenState extends State<ServicesScreen> {
                     onPressed: _busyId == null ? () => _media(s) : null,
                     icon: const Icon(Icons.perm_media_outlined, size: 19),
                     label: Text(tr('الصور والمقاطع')),
+                  ),
+                  const SizedBox(height: Space.sm),
+                  // **ممتلئٌ أحمر** — اختارها صاحبُ المنصّة من ثلاثٍ عُرضت
+                  // عليه. وهو يُزاحم «الصور والمقاطع» فوقه، لكنّ الحذفَ لا
+                  // يقع بضغطةٍ واحدة: بينه وبين الزوال سؤالٌ يُجاب.
+                  FilledButton.icon(
+                    key: ValueKey('service-delete-${s.id}'),
+                    onPressed: _busyId == null ? () => _delete(s) : null,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.critical,
+                    ),
+                    icon: const Icon(Icons.delete_outline, size: 19),
+                    label: Text(tr('حذف الخدمة')),
                   ),
                 ],
               ));

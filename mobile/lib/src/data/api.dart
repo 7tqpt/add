@@ -839,7 +839,37 @@ class Api {
     }
   }
 
-  /// الإيقاف لا الحذف: الخدمة مرتبطةٌ بحجوزات قائمة، وحذفها يقطع سجلّها.
+  /// **نتيجةُ محاولة الحذف** — حُذفت، أو مُنعت وهذا تاريخُ الحجز المانع.
+  ///
+  /// **ولا تُعاد رسالةٌ من الخادم.** التطبيقُ بلغتين، ورسالةٌ عربيّةٌ مرميّةٌ
+  /// من القاعدة تصل كما هي فلا تُترجَم ولا يُنسَّق تاريخُها. فتُعاد حقيقةٌ
+  /// وتُصاغ في الشاشة.
+  static Future<({bool deleted, DateTime? blockingDate})> deleteService(
+    String id,
+  ) async {
+    if (!isSupabaseConfigured) return demoDeleteService(id);
+
+    final rows = await db.rpc('api_delete_service', params: {'p_service_id': id});
+    final row = (rows as List).first as Map<String, dynamic>;
+    if (row['deleted'] != true) {
+      return (
+        deleted: false,
+        blockingDate: DateTime.tryParse('${row['blocking_date']}'),
+      );
+    }
+
+    // **والملفّاتُ تُمحى بعد الصفوف لا قبلها.** القاعدةُ لا تحذف ما في
+    // السلّة، فما لم تُمحَ هنا بقيت تأكل المساحةَ ورابطُها يعمل. وهي آخرُ
+    // خطوةٍ لأنّ ملفّاً زائداً لا يراه أحدٌ أهونُ من خدمةٍ بقيت.
+    final paths = (row['paths'] as List?)?.cast<String>() ?? const [];
+    if (paths.isNotEmpty) {
+      await db.storage.from('service-media').remove(paths);
+    }
+    return (deleted: true, blockingDate: null);
+  }
+
+  /// الإيقاف **غيرُ** الحذف: الإيقافُ يُخفيها عن العملاء وتبقى، والحذفُ
+  /// يُزيلها ويُمنع ما دام عليها حجزٌ قادم (`api_delete_service`).
   static Future<void> setServiceActive(String id, bool active) async {
     if (!isSupabaseConfigured) {
       demoSetServiceActive(id, active);

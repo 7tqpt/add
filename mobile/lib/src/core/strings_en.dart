@@ -453,6 +453,7 @@ const Map<String, String> englishStrings = {
   'حدّد الموقع على الخريطة': 'Set the location on the map',
   'حدّده مقدّم الخدمة على الخريطة.': 'The provider set it on the map.',
   'حذف': 'Delete',
+  'حذف الخدمة': 'Delete service',
   'حذف العنوان؟': 'Delete this address?',
   'حذف الوسيط؟': 'Delete this item?',
   'حذف الوسيلة؟': 'Delete this method?',
@@ -470,6 +471,7 @@ const Map<String, String> englishStrings = {
   'حوّلتُ بـ': 'I transferred with',
   'حي السنينة — صنعاء': 'Al‑Sunainah — Sanaa',
   'حُذف': 'Deleted',
+  'حُذفت الخدمة': 'Service deleted',
   'حُذف {0}': '{0} deleted',
   'حُسم': 'Deducted',
   'حُسم النزاع — لا تُقبل ردودٌ بعده.': 'The dispute is settled — no further replies are accepted.',
@@ -578,6 +580,10 @@ const Map<String, String> englishStrings = {
   'عرّفنا بنفسك لنكمل حجوزاتك ونتواصل معك عند الحاجة.': 'Tell us about yourself so we can complete your bookings and reach you when needed.',
   'عطل فني': 'A technical fault',
   'علّم الكلّ مقروءاً': 'Mark all as read',
+  'عليها حجزٌ في {0}. أوقِفها بدل أن تحذفها.':
+      'It has a booking on {0}. Suspend it instead of deleting it.',
+  'عليها حجزٌ قادم. أوقِفها بدل أن تحذفها.':
+      'It has an upcoming booking. Suspend it instead of deleting it.',
   'عمران': 'Amran',
   'عمولة المنصّة': 'Platform commission',
   'عميل': 'Customer',
@@ -772,6 +778,7 @@ const Map<String, String> englishStrings = {
   'نسيت كلمة المرور': 'I forgot my password',
   'نسيتَ الرمز؟': 'Forgot your code?',
   'نسيتُ الرمز': 'I forgot the code',
+  'نعم، احذفها': 'Yes, delete it',
   'نغمة الإشعار': 'Notification sound',
   'نقداً': 'Cash',
   'نماذج أعمال': 'Work samples',
@@ -780,6 +787,8 @@ const Map<String, String> englishStrings = {
   'هذا اليوم محجوز: {0}': 'This day is booked: {0}',
   'هذا رابطٌ مختصر — افتحه في الخرائط أوّلاً ثمّ انسخ الرابط الكامل.': 'This is a shortened link — open it in Maps first, then copy the full link.',
   'هذا ما يقرؤه العميل في صفحتك قبل أن يحجز.': 'This is what the customer reads on your page before booking.',
+  'هل تريد حذف «{0}»؟ لا رجعة بعدها — وتُحذف صورُها ومقاطعُها معها.':
+      'Delete “{0}”? There is no going back — its photos and clips go with it.',
   'هنا يصلك ما يخصّ حجوزاتك ومدفوعاتك ورسائلك.': 'Everything about your bookings, payments, and messages arrives here.',
   'وافق على حجزك': 'They approved your booking',
   'وسيلة جديدة': 'New method',

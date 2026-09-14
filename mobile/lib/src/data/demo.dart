@@ -885,6 +885,37 @@ void demoSetServiceActive(String id, bool active) {
   }).toList();
 }
 
+/// حذفُ الخدمة في وضع العرض — ويُمنع ما دام عليها حجزٌ قادم.
+///
+/// **والمطابقةُ هنا بالاسم، وفي القاعدة بالمعرّف.** نموذجُ `Booking` في
+/// التطبيق لا يحمل `serviceId` أصلاً — يحمل `serviceTitle` منسوخاً نصّاً —
+/// فوضعُ العرض يطابق بما يملك. والحرزُ الحقيقيُّ في `api_delete_service`
+/// حيث يُطابَق `bookings.service_id`؛ وهذا محاكاةٌ ليرى المجرِّبُ المنعَ
+/// يقع، لا حارسٌ يُعوَّل عليه.
+({bool deleted, DateTime? blockingDate}) demoDeleteService(String id) {
+  final service = demoMyServices.where((s) => s.id == id).firstOrNull;
+  if (service == null) return (deleted: false, blockingDate: null);
+
+  final today = DateTime.now();
+  final startOfDay = DateTime(today.year, today.month, today.day);
+
+  DateTime? blocking;
+  for (final b in demoProviderRequests) {
+    if (b.status != BookingStatus.pendingProvider &&
+        b.status != BookingStatus.confirmed) {
+      continue;
+    }
+    if (!b.serviceTitle.contains(service.title)) continue;
+    final date = DateTime.tryParse(b.eventDate);
+    if (date == null || date.isBefore(startOfDay)) continue;
+    if (blocking == null || date.isBefore(blocking)) blocking = date;
+  }
+  if (blocking != null) return (deleted: false, blockingDate: blocking);
+
+  demoMyServices = demoMyServices.where((s) => s.id != id).toList();
+  return (deleted: true, blockingDate: null);
+}
+
 List<ProviderDocument> demoDocuments = [];
 
 int _docSeq = 0;
