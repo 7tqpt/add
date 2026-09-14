@@ -8,9 +8,19 @@ const demoBookings: Booking[] = [...mockBookings].sort(
   (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
 )
 
+/**
+ * The status filter, plus one pseudo-status the database does not have.
+ *
+ * `completion_review` is not a `bookings.status` value: it means "confirmed,
+ * and the provider has asked us to approve completion". The owner chose to
+ * put the review queue inside this page rather than on a page of its own, so
+ * it rides in the same control.
+ */
+export type BookingFilter = BookingStatus | 'all' | 'completion_review'
+
 export interface BookingQuery {
   search: string
-  status: BookingStatus | 'all'
+  status: BookingFilter
   category: string | 'all'
   governorate: string | 'all'
   days: number | 'all'
@@ -19,7 +29,11 @@ export interface BookingQuery {
 }
 
 function matches(booking: Booking, query: BookingQuery): boolean {
-  if (query.status !== 'all' && booking.status !== query.status) return false
+  if (query.status === 'completion_review') {
+    if (!booking.completion_requested_at) return false
+  } else if (query.status !== 'all' && booking.status !== query.status) {
+    return false
+  }
   if (query.category !== 'all' && booking.category_name !== query.category) return false
   if (query.governorate !== 'all' && booking.governorate !== query.governorate) return false
   if (query.days !== 'all' && booking.created_at < isoDaysAgo(query.days)) return false
@@ -49,7 +63,11 @@ export async function listBookings(query: BookingQuery): Promise<Paged<Booking>>
     .order('created_at', { ascending: false })
     .range(from, from + query.pageSize - 1)
 
-  if (query.status !== 'all') builder = builder.eq('status', query.status)
+  if (query.status === 'completion_review') {
+    builder = builder.not('completion_requested_at', 'is', null)
+  } else if (query.status !== 'all') {
+    builder = builder.eq('status', query.status)
+  }
   if (query.category !== 'all') builder = builder.eq('category_name', query.category)
   if (query.governorate !== 'all') builder = builder.eq('governorate', query.governorate)
   if (query.days !== 'all') builder = builder.gte('created_at', isoDaysAgo(query.days))
@@ -296,3 +314,76 @@ export const BOOKING_STATUS_LABEL: Record<BookingStatus, string> = {
 
 /** المسار الطبيعي للحجز، لعرض شريط التقدّم. */
 export const BOOKING_TRAIL: BookingStatus[] = ['pending_provider', 'confirmed', 'completed']
+
+// ---------------------------------------------------------------------------
+// اعتمادُ تنفيذ الحجز — طابورُ المراجعة
+// ---------------------------------------------------------------------------
+
+/**
+ * Approve the provider's completion request.
+ *
+ * **The money moves here, not in the app.** `api_complete_booking` is now
+ * restricted to `can_write_area('bookings')`: the provider cannot finish
+ * their own booking, so a decompiled APK calling the RPC directly changes
+ * nothing. That guard is the whole point of this feature — see
+ * `supabase/completion_review.sql`.
+ */
+export async function approveCompletion(booking: Booking): Promise<void> {
+  if (!isSupabaseConfigured) {
+    const target = demoBookings.find((candidate) => candidate.id === booking.id)
+    if (target) {
+      target.status = 'completed'
+      target.completed_at = new Date().toISOString()
+      target.completion_requested_at = null
+    }
+    await delay(null, 280)
+  } else {
+    const { error } = await requireSupabase().rpc('api_complete_booking', {
+      p_booking_id: booking.id,
+    })
+    if (error) throw error
+  }
+
+  await recordAudit({
+    action: 'booking.completion_approved',
+    entity: 'booking',
+    entityId: booking.id,
+    entityLabel: booking.reference,
+    details: { provider: booking.provider_name },
+  })
+}
+
+/**
+ * Return the request with a reason the provider reads in their app.
+ *
+ * **A reason, not silence.** Someone whose request comes back with no word
+ * resends it unchanged, and the queue circles on itself.
+ */
+export async function rejectCompletion(booking: Booking, reason: string): Promise<void> {
+  const note = reason.trim()
+  if (!note) throw new Error('اكتب سببَ الردّ.')
+
+  if (!isSupabaseConfigured) {
+    const target = demoBookings.find((candidate) => candidate.id === booking.id)
+    if (target) {
+      target.completion_requested_at = null
+      target.completion_rejected_at = new Date().toISOString()
+      target.completion_reject_reason = note
+    }
+    await delay(null, 280)
+  } else {
+    const { error } = await requireSupabase().rpc('api_reject_completion', {
+      p_booking_id: booking.id,
+      p_reason: note,
+    })
+    if (error) throw error
+  }
+
+  await recordAudit({
+    action: 'booking.completion_rejected',
+    entity: 'booking',
+    entityId: booking.id,
+    entityLabel: booking.reference,
+    details: { provider: booking.provider_name, reason: note },
+  })
+}

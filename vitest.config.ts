@@ -1,3 +1,5 @@
+import { fileURLToPath } from 'node:url'
+
 import { defineConfig } from 'vitest/config'
 
 /**
@@ -14,8 +16,18 @@ import { defineConfig } from 'vitest/config'
  *
  * ولا `environment: 'jsdom'`: المقيسُ هنا منطقٌ خالصٌ لا شجرةُ عناصر. ويومَ
  * تُقاس شاشةٌ يُضاف حينها، لا قبلَه.
+ *
+ * **والكنيةُ `@` تُكرَّر هنا ولا تُورَث.** ملفّات `src/` تستورد بها بعضَها
+ * بعضاً، فاختبارٌ يستورد خدمةً من `src/services` يسقط عند أوّل
+ * `@/lib/supabase` فيها — لا لعيبٍ في المقيس بل لأنّ المصرِّف لا يعرف
+ * الكنية. وهي نسخةٌ من `vite.config.ts`: لا يرث أحدُهما الآخر.
  */
 export default defineConfig({
+  resolve: {
+    alias: {
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
+    },
+  },
   test: {
     include: ['test/**/*.test.ts'],
   },
