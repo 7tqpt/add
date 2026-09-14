@@ -70,10 +70,14 @@ Widget _wrap(Widget child) => MaterialApp(
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      home: Directionality(
-        textDirection: TextDirection.rtl,
-        child: RepaintBoundary(key: const ValueKey('shot'), child: child),
+      // **وحدُّ الرسم خارجَ `home`.** الطرقُ المدفوعةُ تعيش في ملّاح
+      // `MaterialApp` لا في `home`، وطريقٌ معتمٌ يُخرج ما تحته من الشجرة
+      // المرئيّة — فلا يجد المصوِّرُ حدَّه ويسقط بـ«No element». وقد وقع.
+      builder: (_, navigator) => RepaintBoundary(
+        key: const ValueKey('shot'),
+        child: navigator!,
       ),
+      home: Directionality(textDirection: TextDirection.rtl, child: child),
     );
 
 Booking _booking({
@@ -164,5 +168,24 @@ void main() {
     expect(tester.takeException(), isNull);
 
     await _shoot(tester, '$out/booking-done.png');
+  });
+
+  // **وبابُ الشريط يُصوَّر بعد فتحه.** سؤالُ «هل فُتحت الشاشة؟» يمرّ على
+  // شاشةٍ بلا عنوانٍ ولا سهمِ رجوع — وقد وقع ذلك فعلاً.
+  testWidgets('وما يُفتح بضغط الشريط', (tester) async {
+    tester.view.physicalSize = const Size(1080, 1900);
+    tester.view.devicePixelRatio = 3.0;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(_wrap(RequestsScreen(session: _provider())));
+    await _settle(tester);
+
+    await tester.tap(find.byKey(const ValueKey('booking-done')));
+    await _settle(tester);
+
+    expect(find.widgetWithText(AppBar, 'مستحقّاتي'), findsOneWidget);
+    expect(find.byType(BackButton), findsOneWidget);
+
+    await _shoot(tester, '$out/booking-done-earnings.png');
   });
 }

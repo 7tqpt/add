@@ -129,9 +129,28 @@ run "(و) خضرةٌ صمّاءُ لا صبغة" \
 run "(ز) الشريطُ لا يقود إلى المستحقّات" \
   sub "$R" \
 "      onTap: () => Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => EarningsScreen(session: session)),
+        MaterialPageRoute(
+          builder: (_) => Scaffold(
+            appBar: AppBar(title: Text(tr('مستحقّاتي'))),
+            body: EarningsScreen(session: session),
+          ),
+        ),
       )," \
 "      onTap: () {},"
+
+# ── ز٢) وتُدفع الشاشةُ عاريةً بلا عنوانٍ ولا سهمِ رجوع ──────────────────────
+#
+# **وهذا ما وقع فعلاً ورآه صاحبُ المنصّة قبلي.** `EarningsScreen` لا تبني
+# `Scaffold` لنفسها — تُلفّ في «ملفّي» بواحدٍ عنوانُه «مستحقّاتي». فدفعُها
+# عاريةً يُنزل المزوّدَ في شاشةٍ بلا اسمٍ ولا مخرجٍ إلّا زرُّ الجهاز، وسؤالُ
+# «هل فُتحت الشاشة؟» يمرّ عليها.
+run "(ز٢) تُدفع عاريةً بلا عنوانٍ ولا رجوع" \
+  sub "$R" \
+"          builder: (_) => Scaffold(
+            appBar: AppBar(title: Text(tr('مستحقّاتي'))),
+            body: EarningsScreen(session: session),
+          )," \
+"          builder: (_) => EarningsScreen(session: session),"
 
 # ── ح) والسهمُ يُشال فلا يعرف أحدٌ أنّه باب ──────────────────────────────────
 #

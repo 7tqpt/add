@@ -300,8 +300,18 @@ class _DoneBar extends StatelessWidget {
     child: InkWell(
       key: const ValueKey('booking-done'),
       borderRadius: BorderRadius.circular(12),
+      // **وبعنوانٍ وسهمِ رجوعٍ كالبابِ الآخر.** `EarningsScreen` لا تبني
+      // `Scaffold` لنفسها — تُلفّ في «ملفّي» بواحدٍ عنوانُه «مستحقّاتي».
+      // فدفعُها عاريةً يُنزل المزوّدَ في شاشةٍ بلا اسمٍ ولا سهمِ رجوع،
+      // ولا يخرج منها إلّا بزرّ الجهاز. **وبابان إلى شاشةٍ واحدةٍ يجب أن
+      // يفتحاها واحدةً.**
       onTap: () => Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => EarningsScreen(session: session)),
+        MaterialPageRoute(
+          builder: (_) => Scaffold(
+            appBar: AppBar(title: Text(tr('مستحقّاتي'))),
+            body: EarningsScreen(session: session),
+          ),
+        ),
       ),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),

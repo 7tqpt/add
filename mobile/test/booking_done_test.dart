@@ -132,6 +132,23 @@ void main() {
           reason: 'ضُغط الشريطُ ولم يُفتح شيء');
     });
 
+    testWidgets('**وبعنوانٍ وسهمِ رجوعٍ كالبابِ الآخر**', (tester) async {
+      // `EarningsScreen` لا تبني `Scaffold` لنفسها: تُلفّ في «ملفّي» بواحدٍ
+      // عنوانُه «مستحقّاتي». فدفعُها عاريةً يُنزل المزوّدَ في شاشةٍ بلا
+      // اسمٍ ولا مخرج — وهو ما وقع فعلاً، ورآه صاحبُ المنصّة قبلي.
+      _phone(tester);
+      await tester.pumpWidget(_wrap(RequestsScreen(session: _provider())));
+      await _settle(tester);
+
+      await tester.tap(_done);
+      await _settle(tester);
+
+      expect(find.widgetWithText(AppBar, 'مستحقّاتي'), findsOneWidget,
+          reason: 'شاشةٌ بلا اسم');
+      expect(find.byType(BackButton), findsOneWidget,
+          reason: 'لا مخرجَ إلّا زرُّ الجهاز');
+    });
+
     testWidgets('**والسهمُ يقول إنّه باب**', (tester) async {
       // شريطٌ يُضغط بلا علامةٍ تدلّ عليه لا يعرفه أحد، فيبقى الطريقُ إلى
       // المستحقّات مقفولاً وهو مفتوح.

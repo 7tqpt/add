@@ -82,3 +82,12 @@ grant execute on function public.api_delete_service(uuid) to authenticated;
 comment on function public.api_delete_service(uuid) is
   'يحذف خدمةَ صاحبها ووسائطَها، ويردّ الحذفَ ما دام عليها حجزٌ قادم. '
   'يعيد مسارات الوسائط لتُمحى من السلّة.';
+
+-- PostgREST يحتفظ بذاكرةٍ مخبَّأة لأسماء الدوال، فلا يرى دالّةً أُنشئت للتوّ
+-- ويردّ على التطبيق «‏Could not find the function … in the schema cache‏»
+-- (PGRST202) رغم وجودها في القاعدة — وهو خطأٌ مُضلّل: يبدو كأنّ الملفّ لم
+-- يُنفَّذ وقد نُفِّذ. هذا السطر يوقظه.
+--
+-- **وقد وقع فعلاً:** ضغط صاحبُ المنصّة «حذف الخدمة» فردّ عليه هذا النصُّ
+-- بعينه، واقترح عليه PostgREST `api_delete_address` لتشابه الاسم.
+notify pgrst, 'reload schema';
