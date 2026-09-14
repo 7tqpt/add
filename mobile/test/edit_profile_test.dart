@@ -42,9 +42,13 @@ void main() {
     await tester.pumpWidget(_wrap(_session()));
     await tester.pumpAndSettle();
     // لا حقلَ نصٍّ للبريد بحال — عرضٌ فقط، ومعه سببُ ذلك.
+    //
+    // **وصار السببُ مطويّاً خلف «لماذا؟»** بعد أن كان بطاقةً كاملةً بشارةٍ
+    // وثلاثةِ أسطرٍ خافتة، تُزاحم بمساحتِها ما جاء المستخدمُ ليعدّله.
+    // والمقصودُ باقٍ: البريدُ يُعرض، ولا يُكتب فيه، والسببُ متاحٌ لمن سأل.
     expect(find.widgetWithText(TextField, 'البريد الإلكتروني'), findsNothing);
-    expect(find.text('لا يُعدَّل هنا'), findsOneWidget);
     expect(find.text('demo@example.com'), findsOneWidget);
+    expect(find.byKey(const ValueKey('email-why')), findsOneWidget);
   });
 
   testWidgets('اسمٌ قصير يُرفض قبل أن يُرسل', (tester) async {
@@ -58,6 +62,11 @@ void main() {
     await tester.pumpWidget(_wrap(_session()));
     await tester.pumpAndSettle();
     await tester.enterText(find.widgetWithText(TextField, 'الاسم الكامل'), 'أ');
+    // **ودفعةٌ بعد الكتابة.** صار زرُّ الحفظ مطفأً حتى يتغيّر شيء، ويُضاء
+    // في الإطار التالي للكتابة — فنقرةٌ قبل الدفعة تقع على زرٍّ ميّتٍ ولا
+    // تفعل شيئاً. وهذا تبدّلُ افتراضٍ في الاختبار لا في السلوك: من يكتب
+    // بإصبعه تمرّ بين حرفه ونقرته عشراتُ الإطارات.
+    await tester.pumpAndSettle();
     // النصّ لا النوع: `FilledButton.icon` تُنتج نوعاً مشتقّاً، و`find.byType`
     // يطابق النوع الحرفيّ وحده فلا يجده.
     final save = find.text('حفظ التعديلات');

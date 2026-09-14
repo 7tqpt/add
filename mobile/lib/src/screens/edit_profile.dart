@@ -41,11 +41,38 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   bool _loading = true;
   bool _saving = false;
+
+  /// خطأٌ عامٌّ من الخادم — يبقى في القاع لأنّه لا يخصّ حقلاً بعينه.
   String? _error;
+
+  /// **وخطأُ الحقل عند حقله.** كان «اكتب اسمك كاملاً» سطراً أحمرَ فوق زرّ
+  /// الحفظ والحقلُ سليمُ المظهر — فمن رآه لا يعرف أيَّ حقلٍ يُصلح، وقد
+  /// يكون السطرُ خارجَ الشاشة أصلاً.
+  String? _nameError;
+  String? _phoneError;
+
+  /// أتغيّر شيءٌ عمّا حُمِّل؟
+  ///
+  /// **وبهذا وحده يُعرف أنّ هناك ما يُحفظ.** زرٌّ حيٌّ أبداً يُضغط ولم
+  /// يتغيّر شيء، فيُرسَل طلبٌ إلى الخادم بلا سبب؛ وخروجٌ بلا سؤالٍ يمحو
+  /// ما كُتب صمتاً.
+  bool _dirty = false;
+
+  void _markDirty() {
+    final p = _profile;
+    if (p == null) return;
+    final changed = _picked != null ||
+        _name.text.trim() != p.fullName.trim() ||
+        _phone.text.trim() != p.phone.trim() ||
+        _governorateId != p.governorateId;
+    if (changed != _dirty) setState(() => _dirty = changed);
+  }
 
   @override
   void initState() {
     super.initState();
+    _name.addListener(_markDirty);
+    _phone.addListener(_markDirty);
     _load();
   }
 
@@ -73,6 +100,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   @override
   void dispose() {
+    _name.removeListener(_markDirty);
+    _phone.removeListener(_markDirty);
     _name.dispose();
     _phone.dispose();
     super.dispose();
@@ -94,6 +123,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       setState(() {
         _picked = (name: file.name, bytes: bytes);
         _error = null;
+        _dirty = true;
       });
     } catch (e) {
       if (!mounted) return;
@@ -129,7 +159,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   Future<void> _save() async {
     final name = _name.text.trim();
     if (name.length < 2) {
-      setState(() => _error = tr('اكتب اسمك كاملاً.'));
+      setState(() {
+        _nameError = tr('اكتب اسمك كاملاً.');
+        _phoneError = null;
+      });
       return;
     }
     // **ورقمٌ فارغٌ حالٌ صحيحة هنا** — بخلاف «أكمل ملفك»: من فتح الشاشةَ
@@ -138,12 +171,17 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     final typed = _phone.text.trim();
     final phone = typed.isEmpty ? '' : normalisePhone(typed);
     if (phone == null) {
-      setState(() => _error = tr('رقم الجوال غير مكتمل. اكتبه مع مفتاح الدولة، مثل +967 7XX XXX XXX.'));
+      setState(() {
+        _nameError = null;
+        _phoneError = tr('اكتبه مع مفتاح الدولة، مثل +967 7XX XXX XXX.');
+      });
       return;
     }
     setState(() {
       _saving = true;
       _error = null;
+      _nameError = null;
+      _phoneError = null;
     });
     try {
       // الصورة تُرفع أوّلاً ثم يُحفظ مسارها: لو حُفظ المسار قبل الرفع ونجح
@@ -180,8 +218,39 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     }
   }
 
+  /// **ولا يخرج بما كتبه صمتاً.** كان سهمُ الرجوع يمحو التعديلَ بلا كلمة:
+  /// يبدّل اسمَه، يصرفه شيءٌ، يضغط رجوعاً — فيذهب ما كتب ولا يعلم أنّه ذهب.
+  ///
+  /// والسؤالُ لا يُطرح إلّا إن كان هناك ما يضيع: من لم يلمس شيئاً يخرج
+  /// كما دخل.
+  Future<bool> _confirmLeave() async {
+    if (!_dirty || _saving) return true;
+    final leave = await confirmChoice(
+      context,
+      title: tr('تخرج ولم تحفظ؟'),
+      body: tr('عدّلتَ بياناتك ولم تحفظها. إن خرجتَ الآن ذهب ما كتبت.'),
+      confirm: tr('اخرج بلا حفظ'),
+      cancel: tr('أكمل التعديل'),
+    );
+    return leave == true;
+  }
+
   @override
   Widget build(BuildContext context) {
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        if (await _confirmLeave() && mounted) {
+          if (!context.mounted) return;
+          Navigator.of(context).pop();
+        }
+      },
+      child: _body(context),
+    );
+  }
+
+  Widget _body(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text(tr('تعديل بياناتي'))),
       body: _loading
@@ -195,14 +264,29 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 const SizedBox(height: Space.xl),
                 AppCard(
                   children: [
-                    SectionTitle(tr('بياناتي')),
+                    Row(
+                      children: [
+                        Expanded(child: SectionTitle(tr('بياناتي'))),
+                        // **وتُرى بلا نزولٍ إلى الزرّ.** من عدّل ثمّ صرفه
+                        // شيءٌ عن الشاشة يعود فلا يعرف أفيها ما لم يُحفظ.
+                        if (_dirty)
+                          StatusBadge(tr('تعديلٌ لم يُحفظ'),
+                              color: AppColors.warning),
+                      ],
+                    ),
                     const SizedBox(height: Space.lg),
                     TextField(
                       controller: _name,
                       textInputAction: TextInputAction.next,
+                      // **ويعرض الجوّالُ ما حفظه.** بلا `autofillHints` لا
+                      // يقترح شيئاً، فيُكتب كلُّ حرفٍ بيد — ومن يكتب بيده
+                      // يخطئ ويترك.
+                      autofillHints: const [AutofillHints.name],
                       decoration: InputDecoration(
                         labelText: tr('الاسم الكامل'),
                         prefixIcon: Icon(Icons.person_outline, size: 20),
+                        errorText: _nameError,
+                        errorMaxLines: 2,
                       ),
                     ),
                     const SizedBox(height: Space.md),
@@ -212,9 +296,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       // الأرقام لاتينية والسياق عربيّ: بلا اتجاهٍ صريح يتقدّم
                       // رمز الدولة إلى آخر الرقم.
                       textDirection: TextDirection.ltr,
+                      autofillHints: const [AutofillHints.telephoneNumber],
                       decoration: InputDecoration(
                         labelText: tr('رقم الجوال'),
                         prefixIcon: Icon(Icons.phone_outlined, size: 20),
+                        errorText: _phoneError,
                         // **ويُقال قبل أن يبدّل لا بعده.** تبديلُ الرقم
                         // يُبطل تأكيدَه في القاعدة، فيهبط الحاجزُ على
                         // صاحبه فورَ الحفظ — ومن لم يُقَل له ذلك ظنّ
@@ -241,40 +327,15 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         for (final g in _governorates)
                           DropdownMenuItem(value: g.id, child: Text(g.name)),
                       ],
-                      onChanged: (v) => setState(() => _governorateId = v),
+                      onChanged: (v) {
+                        setState(() => _governorateId = v);
+                        _markDirty();
+                      },
                     ),
                   ],
                 ),
                 const SizedBox(height: Space.md),
-                AppCard(
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(child: SectionTitle(tr('البريد الإلكتروني'))),
-                        StatusBadge(tr('لا يُعدَّل هنا')),
-                      ],
-                    ),
-                    const SizedBox(height: Space.sm),
-                    Text(
-                      _profile!.email,
-                      textDirection: TextDirection.ltr,
-                      textAlign: TextAlign.left,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.ink,
-                        fontFamilyFallback: arabicFallback,
-                      ),
-                    ),
-                    const SizedBox(height: Space.sm),
-                    Text(
-                      tr('به تدخل إلى حسابك، وتغييره يحتاج رسالة تأكيدٍ إلى '
-                          'العنوان الجديد. راسل الدعم لتغييره.'),
-                      style: const TextStyle(
-                          fontSize: 12, height: 1.7, color: AppColors.muted),
-                    ),
-                  ],
-                ),
+                _EmailRow(email: _profile!.email),
                 if (_error != null) ...[
                   const SizedBox(height: Space.md),
                   Text(
@@ -284,7 +345,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 ],
                 const SizedBox(height: Space.lg),
                 FilledButton.icon(
-                  onPressed: _saving ? null : _save,
+                  key: const ValueKey('save-profile'),
+                  onPressed: _saving || !_dirty ? null : _save,
                   icon: _saving
                       ? const SizedBox(
                           width: 18,
@@ -299,6 +361,85 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             ),
     );
   }
+}
+
+/// البريدُ سطرٌ واحد — وشرحُه يُطوى خلف «لماذا؟».
+///
+/// **وحقيقةٌ لا تُعدَّل لا تأخذ بطاقةً كاملة.** كانت هنا بطاقةٌ فيها عنوانٌ
+/// وشارةٌ وبريدٌ وثلاثةُ أسطرٍ خافتة — بمساحة بطاقةِ التعديل كلِّها. فيزاحم
+/// ما لا يُلمَس ما جاء المستخدمُ ليلمسه.
+///
+/// **والشرحُ يبقى ولا يُحذف:** من يسأل «لماذا لا أعدّله؟» يجد الجواب —
+/// ومن لا يسأل لا يُثقَل به.
+class _EmailRow extends StatefulWidget {
+  const _EmailRow({required this.email});
+  final String email;
+
+  @override
+  State<_EmailRow> createState() => _EmailRowState();
+}
+
+class _EmailRowState extends State<_EmailRow> {
+  bool _open = false;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    key: const ValueKey('email-row'),
+    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+    decoration: BoxDecoration(
+      color: AppColors.surface2,
+      borderRadius: BorderRadius.circular(14),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Icon(Icons.mail_outline, size: 19, color: AppColors.muted),
+            const SizedBox(width: Space.sm),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Muted(tr('البريد الإلكتروني'), size: 11),
+                  const SizedBox(height: 2),
+                  Text(
+                    widget.email,
+                    textDirection: TextDirection.ltr,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.ink,
+                      fontFamilyFallback: arabicFallback,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            TextButton(
+              key: const ValueKey('email-why'),
+              onPressed: () => setState(() => _open = !_open),
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                minimumSize: const Size(0, 32),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              child: Text(_open ? tr('إخفاء') : tr('لماذا؟')),
+            ),
+          ],
+        ),
+        if (_open) ...[
+          const SizedBox(height: Space.sm),
+          Text(
+            tr('به تدخل إلى حسابك، وتغييره يحتاج رسالة تأكيدٍ إلى '
+                'العنوان الجديد. راسل الدعم لتغييره.'),
+            style: const TextStyle(
+                fontSize: 12, height: 1.7, color: AppColors.muted),
+          ),
+        ],
+      ],
+    ),
+  );
 }
 
 /// دائرة الصورة وزرُّ الكاميرا.
