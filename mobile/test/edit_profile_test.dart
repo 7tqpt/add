@@ -30,12 +30,20 @@ Session _session() => Session()
   ..loading = false;
 
 void main() {
-  testWidgets('الحقول القابلة للتعديل ثلاثة', (tester) async {
+  testWidgets('**ما يُكتب في النموذج اثنان، والرقمُ خرج منه**',
+      (tester) async {
+    // **والرقمُ ليس كسائر البيانات فلا يُحفظ معها:** تبديلُه يُبطل تأكيدَه
+    // في القاعدة فيهبط حاجزُ واتساب فورَ الحفظ. فصار سطراً بزرِّ تعديلٍ
+    // صريحٍ له ورقتُه — وهي `showPhoneEditSheet` المشحونةُ نفسُها.
     await tester.pumpWidget(_wrap(_session()));
     await tester.pumpAndSettle();
     expect(find.widgetWithText(TextField, 'الاسم الكامل'), findsOneWidget);
-    expect(find.widgetWithText(TextField, 'رقم الجوال'), findsOneWidget);
     expect(find.byType(DropdownButtonFormField<String>), findsOneWidget);
+
+    expect(find.widgetWithText(TextField, 'رقم الجوال'), findsNothing,
+        reason: 'ما زال الرقمُ حقلاً يُحفظ مع الاسم');
+    expect(find.byKey(const ValueKey('phone-row')), findsOneWidget);
+    expect(find.byKey(const ValueKey('phone-edit')), findsOneWidget);
   });
 
   testWidgets('والبريد يُعرض ولا يُكتب فيه', (tester) async {

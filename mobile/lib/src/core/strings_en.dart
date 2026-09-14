@@ -660,8 +660,7 @@ const Map<String, String> englishStrings = {
   'لا طرق دفع محفوظة': 'No saved payment methods',
   'عدّلتَ بياناتك ولم تحفظها. إن خرجتَ الآن ذهب ما كتبت.':
       'You changed your details and did not save them. Leaving now discards what you wrote.',
-  'اكتبه مع مفتاح الدولة، مثل +967 7XX XXX XXX.':
-      'Write it with the country code, like +967 7XX XXX XXX.',
+  'لم يُضَف بعد': 'Not added yet',
   'لماذا؟': 'Why?',
   'لا طلبات بعد': 'No requests yet',
   'لا': 'No',

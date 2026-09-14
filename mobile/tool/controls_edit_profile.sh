@@ -11,7 +11,11 @@ set -uo pipefail
 cd "$(dirname "$0")/.."
 command -v flutter >/dev/null || { echo "لا flutter في المسار"; exit 1; }
 
-SUITE=test/edit_profile_guard_test.dart
+# **وحزمتان لا واحدة.** ضماناتُ هذه الشاشة موزّعةٌ على ملفَّين: الحُرّاسُ
+# الجدد في `edit_profile_guard_test.dart`، وتحذيرُ تبديل الرقم في
+# `edit_profile_test.dart` منذ كُتب. وضابطٌ يشغّل إحداهما يمرّ على ما
+# تحرسه الأخرى — وقد وقع: كُسر التحذيرُ فبقيت الحزمةُ خضراء.
+SUITE="test/edit_profile_guard_test.dart test/edit_profile_test.dart"
 E=lib/src/screens/edit_profile.dart
 
 BACKUP=$(mktemp -d)
@@ -40,7 +44,7 @@ run() {
   local name="$1"; shift
   restore
   if ! "$@"; then echo "✗ $name — لم يقع الكسر"; FAIL=$((FAIL+1)); restore; return; fi
-  if timeout 300 flutter test "$SUITE" >/dev/null 2>&1; then
+  if timeout 400 flutter test $SUITE >/dev/null 2>&1; then
     echo "✗ $name — الحزمةُ خضراءُ والضمانةُ مكسورة"; FAIL=$((FAIL+1))
   else
     echo "✓ $name — سقط"; PASS=$((PASS+1))
@@ -49,7 +53,7 @@ run() {
 }
 
 echo "== الأساس =="
-if timeout 300 flutter test "$SUITE" >/dev/null 2>&1; then echo "أخضر."
+if timeout 400 flutter test $SUITE >/dev/null 2>&1; then echo "أخضر."
 else echo "الأساسُ أحمر — لا معنى للضوابط."; exit 1; fi
 
 echo; echo "== الضوابط =="
@@ -70,7 +74,6 @@ run "(ب) لمسُ الحقل يكفي" \
   sub "$E" \
 "    final changed = _picked != null ||
         _name.text.trim() != p.fullName.trim() ||
-        _phone.text.trim() != p.phone.trim() ||
         _governorateId != p.governorateId;" \
 "    final changed = true;"
 
@@ -113,14 +116,57 @@ run "(و) لا شارةَ تقول إنّ فيه ما لم يُحفظ" \
 # **والطيُّ غيرُ الحذف.** من يسأل «لماذا لا أعدّله؟» يجب أن يجد الجواب.
 run "(ز) شرحُ البريد يُحذف" \
   sub "$E" \
-"        if (_open) ...[" \
-"        if (false) ...["
+"    footer: _open
+        ? Text(" \
+"    footer: false
+        ? Text("
 
 # ── ح) والشرحُ يُعرض دائماً فيعود الثقل ────────────────────────────────────
 run "(ح) الشرحُ معروضٌ أبداً" \
   sub "$E" \
 "  bool _open = false;" \
 "  bool _open = true;"
+
+# ── ط) والرقمُ يعود حقلاً في النموذج ───────────────────────────────────────
+#
+# **وهذا ما طلبه صاحبُ المنصّة نصّاً.** والحقلُ يُخفي أنّ الرقمَ ليس كسائر
+# البيانات: تبديلُه يُبطل تأكيدَه فيهبط حاجزُ واتساب فورَ الحفظ.
+run "(ط) لا سطرَ للرقم" \
+  sub "$E" \
+"                _FactRow(
+                  key: const ValueKey('phone-row')," \
+"                _FactRow(
+                  key: const ValueKey('phone-row-x'),"
+
+# ── ي) وزرُّ التعديل لا يفتح شيئاً ──────────────────────────────────────────
+#
+# **ولا يسقط هذا بسؤال «أموجودٌ الزرّ؟».** زرٌّ يُضغط ولا يُفتح له شيءٌ
+# يُقرأ عطلاً.
+run "(ي) الزرُّ لا يفتح الورقة" \
+  sub "$E" \
+"    final changed = await showPhoneEditSheet(
+      context,
+      current: _profile?.phone ?? '',
+    );" \
+"    const String? changed = null;"
+
+# ── ك) وتحذيرُ التأكيد يُشال ────────────────────────────────────────────────
+#
+# يُبدّل الرقمَ ثمّ يهبط عليه الحاجزُ فيظنّ التطبيقَ أخرجه.
+run "(ك) لا تحذيرَ قبل التبديل" \
+  sub "$E" \
+"                  footer: widget.session.phoneGate.required_" \
+"                  footer: false"
+
+# ── ل) والتحذيرُ يُقال ولو كان الحاجزُ مطفأً ────────────────────────────────
+#
+# كذبٌ صغيرٌ يُخيف بلا سبب، ويُفقد الثقةَ بسائر ما تقوله الشاشة.
+run "(ل) التحذيرُ يُقال دائماً" \
+  sub "$E" \
+"                  footer: widget.session.phoneGate.required_
+                      ? Muted(" \
+"                  footer: true
+                      ? Muted("
 
 echo
 echo "الساقط: $PASS — الباقي: $FAIL"

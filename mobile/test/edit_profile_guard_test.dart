@@ -164,6 +164,46 @@ void main() {
     });
   });
 
+  group('**والرقمُ سطرٌ بزرِّ تعديل**', () {
+    testWidgets('يُعرض ولا يُكتب في نموذج', (tester) async {
+      await _open(tester);
+
+      expect(find.byKey(const ValueKey('phone-row')), findsOneWidget);
+      expect(find.widgetWithText(TextField, 'رقم الجوال'), findsNothing);
+    });
+
+    testWidgets('**وضغطُه يفتح ورقةَ التبديل المشحونة**', (tester) async {
+      // **ويُقاس ما فُتح لا وجودُ الزرّ:** زرٌّ لا يفتح شيئاً يمرّ على من
+      // يسأل «أموجودٌ الزرّ؟».
+      await _open(tester);
+      await tester.tap(find.byKey(const ValueKey('phone-edit')));
+      await _settle(tester);
+
+      // **ويُسأل مفتاحُ الورقة المشحونة لا عنوانٌ رسمتُه أنا.** رسمتُ في
+      // المقترح عنواناً «تعديل رقم الجوال»، وعنوانُها الحقيقيُّ «رقم
+      // الجوال» — فلو قيس الرسمُ لَمرّ الاختبارُ على ورقةٍ لا وجودَ لها.
+      expect(find.byKey(const ValueKey('phone-edit-field')), findsOneWidget,
+          reason: 'فُتحت الورقةُ بلا حقلٍ يُكتب فيه — أو لم تُفتح');
+    });
+
+    testWidgets('**ولا يُحرَّك زرُّ الحفظ بفتح الورقة**', (tester) async {
+      // الرقمُ يُحفظ في ورقته لا مع الاسم، فلا يجعل النموذجَ «معدَّلاً».
+      await _open(tester);
+      await tester.tap(find.byKey(const ValueKey('phone-edit')));
+      await _settle(tester);
+
+      // **وتُغلق الورقةُ بالملّاح لا بنقرةٍ على الحاجب.** النقرةُ تُسقطها
+      // وحقلُها ما زال يحمل التركيز، فيتعثّر نظامُ التركيز ويسقط
+      // **الاختبارُ التالي** بتأكيدٍ من إطار العمل لا علاقةَ له بما يُقاس.
+      tester.binding.focusManager.primaryFocus?.unfocus();
+      await _settle(tester);
+      tester.state<NavigatorState>(find.byType(Navigator)).pop();
+      await _settle(tester);
+
+      expect(_saveEnabled(tester), isFalse);
+    });
+  });
+
   group('**والبريدُ سطرٌ وشرحُه مطويّ**', () {
     testWidgets('يُعرض ولا يُثقل', (tester) async {
       await _open(tester);
