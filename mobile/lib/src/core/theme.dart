@@ -177,6 +177,17 @@ ThemeData buildTheme() {
         textStyle: const TextStyle(
           fontSize: 15,
           fontWeight: FontWeight.w600,
+        // **والعائلةُ تُذكر ولا يُكتفى بالاحتياط.** نمطُ الزرّ لا يرث
+        // `fontFamily` من الثيمة — يُستعمل كما هو. فبلا هذا السطر تصير
+        // العائلةُ الأولى عائلةَ النظام، وخطُّ العلامة يهبط إلى الاحتياط.
+        //
+        // **وما يُرى من ذلك ليس الحروفَ بل الفراغات:** الحروفُ العربيّةُ لا
+        // يملكها خطُّ النظام فتسقط إلى خطّ العلامة وتخرج صحيحة، **والمسافةُ
+        // بين الكلمات يملكها** فلا تسقط — فتُرسم الكلماتُ بخطٍّ والفراغاتُ
+        // بينها بخطٍّ آخر. وقيس الفرق: ١٣٠٫٧ بكسل تصير ١٠٧٫٨.
+        //
+        // والشرطةُ «—» لا يملكها خطُّ النظام كذلك، فكانت تخرج مربّعاً.
+        fontFamily: brandFont,
           fontFamilyFallback: arabicFallback,
         ),
       ),
@@ -190,6 +201,8 @@ ThemeData buildTheme() {
         textStyle: const TextStyle(
           fontSize: 15,
           fontWeight: FontWeight.w600,
+        // العلّةُ نفسُها التي في الزرّ المملوء أعلاه — وشرحُها هناك.
+        fontFamily: brandFont,
           fontFamilyFallback: arabicFallback,
         ),
       ),
@@ -220,6 +233,8 @@ ThemeData buildTheme() {
           fontSize: 11,
           height: 1.5,
           fontWeight: FontWeight.w500,
+          // العلّةُ نفسُها التي في الأزرار — وهذه تُرى في كلّ شاشة.
+          fontFamily: brandFont,
           fontFamilyFallback: arabicFallback,
         ),
       ),
