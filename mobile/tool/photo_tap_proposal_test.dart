@@ -27,7 +27,6 @@
 //
 // **وصورةُ الغلاف مركَّبةٌ بخوارزميّة** (`make_sample_cover.py`) لا مأخوذةٌ
 // من الشبكة.
-import 'dart:async';
 import 'dart:io';
 import 'dart:ui' as ui;
 

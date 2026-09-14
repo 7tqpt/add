@@ -9,6 +9,7 @@ import '../data/api.dart';
 import '../data/models.dart';
 import '../data/supabase.dart';
 import '../ui/kit.dart';
+import '../ui/photo_view.dart';
 import '../ui/pick_image.dart';
 import 'documents.dart';
 import 'labels.dart';
@@ -402,7 +403,16 @@ class _LogoState extends State<_Logo> {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: _busy ? null : _choose,
+      // **ويُعرض ثمّ يُبدَّل.** اختار صاحبُ المنصّة (ب): الضغطةُ تفتح
+      // الصورةَ ملءَ الشاشة، وفيها «تغيير». ومن لا شعارَ له يمضي إلى
+      // الاختيار مباشرةً — لا شاشةَ سوداءَ فارغة.
+      onTap: _busy
+          ? null
+          : () => openPhoto(
+                context,
+                url: Api.avatarUrl(widget.profile.logoPath),
+                onEdit: _choose,
+              ),
       child: Stack(
         clipBehavior: Clip.none,
         children: [

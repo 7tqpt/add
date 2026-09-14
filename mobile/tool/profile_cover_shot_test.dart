@@ -36,7 +36,7 @@ import 'package:aras/src/core/i18n.dart';
 import 'package:aras/src/core/session.dart';
 import 'package:aras/src/core/theme.dart';
 import 'package:aras/src/screens/account.dart';
-import 'package:aras/src/screens/provider_public.dart';
+import 'package:aras/src/ui/photo_view.dart';
 import 'package:aras/src/ui/kit.dart';
 
 // ── الخطوط ───────────────────────────────────────────────────────────────────
@@ -323,7 +323,7 @@ void main() {
   final out = Platform.environment['SHOTS'] ?? '/tmp/shots';
 
   testWidgets('اللوح', (tester) async {
-    tester.view.physicalSize = const Size(3900, 2200);
+    tester.view.physicalSize = const Size(5200, 2200);
     tester.view.devicePixelRatio = 3.0;
     addTearDown(tester.view.reset);
 
@@ -334,9 +334,14 @@ void main() {
       ),
       (label: 'حسابي — وقد رُفع غلاف', screen: const _WithCover()),
       (
-        label: 'صفحةُ المزوّد كما يراها العميل',
-        screen: const PublicProviderScreen(
-            providerId: 'p1', name: 'قاعة التاج'),
+        label: 'الضغطةُ تفتح الصورةَ ملءَ الشاشة',
+        screen: const PhotoViewScreen(
+            url: 'https://example.test/u1/cover.jpg'),
+      ),
+      (
+        label: 'وهي عند صاحبها — وفيها «تغيير»',
+        screen: PhotoViewScreen(
+            url: 'https://example.test/u1/cover.jpg', onEdit: () {}),
       ),
     ])));
     await tester.pump();
@@ -345,9 +350,10 @@ void main() {
 
     // **ولا يُصدَّق أنّ الصورةَ وصلت: تُسأل الشجرة.** غلافٌ لم يُفكّ يخرج
     // تدرّجاً والصورةُ تقول إنّ التنفيذَ لم يقع.
-    expect(find.byType(ProfileHeader), findsNWidgets(2));
-    // اثنان: «حسابي» الحقيقيّة، وخليّةُ الغلاف — وكلتاهما تملك رفعاً.
+    expect(find.byType(PhotoViewScreen), findsNWidgets(2));
     expect(find.text('تغيير الغلاف'), findsNWidgets(2));
+    // و«تغيير» في العارض الذي لصاحبه وحدَه.
+    expect(find.text('تغيير'), findsOneWidget);
     expect(find.byType(AccountScreen), findsOneWidget);
     expect(tester.takeException(), isNull);
 
