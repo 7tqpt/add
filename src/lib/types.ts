@@ -272,6 +272,19 @@ export interface Booking {
   confirmed_at: string | null
   completed_at: string | null
   cancelled_at: string | null
+  /**
+   * When the provider asked the team to approve completion — null if they
+   * haven't.
+   *
+   * **Not a seventh `status`.** The booking stays `confirmed` for the
+   * customer and here; only the provider's app shows "awaiting review". A
+   * seventh status would touch every constraint, screen and match in both
+   * apps and this dashboard, and would show the customer a state that does
+   * not concern them.
+   */
+  completion_requested_at: string | null
+  completion_rejected_at: string | null
+  completion_reject_reason: string
 }
 
 // ---------------------------------------------------------------------------

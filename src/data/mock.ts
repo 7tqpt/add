@@ -529,6 +529,11 @@ function bookingStatusFor(planPast: boolean, i: number): BookingStatus {
   // A booking still awaiting a reply after the wedding has passed is not
   // "pending" — the response window closed on it.
   if (i % 5 === 0) return planPast ? 'expired' : 'pending_provider'
+  // A wedding that has happened but is still `confirmed` is the new middle
+  // step: the provider asked us to approve completion and we have not yet.
+  // Without a few of these the review filter opens on an empty list and the
+  // admin reads that as broken.
+  if (planPast && i % 7 === 0) return 'confirmed'
   return planPast ? 'completed' : 'confirmed'
 }
 
@@ -602,6 +607,13 @@ const planBookings: Booking[] = planDrafts.flatMap((plan, planIndex) => {
         status === 'cancelled' || status === 'rejected' || status === 'expired'
           ? isoAt(intBetween(3, 90), 13)
           : null,
+      // طابور المراجعة: بعض المؤكَّدة التي مضى موعدها طلب أصحابها اعتماد
+      // التنفيذ. وبلا واحدٍ منها يفتح المسؤول المرشِّح على قائمةٍ فارغة
+      // ويظنّه معطوباً.
+      completion_requested_at:
+        status === 'confirmed' && planPast ? isoAt(intBetween(1, 6), 12) : null,
+      completion_rejected_at: null,
+      completion_reject_reason: '',
     }
   })
 })
@@ -650,6 +662,9 @@ const doubleRequests: Booking[] = planDrafts
         confirmed_at: null,
         completed_at: null,
         cancelled_at: null,
+        completion_requested_at: null,
+        completion_rejected_at: null,
+        completion_reject_reason: '',
         created_at: isoAt(intBetween(1, 12), 10 + i),
       },
     ]

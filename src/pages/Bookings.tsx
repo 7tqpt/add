@@ -13,13 +13,27 @@ import { cn } from '@/lib/cn'
 import { formatDate, formatMoney, formatTime } from '@/lib/format'
 import type { BookingStatus } from '@/lib/types'
 import { mockCategories } from '@/data/mock'
-import { BOOKING_STATUS_LABEL, listBookings } from '@/services/bookings'
+import {
+  approveCompletion,
+  BOOKING_STATUS_LABEL,
+  listBookings,
+  rejectCompletion,
+  type BookingFilter,
+} from '@/services/bookings'
+import type { Booking } from '@/lib/types'
 import { GOVERNORATES } from '@/services/directory'
 
 const PAGE_SIZE = 10
 const EXPORT_LIMIT = 5000
 
 const CATEGORY_NAMES = mockCategories.map((category) => category.name)
+
+/**
+ * The queue label — one constant, used by the filter, the badge and the
+ * export, so the three cannot drift into three different words for the same
+ * thing.
+ */
+const COMPLETION_REVIEW_LABEL = 'قيد مراجعة التنفيذ'
 
 export const BOOKING_STATUS_TONE: Record<BookingStatus, Tone> = {
   pending_provider: 'warning',
@@ -39,7 +53,8 @@ const RANGES: { value: number | 'all'; label: string }[] = [
 
 export function BookingsPage() {
   const [search, setSearch] = useState('')
-  const [status, setStatus] = useState<BookingStatus | 'all'>('all')
+  const [status, setStatus] = useState<BookingFilter>('all')
+  const [busyId, setBusyId] = useState<string | null>(null)
   const [category, setCategory] = useState<string | 'all'>('all')
   const [governorate, setGovernorate] = useState<string | 'all'>('all')
   const [days, setDays] = useState<number | 'all'>('all')
@@ -80,6 +95,51 @@ export function BookingsPage() {
     return () => clearTimeout(timer)
   }, [toast])
 
+  /**
+   * اعتمادُ التنفيذ — وبه **يتحرّك المال**: تُحتسب مستحقّاتُ المزوّد
+   * ويُفتح للعميل بابُ التقييم. فلا يقع بلمسةٍ عابرة.
+   */
+  const approve = useCallback(
+    async (booking: Booking) => {
+      if (!window.confirm(`اعتماد تنفيذ ${booking.reference}؟ تُحتسب مستحقّات المزوّد.`)) {
+        return
+      }
+      setBusyId(booking.id)
+      try {
+        await approveCompletion(booking)
+        setToast('اعتُمد التنفيذ.')
+        reload()
+      } catch (err) {
+        setToast(err instanceof Error ? err.message : 'تعذّر الاعتماد.')
+      } finally {
+        setBusyId(null)
+      }
+    },
+    [reload],
+  )
+
+  /**
+   * الردُّ **بسببٍ لا بصمت**: من رُدّ طلبُه بلا كلمةٍ يُعيده كما هو، فيدور
+   * الطابورُ على نفسه. والسببُ يصل المزوّدَ إشعاراً في تطبيقه.
+   */
+  const reject = useCallback(
+    async (booking: Booking) => {
+      const reason = window.prompt(`سبب ردّ ${booking.reference} — يقرؤه مقدّم الخدمة:`)
+      if (reason === null) return
+      setBusyId(booking.id)
+      try {
+        await rejectCompletion(booking, reason)
+        setToast('رُدَّ الطلبُ ووصل المزوّدَ سببُه.')
+        reload()
+      } catch (err) {
+        setToast(err instanceof Error ? err.message : 'تعذّر الردّ.')
+      } finally {
+        setBusyId(null)
+      }
+    },
+    [reload],
+  )
+
   const buildExport = useCallback(async () => {
     const all = await listBookings({
       search: debouncedSearch,
@@ -115,7 +175,9 @@ export function BookingsPage() {
         booking.category_name,
         booking.governorate,
         formatDate(booking.event_date),
-        BOOKING_STATUS_LABEL[booking.status],
+        booking.completion_requested_at
+          ? COMPLETION_REVIEW_LABEL
+          : BOOKING_STATUS_LABEL[booking.status],
         booking.total_price,
         booking.deposit_amount,
         booking.paid_amount,
@@ -148,10 +210,14 @@ export function BookingsPage() {
         <div className="w-48">
           <Select
             value={status}
-            onChange={(event) => setStatus(event.target.value as BookingStatus | 'all')}
+            onChange={(event) => setStatus(event.target.value as BookingFilter)}
             aria-label="تصفية حسب الحالة"
           >
             <option value="all">كل الحالات</option>
+            {/* **ليست حالةً في القاعدة.** «مؤكَّدٌ وطلب صاحبُه اعتمادَ
+                التنفيذ» — واختار صاحبُ المنصّة أن تركب هنا لا في صفحةٍ
+                مستقلّة. */}
+            <option value="completion_review">{COMPLETION_REVIEW_LABEL}</option>
             {(Object.keys(BOOKING_STATUS_LABEL) as BookingStatus[]).map((key) => (
               <option key={key} value={key}>
                 {BOOKING_STATUS_LABEL[key]}
@@ -289,12 +355,40 @@ export function BookingsPage() {
                       {formatMoney(booking.paid_amount)}
                     </td>
                     <td className="px-4 py-3">
-                      <Badge
-                        tone={BOOKING_STATUS_TONE[booking.status]}
-                        icon={booking.status === 'expired' ? XCircle : true}
-                      >
-                        {BOOKING_STATUS_LABEL[booking.status]}
-                      </Badge>
+                      {booking.completion_requested_at ? (
+                        <div className="flex flex-wrap items-center justify-end gap-2">
+                          <Badge tone="warning">{COMPLETION_REVIEW_LABEL}</Badge>
+                          <button
+                            type="button"
+                            disabled={busyId === booking.id}
+                            onClick={() => void approve(booking)}
+                            className="rounded-[10px] px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
+                            style={{ background: 'var(--good)' }}
+                          >
+                            اعتماد التنفيذ
+                          </button>
+                          <button
+                            type="button"
+                            disabled={busyId === booking.id}
+                            onClick={() => void reject(booking)}
+                            className="rounded-[10px] border px-3 py-1.5 text-xs font-semibold disabled:opacity-50"
+                            style={{
+                              color: 'var(--critical)',
+                              borderColor:
+                                'color-mix(in oklab, var(--critical) 34%, transparent)',
+                            }}
+                          >
+                            رفض
+                          </button>
+                        </div>
+                      ) : (
+                        <Badge
+                          tone={BOOKING_STATUS_TONE[booking.status]}
+                          icon={booking.status === 'expired' ? XCircle : true}
+                        >
+                          {BOOKING_STATUS_LABEL[booking.status]}
+                        </Badge>
+                      )}
                     </td>
                   </tr>
                 ))}
