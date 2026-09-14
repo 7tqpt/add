@@ -57,6 +57,13 @@ class _WelcomeScreenState extends State<WelcomeScreen>
     super.dispose();
   }
 
+  void _open({required bool signUp}) => Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) =>
+              AuthScreen(session: widget.session, startOnSignUp: signUp),
+        ),
+      );
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -74,38 +81,71 @@ class _WelcomeScreenState extends State<WelcomeScreen>
               //
               // **ويصعد آخرَ الجميع.** الزرُّ دعوةٌ إلى الفعل، ودعوةٌ تسبق
               // التعريفَ بالنفس تُضغط قبل أن يُقرأ ما فوقها.
+              // ── بابان لا بابٌ واحد ────────────────────────────────────
+              //
+              // كان زرّاً واحداً اسمُه «ابدأ رحلتك» يفتح **إنشاء الحساب**،
+              // والعائدُ يبحث عن بابه في قاع شاشةٍ ليست له. فقال صاحبُ
+              // المنصّة: «عند ضغط ابدأ رحلتك خلّه ينطلق إلى تسجيل الدخول
+              // وليس العكس»، ثمّ اختار من ثلاثٍ عُرضت عليه **(ج): زرّان**.
+              //
+              // **و«دخول» هو الذهبيُّ.** شاشةُ الترحيب لا تُعرض إلّا لمن لا
+              // جلسةَ له — ومن سجّل مرّةً يفتح التطبيق على شاشته مباشرةً.
+              // فمن يراها إمّا جديدٌ لم يسجّل قطّ، وإمّا عائدٌ خرج أو بدّل
+              // جهازَه. والأوّلُ يأتي مرّةً واحدةً في عمره، والثاني يعود.
+              //
+              // **ولا صفحةَ بينهما.** كانت «اختر نوع الحساب» تسبق التسجيل
+              // فحُذفت بأمر صاحب المنصّة: خطوةٌ تُسأل قبل أن يُعرف السائلُ
+              // من هو. والسؤالُ لم يسقط — «أكمل ملفك» تسأله بنفسها بعد
+              // التسجيل حين لا تجد جواباً قبلها (`signUpIntent` فارغ).
               Stage(
                 t: _c,
                 from: 0.78,
                 to: 1,
-                child: FilledButton(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.goldOnAccent,
-                    foregroundColor: AppColors.accentDeep,
-                    minimumSize: Size.fromHeight(52),
-                  ),
-                  // **ويفتح التسجيلَ مباشرةً.** كانت بينهما صفحةُ «اختر
-                  // نوع الحساب»، فحُذفت بأمر صاحب المنصّة: خطوةٌ تسبق
-                  // التسجيلَ تُسأل قبل أن يُعرف السائلُ من هو.
-                  //
-                  // **والسؤالُ لم يسقط** — «أكمل ملفك» تسأله بنفسها بعد
-                  // التسجيل حين لا تجد جواباً قبلها (`signUpIntent` فارغ).
-                  // فشارةُ «عروس/عريس» باقيةٌ، وبابُ مقدّم الخدمة يُفتح له
-                  // فورَ إكمال ملفّه كما كان.
-                  onPressed: () => Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => AuthScreen(
-                          session: widget.session, startOnSignUp: true),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // زرٌّ ذهبيٌّ بحبرٍ نبيذيّ — لا نبيذيٌّ على نبيذيّ
+                    // فيختفي. والأبيضُ على الذهب لا يُقرأ (‎١٫٦٦:١‎)،
+                    // والنبيذيُّ عليه ‎٨٫٢٨:١‎.
+                    FilledButton(
+                      key: const ValueKey('welcome-sign-in'),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.goldOnAccent,
+                        foregroundColor: AppColors.accentDeep,
+                        minimumSize: Size.fromHeight(52),
+                      ),
+                      onPressed: () => _open(signUp: false),
+                      child: Text(
+                        tr('دخول'),
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          fontFamilyFallback: arabicFallback,
+                        ),
+                      ),
                     ),
-                  ),
-                  child: Text(
-                    tr('ابدأ رحلتك'),
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      fontFamilyFallback: arabicFallback,
+                    SizedBox(height: Space.md),
+                    // **ومحاطٌ بالذهب لا شفّافٌ بحرفٍ أبيض.** إطارٌ باهتٌ
+                    // على تدرّجٍ نبيذيٍّ لا يُرى، فيُقرأ الزرُّ نصّاً لا
+                    // باباً — وهو بابُ كلِّ قادمٍ جديدٍ إلى المنصّة.
+                    OutlinedButton(
+                      key: const ValueKey('welcome-sign-up'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.goldOnAccent,
+                        side: BorderSide(color: AppColors.goldOnAccent),
+                        minimumSize: Size.fromHeight(52),
+                      ),
+                      onPressed: () => _open(signUp: true),
+                      child: Text(
+                        tr('إنشاء حساب'),
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          fontFamilyFallback: arabicFallback,
+                        ),
+                      ),
                     ),
-                  ),
+                  ],
                 ),
               ),
             ],

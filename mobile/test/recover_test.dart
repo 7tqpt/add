@@ -443,10 +443,9 @@ void main() {
       await _settle(tester);
       expect(find.byType(WelcomeScreen), findsOneWidget);
 
-      await tester.tap(find.text('ابدأ رحلتك'));
-      await _settle(tester);
-      // تُفتح على «إنشاء حساب» — و«نسيت» في وجه الدخول وحدَه.
-      await tester.tap(find.byKey(const ValueKey('switch-face')));
+      // **والبابُ الذهبيُّ يفتح الدخولَ مباشرةً** — وفيه «نسيت كلمة
+      // المرور». وكان قبلُ يفتح الإنشاءَ فيُقلَب الوجهُ باليد.
+      await tester.tap(find.byKey(const ValueKey('welcome-sign-in')));
       await _settle(tester);
 
       await _openRecover(tester, email: 'ayman@sdd.company');

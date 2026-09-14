@@ -1,13 +1,16 @@
-// **مقترحٌ لا تنفيذ.** «عند ضغط ابدأ رحلتك خلّه ينطلق إلى تسجيل الدخول وليس
-// إنشاء الحساب» — يُعرض قبل أن يُلمَس `lib/`.
+// راسمُ بابَي شاشة الترحيب **بعد التنفيذ** — ليس اختباراً، ولا يُدرج في
+// الحزمة (خارج `test/`).
 //
-//   SHOTS=<مجلّد> flutter test tool/welcome_face_proposal_test.dart
+//   SHOTS=<مجلّد> flutter test tool/welcome_doors_shot_test.dart
+//
+// كان مقترحاً عُرض على صاحب المنصّة قبل أن يُلمَس `lib/`، فاختار من ثلاثٍ
+// **(ج): زرّان**. فسقط المقترحُ وبقيت الشاشةُ الحقيقيّة.
 //
 // ── ولا مرسومَ هنا ──────────────────────────────────────────────────────────
 //
-// **الخلايا الثلاثُ مصوَّرةٌ كلُّها من الشيفرة المدفوعة.** الوجهان موجودان
-// في `AuthScreen` اليوم — الفرقُ بينهما مُعامِلٌ واحدٌ (`startOnSignUp`)، لا
-// شيفرةٌ تُكتب. فما يُرى هنا هو ما سيُرى في الجهاز حرفاً بحرف.
+// **الخلايا الثلاثُ مصوَّرةٌ كلُّها من الشيفرة المدفوعة** — `WelcomeScreen`
+// ببابيها، ووجها `AuthScreen` اللذان يفتحانهما. والخطواتُ تُبلَغ بالضغط لا
+// بالتلقين: يُضغط بابٌ في لوحٍ ثمّ يُصوَّر ما فُتح.
 import 'dart:io';
 import 'dart:ui' as ui;
 
@@ -19,7 +22,6 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:aras/src/core/session.dart';
 import 'package:aras/src/core/theme.dart';
-import 'package:aras/src/screens/auth.dart';
 import 'package:aras/src/screens/welcome.dart';
 
 Future<void> _load(String family, List<String> paths) async {
@@ -66,6 +68,27 @@ Future<void> _settle(WidgetTester tester) async {
 }
 
 Session _guest() => Session()..loading = false;
+
+/// خليّةٌ فيها الترحيبُ الحقيقيُّ يُضغط بابُه فيُفتح ما يُفتح.
+///
+/// **وملاحٌ لكلّ خليّة** — وإلّا دُفعت الشاشةُ فوق اللوح كلِّه.
+class _Door extends StatelessWidget {
+  const _Door({required this.session});
+  final Session session;
+
+  @override
+  Widget build(BuildContext context) => Navigator(
+        onGenerateInitialRoutes: (nav, _) => [
+          MaterialPageRoute<void>(builder: (_) => WelcomeScreen(session: session)),
+        ],
+      );
+}
+
+/// عنصرٌ داخلَ خليّةٍ بعينها — واللوحُ فيه ثلاثُ شاشاتٍ متشابهةٌ المفاتيح.
+Finder _in(int cell, Key key) => find.descendant(
+      of: find.byKey(ValueKey('cell$cell')),
+      matching: find.byKey(key),
+    );
 
 class _Sheet extends StatelessWidget {
   const _Sheet({required this.cells});
@@ -161,32 +184,40 @@ void main() {
 
     await tester.pumpWidget(_wrap(_Sheet(cells: [
       (
-        label: 'الترحيب — ومنه يُضغط «ابدأ رحلتك»',
-        sub: 'وهو زرُّها الوحيد',
+        label: 'الترحيب — وفيه بابان',
+        sub: 'الذهبيُّ «دخول»، والمحاطُ «إنشاء حساب»',
         screen: WelcomeScreen(session: _guest()),
       ),
       (
-        label: 'اليوم — ينطلق إلى «إنشاء حساب»',
-        sub: 'وبابُ العائد زرٌّ محاطٌ في قاعها: «دخول»',
-        screen: AuthScreen(session: _guest(), startOnSignUp: true),
+        label: 'الذهبيُّ يفتح «دخول الحساب»',
+        sub: 'وفيه «نسيت كلمة المرور» و«تذكّرني»',
+        screen: _Door(session: _guest()),
       ),
       (
-        label: 'المقترح — ينطلق إلى «دخول الحساب»',
-        sub: 'وبابُ الجديد زرٌّ محاطٌ في قاعها: «إنشاء حساب»',
-        screen: AuthScreen(session: _guest()),
+        label: 'والمحاطُ يفتح «إنشاء حساب»',
+        sub: 'وفيه التأكيدُ الذي أُضيف قبل قليل',
+        screen: _Door(session: _guest()),
       ),
     ])));
     await _settle(tester);
     await _settleImages(tester);
 
-    // **ولا يُصدَّق أنّ الوجهين افترقا: تُسأل الشجرة.**
-    expect(find.text('ابدأ رحلتك'), findsOneWidget);
-    expect(find.text('إنشاء حساب'), findsNWidgets(2)); // عنوانُ (٢) وزرُّ (٣)
+    // ── تُضغط الأبوابُ ثمّ يُصوَّر ما فُتح ────────────────────────────────
+    await tester.tap(_in(1, const ValueKey('welcome-sign-in')));
+    await _settle(tester);
+    await tester.tap(_in(2, const ValueKey('welcome-sign-up')));
+    await _settle(tester);
+    await _settleImages(tester);
+
+    // **ولا يُصدَّق أنّ البابين افترقا: تُسأل الشجرة.**
     expect(find.text('دخول الحساب'), findsOneWidget);
+    expect(find.widgetWithText(FilledButton, 'إنشاء الحساب'), findsOneWidget);
     expect(find.byKey(const ValueKey('remember-me')), findsOneWidget);
+    expect(find.byKey(const ValueKey('signup-confirm-password')),
+        findsOneWidget);
     expect(tester.takeException(), isNull);
 
     await _shoot(tester, find.byKey(const ValueKey('shot')),
-        '$out/welcome-face.png');
+        '$out/welcome-doors.png');
   });
 }

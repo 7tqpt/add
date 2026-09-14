@@ -123,7 +123,6 @@ const Map<String, String> englishStrings = {
   'ابحث عن…': 'Search…',
   'ابدأ الحديث': 'Start the conversation',
   'ابدأ خطة عرسك': 'Start your wedding plan',
-  'ابدأ رحلتك': 'Start your journey',
   'ابدأ من «استكشف» واحجز خدمتك القادمة': 'Start from Explore and book your next service',
   'ابدأ من «استكشف» واختر أول خدمة لعرسك.': 'Start from Explore and pick the first service for your wedding.',
   'اثنين': 'Mon',
