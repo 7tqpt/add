@@ -156,21 +156,14 @@ class _ServicesScreenState extends State<ServicesScreen> {
               final s = rows[i];
               return FadeSlideIn(index: i, child: AppCard(
                 children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(child: SectionTitle(s.title)),
-                      const SizedBox(width: Space.sm),
-                      // المعطَّلة تحمل شارتها: بلا علامةٍ ظاهرة يظنّ صاحبها أنها
-                      // معروضة، ويسأل لماذا لا تصله طلبات.
-                      StatusBadge(
-                        s.isActive ? tr('معروضة') : tr('موقوفة'),
-                        color: s.isActive ? AppColors.good : AppColors.muted,
-                      ),
-                    ],
+                  // المعطَّلة تحمل شارتها: بلا علامةٍ ظاهرة يظنّ صاحبها أنها
+                  // معروضة، ويسأل لماذا لا تصله طلبات.
+                  CardTitleBar(
+                    s.title,
+                    badge: s.isActive ? tr('معروضة') : tr('موقوفة'),
                   ),
                   if (s.description.isNotEmpty) ...[
-                    const SizedBox(height: Space.xs),
+                    const SizedBox(height: Space.sm),
                     Muted(s.description),
                   ],
                   const SizedBox(height: Space.sm),

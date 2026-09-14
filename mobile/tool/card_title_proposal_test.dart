@@ -27,7 +27,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:aras/src/core/format.dart';
 import 'package:aras/src/core/i18n.dart';
 import 'package:aras/src/core/session.dart';
 import 'package:aras/src/core/theme.dart';

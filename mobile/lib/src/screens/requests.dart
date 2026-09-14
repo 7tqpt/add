@@ -126,27 +126,11 @@ class _RequestsScreenState extends State<RequestsScreen> {
               final busy = _busyId == b.id;
               return FadeSlideIn(index: i, child: AppCard(
                 children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          b.serviceTitle,
-                          style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.ink,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: Space.sm),
-                      StatusBadge(
-                        bookingStatusLabel(b.status),
-                        color: bookingStatusColor(b.status),
-                      ),
-                    ],
+                  CardTitleBar(
+                    b.serviceTitle,
+                    badge: bookingStatusLabel(b.status),
                   ),
-                  const SizedBox(height: Space.xs),
+                  const SizedBox(height: Space.sm),
                   Muted('${b.userName} · ${formatCount(b.guestsCount, guestForms)}'),
                   const SizedBox(height: Space.sm),
                   Text(

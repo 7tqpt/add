@@ -983,6 +983,76 @@ class Rating extends StatelessWidget {
   }
 }
 
+/// عنوانُ البطاقة — شريطٌ نبيذيٌّ وحبرٌ أبيض، والشارةُ في طرفه.
+///
+/// اختاره صاحبُ المنصّة من ثلاثةِ أشكالٍ عُرضت عليه: **(ج) شريطٌ داخلَ
+/// الحشوة** — بعرض السطر لا بعرض البطاقة، فتبقى للبطاقة حافّتُها البيضاء.
+///
+/// **وواحدٌ في موضعين لا نسختان.** «خدماتي» و«الطلبات» يعرضان العنوانَ
+/// نفسَه، ونسختان متطابقتان تفترقان بمرور الوقت: يُعدَّل اللونُ في إحداهما
+/// فتبقى الأخرى، فيظنّ المزوّدُ أنّهما شيئان.
+///
+/// ── والشارةُ تفقد لونَها هنا، وقد قيل له ذلك ────────────────────────────
+///
+/// `StatusBadge` يرسم «معروضة» بأخضرَ على شفّاف، **وأخضرُ على النبيذيّ لا
+/// يُقرأ — ‎١٫٧:١‎**. فشارةُ هذا الشريط بيضاءُ كلُّها: تُقرأ الحالُ من
+/// الكلمة لا من اللمحة. وهو ثمنُ الشكل الذي اختاره بعد أن عُرض عليه.
+class CardTitleBar extends StatelessWidget {
+  const CardTitleBar(this.title, {super.key, this.badge});
+  final String title;
+
+  /// نصُّ الحالة — أو `null` فلا شارة.
+  final String? badge;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: double.infinity,
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+    decoration: BoxDecoration(
+      color: AppColors.accent,
+      borderRadius: BorderRadius.circular(12),
+    ),
+    child: Row(
+      children: [
+        Expanded(
+          // سطرٌ واحدٌ وقصٌّ عند الضيق: عنوانٌ يلتفّ سطرين داخل شريطٍ ملوَّن
+          // يجعل الشريطَ كتلةً، واسمُ الخدمة يكتبه صاحبُها فلا حدَّ لطوله.
+          child: Text(
+            title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: AppColors.accentInk,
+            ),
+          ),
+        ),
+        if (badge != null) ...[
+          const SizedBox(width: Space.sm),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              border: Border.all(color: AppColors.accentInk),
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Text(
+              badge!,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 11,
+                color: AppColors.accentInk,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ],
+    ),
+  );
+}
+
 /// شارة حالة — لون وحدّ، مع نصّ يُقرأ بلا الاعتماد على اللون.
 class StatusBadge extends StatelessWidget {
   const StatusBadge(this.label, {super.key, this.color = AppColors.muted});
