@@ -13,6 +13,7 @@ import '../ui/kit.dart';
 import '../ui/map_open.dart';
 import 'chat.dart';
 import 'labels.dart';
+import 'money.dart';
 
 class RequestsScreen extends StatefulWidget {
   const RequestsScreen({super.key, required this.session});
@@ -84,12 +85,31 @@ class _RequestsScreenState extends State<RequestsScreen> {
     }
   }
 
-  Future<void> _complete(String id) async {
+  /// المزوّد يطلب اعتمادَ التنفيذ — بسؤالٍ قبله.
+  ///
+  /// **ولا يُتمّ الحجزَ بنفسه.** `api_complete_booking` صارت للإدارة وحدَها،
+  /// وهذا الطلبُ يختم وقتاً لا غير. فلو نُودي من ملفِّ APK مفكوكٍ ألفَ مرّةٍ
+  /// لم يتحرّك ريالٌ واحد.
+  ///
+  /// والسؤالُ يقول ما سيقع — لا «هل أنت متأكّد؟» وحدَها: من لا يعرف أنّ
+  /// مالَه ينتظر مراجعةً يظنّ التطبيقَ معطوباً حين لا يصله شيء.
+  Future<void> _requestCompletion(String id) async {
+    final ok = await confirmChoice(
+      context,
+      title: tr('تأكيد التنفيذ'),
+      body: tr('هل أنت متأكّد أنّ الحجز نُفِّذ؟ يُرسَل إلى الإدارة للمراجعة، '
+          'وتُحتسب مستحقّاتك بعد موافقتها.'),
+      confirm: tr('نعم، نُفِّذ'),
+      cancel: tr('لا'),
+      tone: AppColors.good,
+    );
+    if (ok != true || !mounted) return;
+
     setState(() => _busyId = id);
     try {
-      await Api.completeBooking(id);
+      await Api.requestCompletion(id);
       if (!mounted) return;
-      showMessage(context, tr('سُجّل تنفيذ الحجز، وفُتح للعميل باب التقييم.'));
+      showMessage(context, tr('أُرسل إلى الإدارة للمراجعة.'));
       _reload();
     } catch (e) {
       if (mounted) showMessage(context, messageOf(e));
@@ -195,12 +215,30 @@ class _RequestsScreenState extends State<RequestsScreen> {
                       ],
                     ),
                   ],
+                  // ── المؤكَّد: طلبُ اعتمادٍ، أو انتظارُ الإدارة ──────────
                   if (b.status == BookingStatus.confirmed) ...[
                     const SizedBox(height: Space.md),
-                    OutlinedButton(
-                      onPressed: busy ? null : () => _complete(b.id),
-                      child: Text(tr('تأكيد التنفيذ')),
-                    ),
+                    if (b.awaitingCompletionReview)
+                      const _ReviewBar()
+                    else ...[
+                      // **وسببُ الردّ فوق الزرّ لا تحته.** من رُدّ طلبُه
+                      // ولم يرَ السببَ أعاده كما هو، فيدور الطابورُ على
+                      // نفسه.
+                      if (b.completionRejectReason.isNotEmpty) ...[
+                        _RejectNote(b.completionRejectReason),
+                        const SizedBox(height: Space.sm),
+                      ],
+                      FilledButton(
+                        key: ValueKey('request-completion-${b.id}'),
+                        onPressed:
+                            busy ? null : () => _requestCompletion(b.id),
+                        // أخضرُ لا نبيذيّ: ختمُ عملٍ تمّ لا بابٌ إلى شيء.
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.good,
+                        ),
+                        child: Text(tr('تأكيد التنفيذ')),
+                      ),
+                    ],
                   ],
                   const SizedBox(height: Space.sm),
                   // ── قاعُ البطاقة: خبرٌ أو باب ──────────────────────────
@@ -218,7 +256,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
                   // **والمحادثةُ لا تضيع بعد الختم** — تبقى في «الرسائل»،
                   // لكنّها تبعد خطوتين. وقد قيل له ذلك قبل أن يختار.
                   if (b.status == BookingStatus.completed)
-                    const _DoneBar()
+                    _DoneBar(session: widget.session)
                   else
                     OutlinedButton.icon(
                       onPressed: busy ? null : () => _message(b),
@@ -237,39 +275,145 @@ class _RequestsScreenState extends State<RequestsScreen> {
 
 
 
-/// خَتمُ الحجز المنفَّذ — شريطٌ أخضرُ مصبوغٌ في قاع البطاقة.
+/// خَتمُ الحجز المنفَّذ — شريطٌ أخضرُ مصبوغٌ في قاع البطاقة، **ويُضغط**.
 ///
-/// **وخبرٌ لا زرّ.** لا `onPressed` ولا شكلَ زرّ: ما يُشبه الزرَّ يُلمَس،
-/// ولمسةٌ لا تفعل شيئاً تُقرأ عطلاً.
+/// اختار صاحبُ المنصّة الشكلَ **(ب)** من ثلاثةٍ عُرضت عليه، ثمّ طلب أن يصير
+/// باباً: «خلّه قابل للضغط وعند ضغط يروح للمستحقات».
 ///
-/// **والأيقونةُ لا تحمل المعنى وحدَها.** «تم تنفيذ الحجز» مكتوبةٌ إلى
+/// **والسهمُ هو ما يقول إنّه باب.** شريطٌ يُضغط بلا علامةٍ تدلّ عليه لا
+/// يعرفه أحد، فيبقى الطريقُ إلى المستحقّات مقفولاً وهو مفتوح.
+///
+/// **والأيقونةُ لا تحمل المعنى وحدَها:** «تم تنفيذ الحجز» مكتوبةٌ إلى
 /// جانبها، فمن لا يفرّق الأخضرَ من الأحمر يقرؤها — وهي العادةُ نفسُها في
 /// `StatusBadge`.
 class _DoneBar extends StatelessWidget {
-  const _DoneBar();
+  const _DoneBar({required this.session});
+
+  final Session session;
+
+  @override
+  Widget build(BuildContext context) => Material(
+    // صبغةٌ خفيفةٌ لا خضرةٌ صمّاء: القاعُ يُملأ ولا يُصرَخ به، والحجزُ
+    // المنفَّذُ خبرٌ انتهى لا شيءٌ يُنتظر.
+    color: AppColors.good.withValues(alpha: Tint.chip),
+    borderRadius: BorderRadius.circular(12),
+    child: InkWell(
+      key: const ValueKey('booking-done'),
+      borderRadius: BorderRadius.circular(12),
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => EarningsScreen(session: session)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+        child: Row(
+          children: [
+            const Icon(Icons.check_circle, size: 20, color: AppColors.good),
+            const SizedBox(width: Space.sm),
+            Expanded(
+              child: Text(
+                tr('تم تنفيذ الحجز'),
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.good,
+                ),
+              ),
+            ),
+            Text(
+              tr('مستحقّاتي'),
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppColors.good,
+              ),
+            ),
+            const Icon(Icons.chevron_left, size: 20, color: AppColors.good),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+/// ما بين ضغطِ المزوّد وموافقةِ الإدارة.
+///
+/// **وكهرمانيٌّ لا أخضر:** الأخضرُ يقول «تمّ»، وهذا لم يتمّ بعد. ولو
+/// تشابها لَظنّ المزوّدُ أنّ مالَه احتُسب فلا يسأل حين يتأخّر.
+class _ReviewBar extends StatelessWidget {
+  const _ReviewBar();
 
   @override
   Widget build(BuildContext context) => Container(
-    key: const ValueKey('booking-done'),
+    key: const ValueKey('booking-under-review'),
     width: double.infinity,
     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
     decoration: BoxDecoration(
-      // صبغةٌ خفيفةٌ لا خضرةٌ صمّاء: القاعُ يُملأ ولا يُصرَخ به، والحجزُ
-      // المنفَّذُ خبرٌ انتهى لا شيءٌ يُنتظر.
-      color: AppColors.good.withValues(alpha: Tint.chip),
+      color: AppColors.warning.withValues(alpha: Tint.chip),
       borderRadius: BorderRadius.circular(12),
     ),
     child: Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        const Icon(Icons.check_circle, size: 20, color: AppColors.good),
+        const Icon(Icons.hourglass_top, size: 20, color: AppColors.warning),
         const SizedBox(width: Space.sm),
-        Text(
-          tr('تم تنفيذ الحجز'),
-          style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            color: AppColors.good,
+        Flexible(
+          child: Text(
+            tr('قيد مراجعة الإدارة'),
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: AppColors.warning,
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+/// سببُ ردِّ الإدارة لطلب الاعتماد — يُعرض فوق الزرّ ليُقرأ قبل أن يُعاد.
+class _RejectNote extends StatelessWidget {
+  const _RejectNote(this.reason);
+
+  final String reason;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    key: const ValueKey('completion-rejected'),
+    width: double.infinity,
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+    decoration: BoxDecoration(
+      color: AppColors.critical.withValues(alpha: Tint.chip),
+      borderRadius: BorderRadius.circular(12),
+    ),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Icon(Icons.error_outline, size: 20, color: AppColors.critical),
+        const SizedBox(width: Space.sm),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                tr('رُدَّ طلبُ اعتماد التنفيذ'),
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.critical,
+                ),
+              ),
+              const SizedBox(height: 2),
+              // **والسببُ نصُّ الإدارة لا يُترجَم:** كتبه إنسانٌ بلغته.
+              Text(
+                reason,
+                style: const TextStyle(
+                  fontSize: 13,
+                  height: 1.6,
+                  color: AppColors.ink2,
+                ),
+              ),
+            ],
           ),
         ),
       ],

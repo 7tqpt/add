@@ -60,11 +60,11 @@ echo; echo "== الضوابط =="
 run "(أ) لا خَتمَ للمنفَّذ" \
   sub "$R" \
 "                  if (b.status == BookingStatus.completed)
-                    const _DoneBar()
+                    _DoneBar(session: widget.session)
                   else
                     OutlinedButton.icon(" \
 "                  if (false)
-                    const _DoneBar()
+                    _DoneBar(session: widget.session)
                   else
                     OutlinedButton.icon("
 
@@ -76,14 +76,15 @@ run "(أ) لا خَتمَ للمنفَّذ" \
 run "(ب) الخَتمُ يُضاف والزرُّ باقٍ" \
   sub "$R" \
 "                  if (b.status == BookingStatus.completed)
-                    const _DoneBar()
+                    _DoneBar(session: widget.session)
                   else
                     OutlinedButton.icon(
                       onPressed: busy ? null : () => _message(b),
                       icon: const Icon(Icons.forum_outlined, size: 19),
                       label: Text(trf('راسل {0}', [b.userName])),
                     )," \
-"                  if (b.status == BookingStatus.completed) const _DoneBar(),
+"                  if (b.status == BookingStatus.completed)
+                    _DoneBar(session: widget.session),
                   OutlinedButton.icon(
                     onPressed: busy ? null : () => _message(b),
                     icon: const Icon(Icons.forum_outlined, size: 19),
@@ -104,16 +105,16 @@ run "(ج) الشرطُ بالمقلوب" \
 # من لا يفرّق الأخضرَ من الأحمر لا يبقى له ما يقرأ.
 run "(د) أيقونةٌ بلا كلمة" \
   sub "$R" \
-"        Text(
-          tr('تم تنفيذ الحجز')," \
-"        Text(
-          tr('')," \
+"              child: Text(
+                tr('تم تنفيذ الحجز')," \
+"              child: Text(
+                tr('')," \
 
 # ── هـ) والشريطُ يصير بلا لون ───────────────────────────────────────────────
 run "(هـ) الشريطُ بلا خُضرة" \
   sub "$R" \
-"      color: AppColors.good.withValues(alpha: Tint.chip)," \
-"      color: AppColors.surface2,"
+"    color: AppColors.good.withValues(alpha: Tint.chip)," \
+"    color: AppColors.surface2,"
 
 # ── و) والصبغةُ تصير خضرةً صمّاء ────────────────────────────────────────────
 #
@@ -121,18 +122,27 @@ run "(هـ) الشريطُ بلا خُضرة" \
 # والحبرُ الأخضرُ عليه يذوب.
 run "(و) خضرةٌ صمّاءُ لا صبغة" \
   sub "$R" \
-"      color: AppColors.good.withValues(alpha: Tint.chip)," \
-"      color: AppColors.good,"
+"    color: AppColors.good.withValues(alpha: Tint.chip)," \
+"    color: AppColors.good,"
 
 # ── ز) والخَتمُ يصير زرّاً يُلمَس ولا يفعل ──────────────────────────────────
-run "(ز) الخَتمُ زرٌّ لا خبر" \
+run "(ز) الشريطُ لا يقود إلى المستحقّات" \
   sub "$R" \
-"  Widget build(BuildContext context) => Container(
-    key: const ValueKey('booking-done')," \
-"  Widget build(BuildContext context) => OutlinedButton(
-    onPressed: () {},
-    child: Container(
-    key: const ValueKey('booking-done'),"
+"      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => EarningsScreen(session: session)),
+      )," \
+"      onTap: () {},"
+
+# ── ح) والسهمُ يُشال فلا يعرف أحدٌ أنّه باب ──────────────────────────────────
+#
+# **وهذا ما لا يسقط بسؤال «هل يُضغط؟».** الشريطُ يُضغط ويعمل، ولا علامةَ
+# تقول ذلك — فيبقى الطريقُ إلى المستحقّات مقفولاً وهو مفتوح.
+run "(ح) لا سهمَ ولا كلمةَ «مستحقّاتي»" \
+  sub "$R" \
+"            Text(
+              tr('مستحقّاتي')," \
+"            Text(
+              tr('')," \
 
 echo
 echo "الساقط: $PASS — الباقي: $FAIL"

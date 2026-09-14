@@ -618,12 +618,18 @@ class Api {
     );
   }
 
-  static Future<void> completeBooking(String id) async {
+  /// المزوّد يطلب من الإدارة اعتمادَ تنفيذ الحجز.
+  ///
+  /// **ولا يُتمّه.** `api_complete_booking` صارت للإدارة وحدَها
+  /// (`can_write_area('bookings')`) — وهذا هو الحرز: لو بقيت مفتوحةً لصاحب
+  /// الحجز لَنادى ملفُّ APK مفكوكٌ الدالّةَ مباشرةً وأتمّ الحجزَ وزاد
+  /// مستحقّاتِه بلا مراجعة، وكلُّ ما في هذه الشاشة زينة.
+  static Future<void> requestCompletion(String id) async {
     if (!isSupabaseConfigured) {
-      demoComplete(id);
+      demoRequestCompletion(id);
       return;
     }
-    await db.rpc('api_complete_booking', params: {'p_booking_id': id});
+    await db.rpc('api_request_completion', params: {'p_booking_id': id});
   }
 
   /// الإلغاء من جهة العميل. المبلغ المستردّ يحسبه الخادم من سلّم الإلغاء

@@ -696,6 +696,25 @@ void demoApproveProvider() {
       depositAmount: 144000,
       paidAmount: 0,
     ),
+    // **وحجزٌ منفَّذٌ ثالث.** بلا واحدٍ اعتمدته الإدارةُ لا يرى المجرِّب شريطَ
+    // «تم تنفيذ الحجز» أبداً في وضع العرض: هو لا يملك أن يعتمد بنفسه —
+    // والدالّةُ في القاعدة تمنعه، فالمحاكاةُ تمنعه مثلها.
+    Booking(
+      id: 'r3',
+      reference: 'BK-2026-000498',
+      createdAt: _at(900),
+      userName: 'نورة الحضرمي',
+      providerName: p.businessName,
+      serviceTitle: 'حجز ${p.businessName}',
+      eventDate: _day(-18),
+      eventTime: '18:30',
+      address: 'المنصورة — عدن',
+      guestsCount: 180,
+      status: BookingStatus.completed,
+      totalPrice: 300000,
+      depositAmount: 90000,
+      paidAmount: 300000,
+    ),
   ];
 }
 
@@ -807,6 +826,15 @@ List<Booking> _withStatus(List<Booking> list, String id, BookingStatus status) {
       totalPrice: b.totalPrice,
       depositAmount: b.depositAmount,
       paidAmount: status == BookingStatus.confirmed ? b.depositAmount : b.paidAmount,
+      // **وما لا تمسّه الحالةُ يُنسخ معها.** كانت هذه تُسقط النقطةَ ووقتَ
+      // الإنشاء والكوبون، فيختفي زرُّ «افتح الموقع في الخرائط» من البطاقة
+      // بمجرّد أن يقبل المزوّدُ الحجز — ولا شيءَ يقول لماذا.
+      couponCode: b.couponCode,
+      discountAmount: b.discountAmount,
+      point: b.point,
+      createdAt: b.createdAt,
+      completionRequestedAt: b.completionRequestedAt,
+      completionRejectReason: b.completionRejectReason,
     );
   }).toList();
 }
@@ -814,7 +842,37 @@ List<Booking> _withStatus(List<Booking> list, String id, BookingStatus status) {
 void demoRespond(String id, bool accept) =>
     _replace(id, accept ? BookingStatus.confirmed : BookingStatus.rejected);
 
-void demoComplete(String id) => _replace(id, BookingStatus.completed);
+/// طلبُ اعتماد التنفيذ في وضع العرض — **ولا يُتمّ الحجز**.
+///
+/// وهذا هو الصدقُ في المحاكاة: في القاعدة لا يملك المزوّد الإتمام، فلا
+/// يملكه هنا. ومن أراد أن يرى «تم تنفيذ الحجز» في وضع العرض يجده في الحجز
+/// المنفَّذ المزروع في `demoProviderRequests`.
+void demoRequestCompletion(String id) {
+  demoProviderRequests = demoProviderRequests.map((b) {
+    if (b.id != id || b.status != BookingStatus.confirmed) return b;
+    return Booking(
+      id: b.id,
+      reference: b.reference,
+      userName: b.userName,
+      providerName: b.providerName,
+      serviceTitle: b.serviceTitle,
+      eventDate: b.eventDate,
+      eventTime: b.eventTime,
+      address: b.address,
+      guestsCount: b.guestsCount,
+      status: b.status,
+      totalPrice: b.totalPrice,
+      depositAmount: b.depositAmount,
+      paidAmount: b.paidAmount,
+      couponCode: b.couponCode,
+      discountAmount: b.discountAmount,
+      point: b.point,
+      createdAt: b.createdAt,
+      completionRequestedAt: DateTime.now().toIso8601String(),
+      completionRejectReason: '',
+    );
+  }).toList();
+}
 
 void demoOpenTicket(String subject) {
   demoTickets = [

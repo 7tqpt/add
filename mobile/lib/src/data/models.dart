@@ -209,6 +209,8 @@ class Booking {
     this.discountAmount = 0,
     this.point,
     this.createdAt = '',
+    this.completionRequestedAt = '',
+    this.completionRejectReason = '',
   });
 
   final String id;
@@ -245,6 +247,23 @@ class Booking {
   /// ومبدؤه فراغٌ لا `null`: قاعدةٌ أقدمُ من هذه النسخة لا تُسقط الطراز.
   final String createdAt;
 
+  /// متى طلب المزوّد اعتمادَ التنفيذ — أو فراغٌ فلا طلب.
+  ///
+  /// **وليس حالةً في `status`.** الحجزُ يبقى «مؤكَّداً» عند العميل واللوحة،
+  /// والمزوّدُ وحدَه يرى «قيد مراجعة الإدارة». وحالةٌ سابعةٌ في `status`
+  /// تمسّ كلَّ قيدٍ وشاشةٍ ومُطابَقةٍ في التطبيقين، وتُري العميلَ حالةً لا
+  /// تعنيه.
+  final String completionRequestedAt;
+
+  /// سببُ ردِّ الإدارة لطلب الاعتماد — أو فراغٌ فلا ردّ.
+  ///
+  /// **وبسببٍ لا بصمت:** من رُدّ طلبُه بلا كلمةٍ يُعيده كما هو، فيدور
+  /// الطابورُ على نفسه.
+  final String completionRejectReason;
+
+  /// أطلبُ اعتمادٍ معلَّقٌ على هذا الحجز؟
+  bool get awaitingCompletionReview => completionRequestedAt.isNotEmpty;
+
   factory Booking.fromMap(Map<String, dynamic> m) => Booking(
     id: m['id'] as String,
     reference: (m['reference'] ?? '') as String,
@@ -263,6 +282,10 @@ class Booking {
     discountAmount: (m['discount_amount'] ?? 0) as num,
     point: _pointOf(m),
     createdAt: (m['created_at'] ?? '') as String,
+    // **وفراغٌ لا `null`:** قاعدةٌ أقدمُ من هذه النسخة لا تحمل العمودين،
+    // فلا تُسقط الطراز.
+    completionRequestedAt: (m['completion_requested_at'] ?? '').toString(),
+    completionRejectReason: (m['completion_reject_reason'] ?? '') as String,
   );
 }
 

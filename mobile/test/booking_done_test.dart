@@ -22,6 +22,7 @@ import 'package:aras/src/core/session.dart';
 import 'package:aras/src/core/theme.dart';
 import 'package:aras/src/data/demo.dart';
 import 'package:aras/src/data/models.dart';
+import 'package:aras/src/screens/money.dart';
 import 'package:aras/src/screens/requests.dart';
 
 Widget _wrap(Widget child) => MaterialApp(
@@ -77,9 +78,13 @@ Booking _booking(BookingStatus status, {String user = 'هدى المقطري'}) 
 final _done = find.byKey(const ValueKey('booking-done'));
 final _message = find.text('راسل هدى المقطري');
 
-/// أرضيّةُ الشريط كما رُسمت — من `BoxDecoration` لا من الشيفرة.
-Color _barColour(WidgetTester tester) =>
-    ((tester.widget<Container>(_done).decoration! as BoxDecoration).color)!;
+/// أرضيّةُ الشريط كما رُسمت.
+///
+/// **و`Material` لا `Container`:** صار الشريطُ يُضغط، فأرضيّتُه انتقلت إلى
+/// `Material` تحت `InkWell` — ولولا ذلك لَما ظهرت موجةُ اللمس أصلاً.
+Color _barColour(WidgetTester tester) => tester
+    .widget<Material>(find.ancestor(of: _done, matching: find.byType(Material)).first)
+    .color!;
 
 void main() {
   group('**الحجزُ المنفَّذُ يُختم**', () {
@@ -114,14 +119,34 @@ void main() {
           reason: 'بقي زرُّ المراسلة تحت الشريط في الحجز المنفَّذ');
     });
 
-    testWidgets('**وخبرٌ لا زرّ** — لا لمسةَ تُغري ولا تفعل', (tester) async {
+    testWidgets('**والشريطُ بابٌ إلى «مستحقّاتي»**', (tester) async {
+      // «خلّه قابل للضغط وعند ضغط يروح للمستحقات» — ويُقاس بما فُتح لا
+      // بوجود `InkWell`: غلافٌ يُضغط ولا يذهب إلى شيءٍ يمرّ على الأوّل.
       _phone(tester);
       await tester.pumpWidget(_wrap(RequestsScreen(session: _provider())));
       await _settle(tester);
 
+      await tester.tap(_done);
+      await _settle(tester);
+      expect(find.byType(EarningsScreen), findsOneWidget,
+          reason: 'ضُغط الشريطُ ولم يُفتح شيء');
+    });
+
+    testWidgets('**والسهمُ يقول إنّه باب**', (tester) async {
+      // شريطٌ يُضغط بلا علامةٍ تدلّ عليه لا يعرفه أحد، فيبقى الطريقُ إلى
+      // المستحقّات مقفولاً وهو مفتوح.
+      _phone(tester);
+      await tester.pumpWidget(_wrap(RequestsScreen(session: _provider())));
+      await _settle(tester);
+
+      expect(find.descendant(of: _done, matching: find.text('مستحقّاتي')),
+          findsOneWidget);
       expect(
-        find.descendant(of: _done, matching: find.byType(ButtonStyleButton)),
-        findsNothing,
+        find.descendant(
+          of: _done,
+          matching: find.byIcon(Icons.chevron_left),
+        ),
+        findsOneWidget,
       );
     });
   });

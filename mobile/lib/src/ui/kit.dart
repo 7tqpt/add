@@ -194,6 +194,31 @@ Future<bool?> confirmDanger(
   required String title,
   required String body,
   required String confirm,
+}) => confirmChoice(
+  context,
+  title: title,
+  body: body,
+  confirm: confirm,
+  cancel: tr('إلغاء'),
+  tone: AppColors.critical,
+);
+
+/// سؤالٌ قبل فعلٍ لا رجعةَ فيه — أو فعلٍ يمضي إلى غيرك ولا تملك سحبَه.
+///
+/// **وواحدٌ في موضعين لا نسختان.** `confirmDanger` أعلاه هي هذه بلونِ
+/// الخطر؛ ونسختان متطابقتان تفترقان بمرور الوقت فيصير لحواري التطبيق
+/// شكلان.
+///
+/// و`tone` يصبغ زرَّ التأكيد: أحمرُ للحذف، **وأخضرُ لختمِ عملٍ تمّ** —
+/// فليس كلُّ سؤالٍ تحذيراً. وسؤالُ «تأكيد التنفيذ» بزرٍّ أحمرَ يُقرأ
+/// إنذاراً من فعلٍ صحيح.
+Future<bool?> confirmChoice(
+  BuildContext context, {
+  required String title,
+  required String body,
+  required String confirm,
+  required String cancel,
+  Color tone = AppColors.critical,
 }) => showDialog<bool>(
   context: context,
   builder: (dialogContext) => AlertDialog(
@@ -204,11 +229,12 @@ Future<bool?> confirmDanger(
     actions: [
       TextButton(
         onPressed: () => Navigator.of(dialogContext).pop(false),
-        child: Text(tr('إلغاء')),
+        child: Text(cancel),
       ),
       FilledButton(
+        key: const ValueKey('confirm-yes'),
         onPressed: () => Navigator.of(dialogContext).pop(true),
-        style: FilledButton.styleFrom(backgroundColor: AppColors.critical),
+        style: FilledButton.styleFrom(backgroundColor: tone),
         child: Text(confirm),
       ),
     ],
