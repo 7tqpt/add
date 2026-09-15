@@ -123,11 +123,17 @@ insert into public.cancellation_policies (name, description, rules, is_default) 
 
 -- ----------------------------------------------------------------------------
 -- المستخدمون
+--
+-- **والمعرّفُ محسوبٌ لا مسحوب.** كان `gen_random_uuid()`، وكلُّ ما بعده
+-- يُقسَّم بـ`hashtext(id)` — فكانت البيانةُ تُسحب سحبَ القرعة في كلّ تشغيل:
+-- عدُّ الخطط يتراوح ١٥ إلى ٣٤، وعدُّ الحجوزات ٤٦ إلى ١٠٢. ومن قاس عدداً
+-- منها قاس حظَّه. **وقد حمرّت الحزمةُ في CI بذلك** وهي خضراءُ عندي.
 -- ----------------------------------------------------------------------------
 insert into public.app_users
-  (full_name, email, phone, platform, governorate_id, governorate, status,
+  (id, full_name, email, phone, platform, governorate_id, governorate, status,
    app_version, sessions_count, created_at, last_seen_at)
 select
+  md5('app_user:' || i)::uuid,
   (array['أحمد','محمد','عبدالله','خالد','يوسف','عمر','فاطمة','مريم','نورة','سارة',
          'صالح','عبدالرحمن','هدى','أسماء','ريم','بلقيس'])[1 + (i % 16)]
     || ' ' ||
@@ -174,10 +180,11 @@ where u.status <> 'pending';
 -- مقدّمو الخدمة — موزّعون على الأقسام والمحافظات وبحالات مختلفة
 -- ----------------------------------------------------------------------------
 insert into public.service_providers
-  (full_name, business_name, email, phone, bio, governorate_id, governorate,
+  (id, full_name, business_name, email, phone, bio, governorate_id, governorate,
    coverage_areas, status, is_featured, rating, reviews_count, completed_bookings,
    total_earnings, applied_at, verified_at, created_at)
 select
+  md5('provider:' || i)::uuid,
   (array['سعد','ماجد','فهد','بدر','ريان','هند','لمياء','غادة','منى','وليد',
          'عصام','أنور'])[1 + (i % 12)]
     || ' ' ||
@@ -251,9 +258,13 @@ cross join lateral (values ('id_card'), ('commercial_register'), ('work_samples'
 -- الخدمات المعروضة — أسعار بالريال اليمني، ونسب عربون، وسياسة إلغاء لكل خدمة
 -- ----------------------------------------------------------------------------
 insert into public.provider_services
-  (provider_id, category_id, title, description, price, price_to, unit,
+  (id, provider_id, category_id, title, description, price, price_to, unit,
    deposit_percent, duration_minutes, cancellation_policy_id, attributes, is_active)
 select
+  -- **ويُشتقُّ من الثابت لا من المفتاح.** `category_id` نفسُه مسحوبٌ
+  -- (`gen_random_uuid` في جدول الأقسام)، فاشتقاقُ المعرّف منه يُعيد
+  -- السحبَ من بابٍ آخر. و`slug` ثابتٌ يعرفه المشروع.
+  md5('service:' || pc.provider_id || ':' || c.slug || ':' || s)::uuid,
   pc.provider_id,
   pc.category_id,
   c.name || ' — ' || (array['باقة أساسية','باقة متوسطة','باقة شاملة'])[s],
@@ -297,8 +308,9 @@ where p.status in ('verified', 'suspended');
 -- خطط الأعراس
 -- ----------------------------------------------------------------------------
 insert into public.wedding_plans
-  (user_id, title, wedding_date, governorate_id, governorate, guests_count, budget, status, notes, created_at)
+  (id, user_id, title, wedding_date, governorate_id, governorate, guests_count, budget, status, notes, created_at)
 select
+  md5('plan:' || u.id)::uuid,
   u.id,
   'عرس ' || split_part(u.full_name, ' ', 1),
   (current_date + ((abs(hashtext(u.id::text)) % 150) - 40))::date,
@@ -320,13 +332,17 @@ where u.status = 'active' and abs(hashtext(u.id::text)) % 3 = 0;
 -- الحجوزات — حجز مباشر على خدمة مقدّم خدمة موثّق، بحالات تغطي دورة الحياة
 -- ----------------------------------------------------------------------------
 insert into public.bookings
-  (reference, user_id, user_name, provider_id, provider_name, service_id, service_title,
+  (id, reference, user_id, user_name, provider_id, provider_name, service_id, service_title,
    category_id, category_name, plan_id, event_date, event_time, governorate, address,
    guests_count, notes, status, total_price, deposit_amount, paid_amount, refunded_amount,
    commission_percent, commission_amount, cancellation_rules,
    rejection_reason, cancel_reason, created_at, confirmed_at, completed_at, cancelled_at)
 select
-  'BK-' || to_char(now(), 'YYYY') || '-' || lpad(row_number() over ()::text, 6, '0'),
+  md5('booking:' || pl.id || ':' || n)::uuid,
+  -- **والترقيمُ يُرتَّب.** `row_number() over ()` بلا ترتيبٍ يرقّم بترتيب
+  -- وصولِ الصفوف، وهو غيرُ مضمون — فيتبدّل رقمُ المرجع بين تشغيلين.
+  'BK-' || to_char(now(), 'YYYY') || '-'
+    || lpad(row_number() over (order by pl.id, n)::text, 6, '0'),
   pl.user_id, u.full_name,
   p.id, p.business_name,
   sv.id, sv.title,
@@ -395,7 +411,7 @@ insert into public.payments
    kind, description, amount, platform_share, net_amount, method, status, gateway_ref,
    created_at, refunded_at)
 select
-  'TRX-' || to_char(now(), 'YYYY') || '-' || lpad(row_number() over ()::text, 6, '0'),
+  'TRX-' || to_char(now(), 'YYYY') || '-' || lpad(row_number() over (order by b.id)::text, 6, '0'),
   b.user_id, b.user_name, b.provider_id, b.provider_name, b.id, b.reference,
   'deposit', 'عربون حجز — ' || b.category_name,
   b.deposit_amount,
@@ -412,7 +428,7 @@ insert into public.payments
   (reference, user_id, user_name, provider_id, provider_name, booking_id, booking_reference,
    kind, description, amount, platform_share, net_amount, method, status, gateway_ref, created_at)
 select
-  'TRX-' || to_char(now(), 'YYYY') || '-' || lpad((100000 + row_number() over ())::text, 6, '0'),
+  'TRX-' || to_char(now(), 'YYYY') || '-' || lpad((100000 + row_number() over (order by b.id))::text, 6, '0'),
   b.user_id, b.user_name, b.provider_id, b.provider_name, b.id, b.reference,
   'balance', 'سداد المتبقي — ' || b.category_name,
   b.total_price - b.deposit_amount,
@@ -452,7 +468,7 @@ insert into public.disputes
    provider_id, provider_name, subject, description, category, status, resolution,
    refund_amount, resolved_by, created_at, resolved_at)
 select
-  'DSP-' || to_char(now(), 'YYYY') || '-' || lpad(row_number() over ()::text, 4, '0'),
+  'DSP-' || to_char(now(), 'YYYY') || '-' || lpad(row_number() over (order by b.id)::text, 4, '0'),
   b.id, b.reference,
   case when abs(hashtext(b.id::text)) % 4 = 0 then 'provider' else 'customer' end,
   b.user_id, b.user_name, b.provider_id, b.provider_name,
@@ -515,7 +531,7 @@ insert into public.settlements
   (reference, provider_id, provider_name, period_start, period_end,
    gross_amount, commission_amount, net_amount, status, method, created_at, paid_at)
 select
-  'STL-' || to_char(now(), 'YYYY') || '-' || lpad(row_number() over ()::text, 4, '0'),
+  'STL-' || to_char(now(), 'YYYY') || '-' || lpad(row_number() over (order by agg.provider_id)::text, 4, '0'),
   agg.provider_id, agg.provider_name,
   (date_trunc('month', current_date) - interval '1 month')::date,
   (date_trunc('month', current_date) - interval '1 day')::date,
@@ -578,7 +594,14 @@ select p.id, p.business_name,
        now() + interval '15 days'
 from public.service_providers p
 join lateral (
-  select category_id from public.provider_categories where provider_id = p.id limit 1
+  -- **و«أوّلُ صفّ» بلا ترتيبٍ ليس أوّلاً.** لمقدّم الخدمة قسمان أحياناً،
+  -- و`limit 1` بلا `order by` تُسلّم أيَّهما اتّفق.
+  select pcx.category_id
+  from public.provider_categories pcx
+  join public.service_categories sc on sc.id = pcx.category_id
+  where pcx.provider_id = p.id
+  order by sc.sort_order
+  limit 1
 ) as pc on true
 where p.status = 'verified' and abs(hashtext(p.id::text)) % 3 = 0;
 
