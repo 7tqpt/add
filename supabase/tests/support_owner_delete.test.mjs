@@ -78,6 +78,26 @@ async function seedPeople(db) {
 
 const count = async (db, sql) => Number((await db.query(sql)).rows[0].n)
 
+test('**وتحقُّقُ الملفِّ يقول إنّ المفتاحين أُصلحا**', async () => {
+  // **ولا يُسأل الجدولُ عن وجوده بل المفتاحُ عن فعله.** كان التحقّقُ في ذيل
+  // `support.sql` يعدّ الجداولَ وطرقَ العرض والدوالّ فيقول «٢ و١ و٤» — وهو
+  // لا يمسّ ما جاء الملفُّ ليُصلحه. فقد يُقرأ التقريرُ سليماً و«حذف حسابي»
+  // محبوسٌ كما كان.
+  //
+  // **ويُنتزع التحقّقُ من الملفّ نفسِه لا يُكتب هنا نسخةً منه:** نسخةٌ في
+  // الاختبار تبقى خضراءَ وإن حُذف السطرُ من الملفّ — فيُقرأ ما يُشحن.
+  const sql = read('support.sql')
+  const verify = sql.slice(sql.lastIndexOf('commit;') + 'commit;'.length)
+  assert.ok(verify.includes('confdeltype'),
+    'تحقّقُ الملفّ لا يسأل عن فعل المفتاح — فتقريرُه يُطمئن ولا يقيس')
+
+  const db = await fresh({ files: ['install.sql', 'support.sql'] })
+  const { rows } = await db.query(verify)
+  const line = rows.find((r) => String(r.البند).includes('cascade'))
+  assert.equal(line?.القيمة, '2', `التقريرُ يقول ${line?.القيمة} لا ٢`)
+  await db.close()
+})
+
 test('**العميلُ صاحبُ التذكرة يُحذف حسابُه — وتذهب معه**', async () => {
   const db = await fresh({ files: ['install.sql', 'support.sql'] })
   const uid = await seedPeople(db)

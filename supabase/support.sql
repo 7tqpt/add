@@ -458,7 +458,12 @@ grant select on public.v_admin_tickets to authenticated;
 commit;
 
 -- ============================================================================
---  التحقق — المتوقّع: جدولان، وطريقة عرض، و ٤ دوال
+--  التحقق — المتوقّع: جدولان، وطريقة عرض، و٤ دوال، ومفتاحا صاحبٍ `cascade`
+--
+--  **والسطرُ الأخيرُ أهمُّها ولم يكن موجوداً.** كان التحقّقُ يسأل «أالجداولُ
+--  موجودة؟» فيقول «٢ و١ و٤» ويُطمئن — **وهو لا يمسّ ما أصلحه الملفُّ**.
+--  فقد يُنفَّذ على قاعدةٍ بقي فيها `set null` تحت قيدٍ يمنع الفراغ، فيُقرأ
+--  التقريرُ سليماً و«حذف حسابي» محبوسٌ كما كان.
 -- ============================================================================
 select 'الجداول' as البند, count(*)::text as القيمة
   from information_schema.tables
@@ -470,4 +475,16 @@ union all
 select 'الدوال', count(*)::text from information_schema.routines
  where routine_schema = 'public'
    and routine_name in ('api_open_ticket', 'api_reply_ticket',
-                        'api_close_ticket', 'admin_reply_ticket');
+                        'api_close_ticket', 'admin_reply_ticket')
+union all
+select 'مفتاحا الصاحب cascade (يجب ٢)', count(*)::text
+  from pg_constraint con
+  join pg_class rel on rel.oid = con.conrelid
+  join pg_namespace ns on ns.oid = rel.relnamespace
+  join pg_attribute att
+    on att.attrelid = con.conrelid and att.attnum = con.conkey[1]
+ where ns.nspname = 'public'
+   and rel.relname = 'support_tickets'
+   and con.contype = 'f'
+   and att.attname in ('user_id', 'provider_id')
+   and con.confdeltype = 'c';
