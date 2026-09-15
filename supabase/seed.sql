@@ -8,6 +8,24 @@
 
 begin;
 
+-- **وتذاكرُ الدعم تُحذف صراحةً لا بالتبعيّة.** كانت غائبةً عن هذه القائمة،
+-- فسقط المسحُ على قيد `ticket_has_owner` — وكشف تضادّاً أكبرَ منه في
+-- `support.sql` (انظره هناك). وهي اليومَ `cascade` فتذهب مع أصحابها، لكنّ
+-- الصريحَ أصدقُ: من قرأ هذه القائمةَ يعرف ما يُمحى.
+-- **ويُسأل عن وجودها أوّلاً:** `support.sql` ملحقٌ يُنفَّذ على حدة، وقاعدةٌ
+-- لم يُنفَّذ عليها ليس فيها هذان الجدولان — فحذفٌ صريحٌ بلا سؤالٍ يُسقط
+-- البيانةَ كلَّها على قاعدةٍ سليمة.
+-- **و`where true` ليست زينة:** داخلَ جسد دالّةٍ (وهذه كتلةُ `do`) يرفض
+-- Supabase حذفاً بلا `WHERE` برمز 21000 — يحرسه `no_unqualified_dml`، وقد
+-- أمسك هذا السطرَ بعينه.
+do $$ begin
+  if to_regclass('public.support_messages') is not null then
+    delete from public.support_messages where true;
+  end if;
+  if to_regclass('public.support_tickets') is not null then
+    delete from public.support_tickets where true;
+  end if;
+end $$;
 delete from public.settlement_items;
 delete from public.settlements;
 delete from public.conversation_messages;

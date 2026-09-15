@@ -27,9 +27,14 @@ create table if not exists public.support_tickets (
   -- حين تُفتح من تطبيق مقدّم الخدمة — وقد يكون للشخص نفسه حسابان.
   opened_by     text not null default 'customer'
                 check (opened_by in ('customer', 'provider')),
-  user_id       uuid references public.app_users (id) on delete set null,
+  -- **وتذهب التذكرةُ مع صاحبها (`cascade`).** كانت `set null`، وتحتها قيدٌ
+  -- يمنع التذكرةَ من أن تكون بلا صاحب — **فكان الجدولُ يناقض نفسَه**: الحذفُ
+  -- يُفرّغ العمودَ والقيدُ يرفض الفراغ. فلم يكن يسقط المسحُ وحدَه، بل
+  -- **كلُّ من فتح تذكرةً مرّةً لم يكن يستطيع حذفَ حسابه** — و`api_delete_my_account`
+  -- مشحونةٌ في التطبيق، وحذفُ الحساب شرطٌ عند المتجرين.
+  user_id       uuid references public.app_users (id) on delete cascade,
   user_name     text not null default '',
-  provider_id   uuid references public.service_providers (id) on delete set null,
+  provider_id   uuid references public.service_providers (id) on delete cascade,
   provider_name text not null default '',
 
   subject       text not null,
@@ -60,6 +65,44 @@ create table if not exists public.support_tickets (
   constraint ticket_has_owner
     check (user_id is not null or provider_id is not null)
 );
+
+-- ----------------------------------------------------------------------------
+-- إصلاحُ قاعدةٍ قائمة: تبديلُ `set null` بـ`cascade`
+--
+-- **و`create table if not exists` لا تُصلح جدولاً موجوداً.** القاعدةُ التي
+-- أُنشئت قبل هذا السطر فيها التضادُّ كما هو، ولا يظهر إلّا يومَ يُحذف حساب.
+-- فيُبحث عن المفتاحين بالعمود لا بالاسم — الاسمُ مولَّدٌ وقد يختلف.
+do $$
+declare
+  c record;
+begin
+  for c in
+    select con.conname, att.attname
+    from pg_constraint con
+    join pg_class rel on rel.oid = con.conrelid
+    join pg_namespace ns on ns.oid = rel.relnamespace
+    join pg_attribute att
+      on att.attrelid = con.conrelid and att.attnum = con.conkey[1]
+    where ns.nspname = 'public'
+      and rel.relname = 'support_tickets'
+      and con.contype = 'f'
+      and att.attname in ('user_id', 'provider_id')
+      and con.confdeltype <> 'c'          -- 'c' = cascade: ما أُصلح لا يُعاد
+  loop
+    execute format('alter table public.support_tickets drop constraint %I', c.conname);
+    if c.attname = 'user_id' then
+      alter table public.support_tickets
+        add constraint support_tickets_user_id_fkey
+        foreign key (user_id) references public.app_users (id) on delete cascade;
+    else
+      alter table public.support_tickets
+        add constraint support_tickets_provider_id_fkey
+        foreign key (provider_id) references public.service_providers (id)
+        on delete cascade;
+    end if;
+    raise notice 'أُصلح مفتاحُ %: صار cascade', c.attname;
+  end loop;
+end $$;
 
 create index if not exists support_tickets_status_idx
   on public.support_tickets (status, last_message_at desc);
