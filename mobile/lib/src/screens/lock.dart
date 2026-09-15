@@ -9,6 +9,7 @@ import '../core/app_lock.dart';
 import '../core/biometrics.dart';
 import '../core/i18n.dart';
 import '../core/theme.dart';
+import '../data/supabase.dart';
 import '../ui/kit.dart';
 import '../ui/motion.dart';
 
@@ -396,6 +397,55 @@ class _Pad extends StatelessWidget {
   }
 }
 
+/// يضبط رمزاً جديداً: يسأله مرّتين، ويُعيد من أخطأ التأكيدَ إلى أوّل
+/// الخطوتين. ويعيد `true` إن ضُبط الرمزُ فعلاً.
+///
+/// **وواحدةٌ في موضعين لا نسختان.** يستعملها بابُ الإجبار وشاشةُ الإعدادات
+/// جميعاً — ولو نُسخت لافترقتا عند أوّل تعديل: يُصلَح خطأٌ في إحداهما ويبقى
+/// في الأخرى.
+///
+/// **والرمزُ يُسأل مرّتين** — من ضبط رمزاً بإصبعٍ زلّ ثمّ أُقفل عليه لا
+/// سبيلَ له إلّا الخروجُ من حسابه.
+///
+/// **ومن أخطأ في التأكيد يُعاد إلى أوّل الخطوتين لا يُطرَد.** كانت الشاشةُ
+/// تُغلق وتقول «الرمزان غير متطابقين» في شريطٍ عابر، فيبحث صاحبُها عن زرّ
+/// «فعّله» من جديد — وأكثرُهم لا يعيد المحاولة أصلاً.
+Future<bool> setUpPin(
+  BuildContext context,
+  AppLock lock, {
+  String? subtitle,
+  void Function(String message)? onError,
+}) async {
+  String? note;
+  while (true) {
+    if (!context.mounted) return false;
+    final pin = await askPin(
+      context,
+      title: tr('اختر رمزاً من أربعة أرقام'),
+      subtitle: subtitle ?? tr('يُطلب فورَ خروجك من التطبيق'),
+      step: tr('الخطوة ١ من ٢'),
+      note: note,
+    );
+    if (pin == null || !context.mounted) return false;
+
+    final again = await askPin(context, title: tr('أعِد الرمز للتأكيد'), step: tr('الخطوة ٢ من ٢'));
+    if (again == null || !context.mounted) return false;
+
+    if (pin != again) {
+      note = tr('الرمزان لم يتطابقا. اختر رمزاً من جديد.');
+      continue;
+    }
+
+    try {
+      await lock.enable(pin);
+      return true;
+    } catch (e) {
+      onError?.call(messageOf(e));
+      return false;
+    }
+  }
+}
+
 /// يسأل عن رمزٍ رباعيٍّ في ورقةٍ سفليّة — لضبطه أو تأكيده.
 ///
 /// ويعيد الرمزَ أو `null` إن رجع بلا إدخال.
@@ -498,6 +548,207 @@ class _PinSheetState extends State<_PinSheet> {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// **بابُ الإجبار — لا يُفتح التطبيقُ قبل ضبط القفل.**
+///
+/// ── وقرارٌ نُقض عمداً، فليُقرأ نقضُه ───────────────────────────────────────
+///
+/// في رأس `app_lock.dart` مكتوبٌ منذ كُتب: «القفلُ اختياريّ… وقفلٌ يُفرض على
+/// من لا يريده عائقٌ يوميٌّ لا حماية». **وقرّر صاحبُ المنصّة أن يُفرض** على
+/// العميل ومقدّم الخدمة جميعاً، وعُرضت عليه الصورةُ وثمنُها فاختار: يُفرض
+/// **فورَ الدخول**، ولا يُطفأ بعدها من الإعدادات.
+///
+/// وثمنُه معلومٌ ومقبولٌ عنده: كلُّ فتحةٍ تُطالب برمزٍ أو بصمة.
+///
+/// ── ولا زرَّ «لاحقاً» ─────────────────────────────────────────────────────
+///
+/// **وهو الفرقُ بين الإجبار والتشجيع.** بابٌ يُتخطّى ليس باباً.
+///
+/// ── والمخرجُ خروجٌ لا حبس ─────────────────────────────────────────────────
+///
+/// من لم يُرد قفلاً لا يُترك في شاشةٍ بلا باب: يخرج من حسابه. وهذا يُبقي
+/// القرارَ بيده، ويمنع أن يصير التطبيقُ سجناً لمن ندم.
+class LockGateScreen extends StatefulWidget {
+  const LockGateScreen({super.key, required this.lock, required this.onSignOut});
+
+  final AppLock lock;
+
+  /// المخرجُ لمن لم يُرد قفلاً — ولا بدّ منه.
+  final Future<void> Function() onSignOut;
+
+  @override
+  State<LockGateScreen> createState() => _LockGateScreenState();
+}
+
+class _LockGateScreenState extends State<LockGateScreen> {
+  bool _busy = false;
+
+  /// أفي الجهاز حسّاسُ بصمة؟ يُسأل مرّةً ليُكتب السطرُ صادقاً.
+  ///
+  /// **ولا يُوعَد بما ليس في الجهاز:** من قرأ «وبصمتُك تفتحه» ولا حسّاسَ عنده
+  /// ينتظر شيئاً لا يأتي.
+  bool _hasSensor = false;
+
+  @override
+  void initState() {
+    super.initState();
+    biometrics.available().then((has) {
+      if (mounted) setState(() => _hasSensor = has);
+    });
+  }
+
+  Future<void> _set() async {
+    setState(() => _busy = true);
+    try {
+      final done = await setUpPin(
+        context,
+        widget.lock,
+        subtitle: tr('يُطلب كلّما فتحتَ التطبيق'),
+        onError: (m) {
+          if (mounted) showMessage(context, m);
+        },
+      );
+      // **ولا رسالةَ نجاحٍ هنا.** البابُ يختفي ويظهر التطبيق، وهو أوضحُ من
+      // شريطٍ عابر.
+      if (done && mounted) setState(() {});
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: SafeArea(
+        // **والزرُّ في أسفل الشاشة، والنزولُ ممكنٌ على القصيرة.**
+        //
+        // **و`Spacer` وحدَها لا تكفي داخلَ ما يُمرَّر.** كتبتُها في
+        // `SingleChildScrollView` مع `minHeight` فسقط البناءُ كلُّه:
+        // «RenderFlex children have non-zero flex but incoming height
+        // constraints are unbounded». والأدنى لا يحدّ الأعلى — والعمودُ
+        // داخلَ ما يُمرَّر بلا سقف. فيُقاس سقفُ المتاح بـ`LayoutBuilder`
+        // ويُفرض بـ`IntrinsicHeight`.
+        child: LayoutBuilder(
+          builder: (context, box) => SingleChildScrollView(
+            padding: const EdgeInsets.all(Space.lg),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: box.maxHeight - Space.lg * 2),
+              child: IntrinsicHeight(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const SizedBox(height: Space.xl),
+                    Icon(
+                      Icons.lock_outline,
+                      size: 56,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                    const SizedBox(height: Space.lg),
+                    Text(
+                      tr('اقفل تطبيقك قبل أن تبدأ'),
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.titleLarge
+                          ?.copyWith(fontWeight: FontWeight.w700),
+                    ),
+                    const SizedBox(height: Space.sm),
+                    Muted(
+                      tr(
+                        'في حسابك حجوزاتُك ومحادثاتُك ومبالغُك. ومن أخذ جوالك '
+                        'لحظةً يراها كلَّها ما لم يكن عليه قفل.',
+                      ),
+                      size: 14,
+                    ),
+                    const SizedBox(height: Space.lg),
+                    AppCard(
+                      children: [
+                        _GateFact(
+                          icon: Icons.pin_outlined,
+                          title: tr('رمزٌ من أربعة أرقام'),
+                          body: tr(
+                            'يُطلب كلّما فتحتَ التطبيق. ولا يُخزَّن الرمزُ '
+                            'نفسُه — بل بصمةٌ منه لا تُعكس.',
+                          ),
+                        ),
+                        const SizedBox(height: Space.md),
+                        _GateFact(
+                          icon: Icons.fingerprint,
+                          title: _hasSensor ? tr('وبصمتُك تفتحه أسرع') : tr('ولا بصمةَ في جهازك'),
+                          body: _hasSensor
+                              ? tr(
+                                  'اختياريّةٌ فوق الرمز — والرمزُ باقٍ تحتها لِما '
+                                  'تعذّرت البصمة.',
+                                )
+                              : tr('لا حسّاسَ هنا، فالرمزُ وحدَه يفتح.'),
+                        ),
+                        const SizedBox(height: Space.md),
+                        _GateFact(
+                          icon: Icons.key_outlined,
+                          title: tr('ونسيتَ رمزك؟'),
+                          body: tr(
+                            'تخرج من حسابك وتدخل ببريدك وكلمة مرورك، ثمّ '
+                            'تضبط رمزاً جديداً.',
+                          ),
+                        ),
+                      ],
+                    ),
+                    const Spacer(),
+                    const SizedBox(height: Space.lg),
+                    FilledButton(
+                      key: const ValueKey('gate-set-pin'),
+                      onPressed: _busy ? null : _set,
+                      child: Text(tr('اضبط الرمز الآن')),
+                    ),
+                    const SizedBox(height: Space.sm),
+                    TextButton(
+                      key: const ValueKey('gate-sign-out'),
+                      onPressed: _busy ? null : () => widget.onSignOut(),
+                      child: Text(tr('خروج من الحساب')),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _GateFact extends StatelessWidget {
+  const _GateFact({required this.icon, required this.title, required this.body});
+
+  final IconData icon;
+  final String title;
+  final String body;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 20, color: AppColors.muted),
+        const SizedBox(width: Space.sm),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // **ولا `textStyle` بلا `fontFamily`.** نمطُ النصّ المكتوبُ يدوياً
+              // لا يرث عائلةَ الثيمة، فتخرج الحروفُ مربّعاتٍ بيضاء. وقد وقعت.
+              Text(
+                title,
+                style: Theme.of(context).textTheme.bodyMedium
+                    ?.copyWith(fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 2),
+              Muted(body, size: 13),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

@@ -649,61 +649,39 @@ class _SettingsScreenState extends State<SettingsScreen> {
     });
   }
 
-  /// يفعّل القفلَ أو يطفئه.
+  /// يبدّل رمزَ القفل.
   ///
-  /// **والرمزُ يُطلب مرّتين عند التفعيل** — من ضبط رمزاً بإصبعٍ زلّ ثمّ أُقفل
-  /// عليه لا سبيلَ له إلّا الخروجُ من حسابه.
-  Future<void> _toggleLock() async {
+  /// **ولا إطفاءَ هنا بعد اليوم.** كانت هذه الدالّةُ تفعّل وتُطفئ، وقرّر
+  /// صاحبُ المنصّة أن يكون القفلُ مفروضاً — فبقي التبديلُ وذهب الإطفاء.
+  ///
+  /// **ويُطلب الرمزُ القديمُ قبل الجديد.** ولولاه لَاستطاع من وجد الجوالَ
+  /// مفتوحاً أن يضع رمزاً جديداً فيقفله على صاحبه.
+  Future<void> _changePin() async {
     final lock = appLock;
-    if (lock.enabled) {
-      await lock.disable();
-      if (mounted) {
-        setState(() {});
-        showMessage(context, tr('أُطفئ قفل التطبيق.'));
-      }
+    final old = await askPin(
+      context,
+      title: tr('أدخل رمزك الحالي'),
+      subtitle: tr('لتبديله برمزٍ جديد'),
+    );
+    if (old == null || !mounted) return;
+
+    if (!await lock.verify(old)) {
+      if (mounted) showMessage(context, tr('الرمز الحالي خاطئ.'));
       return;
     }
+    if (!mounted) return;
 
-    // **ومن أخطأ في التأكيد يُعاد إلى أوّل الخطوتين لا يُطرَد.**
-    //
-    // كانت الشاشةُ تُغلق وتقول «الرمزان غير متطابقين» في شريطٍ عابر، فيبحث
-    // صاحبُها عن زرّ «فعّله» من جديد — وأكثرُهم لا يعيد المحاولة أصلاً.
-    // والخطأُ في تأكيد أربعةِ أرقامٍ بالإبهام وارد.
-    String? note;
-    while (true) {
-      // والشاشةُ قد تُغلق بين دورةٍ وأخرى: من ألغى ثمّ خرج من الإعدادات.
-      if (!mounted) return;
-      final pin = await askPin(
-        context,
-        title: tr('اختر رمزاً من أربعة أرقام'),
-        subtitle: tr('يُطلب فورَ خروجك من التطبيق'),
-        step: tr('الخطوة ١ من ٢'),
-        note: note,
-      );
-      if (pin == null || !mounted) return;
-
-      final again = await askPin(
-        context,
-        title: tr('أعِد الرمز للتأكيد'),
-        step: tr('الخطوة ٢ من ٢'),
-      );
-      if (again == null || !mounted) return;
-
-      if (pin != again) {
-        note = tr('الرمزان لم يتطابقا. اختر رمزاً من جديد.');
-        continue;
-      }
-
-      try {
-        await lock.enable(pin);
-        if (mounted) {
-          setState(() {});
-          showMessage(context, tr('فُعّل قفل التطبيق.'));
-        }
-      } catch (e) {
-        if (mounted) showMessage(context, messageOf(e));
-      }
-      return;
+    final done = await setUpPin(
+      context,
+      lock,
+      subtitle: tr('يُطلب كلّما فتحتَ التطبيق'),
+      onError: (m) {
+        if (mounted) showMessage(context, m);
+      },
+    );
+    if (done && mounted) {
+      setState(() {});
+      showMessage(context, tr('بُدّل رمز القفل.'));
     }
   }
 
@@ -879,27 +857,36 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       size: 11,
                     ),
                     const SizedBox(height: Space.md),
+                    // **ولا زرَّ إطفاءٍ بعد اليوم.** قرّر صاحبُ المنصّة أن
+                    // يكون القفلُ مفروضاً على العميل ومقدّم الخدمة جميعاً،
+                    // فيُضبط عند الدخول ولا يُطفأ بعدها. وزرٌّ يُطفئ ما
+                    // يفرضه البابُ عند الفتحة التالية عبثٌ يُرى عطلاً.
+                    //
+                    // **والسببُ يُقال في مكانه لا يُترك للتخمين:** من بحث
+                    // عن زرٍّ كان هنا يجب أن يجد لماذا ذهب.
                     Row(
                       children: [
-                        Icon(
-                          appLock.enabled
-                              ? Icons.lock_outline
-                              : Icons.lock_open_outlined,
-                          size: 20,
-                          color: AppColors.accent,
-                        ),
+                        const Icon(Icons.lock_outline,
+                            size: 20, color: AppColors.accent),
                         const SizedBox(width: Space.md),
                         Expanded(
-                          child: Text(appLock.enabled
-                              ? tr('القفل مفعّل')
-                              : tr('القفل مطفأ')),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(tr('القفل مفعّل')),
+                              const SizedBox(height: 2),
+                              Muted(
+                                tr('مطلوبٌ من المنصّة ولا يُطفأ — ولك أن '
+                                    'تبدّل رمزه.'),
+                                size: 11,
+                              ),
+                            ],
+                          ),
                         ),
                         TextButton(
-                          key: const ValueKey('lock-toggle'),
-                          onPressed: _busy ? null : _toggleLock,
-                          child: Text(appLock.enabled
-                              ? tr('أطفئه')
-                              : tr('فعّله')),
+                          key: const ValueKey('lock-change-pin'),
+                          onPressed: _busy ? null : _changePin,
+                          child: Text(tr('بدّل الرمز')),
                         ),
                       ],
                     ),

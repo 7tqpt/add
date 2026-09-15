@@ -210,10 +210,134 @@ begin
 end;
 $$;
 
+-- ----------------------------------------------------------------------------
+-- ٥. ردُّ المبلغ
+--
+--    **وكان يُكتب في الجدول مباشرةً من اللوحة — وهو موضعُ نزيفٍ حقيقيّ.**
+--    تُعلَّم الدفعةُ `refunded` ولا يعلم الحجز: `refunded_amount` يبقى صفراً.
+--    و`settlements.sql` يحسب مستحقَّ المزوّد من **الحجز**:
+--
+--        sum(b.paid_amount - b.refunded_amount) as gross
+--
+--    فمن ردّ لعميلٍ ٥٠٠٬٠٠٠ ريالٍ من اللوحة، دفعت منصّتُه للمزوّد ٤٥٠٬٠٠٠
+--    بعدها كأنّ شيئاً لم يكن — بلا أثرٍ ولا تنبيه.
+--
+--    **ويُقيَّد الردُّ في الحجز والدفعة معاً في معاملةٍ واحدة**، فلا يقع
+--    أحدُهما دون الآخر.
+--
+--    **وتُرجع الدالّةُ حالَ التسوية** لا الدفعةَ وحدَها: مستحقٌّ **دُفع**
+--    للمزوّد لا يستردُّه شيء (`not exists settlement_items` يمنع إعادة
+--    الاحتساب)، فيُقال للمسؤول إنّ المبلغ صار على المنصّة. وهو يقرّر وهو
+--    يرى — وذاك اختيارُ صاحب المنصّة: يمضي ويُنبَّه، لا يُحبَس.
+-- ----------------------------------------------------------------------------
+drop function if exists public.api_admin_refund_payment(uuid, text);
+create or replace function public.api_admin_refund_payment(
+  p_payment_id uuid,
+  p_reason     text default ''
+)
+returns jsonb
+language plpgsql security definer set search_path = public as $$
+declare
+  pay      public.payments;
+  bk       public.bookings;
+  settled  text := 'none';   -- none | pending | paid
+begin
+  if not public.can_write() then
+    raise exception 'لا تملك صلاحية ردّ المبالغ';
+  end if;
+
+  -- **والشرطُ `status = 'paid'` هو ما يمنع ردّين.** مسؤولان يضغطان معاً:
+  -- الثاني لا يجد صفّاً فيقف، ولا يُخصم المبلغُ مرّتين من الحجز.
+  update public.payments
+     set status = 'refunded',
+         refunded_at = now()
+   where id = p_payment_id and status = 'paid'
+  returning * into pay;
+
+  if not found then
+    raise exception 'لا توجد دفعةٌ ناجحةٌ بهذا الرقم — قد تكون رُدّت من قبل';
+  end if;
+
+  if pay.booking_id is not null then
+    -- `least` تحرس قيد `refund_within_paid`: مجموعُ المردود لا يتجاوز
+    -- المقبوض. وتجاوزُه يُسقط المعاملةَ بقيدٍ لا يفهمه المسؤول.
+    update public.bookings
+       set refunded_amount = least(refunded_amount + pay.amount, paid_amount)
+     where id = pay.booking_id
+    returning * into bk;
+
+    select case when s.status = 'paid' then 'paid' else 'pending' end
+      into settled
+      from public.settlement_items i
+      join public.settlements s on s.id = i.settlement_id
+     where i.booking_id = pay.booking_id
+     order by case when s.status = 'paid' then 0 else 1 end
+     limit 1;
+
+    settled := coalesce(settled, 'none');
+  end if;
+
+  perform public.notify_user(
+    pay.user_id, 'payment', 'رُدَّ مبلغُك',
+    'رُدَّ مبلغُ ' || trim(to_char(pay.amount, 'FM999999999')) || ' ريال عن '
+      || coalesce(nullif(pay.booking_reference, ''), 'حجزك')
+      || case when btrim(coalesce(p_reason, '')) = '' then '.'
+              else ' — ' || btrim(p_reason) end,
+    jsonb_build_object('payment_id', pay.id, 'booking_id', pay.booking_id)
+  );
+
+  return jsonb_build_object(
+    'payment_id',      pay.id,
+    'amount',          pay.amount,
+    'booking_id',      pay.booking_id,
+    'refunded_amount', coalesce(bk.refunded_amount, 0),
+    'settlement',      settled
+  );
+end;
+$$;
+
+-- ----------------------------------------------------------------------------
+-- وحالُ التسوية تُسأل **قبل** الردّ لا بعده
+--
+-- التنبيهُ يجب أن يُقرأ قبل الضغط لا بعده — ومن علم بعد أن وقع الفعلُ لم
+-- يُنبَّه، أُخبر.
+-- ----------------------------------------------------------------------------
+create or replace function public.api_refund_outlook(p_payment_id uuid)
+returns jsonb
+language plpgsql security definer set search_path = public as $$
+declare
+  pay     public.payments;
+  settled text;
+begin
+  if not public.can_write() then
+    raise exception 'لا تملك صلاحية ردّ المبالغ';
+  end if;
+
+  select * into pay from public.payments where id = p_payment_id;
+  if not found then raise exception 'العملية غير موجودة'; end if;
+
+  select case when s.status = 'paid' then 'paid' else 'pending' end
+    into settled
+    from public.settlement_items i
+    join public.settlements s on s.id = i.settlement_id
+   where i.booking_id = pay.booking_id
+   order by case when s.status = 'paid' then 0 else 1 end
+   limit 1;
+
+  return jsonb_build_object(
+    'refundable', pay.status = 'paid',
+    'amount',     pay.amount,
+    'settlement', coalesce(settled, 'none')
+  );
+end;
+$$;
+
 grant execute on function
   public.api_submit_payment(uuid, text, text, text),
   public.api_admin_confirm_payment(uuid, text, text),
-  public.api_admin_reject_payment(uuid, text)
+  public.api_admin_reject_payment(uuid, text),
+  public.api_admin_refund_payment(uuid, text),
+  public.api_refund_outlook(uuid)
 to authenticated;
 
 commit;
@@ -227,8 +351,11 @@ select 'أعمدة التحويل' as البند,
  where table_schema = 'public' and table_name = 'app_settings'
    and column_name in ('pay_jawali', 'pay_kuraimi', 'pay_bank', 'pay_note')
 union all
-select 'الدوال', count(*)::text, '3'
+select 'الدوال', count(*)::text, '5'
   from pg_proc p join pg_namespace n on n.oid = p.pronamespace
  where n.nspname = 'public'
    and p.proname in ('api_submit_payment', 'api_admin_confirm_payment',
-                     'api_admin_reject_payment');
+                     'api_admin_reject_payment', 'api_admin_refund_payment',
+                     'api_refund_outlook');
+
+notify pgrst, 'reload schema';
