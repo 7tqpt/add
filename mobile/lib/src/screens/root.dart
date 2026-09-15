@@ -157,9 +157,20 @@ class _RootScreenState extends State<RootScreen> with WidgetsBindingObserver {
     if (lock != null && session.signedIn) {
       return ListenableBuilder(
         listenable: lock,
-        builder: (context, child) => lock.locked
-            ? LockScreen(lock: lock, onSignOut: session.signOut)
-            : child!,
+        builder: (context, child) {
+          // **وبابُ الضبط قبل بابِ الفتح.** من لم يضبط قفلاً لا يُطالَب
+          // برمزٍ لا يملكه — يُطالَب بأن يضبطه. وهو قرارُ صاحب المنصّة:
+          // يُفرض القفلُ فورَ الدخول، ولا تُفتح الشاشاتُ قبله.
+          //
+          // **ويشمل من هم داخلون اليومَ** بلا قفل: الرايةُ تُقرأ من الخزنة
+          // عند الإقلاع، فيرون البابَ عند أوّل فتحةٍ بعد التحديث.
+          if (!lock.enabled) {
+            return LockGateScreen(lock: lock, onSignOut: session.signOut);
+          }
+          return lock.locked
+              ? LockScreen(lock: lock, onSignOut: session.signOut)
+              : child!;
+        },
         child: _body(context),
       );
     }
