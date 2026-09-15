@@ -104,7 +104,12 @@ ok('العميل يرى حجزه فقط', other[0].n === 1, `يرى ${other[0].n
 const { rows: seen } = await as('provider', `select count(*)::int n from public.bookings`)
 ok('مقدّم الخدمة يرى حجزه فقط', seen[0].n === 1, `يرى ${seen[0].n}`)
 const { rows: adminSees } = await as('admin', `select count(*)::int n from public.bookings`)
-ok('المسؤول يرى كل الحجوزات', adminSees[0].n > 50, `يرى ${adminSees[0].n}`)
+// **والعددُ صار معلوماً فيُسأل عنه بعينه.** كانت العتبةُ `> 50` لأنّ
+// البيانةَ كانت تُسحب سحباً: بين ٥٤ و١٠٢ حجزاً في كلّ تشغيل. فمرّت عندي
+// بـ٨٨ وسقطت في CI بـ٤٦ على الشيفرة نفسِها. و`seed.sql` صار محسوباً
+// (يحرسه `seed_stable.test.mjs`) — فالعتبةُ تُستبدل بالعدد: ٧٨ من البيانة
+// وواحدٌ أنشأه هذا الاختبار.
+ok('المسؤول يرى كل الحجوزات', adminSees[0].n === 79, `يرى ${adminSees[0].n}`)
 const { rows: docs } = await as('customer', `select count(*)::int n from public.provider_documents`)
 ok('العميل لا يرى مستندات أحد', docs[0].n === 0)
 const { rows: audit } = await as('customer', `select count(*)::int n from public.audit_log`)
