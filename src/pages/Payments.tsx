@@ -1,6 +1,17 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Banknote, Check, PercentCircle, RotateCcw, Search, TrendingUp, Undo2, X } from 'lucide-react'
+import {
+  AlertTriangle,
+  Banknote,
+  Check,
+  Info,
+  PercentCircle,
+  RotateCcw,
+  Search,
+  TrendingUp,
+  Undo2,
+  X,
+} from 'lucide-react'
 import { BarChart } from '@/components/charts/BarChart'
 import { StatTile } from '@/components/charts/StatTile'
 import { Badge, type Tone } from '@/components/ui/Badge'
@@ -31,8 +42,10 @@ import {
   getPaymentTotals,
   listPayments,
   refundPayment,
+  refundOutlook,
   confirmPayment,
   rejectPayment,
+  type RefundOutlook,
 } from '@/services/finance'
 import { errorText } from '@/services/base'
 
@@ -68,6 +81,8 @@ export function PaymentsPage() {
   // لكلٍّ منها تُكرّر النصّ والحارس والـbusy ثلاث مرّات، وتفترق عند أول تعديل.
   const [action, setAction] = useState<'refund' | 'confirm' | 'reject'>('refund')
   const [busy, setBusy] = useState(false)
+  // ما يصير لو رُدَّ المبلغ — يُجلب مع فتح الحوار، ويُقرأ **قبل** الضغط.
+  const [outlook, setOutlook] = useState<RefundOutlook | null>(null)
 
   const debouncedSearch = useDebounced(search)
 
@@ -121,6 +136,16 @@ export function PaymentsPage() {
   function ask(payment: Payment, next: 'refund' | 'confirm' | 'reject') {
     setAction(next)
     setPending(payment)
+    setOutlook(null)
+    // **ولا يُحبَس الحوارُ على الشبكة.** يُفتح فوراً بنصّه، ويهبط التنبيهُ
+    // حين يصل. ومن انتظر حواراً لا يُفتح ضغط الزرَّ مرّتين.
+    if (next !== 'refund') return
+    const asked = payment.id
+    void refundOutlook(payment)
+      .then((r) => setOutlook((prev) => (asked === payment.id ? r : prev)))
+      // **وتعذُّرُ المعرفة لا يمنع الفعل.** الردُّ حقٌّ للعميل، والتنبيهُ
+      // خبرٌ يُعين — فغيابُه يُصمت ولا يُعطّل.
+      .catch(() => setOutlook(null))
   }
 
   const buildExport = useCallback(async () => {
@@ -492,9 +517,57 @@ export function PaymentsPage() {
         busy={busy}
         onConfirm={() => pending && apply(pending)}
         onCancel={() => setPending(null)}
-      />
+      >
+        {action === 'refund' && outlook && outlook.settlement !== 'none' ? (
+          <SettlementNotice paid={outlook.settlement === 'paid'} />
+        ) : null}
+      </ConfirmDialog>
 
       {toast ? <Toast message={toast} /> : null}
     </div>
+  )
+}
+
+/**
+ * **أين ذهب هذا المال قبل أن يُردّ.**
+ *
+ * `settlements.sql` يحسب مستحقَّ مقدّم الخدمة من **الحجز** لا من المدفوعات:
+ * `sum(b.paid_amount - b.refunded_amount)`. ومستحقٌّ **دُفع** لا يستردُّه
+ * شيء — `not exists settlement_items` يمنع إعادة الاحتساب. فمن ردَّ بعد
+ * الدفع ردَّ من جيب المنصّة، **ويجب أن يعلم ذلك وهو يضغط لا بعده.**
+ *
+ * والردُّ يمضي على الحالين: حبسُه يمنع حقّاً قد يكون واجباً للعميل.
+ */
+function SettlementNotice({ paid }: { paid: boolean }) {
+  const hue = paid ? 'var(--critical)' : 'var(--warning)'
+  const Icon = paid ? AlertTriangle : Info
+  return (
+    <p
+      // `alert` للأحمر وحدَه: ما دُفع خبرٌ يقطع، وما هو قيد الاحتساب
+      // يُعدَّل تلقائياً فلا يستحقّ مقاطعةَ قارئ الشاشة.
+      role={paid ? 'alert' : undefined}
+      className="flex items-start gap-2.5 rounded-lg border px-3 py-2.5 text-xs leading-6"
+      style={{
+        borderColor: `color-mix(in oklab, ${hue} 35%, transparent)`,
+        background: `color-mix(in oklab, ${hue} 8%, transparent)`,
+        color: 'var(--text-primary)',
+      }}
+    >
+      <Icon size={16} className="mt-1 shrink-0" style={{ color: hue }} aria-hidden />
+      <span>
+        {paid ? (
+          <>
+            <strong>هذا المبلغ دُفع لمقدّم الخدمة</strong> في تسويةٍ سابقة.
+            الاسترجاع يمضي، <strong>ويُخصم من المنصّة</strong> — وسوِّ الفرق مع مقدّم
+            الخدمة بنفسك.
+          </>
+        ) : (
+          <>
+            لهذا الحجز مستحقٌّ <strong>قيد الاحتساب</strong> لم يُدفع بعد. سيُخصم منه
+            المبلغ تلقائياً بعد الاسترجاع.
+          </>
+        )}
+      </span>
+    </p>
   )
 }

@@ -185,6 +185,54 @@ export async function rejectPayment(payment: Payment, reason = ''): Promise<void
   })
 }
 
+/** حالُ مستحقّ المزوّد عن حجزِ هذه الدفعة. */
+export type RefundSettlementState = 'none' | 'pending' | 'paid'
+
+export interface RefundOutlook {
+  refundable: boolean
+  amount: number
+  settlement: RefundSettlementState
+}
+
+/**
+ * ما يصير لو رُدَّ هذا المبلغ — **يُسأل قبل الضغط لا بعده.**
+ *
+ * ومن علم بعد أن وقع الفعلُ لم يُنبَّه، أُخبر.
+ */
+export async function refundOutlook(payment: Payment): Promise<RefundOutlook> {
+  if (!isSupabaseConfigured) {
+    // **و«دُفع» تُرجَّح على غيرها.** لو كان للمزوّد تسويتان — واحدةٌ مدفوعةٌ
+    // وأخرى معلّقة — فالخبرُ الذي يهمّ هو أنّ المال خرج.
+    const mine = demoSettlements.filter((s) => s.provider_id === payment.provider_id)
+    const item = mine.find((s) => s.status === 'paid') ?? mine[0]
+    return delay({
+      refundable: payment.status === 'paid',
+      amount: payment.amount,
+      settlement: (!item ? 'none' : item.status === 'paid' ? 'paid' : 'pending') as
+        RefundSettlementState,
+    })
+  }
+
+  const { data, error } = await requireSupabase().rpc('api_refund_outlook', {
+    p_payment_id: payment.id,
+  })
+  if (error) throw error
+  return data as RefundOutlook
+}
+
+/**
+ * ردُّ المبلغ للعميل.
+ *
+ * **بدالّة لا بتحديثٍ مباشر — وكان تحديثاً مباشراً.** تُعلَّم الدفعةُ
+ * `refunded` والحجزُ لا يعلم: `refunded_amount` يبقى صفراً. و`settlements.sql`
+ * يحسب مستحقَّ المزوّد من **الحجز**:
+ *
+ *     sum(b.paid_amount - b.refunded_amount) as gross
+ *
+ * فمن ردَّ لعميلٍ ٥٠٠٬٠٠٠ ريالٍ من هنا، دفعت منصّتُه للمزوّد بعدها ٤٥٠٬٠٠٠
+ * كأنّ الردَّ لم يكن — بلا أثرٍ ولا تنبيه. وهي علّةُ `confirmPayment` نفسُها
+ * التي كُتبت فوقها منذ زمن، في وجهها الآخر.
+ */
 export async function refundPayment(payment: Payment): Promise<void> {
   const refunded_at = new Date().toISOString()
 
@@ -196,13 +244,11 @@ export async function refundPayment(payment: Payment): Promise<void> {
     }
     await delay(null, 380)
   } else {
-    const { error } = await requireSupabase()
-      .from('payments')
-      .update({ status: 'refunded', refunded_at })
-      .eq('id', payment.id)
-      // Only a settled payment can be refunded, so two admins acting at once
-      // cannot refund twice.
-      .eq('status', 'paid')
+    // والقيدُ في الحجز والدفعة معاً داخلَ الدالّة، فلا يقع أحدُهما دونه.
+    const { error } = await requireSupabase().rpc('api_admin_refund_payment', {
+      p_payment_id: payment.id,
+      p_reason: '',
+    })
     if (error) throw error
   }
 
