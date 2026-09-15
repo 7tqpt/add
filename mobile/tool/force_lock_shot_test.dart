@@ -18,6 +18,7 @@ import 'package:aras/src/core/app_lock.dart';
 import 'package:aras/src/core/biometrics.dart';
 import 'package:aras/src/core/session.dart';
 import 'package:aras/src/core/theme.dart';
+import 'package:aras/src/screens/account_extras.dart';
 import 'package:aras/src/screens/lock.dart';
 import 'package:aras/src/screens/root.dart';
 
@@ -68,13 +69,23 @@ Widget _wrap(Widget child) => MaterialApp(
     );
 
 class _Sensor implements Biometrics {
-  const _Sensor();
+  const _Sensor({this.opens = true});
+
+  /// أتفتح البصمةُ القفلَ إن سُئلت؟
+  ///
+  /// **وحسّاسٌ يقبل دائماً لا يُصوَّر به قفل.** شاشةُ القفل تطلب البصمةَ في
+  /// `initState`، فحسّاسٌ يقبل يفتحها في الإطار نفسِه ويُبدّلها `RootScreen`
+  /// بالتطبيق — فلا يبقى ما يُصوَّر. وقد وقع ذلك.
+  ///
+  /// والحالُ المصوَّرةُ هي ما يراه أكثرُ الناس: طُلبت البصمةُ فصُرفت أو
+  /// أخفقت، فبقيت لوحةُ الأرقام.
+  final bool opens;
 
   @override
   Future<bool> available() async => true;
 
   @override
-  Future<bool> authenticate() async => true;
+  Future<bool> authenticate() async => opens;
 }
 
 Session _session() => Session()
@@ -117,5 +128,70 @@ void main() {
         reason: 'لم يضع الجذرُ البابَ — فاللقطةُ لشيءٍ آخر');
 
     await _shoot(tester, '$out/force-lock-shipped-gate.png');
+  });
+
+  testWidgets('وورقةُ ضبط الرمز كما تُفتح من البابّ', (tester) async {
+    tester.view.physicalSize = const Size(1080, 2280);
+    tester.view.devicePixelRatio = 3.0;
+    addTearDown(tester.view.reset);
+
+    final lock = AppLock();
+    await lock.boot();
+    await tester.pumpWidget(_wrap(RootScreen(session: _session(), lock: lock)));
+    await settle(tester);
+
+    await tester.tap(find.byKey(const ValueKey('gate-set-pin')));
+    await settle(tester);
+
+    // **ولا يُصدَّق أنّ الورقةَ فُتحت: تُسأل الشجرة.**
+    expect(find.byType(PinDots), findsOneWidget,
+        reason: 'لم تُفتح ورقةُ الرمز — فاللقطةُ لشيءٍ آخر');
+
+    await _shoot(tester, '$out/force-lock-shipped-setpin.png');
+  });
+
+  testWidgets('والقفلُ اليوميُّ — ما يراه كلَّ فتحة', (tester) async {
+    tester.view.physicalSize = const Size(1080, 2280);
+    tester.view.devicePixelRatio = 3.0;
+    addTearDown(tester.view.reset);
+
+    biometricsOverride = const _Sensor(opens: false);
+    final lock = AppLock();
+    await lock.enable('1379');
+    await lock.setBiometric(true);
+    lock.onLeave();
+    lock.onReturn();
+
+    await tester.pumpWidget(_wrap(RootScreen(session: _session(), lock: lock)));
+    await settle(tester);
+
+    expect(find.byType(LockScreen), findsOneWidget,
+        reason: 'لم يُقفل التطبيقُ بعد العودة');
+
+    await _shoot(tester, '$out/force-lock-shipped-daily.png');
+  });
+
+  testWidgets('وقسمُ «الخصوصية والأمان» بلا زرِّ إطفاء', (tester) async {
+    // **وهو موضعُ الفرض الثاني:** لا يُطفأ بعد ضبطه، ويُقال لماذا في مكانه.
+    tester.view.physicalSize = const Size(1080, 2280);
+    tester.view.devicePixelRatio = 3.0;
+    addTearDown(tester.view.reset);
+
+    await appLock.enable('1379');
+    await tester.pumpWidget(_wrap(SettingsScreen(session: _session())));
+    await settle(tester);
+
+    // تُمرَّر الشاشةُ إلى القسم — وإلّا صُوِّر رأسُها.
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('lock-change-pin')),
+      280,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await settle(tester);
+
+    expect(find.byKey(const ValueKey('lock-toggle')), findsNothing,
+        reason: 'زرُّ الإطفاء باقٍ — واللقطةُ تكذب');
+
+    await _shoot(tester, '$out/force-lock-shipped-settings.png');
   });
 }
