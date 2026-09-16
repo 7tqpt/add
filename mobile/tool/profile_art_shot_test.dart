@@ -19,6 +19,7 @@ import 'package:aras/src/core/theme.dart';
 import 'package:aras/src/data/demo.dart';
 import 'package:aras/src/screens/account.dart';
 import 'package:aras/src/screens/edit_profile.dart';
+import 'package:aras/src/ui/kit.dart';
 
 Future<void> _load(String family, List<String> paths) async {
   final loader = FontLoader(family);
@@ -107,13 +108,28 @@ void main() {
   });
 
   testWidgets('و«الملف الشخصي» — غلافٌ وقرصٌ بلا زرّ كاميرا', (tester) async {
-    phone(tester, height: 2200);
+    // **ونافذةٌ أطول بعد أن طال الغلاف** (٢٣٠ بدل ١٠٦): على ٢٢٠٠ يُقصّ
+    // سطرُ البريد من أسفل اللقطة، فتُرى صورةٌ لا تُري ما يُسأل عنه.
+    phone(tester, height: 2700);
     await tester.pumpWidget(_wrap(EditProfileScreen(session: _session())));
     await settle(tester);
 
     expect(find.byKey(const ValueKey('profile-avatar')), findsOneWidget);
     expect(find.byIcon(Icons.photo_camera), findsNothing,
         reason: 'زرُّ الكاميرا ما زال في الملفّ');
+
+    // **وتُسأل الشجرةُ عن الثلاثة قبل اللقطة** — لا تخرج صورةٌ تُطمئن على
+    // ما لم يصر. والقياسُ الدقيقُ في `test/profile_head_test.dart`؛ هذا
+    // حارسُ اللقطة وحدَها.
+    expect(tester.getSize(find.byKey(const ValueKey('profile-cover'))).height,
+        230.0,
+        reason: 'الغلافُ ليس بالارتفاع الذي اختاره — فلا تُصوَّر');
+    final disc = tester.getRect(find.byKey(const ValueKey('profile-avatar')));
+    final card = tester.getRect(find.byType(AppCard).first);
+    expect(card.top - disc.bottom, lessThanOrEqualTo(8.0),
+        reason: 'ما زال بين الغلاف والبطاقة فراغ');
+    expect(find.byIcon(Icons.mail_outline), findsOneWidget,
+        reason: 'سطرُ البريد خارجَ اللقطة — فلا تُرى أيقونتُه');
 
     await _shoot(tester, '$out/art-profile.png');
   });

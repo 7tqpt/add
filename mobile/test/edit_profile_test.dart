@@ -47,6 +47,14 @@ void main() {
   });
 
   testWidgets('والبريد يُعرض ولا يُكتب فيه', (tester) async {
+    // **ونافذةٌ أطول بعد أن طال الغلاف.** اختار صاحبُ المنصّة غلافاً
+    // بارتفاع ٢٣٠ بدل ١٠٦، فنزل سطرُ البريد تحت حافّة النافذة الافتراضيّة
+    // (٦٠٠) — والقوائمُ في Flutter تبني ما يظهر وحده، فلا يوجد في الشجرة
+    // أصلاً. **ولا يُسكَت القياسُ:** الشرطُ باقٍ كما هو، والنافذةُ وحدَها
+    // كبرت لتسع ما تسعه شاشةُ الجوال.
+    tester.view.physicalSize = const Size(1080, 2400);
+    tester.view.devicePixelRatio = 3.0;
+    addTearDown(tester.view.reset);
     await tester.pumpWidget(_wrap(_session()));
     await tester.pumpAndSettle();
     // لا حقلَ نصٍّ للبريد بحال — عرضٌ فقط، ومعه سببُ ذلك.

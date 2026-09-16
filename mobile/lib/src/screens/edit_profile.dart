@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 
 import '../core/i18n.dart';
@@ -56,8 +55,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   void _markDirty() {
     final p = _profile;
     if (p == null) return;
-    final changed = _name.text.trim() != p.fullName.trim() ||
-        _governorateId != p.governorateId;
+    final changed = _name.text.trim() != p.fullName.trim() || _governorateId != p.governorateId;
     if (changed != _dirty) setState(() => _dirty = changed);
   }
 
@@ -96,10 +94,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     super.dispose();
   }
 
-
-
-
-
   Future<void> _save() async {
     final name = _name.text.trim();
     if (name.length < 2) {
@@ -119,11 +113,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     try {
       // **ولا صورةَ تُرفع من هنا بعد اليوم.** موضعُ التبديل «حسابي» وحدَها،
       // فهذه الشاشةُ تحفظ الاسمَ والمحافظةَ لا غير.
-      await Api.updateProfile(
-        fullName: name,
-        phone: phone,
-        governorateId: _governorateId,
-      );
+      await Api.updateProfile(fullName: name, phone: phone, governorateId: _governorateId);
       if (!mounted) return;
       Navigator.of(context).pop(true);
     } catch (e) {
@@ -144,10 +134,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   /// أبطلت تأكيدَ الرقم، فمن بقي يتصفّح بعد التبديل يتصفّح برقمٍ غيرِ
   /// مؤكَّد — وهو ما بُني الحاجزُ لمنعه.
   Future<void> _editPhone() async {
-    final changed = await showPhoneEditSheet(
-      context,
-      current: _profile?.phone ?? '',
-    );
+    final changed = await showPhoneEditSheet(context, current: _profile?.phone ?? '');
     if (changed == null || !mounted) return;
     await widget.session.refreshIdentity();
     if (!mounted) return;
@@ -197,8 +184,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           : ListView(
               padding: const EdgeInsets.all(Space.lg),
               children: [
+                // **ولا فراغَ بينهما.** قال صاحبُ المنصّة: «أريدها ما
+                // يكون فراغ بين بياناتي والغلاف» — وكان بينهما `Space.xl`.
+                // وحدُّ الغلاف يسع نصفَ القرص وستّةً بعده، فالبطاقةُ تلي
+                // القرصَ ولا تلمسه.
                 _ProfileArt(profile: _profile!),
-                const SizedBox(height: Space.xl),
                 AppCard(
                   children: [
                     Row(
@@ -206,9 +196,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         Expanded(child: SectionTitle(tr('بياناتي'))),
                         // **وتُرى بلا نزولٍ إلى الزرّ.** من عدّل ثمّ صرفه
                         // شيءٌ عن الشاشة يعود فلا يعرف أفيها ما لم يُحفظ.
-                        if (_dirty)
-                          StatusBadge(tr('تعديلٌ لم يُحفظ'),
-                              color: AppColors.warning),
+                        if (_dirty) StatusBadge(tr('تعديلٌ لم يُحفظ'), color: AppColors.warning),
                       ],
                     ),
                     const SizedBox(height: Space.lg),
@@ -256,9 +244,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   key: const ValueKey('phone-row'),
                   icon: Icons.phone_outlined,
                   label: tr('رقم الجوال'),
-                  value: _profile!.phone.isEmpty
-                      ? tr('لم يُضَف بعد')
-                      : _profile!.phone,
+                  value: _profile!.phone.isEmpty ? tr('لم يُضَف بعد') : _profile!.phone,
                   action: _profile!.phone.isEmpty ? tr('أضف') : tr('تعديل'),
                   actionKey: const ValueKey('phone-edit'),
                   onAction: _editPhone,
@@ -270,9 +256,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   // مطفأً في إعدادات المنصّة لا يُطلب تأكيدٌ أصلاً، وسطرٌ
                   // يقول غيرَ ذلك يُخيف بلا سبب.
                   footer: widget.session.phoneGate.required_
-                      ? Muted(
-                          tr('تبديلُ الرقم يُلزمك بتأكيده مرّةً أخرى على واتساب.'),
-                          size: 12)
+                      ? Muted(tr('تبديلُ الرقم يُلزمك بتأكيده مرّةً أخرى على واتساب.'), size: 12)
                       : null,
                 ),
                 const SizedBox(height: Space.sm),
@@ -336,10 +320,11 @@ class _EmailRowState extends State<_EmailRow> {
     strong: false,
     footer: _open
         ? Text(
-            tr('به تدخل إلى حسابك، وتغييره يحتاج رسالة تأكيدٍ إلى '
-                'العنوان الجديد. راسل الدعم لتغييره.'),
-            style: const TextStyle(
-                fontSize: 12, height: 1.7, color: AppColors.muted),
+            tr(
+              'به تدخل إلى حسابك، وتغييره يحتاج رسالة تأكيدٍ إلى '
+              'العنوان الجديد. راسل الدعم لتغييره.',
+            ),
+            style: const TextStyle(fontSize: 12, height: 1.7, color: AppColors.muted),
           )
         : null,
   );
@@ -359,6 +344,15 @@ class _EmailRowState extends State<_EmailRow> {
 ///
 /// **والغلافُ أُضيف هنا** بطلبه: هو واجهةُ الملفّ، ومن يراجع بياناته يرى
 /// ما يراه غيره.
+/// ارتفاعُ الغلاف — **اختاره صاحبُ المنصّة من أربعِ لقطات**: عُرضت عليه
+/// ١٠٦ (المشحونُ يومَها) و١٥٠ و١٩٠ و٢٣٠ فوق بطاقة «بياناتي» الحقيقيّة،
+/// فأعاد لقطةَ ٢٣٠. وقبلها قال: «خلّيها أطول، نفس اللي عند البطاقة
+/// بياناتي».
+const double _coverHeight = 230;
+
+/// وقطرُ القرص — يُذكر مرّةً لأنّ ارتفاعَ الحدّ محسوبٌ منه.
+const double _discSize = 108;
+
 class _ProfileArt extends StatelessWidget {
   const _ProfileArt({required this.profile});
 
@@ -370,7 +364,9 @@ class _ProfileArt extends StatelessWidget {
     final avatar = Api.avatarUrl(profile.avatarPath);
 
     return SizedBox(
-      height: 150,
+      // **والقرصُ ينزل نصفَه تحت الغلاف**، فالارتفاعُ الكلّيُّ يسع ذلك.
+      // ولو حُسب بالعين افترق العددان يوماً وخرج القرصُ من الحدّ.
+      height: _coverHeight + _discSize / 2 + 6,
       child: Stack(
         alignment: Alignment.bottomCenter,
         children: [
@@ -378,8 +374,12 @@ class _ProfileArt extends StatelessWidget {
             top: 0,
             right: 0,
             left: 0,
-            height: 106,
+            height: _coverHeight,
+            // **ومفتاحٌ ليُقاس المرسومُ لا المكتوب.** ارتفاعُ الغلاف
+            // اختيارُ صاحبِ المنصّة، وشرطٌ يقرأ `_coverHeight` يقارن
+            // الثابتَ بنفسه ولا يحرس شيئاً — فيُقاس ما رُسم على الشاشة.
             child: ClipRRect(
+              key: const ValueKey('profile-cover'),
               borderRadius: BorderRadius.circular(Space.lg),
               child: cover == null
                   ? const DecoratedBox(
@@ -411,8 +411,8 @@ class _ProfileArt extends StatelessWidget {
           ),
           Container(
             key: const ValueKey('profile-avatar'),
-            width: 108,
-            height: 108,
+            width: _discSize,
+            height: _discSize,
             alignment: Alignment.center,
             decoration: BoxDecoration(
               color: AppColors.accent,
@@ -442,10 +442,10 @@ class _ProfileArt extends StatelessWidget {
                 : Image.network(
                     avatar,
                     fit: BoxFit.cover,
-                    width: 108,
-                    height: 108,
-                    errorBuilder: (_, _, _) => const Icon(Icons.person,
-                        size: 44, color: AppColors.accentInk),
+                    width: _discSize,
+                    height: _discSize,
+                    errorBuilder: (_, _, _) =>
+                        const Icon(Icons.person, size: 44, color: AppColors.accentInk),
                   ),
           ),
         ],
@@ -485,66 +485,78 @@ class _FactRow extends StatelessWidget {
   final Widget? footer;
 
   @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-    decoration: BoxDecoration(
-      color: AppColors.surface2,
-      borderRadius: BorderRadius.circular(14),
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Icon(icon, size: 19, color: AppColors.muted),
-            const SizedBox(width: Space.sm),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Muted(label, size: 11),
-                  const SizedBox(height: 2),
-                  Text(
-                    value,
-                    textDirection: TextDirection.ltr,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.ink,
-                      fontFamilyFallback: arabicFallback,
+  Widget build(BuildContext context) {
+    // **ولونُها لونُ أيقونات الحقول — لا لونٌ يشبهه.** قال صاحبُ المنصّة:
+    // «خلّي لي رقم الجوال والبريد نفس لون الاسم الكامل والمحافظة». وكانت
+    // `AppColors.muted` بقياس ١٩، فتُقرأ في شاشةٍ واحدةٍ أيقونتان بلونين
+    // وقياسين بلا سبب.
+    //
+    // **ولا يُنسخ اللونُ رقماً:** يُسأل عنه الثيمةُ بالطريق الذي تسلكه
+    // `InputDecoration.prefixIcon` نفسُها. فمن ضبط `prefixIconColor` يوماً
+    // تبعه السطران، ولو كُتب هنا لونٌ ثابتٌ لَافترقا من حيث لا يُرى.
+    final theme = Theme.of(context);
+    final iconColor =
+        theme.inputDecorationTheme.prefixIconColor ?? theme.colorScheme.onSurfaceVariant;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(color: AppColors.surface2, borderRadius: BorderRadius.circular(14)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              // والقياسُ ٢٠ كقياس أيقونتَي الاسم والمحافظة.
+              Icon(icon, size: 20, color: iconColor),
+              const SizedBox(width: Space.sm),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Muted(label, size: 11),
+                    const SizedBox(height: 2),
+                    Text(
+                      value,
+                      textDirection: TextDirection.ltr,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.ink,
+                        fontFamilyFallback: arabicFallback,
+                      ),
                     ),
+                  ],
+                ),
+              ),
+              // **ولا `textStyle` هنا بلا عائلة.** نمطُ الزرّ لا يرث
+              // `fontFamily` من الثيمة — يُستعمل كما هو، فتخرج الحروفُ
+              // مربّعاتٍ بيضاء. وقعتْ في راسم المقترح قبل أن تُكتب هنا.
+              if (strong)
+                OutlinedButton(
+                  key: actionKey,
+                  onPressed: onAction,
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size(0, 36),
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
                   ),
-                ],
-              ),
-            ),
-            // **ولا `textStyle` هنا بلا عائلة.** نمطُ الزرّ لا يرث
-            // `fontFamily` من الثيمة — يُستعمل كما هو، فتخرج الحروفُ
-            // مربّعاتٍ بيضاء. وقعتْ في راسم المقترح قبل أن تُكتب هنا.
-            if (strong)
-              OutlinedButton(
-                key: actionKey,
-                onPressed: onAction,
-                style: OutlinedButton.styleFrom(
-                  minimumSize: const Size(0, 36),
-                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  child: Text(action),
+                )
+              else
+                TextButton(
+                  key: actionKey,
+                  onPressed: onAction,
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    minimumSize: const Size(0, 32),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  child: Text(action),
                 ),
-                child: Text(action),
-              )
-            else
-              TextButton(
-                key: actionKey,
-                onPressed: onAction,
-                style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  minimumSize: const Size(0, 32),
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                ),
-                child: Text(action),
-              ),
-          ],
-        ),
-        if (footer != null) ...[const SizedBox(height: Space.sm), footer!],
-      ],
-    ),
-  );
+            ],
+          ),
+          if (footer != null) ...[const SizedBox(height: Space.sm), footer!],
+        ],
+      ),
+    );
+  }
 }
