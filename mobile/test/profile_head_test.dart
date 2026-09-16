@@ -135,6 +135,40 @@ void main() {
         reason: 'لونُ الحقول صار `muted` — فلا يحرس التساوي شيئاً');
   });
 
+  testWidgets('**وسطرا الجوال والبريد داخل بطاقة «بياناتي»**', (tester) async {
+    // **وأرضيّةٌ واحدةٌ للأربع.** قِيست بكسلاتُ اللقطة المشحونة فإذا حبرُ
+    // الأيقونات الأربع واحدٌ إلى البايت — **والفرقُ أرضيّةٌ لا لون**:
+    // الحقلان على أبيضَ والسطران على ورديّ (`surface2`)، فيُقرأ الحبرُ
+    // الواحدُ أغمقَ على الورديّ. قال: «لونه ثاني ولون المحافظة والاسم
+    // أبيض»، فاختار من ثلاثة مرسومةٍ أن يدخلا البطاقة.
+    await _open(tester);
+
+    expect(find.byType(AppCard), findsOneWidget,
+        reason: 'خرج السطران إلى بطاقةٍ ثانية — وأرضيّتُهما تفترق');
+
+    final card = tester.getRect(find.byType(AppCard));
+    for (final row in const [ValueKey('phone-row'), ValueKey('email-row')]) {
+      final r = tester.getRect(find.byKey(row));
+      expect(card.top <= r.top && card.bottom >= r.bottom, isTrue,
+          reason: 'السطرُ خارج البطاقة — فأرضيّتُه ليست أرضيّتها');
+    }
+  });
+
+  testWidgets('**ولا شريطَ ورديٌّ تحتها**', (tester) async {
+    // **ولا يُسأل السطرُ عن نفسه.** لو قيس بأنّه «موجودٌ في البطاقة» وحدَه
+    // لَمرّ لو أُعيد إليه لونُه — فيُقاس أنّ اللونَ نفسَه لم يعُد يُرسم في
+    // الشاشة أصلاً.
+    await _open(tester);
+
+    final pink = find.byWidgetPredicate((w) {
+      if (w is! Container) return false;
+      final d = w.decoration;
+      return d is BoxDecoration && d.color == AppColors.surface2;
+    });
+    expect(pink, findsNothing,
+        reason: 'عاد الشريطُ الورديُّ — والحبرُ الواحدُ يُقرأ بلونين');
+  });
+
   testWidgets('**وبقياسها — ٢٠ لا ١٩**', (tester) async {
     await _open(tester);
 

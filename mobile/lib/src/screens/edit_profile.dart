@@ -231,36 +231,53 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         _markDirty();
                       },
                     ),
+                    // ── الحقائقُ التي لا تُكتب في نموذج ────────────────
+                    //
+                    // **وصارت داخل البطاقة نفسِها.** كانت في شريطين
+                    // ورديّين تحتها (`AppColors.surface2`)، فقال صاحبُ
+                    // المنصّة إنّ أيقونتيهما تبدوان بلونٍ غير لون الاسم
+                    // والمحافظة — وقيست البكسلاتُ فإذا الحبرُ واحدٌ إلى
+                    // البايت (`#524344` للأربع)، **والفرقُ أرضيّةٌ لا
+                    // لون**: الحقلان على أبيضَ والسطران على ورديّ، فيُقرأ
+                    // الحبرُ الواحدُ أغمقَ على الورديّ. ثمّ قالها صريحة:
+                    // «لونه ثاني ولون المحافظة والاسم أبيض».
+                    //
+                    // فعُرضت عليه ثلاثةُ حلولٍ مرسومة، فاختار هذا: أرضيّةٌ
+                    // واحدةٌ للأربع، وبطاقةٌ واحدةٌ بدل ثلاث.
+                    const SizedBox(height: Space.lg),
+                    const Divider(height: 1, color: AppColors.hairline),
+                    const SizedBox(height: Space.md),
+                    //
+                    // **والرقمُ ليس كسائر البيانات، فلا يُحفظ معها.** تبديلُه
+                    // يُبطل تأكيدَه في القاعدة فيهبط حاجزُ واتساب على صاحبه
+                    // فورَ الحفظ — وسطرٌ خافتٌ تحت حقلٍ يُقرأ **بعد** أن يُكتب
+                    // لا قبله. فصار فعلاً صريحاً له ورقتُه.
+                    _FactRow(
+                      key: const ValueKey('phone-row'),
+                      icon: Icons.phone_outlined,
+                      label: tr('رقم الجوال'),
+                      value: _profile!.phone.isEmpty ? tr('لم يُضَف بعد') : _profile!.phone,
+                      action: _profile!.phone.isEmpty ? tr('أضف') : tr('تعديل'),
+                      actionKey: const ValueKey('phone-edit'),
+                      onAction: _editPhone,
+                      // **ويُقال قبل أن يبدّل لا بعده.** تبديلُ الرقم يُبطل
+                      // تأكيدَه في القاعدة، فيهبط الحاجزُ على صاحبه فورَ
+                      // الحفظ — ومن لم يُقَل له ذلك ظنّ التطبيقَ أخرجه.
+                      //
+                      // **ولا يُقال إلّا إن كان صادقاً:** حين يكون الحاجزُ
+                      // مطفأً في إعدادات المنصّة لا يُطلب تأكيدٌ أصلاً، وسطرٌ
+                      // يقول غيرَ ذلك يُخيف بلا سبب.
+                      footer: widget.session.phoneGate.required_
+                          ? Muted(
+                              tr('تبديلُ الرقم يُلزمك بتأكيده مرّةً أخرى على واتساب.'),
+                              size: 12,
+                            )
+                          : null,
+                    ),
+                    const SizedBox(height: Space.sm),
+                    _EmailRow(email: _profile!.email),
                   ],
                 ),
-                const SizedBox(height: Space.md),
-                // ── الحقائقُ التي لا تُكتب في نموذج ────────────────────
-                //
-                // **والرقمُ ليس كسائر البيانات، فلا يُحفظ معها.** تبديلُه
-                // يُبطل تأكيدَه في القاعدة فيهبط حاجزُ واتساب على صاحبه
-                // فورَ الحفظ — وسطرٌ خافتٌ تحت حقلٍ يُقرأ **بعد** أن يُكتب
-                // لا قبله. فصار فعلاً صريحاً له ورقتُه.
-                _FactRow(
-                  key: const ValueKey('phone-row'),
-                  icon: Icons.phone_outlined,
-                  label: tr('رقم الجوال'),
-                  value: _profile!.phone.isEmpty ? tr('لم يُضَف بعد') : _profile!.phone,
-                  action: _profile!.phone.isEmpty ? tr('أضف') : tr('تعديل'),
-                  actionKey: const ValueKey('phone-edit'),
-                  onAction: _editPhone,
-                  // **ويُقال قبل أن يبدّل لا بعده.** تبديلُ الرقم يُبطل
-                  // تأكيدَه في القاعدة، فيهبط الحاجزُ على صاحبه فورَ
-                  // الحفظ — ومن لم يُقَل له ذلك ظنّ التطبيقَ أخرجه.
-                  //
-                  // **ولا يُقال إلّا إن كان صادقاً:** حين يكون الحاجزُ
-                  // مطفأً في إعدادات المنصّة لا يُطلب تأكيدٌ أصلاً، وسطرٌ
-                  // يقول غيرَ ذلك يُخيف بلا سبب.
-                  footer: widget.session.phoneGate.required_
-                      ? Muted(tr('تبديلُ الرقم يُلزمك بتأكيده مرّةً أخرى على واتساب.'), size: 12)
-                      : null,
-                ),
-                const SizedBox(height: Space.sm),
-                _EmailRow(email: _profile!.email),
                 if (_error != null) ...[
                   const SizedBox(height: Space.md),
                   Text(
@@ -498,9 +515,11 @@ class _FactRow extends StatelessWidget {
     final iconColor =
         theme.inputDecorationTheme.prefixIconColor ?? theme.colorScheme.onSurfaceVariant;
 
-    return Container(
+    // **ولا أرضيّةَ له بعد اليوم.** كان شريطاً ورديّاً (`surface2`) تحت
+    // البطاقة، فصار داخلَها — وأرضيّتُها أرضيّتُه. ولو بقي الورديُّ هنا
+    // لَعاد الفرقُ الذي شُكي منه: حبرٌ واحدٌ يُقرأ بلونين.
+    return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(color: AppColors.surface2, borderRadius: BorderRadius.circular(14)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

@@ -115,6 +115,33 @@ run "(و) يعود القياسُ ١٩" \
 "              Icon(icon, size: 20, color: iconColor)," \
 "              Icon(icon, size: 19, color: iconColor),"
 
+# ── ز) ويخرج السطران من البطاقة ─────────────────────────────────────────────
+#
+# **وأرضيّتُهما تفترق عنها فورَ خروجهما.** ولا يسقط هذا بسؤال «أموجودٌ سطرُ
+# الجوال؟» — موجودٌ في الحالين. يسقط لأنّ حدَّه يُقاس داخل حدّ البطاقة.
+run "(ز) السطران خارج البطاقة" \
+  sub "$E" \
+"                    const SizedBox(height: Space.lg),
+                    const Divider(height: 1, color: AppColors.hairline),
+                    const SizedBox(height: Space.md)," \
+"                  ],
+                ),
+                const SizedBox(height: Space.md),
+                AppCard(
+                  children: ["
+
+# ── ح) ويعود إليهما الشريطُ الورديّ ─────────────────────────────────────────
+#
+# **وهو الفرقُ الذي شُكي منه بعينه.** حبرٌ واحدٌ يُقرأ بلونين لاختلاف ما
+# تحته — فيُقاس أنّ اللونَ لم يعُد يُرسم في الشاشة.
+run "(ح) يعود الشريطُ الورديّ" \
+  sub "$E" \
+"    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10)," \
+"    return Container(
+      decoration: BoxDecoration(color: AppColors.surface2, borderRadius: BorderRadius.circular(14)),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),"
+
 echo
 echo "الساقط: $PASS — الباقي: $FAIL"
 [ "$FAIL" = 0 ]

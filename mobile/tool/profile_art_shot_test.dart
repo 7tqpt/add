@@ -124,8 +124,10 @@ void main() {
     expect(tester.getSize(find.byKey(const ValueKey('profile-cover'))).height,
         230.0,
         reason: 'الغلافُ ليس بالارتفاع الذي اختاره — فلا تُصوَّر');
+    expect(find.byType(AppCard), findsOneWidget,
+        reason: 'خرج السطران إلى بطاقةٍ ثانية — فأرضيّتُهما تفترق');
     final disc = tester.getRect(find.byKey(const ValueKey('profile-avatar')));
-    final card = tester.getRect(find.byType(AppCard).first);
+    final card = tester.getRect(find.byType(AppCard));
     expect(card.top - disc.bottom, lessThanOrEqualTo(8.0),
         reason: 'ما زال بين الغلاف والبطاقة فراغ');
     expect(find.byIcon(Icons.mail_outline), findsOneWidget,
