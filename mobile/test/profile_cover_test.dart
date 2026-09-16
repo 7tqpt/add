@@ -29,7 +29,10 @@ import 'package:aras/src/ui/kit.dart';
 import 'package:aras/src/ui/photo_view.dart';
 
 const _statusBar = 44.0;
-const _cameraKey = ValueKey('cover-edit');
+// **وحبّةُ «تغيير الغلاف» رُفعت بطلب صاحب المنصّة**، فصار ما يُقاس هو
+// الضغطةُ نفسُها والدوّارةُ أثناء الرفع.
+const _tapKey = ValueKey('cover-tap');
+const _busyKey = ValueKey('cover-busy');
 const _avatarKey = ValueKey('test-avatar');
 
 Widget _wrap(Widget child) => MaterialApp(
@@ -150,31 +153,29 @@ void main() {
   });
 
   group('زرُّ التغيير', () {
-    testWidgets('**ولا زرَّ في رأسٍ لا يملك رفعاً**', (tester) async {
-      // زرٌّ يُضغط فلا يقع شيءٌ أسوأُ من غيابه.
-      _phone(tester);
-      await tester.pumpWidget(_wrap(_header()));
-      await _settle(tester);
-      expect(find.byKey(_cameraKey), findsNothing);
-      expect(find.text('تغيير الغلاف'), findsNothing);
-    });
-
-    testWidgets('ويُعرض لمن يملكه', (tester) async {
+    testWidgets('**ولا حبّةَ «تغيير الغلاف» بعد اليوم**', (tester) async {
+      // **رُفعت بقرار صاحب المنصّة:** «شيلها وخلّي لي تغيير عند ضغط».
+      // وكان مكتوباً في الكِت أنّها لا تُرفع لأنّها علامةُ أنّ الشريطَ
+      // يُضغط — والحجّةُ باقيةٌ مكتوبةٌ هناك، والقرارُ نُقض بعلم.
       _phone(tester);
       await tester.pumpWidget(_wrap(_header(onEditCover: () {})));
       await _settle(tester);
-      expect(find.byKey(_cameraKey), findsOneWidget);
-      expect(find.text('تغيير الغلاف'), findsOneWidget);
+      expect(find.text('تغيير الغلاف'), findsNothing);
     });
 
-    testWidgets('ويُنادى حين يُضغط', (tester) async {
+    testWidgets('**ولا ضغطةَ في رأسٍ لا يملك رفعاً**', (tester) async {
+      // شريطٌ يُضغط فلا يقع شيءٌ أسوأُ من شريطٍ لا يُضغط.
       _phone(tester);
-      var taps = 0;
-      await tester.pumpWidget(_wrap(_header(onEditCover: () => taps++)));
+      await tester.pumpWidget(_wrap(_header()));
       await _settle(tester);
-      await tester.tap(find.byKey(_cameraKey));
+      expect(find.byKey(_tapKey), findsNothing);
+    });
+
+    testWidgets('ويُضغط لمن يملكه', (tester) async {
+      _phone(tester);
+      await tester.pumpWidget(_wrap(_header(onEditCover: () {})));
       await _settle(tester);
-      expect(taps, 1);
+      expect(find.byKey(_tapKey), findsOneWidget);
     });
 
     testWidgets('**ولا يُضغط مرّتين والرفعُ جارٍ**', (tester) async {
@@ -185,14 +186,9 @@ void main() {
       await tester.pumpWidget(_wrap(_header(onEditCover: () => taps++, coverBusy: true)));
       await _settle(tester);
 
-      expect(find.text('جارٍ الرفع…'), findsOneWidget);
-      await tester.tap(find.byKey(_cameraKey), warnIfMissed: false);
-      await _settle(tester);
-      expect(taps, 0, reason: 'الحبّةُ تُضغط والرفعُ جارٍ');
+      expect(find.byKey(_busyKey), findsOneWidget);
 
-      // **والشريطُ كذلك — ويُقاس وحدَه.** الحبّةُ تعلوه فتبتلع اللمسةَ
-      // عندها، فاختبارٌ يضغطها وحدَها يمرّ ولو كان الشريطُ تحته مفتوحاً.
-      // (وقد وقع: سقط الضابطُ السالبُ على هذا بعينه.)
+      // **والشريطُ لا يُضغط والرفعُ جارٍ.**
       final band = _statusBar + ProfileHeader.coverBand;
       final width = tester.getSize(find.byType(ProfileHeader)).width;
       await tester.tapAt(Offset(width / 2, band / 2));
@@ -221,21 +217,6 @@ void main() {
       expect(edits, 0, reason: 'فُتح الاختيارُ مكان العارض');
     });
 
-    testWidgets('**والحبّةُ تمضي إلى التبديل لا إلى العارض**', (tester) async {
-      _phone(tester);
-      var edits = 0;
-      await tester.pumpWidget(_wrap(_header(
-        coverUrl: 'https://example.test/u1/cover.jpg',
-        onEditCover: () => edits++,
-      )));
-      await _settle(tester);
-
-      await tester.tap(find.byKey(_cameraKey));
-      await tester.pumpAndSettle();
-
-      expect(edits, 1);
-      expect(find.byType(PhotoViewScreen), findsNothing);
-    });
 
     testWidgets('**ومن لا غلافَ له يمضي إلى التبديل لا إلى شاشةٍ سوداء**',
         (tester) async {
@@ -267,28 +248,24 @@ void main() {
       await _settle(tester);
 
       final band = _statusBar + ProfileHeader.coverBand;
-      final pill = tester.getRect(find.byKey(_cameraKey));
       final width = tester.getSize(find.byType(ProfileHeader)).width;
-      // وسطُ الشريط أفقيّاً، وفوق الحبّة رأسيّاً.
+      // وسطُ الشريط — أبعدُ ما يكون عن أيّ زاوية.
       final spot = Offset(width / 2, band / 2);
-      expect(pill.contains(spot), isFalse, reason: 'الضغطةُ وقعت على الحبّة');
 
       await tester.tapAt(spot);
       await _settle(tester);
       expect(taps, 1, reason: 'الشريطُ لا يُضغط');
     });
 
-    testWidgets('**والزرُّ في الجهة المقابلة للقرص**', (tester) async {
-      // القرصُ يطلّ على الحافّة نفسِها، فزرٌّ بجانبه يختفي تحته — وقد اختفى
-      // فعلاً في أوّل رسمٍ للمقترح.
+    testWidgets('**ودوّارةٌ تُرى أثناء الرفع**', (tester) async {
+      // **حبّةٌ ذهبت ودوّارةٌ بقيت.** رفعٌ صامتٌ يُقرأ تعطّلاً، فيُضغط
+      // مرّةً ثانيةً فوق رفعٍ جارٍ.
       _phone(tester);
-      await tester.pumpWidget(_wrap(_header(onEditCover: () {})));
-      await _settle(tester);
+      await tester.pumpWidget(
+          _wrap(_header(onEditCover: () {}, coverBusy: true)));
+      await tester.pump(const Duration(milliseconds: 200));
 
-      final disc = tester.getRect(find.byKey(_avatarKey));
-      final button = tester.getRect(find.byKey(_cameraKey));
-      final overlap = button.left < disc.right && disc.left < button.right;
-      expect(overlap, isFalse, reason: 'الزرُّ يتراكب مع القرص');
+      expect(find.byKey(_busyKey), findsOneWidget);
     });
   });
 
@@ -300,7 +277,7 @@ void main() {
       _phone(tester);
       await tester.pumpWidget(_wrap(AccountScreen(session: _customer())));
       await tester.pumpAndSettle();
-      expect(find.byKey(_cameraKey), findsOneWidget);
+      expect(find.byKey(_tapKey), findsOneWidget);
     });
 
     testWidgets('**وملفُّ المزوّد كذلك**', (tester) async {
@@ -312,7 +289,7 @@ void main() {
       );
       await tester.pumpWidget(_wrap(ProviderProfileScreen(session: _provider())));
       await tester.pumpAndSettle();
-      expect(find.byKey(_cameraKey), findsOneWidget);
+      expect(find.byKey(_tapKey), findsOneWidget);
     });
 
     testWidgets('**وسطرُ الحال العالقة يُقرأ على البياض**', (tester) async {

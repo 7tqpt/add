@@ -38,7 +38,6 @@ class _AccountScreenState extends State<AccountScreen> {
   ///
   /// السلّة عامّة والاسم ثابت (`<uid>/avatar.jpg`)، فبعد استبدال الصورة يعرض
   /// التطبيق القديمةَ من ذاكرته. والختم يغيّر العنوان فيُجبره على الجلب.
-  int _avatarVersion = 0;
 
   /// الغلافُ يُرفع الآن — يُعطَّل الزرّ وتدور دوّارةٌ مكان الرمز.
   bool _coverBusy = false;
@@ -77,9 +76,9 @@ class _AccountScreenState extends State<AccountScreen> {
           // **والغلافُ لمن له ملفٌّ وحده.** قبل وصوله لا يُعرف اسمُه،
           // و`api_update_profile` تشترط اسماً — فزرٌّ يُضغط فيردّ «الاسم قصير
           // جداً» على من لم يكتب شيئاً أسوأُ من زرٍّ يتأخّر لحظة.
-          coverUrl: profile == null
-              ? null
-              : Api.avatarUrl(profile.coverPath, version: _avatarVersion),
+          coverUrl: profile == null ? null : Api.avatarUrl(profile.coverPath),
+          // **والغلافُ يُضغط فيُفتح العارض، وفيه «تغيير».** والكِت يتولّى
+          // ذلك: لا حبّةَ مكتوبةً فوق الصورة بعد اليوم.
           onEditCover: profile == null ? null : () => _changeCover(profile),
           coverBusy: _coverBusy,
           // **والقرصُ يُضغط كالغلاف.** كان وحدَه المتحجّرَ في التطبيق:
@@ -90,23 +89,25 @@ class _AccountScreenState extends State<AccountScreen> {
                 ? null
                 : () => openPhoto(
                       context,
-                      url: Api.avatarUrl(profile.avatarPath,
-                          version: _avatarVersion),
+                      url: Api.avatarUrl(profile.avatarPath),
                       onEdit: () => _changeAvatar(profile),
                     ),
             child: _AccountAvatar(
               profile: profile,
               fallbackEmail: session.email,
-              version: _avatarVersion,
               size: profileAvatarSize,
             ),
           ),
           title: (profile?.fullName.trim().isNotEmpty ?? false)
               ? profile!.fullName.trim()
               : session.email,
-          subtitle: (profile?.phone.trim().isNotEmpty ?? false)
-              ? profile!.phone.trim()
-              : ((profile?.fullName.trim().isNotEmpty ?? false) ? session.email : ''),
+          // **ولا سطرَ ثانٍ تحت الاسم.** كان رقمُ الجوال، فشيل بطلب صاحب
+          // المنصّة: رأسٌ أقصرُ ترتفع معه القائمةُ فيُرى بابٌ زائدٌ بلا
+          // تمرير. والبريدُ في «الملف الشخصي» لمن أراده.
+          //
+          // **ويبقى البريدُ لمن لم يصل ملفُّه بعد** — لأنّه حينها يقع في
+          // مكان الاسم لا تحته، فلا يبقى في الرأس ما يُعرَف به صاحبُه.
+          subtitle: '',
           // **والاتجاهُ يتبع ما يُعرض لا الصفحة.** قبل وصول الملفّ يقع البريدُ
           // في مكان الاسم، وهو لاتينيٌّ دائماً — وبلا `ltr` تتقدّم نقطتُه
           // وامتدادُه إلى غير موضعهما فيُقرأ مقلوباً. كشفه اختبارٌ سقط حين
@@ -114,6 +115,8 @@ class _AccountScreenState extends State<AccountScreen> {
           titleLtr: !(profile?.fullName.trim().isNotEmpty ?? false),
           subtitleLtr: true,
           badge: weddingRoleLabel(profile?.weddingRole ?? '', provider: provider),
+          // **وإلى يسار الاسم لا تحته** — بطلب صاحب المنصّة.
+          badgeBesideTitle: true,
         ),
 
         // ── الأبواب ────────────────────────────────────────────────────────
@@ -244,7 +247,6 @@ class _AccountScreenState extends State<AccountScreen> {
       if (!mounted) return;
       // الختمُ يتغيّر فيُجبر التطبيقَ على جلب الجديدة: السلّةُ عامّةٌ
       // والاسمُ ثابت، فبلا فرقٍ في العنوان يعرض القديمةَ من ذاكرته.
-      setState(() => _avatarVersion++);
       await _load();
       if (mounted) showMessage(context, tr('حُفظ الغلاف'));
     } catch (e) {
@@ -278,7 +280,6 @@ class _AccountScreenState extends State<AccountScreen> {
       );
       await Api.updateProfile(fullName: profile.fullName, avatarPath: path);
       if (!mounted) return;
-      setState(() => _avatarVersion++);
       await _load();
       if (mounted) showMessage(context, tr('حُفظت صورتك.'));
     } catch (e) {
@@ -305,8 +306,7 @@ class _AccountScreenState extends State<AccountScreen> {
     if (saved == true) {
       // الختم يتغيّر فيُجبر التطبيق على جلب الصورة الجديدة بدل القديمة التي
       // في ذاكرته.
-      if (mounted) setState(() => _avatarVersion++);
-      await _load();
+      if (mounted)      await _load();
       if (context.mounted) showMessage(context, tr('حُفظت بياناتك.'));
     }
   }
@@ -345,19 +345,20 @@ class _AccountAvatar extends StatelessWidget {
   const _AccountAvatar({
     required this.profile,
     required this.fallbackEmail,
-    required this.version,
     this.size = 56,
   });
 
   final MyProfile? profile;
   final String fallbackEmail;
-  final int version;
   final double size;
 
   @override
   Widget build(BuildContext context) {
     final path = profile?.avatarPath ?? '';
-    final url = path.isEmpty ? null : Api.avatarUrl(path, version: version);
+    // **ولا `version` بعد اليوم.** كلُّ رفعةٍ تحمل اسماً جديداً، فالعنوانُ
+    // نفسُه يتبدّل ولا مخبأَ يعرفه — ولا يبقى عدّادٌ يجب أن يتذكّره كلُّ
+    // موضعٍ يعرض صورة.
+    final url = path.isEmpty ? null : Api.avatarUrl(path);
     return Container(
       width: size,
       height: size,

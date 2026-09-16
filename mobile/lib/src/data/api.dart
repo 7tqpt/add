@@ -1497,23 +1497,14 @@ class Api {
   /// يرفع غلافَ ملفّ العميل ويعيد مساره.
   ///
   /// في سلّة `avatars` وفي مجلّد صاحب الحساب — سياستُها تحصر الكتابة في
-  /// `<auth_user_id>/…`، فلا يكتب أحدٌ فوق غلاف غيره. واسمٌ ثابتٌ مع `upsert`
-  /// كي لا تتراكم الأغلفةُ القديمة بلا حذف.
+  /// `<auth_user_id>/…`، فلا يكتب أحدٌ فوق غلاف غيره.
   static Future<String> uploadCover({
     required String authUserId,
     required String fileName,
     required Uint8List bytes,
-  }) async {
-    final ext = fileName.contains('.') ? fileName.split('.').last.toLowerCase() : 'jpg';
-    final path = '$authUserId/cover.$ext';
-    if (!isSupabaseConfigured) return path;
-    await db.storage.from('avatars').uploadBinary(
-      path,
-      bytes,
-      fileOptions: FileOptions(contentType: _mimeOf(ext), upsert: true),
-    );
-    return path;
-  }
+  }) async =>
+      _uploadImage(authUserId: authUserId, kind: 'cover', fileName: fileName,
+          bytes: bytes);
 
   /// يبدّل الرقمَ وحدَه — من داخل حاجز التحقّق.
   ///
@@ -1525,24 +1516,76 @@ class Api {
     await updateProfile(fullName: me?.fullName ?? '', phone: phone);
   }
 
-  /// يرفع الصورة ويعيد مسارها داخل السلّة.
-  ///
-  /// اسمٌ ثابت `avatar.<ext>` مع `upsert`: صورةُ الملف واحدةٌ تُستبدل، ولو
-  /// حمل كلُّ رفعٍ اسماً جديداً لتراكمت الصور القديمة في السلّة بلا حذف.
+  /// يرفع صورةَ الملفّ ويعيد مسارها داخل السلّة.
   static Future<String> uploadAvatar({
     required String authUserId,
     required String fileName,
     required Uint8List bytes,
+  }) async =>
+      _uploadImage(authUserId: authUserId, kind: 'avatar', fileName: fileName,
+          bytes: bytes);
+
+  /// **ولكلّ رفعةٍ اسمٌ جديد — وهذا هو إصلاحُ «حُفظت ولا يتغيّر شيء».**
+  ///
+  /// ── ما كان يقع ────────────────────────────────────────────────────────
+  ///
+  /// كان الاسمُ ثابتاً (`<معرّف>/avatar.jpg`) ويُكتب فوقه بـ`upsert`. فالبايتات
+  /// تتبدّل **والعنوانُ لا يتبدّل** — والصورةُ القديمة محفوظةٌ بذلك العنوان في
+  /// ذاكرة التطبيق وفي مخبأ Supabase. فيُرفع ويُحفظ ويُقال «حُفظت صورتك»،
+  /// ويُعرض القديمُ.
+  ///
+  /// وكان الكسرُ بـ`?v=` من **عدّادٍ في الذاكرة يبدأ من صفرٍ في كلّ تشغيل** —
+  /// فما إن يُغلق التطبيقُ حتى يعود إلى `?v=0`، وهو العنوانُ الذي حُفظت تحته
+  /// القديمة. **وأكثرُ الشاشات لا تمرّر العدّادَ أصلاً**، فتعرض القديمةَ أبداً.
+  ///
+  /// ── ولماذا الاسمُ لا العدّاد ───────────────────────────────────────────
+  ///
+  /// عدّادٌ يجب أن يتذكّره **كلُّ** موضعٍ يعرض صورةً — واليومَ ستّةُ مواضعَ
+  /// نسيته. واسمٌ جديدٌ لا يُنسى: العنوانُ نفسُه تغيّر، فلا مخبأَ يعرفه، في كلّ
+  /// شاشةٍ وكلّ جهازٍ وكلّ تشغيل.
+  ///
+  /// **والقديمةُ تُحذف بعد نجاح الرفع** فلا تتراكم — وحذفٌ يُخفق لا يُسقط
+  /// شيئاً: الصورةُ الجديدةُ وصلت، وملفٌّ زائدٌ في السلّة أهونُ من رسالةِ خطأٍ
+  /// على عملٍ نجح.
+  static Future<String> _uploadImage({
+    required String authUserId,
+    required String kind,
+    required String fileName,
+    required Uint8List bytes,
   }) async {
     final ext = fileName.contains('.') ? fileName.split('.').last.toLowerCase() : 'jpg';
-    final path = '$authUserId/avatar.$ext';
+    final stamp = DateTime.now().millisecondsSinceEpoch;
+    final path = '$authUserId/$kind-$stamp.$ext';
     if (!isSupabaseConfigured) return path;
+
+    // القديمةُ تُقرأ **قبل** الرفع: بعده يصير الملفُّ يشير إلى الجديدة.
+    final old = await _oldImagePath(kind);
+
     await db.storage.from('avatars').uploadBinary(
       path,
       bytes,
       fileOptions: FileOptions(contentType: _mimeOf(ext), upsert: true),
     );
+
+    if (old != null && old.isNotEmpty && old != path) {
+      try {
+        await db.storage.from('avatars').remove([old]);
+      } catch (_) {
+        // تُترك. ولا تُقال لصاحبها: رفعُه نجح.
+      }
+    }
     return path;
+  }
+
+  /// مسارُ الصورة القائمة في ملفّي — لتُحذف بعد أن تحلّ الجديدةُ محلَّها.
+  static Future<String?> _oldImagePath(String kind) async {
+    try {
+      final me = await myProfile();
+      if (me == null) return null;
+      return kind == 'cover' ? me.coverPath : me.avatarPath;
+    } catch (_) {
+      return null;
+    }
   }
 
   /// الرابط العلنيّ للصورة — السلّة عامّة فلا حاجة إلى توقيعٍ ينتهي.

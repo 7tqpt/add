@@ -410,7 +410,10 @@ class _PhoneEditButtonState extends State<_PhoneEditButton> {
                 width: 20,
                 child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.accentInk),
               )
-            : Text(tr('حفظ')),
+            // **و«تعديل» لا «حفظ» — بطلب صاحب المنصّة نصّاً.** والمعنى أدقُّ
+            // أيضاً: الرقمُ لا يستقرّ بالضغط، بل يُبدَّل ثمّ يُؤكَّد على
+            // واتساب. و«حفظ» تُوهم بأنّ الأمرَ انتهى.
+            : Text(tr('تعديل')),
       ),
     ],
   );
