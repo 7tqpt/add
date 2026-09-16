@@ -186,6 +186,21 @@ void main() {
           reason: 'فُتحت الورقةُ بلا حقلٍ يُكتب فيه — أو لم تُفتح');
     });
 
+    testWidgets('**وزرُّها «تعديل» لا «حفظ»**', (tester) async {
+      // **بطلب صاحب المنصّة نصّاً.** والمعنى أدقُّ أيضاً: الرقمُ لا يستقرّ
+      // بالضغط بل يُبدَّل ثمّ يُؤكَّد على واتساب، و«حفظ» تُوهم بأنّ الأمرَ
+      // انتهى.
+      await _open(tester);
+      await tester.tap(find.byKey(const ValueKey('phone-edit')));
+      await _settle(tester);
+
+      final label = find.descendant(
+        of: find.byKey(const ValueKey('phone-edit-save')),
+        matching: find.byType(Text),
+      );
+      expect(tester.widget<Text>(label).data, 'تعديل');
+    });
+
     testWidgets('**ولا يُحرَّك زرُّ الحفظ بفتح الورقة**', (tester) async {
       // الرقمُ يُحفظ في ورقته لا مع الاسم، فلا يجعل النموذجَ «معدَّلاً».
       await _open(tester);

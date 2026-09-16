@@ -573,6 +573,7 @@ class ProfileHeader extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.badge,
+    this.badgeBesideTitle = false,
     this.titleTrailing,
     this.titleLtr = false,
     this.subtitleLtr = false,
@@ -587,7 +588,17 @@ class ProfileHeader extends StatelessWidget {
   final String subtitle;
 
   /// نصُّ الشارة الذهبية — دورُ العميل أو حالُ توثيق المزوّد.
+  ///
+  /// **وفارغٌ يُسقطها.** ولولا ذلك لَرُسم قرصٌ ذهبيٌّ صغيرٌ بلا نصّ.
   final String badge;
+
+  /// أتقف الشارةُ إلى جانب الاسم بدل أن تكون تحته؟
+  ///
+  /// **وفي شاشةٍ من اليمين إلى اليسار «جانبُه» هو يسارُه** — وهو ما طلبه
+  /// صاحبُ المنصّة لرأس «حسابي». وتبقى تحته في ملفّ المزوّد: هناك الشارةُ
+  /// حالُ توثيقٍ قد تطول («بانتظار المراجعة»)، و«يسارَ الاسم» يزاحمها
+  /// العلامةُ الزرقاء.
+  final bool badgeBesideTitle;
 
   /// ما يلي الاسمَ مباشرةً — علامةُ التوثيق مثلاً.
   final Widget? titleTrailing;
@@ -692,6 +703,14 @@ class ProfileHeader extends StatelessWidget {
                             const SizedBox(width: 5),
                             titleTrailing!,
                           ],
+                          // **والشارةُ بعد الاسم في الصفّ — أي يسارَه.**
+                          // و`Flexible` فوق الاسم تقصُّه بنقاطٍ إن طال وتُبقي
+                          // الشارةَ كاملة: الشارةُ هي المعلومة، والاسمُ
+                          // يعرفه صاحبُه.
+                          if (badgeBesideTitle && badge.isNotEmpty) ...[
+                            const SizedBox(width: Space.sm),
+                            _GoldBadge(badge),
+                          ],
                         ],
                       ),
                       if (subtitle.isNotEmpty) ...[
@@ -712,23 +731,10 @@ class ProfileHeader extends StatelessWidget {
                           ),
                         ),
                       ],
-                      const SizedBox(height: Space.sm),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-                        decoration: BoxDecoration(
-                          color: AppColors.goldOnAccent,
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        child: Text(
-                          badge,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.accentDeep,
-                            fontFamilyFallback: arabicFallback,
-                          ),
-                        ),
-                      ),
+                      if (!badgeBesideTitle && badge.isNotEmpty) ...[
+                        const SizedBox(height: Space.sm),
+                        _GoldBadge(badge),
+                      ],
                       if (footer != null) ...[const SizedBox(height: Space.md), footer!],
                       const SizedBox(height: Space.lg),
                     ],
@@ -811,9 +817,15 @@ class _Cover extends StatelessWidget {
           // ومبدأُ التطبيق مكتوبٌ عند قرص الصورة منذ كُتب: «مكانُ تغيير
           // الصورة هو الصورةُ نفسها». فلزم الغلافَ ما لزم القرص.
           //
-          // **ولا يُرفع الزرُّ الصغير.** هو العلامةُ التي تقول إنّ الشريطَ
-          // يُضغط — ولولاها لَصار الغلافُ يُبدَّل بلمسةٍ لا يعرف أحدٌ أنّها
-          // هناك، وهو عيبُ الاكتشاف نفسُه مقلوباً.
+          // **وحبّةُ «تغيير الغلاف» رُفعت بطلب صاحب المنصّة.**
+          //
+          // وكان مكتوباً هنا أنّها لا تُرفع لأنّها العلامةُ التي تقول إنّ
+          // الشريطَ يُضغط. **والحجّةُ تبقى مكتوبةً ولا تُمحى**، وقد نُقضت
+          // بقرارٍ لا سهواً: «شيلها وخلّي لي تغيير عند ضغط». فصار الغلافُ
+          // كالقرص سواءً — يُضغط بلا كلمةٍ عليه، و«تغيير» في العارض.
+          //
+          // **ويبقى ما يُرى أثناء الرفع.** حبّةٌ ذهبت ودوّارةٌ بقيت: رفعٌ
+          // صامتٌ يُقرأ تعطّلاً، فيُضغط مرّةً ثانيةً فوق رفعٍ جارٍ.
           Positioned.fill(
             child: Material(
               type: MaterialType.transparency,
@@ -824,62 +836,27 @@ class _Cover extends StatelessWidget {
               ),
             ),
           ),
-          PositionedDirectional(
-            bottom: 10,
-            // **في الجهة المقابلة للقرص.** القرصُ في جهة البداية ويطلّ على
-            // الحافّة نفسِها، فزرٌّ بجانبه يختفي تحته.
-            end: Space.lg,
-            child: _CoverButton(onTap: busy ? null : onEdit, busy: busy),
-          ),
+          if (busy)
+            const Positioned.fill(
+              child: ColoredBox(
+                color: Color(0x4D000000),
+                child: Center(
+                  child: SizedBox(
+                    key: ValueKey('cover-busy'),
+                    height: 26,
+                    width: 26,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.5,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+            ),
         ],
       ],
     );
   }
-}
-
-class _CoverButton extends StatelessWidget {
-  const _CoverButton({required this.onTap, required this.busy});
-  final VoidCallback? onTap;
-  final bool busy;
-
-  @override
-  Widget build(BuildContext context) => Material(
-    // أسودُ شفّافٌ لا لونُ العلامة: الزرُّ يقع على صورةٍ لا نتحكّم في ألوانها،
-    // وأيُّ لونٍ من اللوح قد يقع على مثله في الصورة فيختفي.
-    color: const Color(0x73000000),
-    borderRadius: BorderRadius.circular(999),
-    child: InkWell(
-      key: const ValueKey('cover-edit'),
-      borderRadius: BorderRadius.circular(999),
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (busy)
-              const SizedBox(
-                width: 14,
-                height: 14,
-                child: CircularProgressIndicator(strokeWidth: 1.8, color: Colors.white),
-              )
-            else
-              const Icon(Icons.photo_camera_outlined, size: 15, color: Colors.white),
-            const SizedBox(width: 5),
-            Text(
-              busy ? tr('جارٍ الرفع…') : tr('تغيير الغلاف'),
-              style: const TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: Colors.white,
-                fontFamilyFallback: arabicFallback,
-              ),
-            ),
-          ],
-        ),
-      ),
-    ),
-  );
 }
 
 class SectionTitle extends StatelessWidget {
@@ -2516,6 +2493,35 @@ class _CategoryGlyph extends StatelessWidget {
         errorBuilder: (_, _, _) => fallback,
         // وأثناء التحميل تبقى الأيقونةُ مكانها، فلا تومض الدائرةُ فارغةً.
         loadingBuilder: (context, child, progress) => progress == null ? child : fallback,
+      ),
+    );
+  }
+}
+
+/// الشارةُ الذهبيّة — واحدةٌ لموضعَيها: جانبَ الاسم أو تحته.
+///
+/// ولو نُسخت لافترق لونُها أو مقاسُها عند أوّل تعديل.
+class _GoldBadge extends StatelessWidget {
+  const _GoldBadge(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+      decoration: BoxDecoration(
+        color: AppColors.goldOnAccent,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        text,
+        style: const TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+          color: AppColors.accentDeep,
+          fontFamilyFallback: arabicFallback,
+        ),
       ),
     );
   }

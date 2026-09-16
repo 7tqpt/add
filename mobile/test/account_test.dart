@@ -56,16 +56,13 @@ void main() {
     expect(find.text('عميل'), findsOneWidget);
   });
 
-  testWidgets('والجوالُ يُرسم من اليسار داخل صفحةٍ عربية', (tester) async {
-    // `ltr` صريحاً: بدونه تتقدّم علامةُ الزائد والأرقام إلى غير موضعها في
-    // سياقٍ عربيّ، فيُقرأ الرقم مقلوباً. وكذلك البريد قبل وصول الملفّ.
+  testWidgets('والبريدُ يُرسم من اليسار داخل صفحةٍ عربية', (tester) async {
+    // `ltr` صريحاً: بدونه تتقدّم نقطتُه وامتدادُه إلى غير موضعهما في سياقٍ
+    // عربيّ فيُقرأ مقلوباً. وهو يقع مكانَ الاسم قبل وصول الملفّ.
     await tester.pumpWidget(_wrap(_session(provider: false)));
     final mail = tester.widget<Text>(find.text('ayman@sdd.company'));
     expect(mail.textDirection, TextDirection.ltr);
 
-    await tester.pumpAndSettle();
-    final phone = tester.widget<Text>(find.text('770000000'));
-    expect(phone.textDirection, TextDirection.ltr);
   });
 
   testWidgets('من لا ملف له يُدعى إلى تقديم خدمة لا إلى التبديل', (tester) async {
@@ -173,14 +170,38 @@ void main() {
     expect(find.widgetWithText(TextButton, 'إلغاء'), findsOneWidget);
   });
 
-  testWidgets('البطاقة تعرض ما حُفظ: الاسم والجوال', (tester) async {
+  testWidgets('البطاقة تعرض ما حُفظ: الاسم', (tester) async {
     // العيب الذي أوجب هذا الاختبار: الشاشة كانت تقرأ `session` وحدها — وهي
-    // لا تحمل إلا البريد. فيحفظ المستخدم اسمه وجواله وصورته ثم يعود فلا يجد
-    // لها أثراً، ويظنّ أن الحفظ لم يقع.
+    // لا تحمل إلا البريد. فيحفظ المستخدم اسمه وصورته ثم يعود فلا يجد لها
+    // أثراً، ويظنّ أن الحفظ لم يقع.
     await tester.pumpWidget(_wrap(_session(provider: false)));
     await tester.pumpAndSettle();
     expect(find.text('مستخدم تجريبي'), findsOneWidget);
-    expect(find.text('770000000'), findsOneWidget);
+  });
+
+  testWidgets('**ولا رقمَ جوالٍ في الرأس**', (tester) async {
+    // شِيل بطلب صاحب المنصّة: رأسٌ أقصرُ ترتفع معه القائمة. والرقمُ يُرى
+    // ويُبدَّل في «الملف الشخصي».
+    await tester.pumpWidget(_wrap(_session(provider: false)));
+    await tester.pumpAndSettle();
+    expect(find.text('770000000'), findsNothing);
+  });
+
+  testWidgets('**وشارةُ الدور إلى جانب الاسم لا تحته**', (tester) async {
+    // **ويُقاس الموضعُ لا الوجود.** سؤالُ «أموجودةٌ الشارة؟» كان يمرّ وهي
+    // تحت الاسم كما كانت. فيُقاس أنّ الاثنين في صفٍّ واحد.
+    await tester.pumpWidget(_wrap(_session(provider: false)));
+    await tester.pumpAndSettle();
+
+    final name = find.text('مستخدم تجريبي');
+    final badge = find.text('عميل');
+    expect(badge, findsOneWidget);
+    // في صفٍّ واحد: أعلى الاثنين واحد.
+    expect(tester.getTopLeft(name).dy, closeTo(tester.getTopLeft(badge).dy, 14),
+        reason: 'الشارةُ ليست في صفّ الاسم');
+    // وإلى يساره: في شاشةٍ عربيّةٍ يعني ذلك أنّ يمينَها قبل يسارِ الاسم.
+    expect(tester.getTopRight(badge).dx, lessThan(tester.getTopLeft(name).dx + 1),
+        reason: 'الشارةُ ليست يسارَ الاسم');
   });
 
   testWidgets('والبريد لا يُكرَّر سطرين قبل وصول الملف', (tester) async {

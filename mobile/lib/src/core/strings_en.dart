@@ -420,7 +420,6 @@ const Map<String, String> englishStrings = {
   'تعز': 'Taiz',
   'تعليقك (اختياري)': 'Your comment (optional)',
   'تغيير': 'Change',
-  'تغيير الغلاف': 'Change cover',
   'تفاصيل الخدمة': 'Service details',
   'تفاصيل الطلب': 'Request details',
   'تفاصيل تقنية': 'Technical details',

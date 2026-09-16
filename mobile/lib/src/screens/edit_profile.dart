@@ -1,7 +1,5 @@
-import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 
 import '../core/i18n.dart';
 import '../core/session.dart';
@@ -36,7 +34,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   /// الصورة المختارة قبل الحفظ — تُعرض فوراً ولا تُرفع إلا مع «حفظ».
   ///
   /// فمن اختار صورةً ثم عدل عن الحفظ لا يترك أثراً في السلّة.
-  ({String name, Uint8List bytes})? _picked;
 
   bool _loading = true;
   bool _saving = false;
@@ -59,8 +56,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   void _markDirty() {
     final p = _profile;
     if (p == null) return;
-    final changed = _picked != null ||
-        _name.text.trim() != p.fullName.trim() ||
+    final changed = _name.text.trim() != p.fullName.trim() ||
         _governorateId != p.governorateId;
     if (changed != _dirty) setState(() => _dirty = changed);
   }
@@ -100,54 +96,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     super.dispose();
   }
 
-  Future<void> _pick(ImageSource source) async {
-    try {
-      // يُقاس ويُضغط عند الالتقاط لا بعده: صورةُ كاميرا الجوال تتجاوز خمسة
-      // ميجابايت، وحدُّ السلّة اثنان — ورفعُها على شبكةٍ يمنية عذاب.
-      final file = await ImagePicker().pickImage(
-        source: source,
-        maxWidth: 800,
-        maxHeight: 800,
-        imageQuality: 85,
-      );
-      if (file == null) return; // إلغاءٌ لا خطأ
-      final bytes = await file.readAsBytes();
-      if (!mounted) return;
-      setState(() {
-        _picked = (name: file.name, bytes: bytes);
-        _error = null;
-        _dirty = true;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _error = messageOf(e));
-    }
-  }
 
-  Future<void> _choosePhoto() async {
-    final source = await showModalBottomSheet<ImageSource>(
-      context: context,
-      builder: (sheetContext) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.photo_camera_outlined, color: AppColors.accent),
-              title: Text(tr('التقاط صورة')),
-              onTap: () => Navigator.of(sheetContext).pop(ImageSource.camera),
-            ),
-            ListTile(
-              leading: const Icon(Icons.photo_library_outlined, color: AppColors.accent),
-              title: Text(tr('اختيار من المعرض')),
-              onTap: () => Navigator.of(sheetContext).pop(ImageSource.gallery),
-            ),
-            const SizedBox(height: Space.sm),
-          ],
-        ),
-      ),
-    );
-    if (source != null) await _pick(source);
-  }
+
+
 
   Future<void> _save() async {
     final name = _name.text.trim();
@@ -166,22 +117,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       _nameError = null;
     });
     try {
-      // الصورة تُرفع أوّلاً ثم يُحفظ مسارها: لو حُفظ المسار قبل الرفع ونجح
-      // الأوّل وفشل الثاني لأشار الملفُّ إلى صورةٍ لا وجود لها.
-      String? avatarPath;
-      final picked = _picked;
-      if (picked != null && widget.session.userId != null) {
-        avatarPath = await Api.uploadAvatar(
-          authUserId: widget.session.userId!,
-          fileName: picked.name,
-          bytes: picked.bytes,
-        );
-      }
+      // **ولا صورةَ تُرفع من هنا بعد اليوم.** موضعُ التبديل «حسابي» وحدَها،
+      // فهذه الشاشةُ تحفظ الاسمَ والمحافظةَ لا غير.
       await Api.updateProfile(
         fullName: name,
         phone: phone,
         governorateId: _governorateId,
-        avatarPath: avatarPath,
       );
       if (!mounted) return;
       Navigator.of(context).pop(true);
@@ -256,7 +197,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           : ListView(
               padding: const EdgeInsets.all(Space.lg),
               children: [
-                Center(child: _Avatar(profile: _profile!, picked: _picked, onTap: _choosePhoto)),
+                _ProfileArt(profile: _profile!),
                 const SizedBox(height: Space.xl),
                 AppCard(
                   children: [
@@ -404,29 +345,79 @@ class _EmailRowState extends State<_EmailRow> {
   );
 }
 
-/// دائرة الصورة وزرُّ الكاميرا.
-class _Avatar extends StatelessWidget {
-  const _Avatar({required this.profile, required this.picked, required this.onTap});
+/// غلافُ الملفّ وقرصُه — **يُعرضان ولا يُبدَّلان هنا**.
+///
+/// ── ولماذا لا يُبدَّلان من هذه الشاشة ───────────────────────────────────
+///
+/// كان القرصُ يحمل زرَّ كاميرا، وتُنتقى الصورةُ فتبقى في الذاكرة حتى يُضغط
+/// «حفظ». **وأزاله صاحبُ المنصّة:** «شيل لي تغيير صورة من داخل الملف
+/// الشخصي». فصار موضعُ التبديل واحداً — «حسابي»: تُضغط الصورةُ فتُعرض ملءَ
+/// الشاشة، وفيها «تغيير».
+///
+/// **وموضعان لفعلٍ واحدٍ يفترقان.** كان أحدُهما يرفع فوراً والآخرُ يؤجّل
+/// إلى «حفظ» — فمن بدّل صورتَه هنا وخرج بلا حفظٍ ظنّها تبدّلت.
+///
+/// **والغلافُ أُضيف هنا** بطلبه: هو واجهةُ الملفّ، ومن يراجع بياناته يرى
+/// ما يراه غيره.
+class _ProfileArt extends StatelessWidget {
+  const _ProfileArt({required this.profile});
+
   final MyProfile profile;
-  final ({String name, Uint8List bytes})? picked;
-  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final url = Api.avatarUrl(profile.avatarPath);
+    final cover = Api.avatarUrl(profile.coverPath);
+    final avatar = Api.avatarUrl(profile.avatarPath);
+
     return SizedBox(
-      width: 116,
-      height: 116,
+      height: 150,
       child: Stack(
+        alignment: Alignment.bottomCenter,
         children: [
+          Positioned(
+            top: 0,
+            right: 0,
+            left: 0,
+            height: 106,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(Space.lg),
+              child: cover == null
+                  ? const DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topRight,
+                          end: Alignment.bottomLeft,
+                          colors: [AppColors.accentLift, AppColors.accentDeep],
+                        ),
+                      ),
+                      child: SizedBox.expand(),
+                    )
+                  : Image.network(
+                      cover,
+                      fit: BoxFit.cover,
+                      // شبكةٌ تسقط لا تُخرج مربّعاً مكسوراً.
+                      errorBuilder: (_, _, _) => const DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topRight,
+                            end: Alignment.bottomLeft,
+                            colors: [AppColors.accentLift, AppColors.accentDeep],
+                          ),
+                        ),
+                        child: SizedBox.expand(),
+                      ),
+                    ),
+            ),
+          ),
           Container(
+            key: const ValueKey('profile-avatar'),
             width: 108,
             height: 108,
             alignment: Alignment.center,
             decoration: BoxDecoration(
               color: AppColors.accent,
               shape: BoxShape.circle,
-              border: Border.all(color: Colors.white, width: 3),
+              border: Border.all(color: AppColors.surface, width: 3),
               boxShadow: [
                 BoxShadow(
                   color: AppColors.ink.withValues(alpha: 0.12),
@@ -436,59 +427,28 @@ class _Avatar extends StatelessWidget {
               ],
             ),
             clipBehavior: Clip.antiAlias,
-            child: _content(url),
-          ),
-          // زرّ الكاميرا في الأسفل يساراً — لا يغطّي الوجه في الصورة.
-          PositionedDirectional(
-            bottom: 0,
-            start: 0,
-            child: Material(
-              color: AppColors.accent,
-              shape: const CircleBorder(),
-              elevation: 2,
-              child: InkWell(
-                customBorder: const CircleBorder(),
-                onTap: onTap,
-                child: const Padding(
-                  padding: EdgeInsets.all(8),
-                  child: Icon(Icons.photo_camera, size: 18, color: Colors.white),
-                ),
-              ),
-            ),
+            child: avatar == null
+                ? Text(
+                    profile.fullName.trim().isEmpty
+                        ? tr('؟')
+                        : profile.fullName.trim().characters.first.toUpperCase(),
+                    style: const TextStyle(
+                      fontSize: 38,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.accentInk,
+                      fontFamilyFallback: arabicFallback,
+                    ),
+                  )
+                : Image.network(
+                    avatar,
+                    fit: BoxFit.cover,
+                    width: 108,
+                    height: 108,
+                    errorBuilder: (_, _, _) => const Icon(Icons.person,
+                        size: 44, color: AppColors.accentInk),
+                  ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _content(String? url) {
-    final p = picked;
-    if (p != null) {
-      // المختارة تُعرض من الذاكرة فوراً — قبل أن تُرفع، فيرى النتيجة قبل الحفظ.
-      return Image.memory(p.bytes, fit: BoxFit.cover, width: 108, height: 108);
-    }
-    if (url != null) {
-      return Image.network(
-        url,
-        fit: BoxFit.cover,
-        width: 108,
-        height: 108,
-        // شبكةٌ تسقط لا تُخرج مربّعاً مكسوراً: يُعاد الحرف.
-        errorBuilder: (_, _, _) => _initial(),
-      );
-    }
-    return _initial();
-  }
-
-  Widget _initial() {
-    final clean = profile.fullName.trim();
-    return Text(
-      clean.isEmpty ? tr('؟') : clean.characters.first,
-      style: const TextStyle(
-        fontSize: 40,
-        fontWeight: FontWeight.w600,
-        color: AppColors.accentInk,
-        fontFamilyFallback: arabicFallback,
       ),
     );
   }

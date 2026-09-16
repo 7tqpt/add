@@ -83,13 +83,26 @@ void main() {
     expect(find.text('اكتب اسمك كاملاً.'), findsOneWidget);
   });
 
-  testWidgets('زرّ الكاميرا يفتح خيارَي الالتقاط والمعرض', (tester) async {
+  testWidgets('**ولا تُبدَّل الصورةُ من هذه الشاشة**', (tester) async {
+    // **أُزيل زرُّ الكاميرا بقرار صاحب المنصّة** ليصير موضعُ التبديل واحداً:
+    // «حسابي» — تُضغط الصورةُ فتُعرض ملءَ الشاشة وفيها «تغيير».
+    //
+    // **وموضعان لفعلٍ واحدٍ يفترقان:** كان هذا يؤجّل الرفعَ إلى «حفظ»
+    // والآخرُ يرفع فوراً، فمن بدّل صورتَه هنا وخرج بلا حفظٍ ظنّها تبدّلت.
     await tester.pumpWidget(_wrap(_session()));
     await tester.pumpAndSettle();
-    await tester.tap(find.byIcon(Icons.photo_camera));
+
+    expect(find.byIcon(Icons.photo_camera), findsNothing);
+    expect(find.text('التقاط صورة'), findsNothing);
+  });
+
+  testWidgets('**ويُعرض الغلافُ والقرصُ فيها**', (tester) async {
+    // أُضيف الغلافُ بطلبه: هو واجهةُ الملفّ، ومن يراجع بياناته يرى ما يراه
+    // غيره.
+    await tester.pumpWidget(_wrap(_session()));
     await tester.pumpAndSettle();
-    expect(find.text('التقاط صورة'), findsOneWidget);
-    expect(find.text('اختيار من المعرض'), findsOneWidget);
+
+    expect(find.byKey(const ValueKey('profile-avatar')), findsOneWidget);
   });
 
   // ── تبديلُ الرقم ────────────────────────────────────────────────────────────
