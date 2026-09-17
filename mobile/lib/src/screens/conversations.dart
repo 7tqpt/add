@@ -56,6 +56,14 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      // **وأرضيّتُها بيضاء، وهاتان الشاشتان وحدَهما.** طلبها صاحبُ المنصّة:
+      // «أريد شكل الرسائل يكون أبيض والإشعارات كذلك»، واختار من لقطتين
+      // حقيقيّتين.
+      //
+      // **ولا تُبدَّل في الثيمة:** `scaffoldBackgroundColor` أرضيّةُ كلّ
+      // شاشةٍ في التطبيق، فتبديلُه هناك يُبيّض الشاشاتِ كلَّها — وهو ما لم
+      // يُطلب. فيُكتب هنا وحدَه.
+      backgroundColor: AppColors.surface,
       appBar: AppBar(title: Text(tr('المحادثات'))),
       body: FutureBuilder<List<Conversation>>(
         future: _future,
