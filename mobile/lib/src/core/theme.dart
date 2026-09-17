@@ -126,7 +126,14 @@ ThemeData buildTheme() {
     // ما لا يغطّيه Plex من محارف، فلا يختفي نصٌّ بلا رسالة.
     fontFamily: brandFont,
     fontFamilyFallback: arabicFallback,
-    scaffoldBackgroundColor: AppColors.page,
+    // **وأرضيّةُ التطبيق كلِّه بيضاء.** طلبها صاحبُ المنصّة: «أريد كل
+    // التطبيق يكون أبيض كذا من أول صفحة إلى آخر صفحة»، واختار من عشر لقطاتٍ
+    // حقيقيّةٍ لخمس شاشات.
+    //
+    // **وكانت `page` الورديّة، وهي باقيةٌ ولم تُحذف:** يُبنى عليها ما يجب أن
+    // يُرى **على** الأبيض — كفاصل `MenuGap` بين مجموعات الصفوف، ولولاه لَصار
+    // البياضُ يبتلع الفصلَ بين أقسام «حسابي».
+    scaffoldBackgroundColor: AppColors.surface,
     colorScheme: ColorScheme.fromSeed(
       seedColor: AppColors.accent,
       primary: AppColors.accent,

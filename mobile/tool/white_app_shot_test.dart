@@ -1,19 +1,21 @@
-// **مقترحٌ لا تنفيذ.** أن يصير التطبيقُ كلُّه أبيضَ الأرضيّة.
+// **تصويرُ ما صار — والمقترحُ الذي سبقه مكتوبٌ تحته.**
 //
-//   SHOTS=<مجلّد> flutter test tool/white_app_proposal_test.dart
+// كان راسمَ مقترحٍ يُبدّل لونَ الأرضيّة في الثيمة الممرَّرة ليُري الفرق في
+// خمس شاشات. فلمّا أمر صاحبُ المنصّة ونُفِّذ، **قُلب ولم يُحذف**: صار يصوّر
+// المشحونَ بثيمة التطبيق كما هي.
 //
-// ولا شيءَ في `lib/` تغيّر.
+//   SHOTS=<مجلّد> flutter test tool/white_app_shot_test.dart
 //
 // ── ما طلبه ────────────────────────────────────────────────────────────────
 //
-// «أريد كل التطبيق يكون أبيض كذا من أول صفحة إلى آخر صفحة». وقد بُيِّضت
-// «المحادثات» و«الإشعارات» وحدَهما في ١٫٥٤ بكتابة اللون فيهما، **وهذا يقلب
-// الطريقَ**: يُبدَّل `scaffoldBackgroundColor` في الثيمة فيعمّ.
+// «أريد كل التطبيق يكون أبيض كذا من أول صفحة إلى آخر صفحة». وكانت
+// «المحادثات» و«الإشعارات» وحدَهما بُيِّضتا في ١٫٥٤ بكتابة اللون فيهما،
+// **فانقلب الطريقُ**: بُدِّل `scaffoldBackgroundColor` في الثيمة فعمّ،
+// وشيلت الكتابتان لأنّهما صارتا زائدتين.
 //
 // ── واللقطاتُ حقيقيّةٌ كلُّها، ولا مرسومَ فيها ────────────────────────────
 //
-// كلُّ شاشةٍ هنا هي المشحونةُ نفسُها ببياناتِ العرض؛ **والفرقُ بين الصورتين
-// لونٌ واحدٌ في الثيمة لا غير**. فما يُرى هو ما سيصير بالضبط.
+// كلُّ شاشةٍ هنا هي المشحونةُ نفسُها ببياناتِ العرض بثيمة التطبيق.
 //
 // ── ولماذا شاشاتٌ كثيرةٌ لا واحدة ─────────────────────────────────────────
 //
@@ -74,14 +76,11 @@ Session _session() => Session()
   ..appUserId = 'a1'
   ..loading = false;
 
-/// **والتبديلُ في الثيمة لا في الرسم** — وهو عينُ ما سيُكتب إن قُبل.
-Widget _wrap(Widget child, {required bool white}) {
-  final base = buildTheme();
+/// **وثيمةُ التطبيق كما هي** — لا تبديلَ فيها بعد أن نُفِّذ.
+Widget _wrap(Widget child) {
   return MaterialApp(
     debugShowCheckedModeBanner: false,
-    theme: white
-        ? base.copyWith(scaffoldBackgroundColor: AppColors.surface)
-        : base,
+    theme: buildTheme(),
     locale: const Locale('ar'),
     supportedLocales: const [Locale('ar')],
     localizationsDelegates: const [
@@ -142,21 +141,18 @@ void main() {
   };
 
   for (final entry in screens.entries) {
-    for (final (suffix, white) in const [('today', false), ('white', true)]) {
-      testWidgets('${entry.key} — $suffix', (tester) async {
-        phone(tester);
-        await tester.pumpWidget(_wrap(entry.value(), white: white));
-        await settle(tester);
+    testWidgets('${entry.key} — أبيض', (tester) async {
+      phone(tester);
+      await tester.pumpWidget(_wrap(entry.value()));
+      await settle(tester);
 
-        // **وتُسأل الشجرةُ قبل اللقطة**: شاشةٌ لم تُبنَ تُخرج صورةً بيضاءَ
-        // تُقرأ «نجح البياض» وهي فراغ.
-        expect(background(tester),
-            white ? AppColors.surface : AppColors.page,
-            reason: 'أرضيّةُ اللقطة ليست ما يُسأل عنه');
-        expect(tester.takeException(), isNull);
+      // **وتُسأل الشجرةُ قبل اللقطة**: شاشةٌ لم تُبنَ تُخرج صورةً بيضاءَ
+      // تُقرأ «صار البياض» وهي فراغ.
+      expect(background(tester), AppColors.surface,
+          reason: 'ما زالت ورديّةً — فلا تُصوَّر صورةٌ تكذب');
+      expect(tester.takeException(), isNull);
 
-        await _shoot(tester, '$out/app-${entry.key}-$suffix.png');
-      });
-    }
+      await _shoot(tester, '$out/app-${entry.key}-shipped.png');
+    });
   }
 }
