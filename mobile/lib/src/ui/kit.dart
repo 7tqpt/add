@@ -538,11 +538,18 @@ class MenuSheet extends StatelessWidget {
 }
 
 /// فاصلٌ بين مجموعتين من الصفوف.
+///
+/// **وكان بلون الأرضيّة، فلمّا ابيضّت اختفى.** كان `AppColors.page` — وهو
+/// أرضيّةُ الشاشة يومَها — فكان الفصلُ يُرى لأنّ ما حوله أبيضُ البطاقات.
+/// فلمّا صارت الأرضيّةُ بيضاءَ في ١٫٥٥ صار الفاصلُ أبيضَ على أبيضَ، فالتصق
+/// «أريد تقديم خدمة» بـ«الإعدادات» في «حسابي».
+///
+/// **فصار `surface2`** — وهو الورديُّ الذي كان يفصل، لا الأرضيّةُ التي صارت.
 class MenuGap extends StatelessWidget {
   const MenuGap({super.key});
   @override
   Widget build(BuildContext context) =>
-      Container(height: Space.sm, color: AppColors.page);
+      Container(height: Space.sm, color: AppColors.surface2);
 }
 
 /// مقاسُ القرص في رأس الملفّ.

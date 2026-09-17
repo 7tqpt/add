@@ -1532,6 +1532,36 @@ List<ChatMessage> demoMessagesOf(String conversationId) => List<ChatMessage>.fro
   _threads.where((t) => t.id == conversationId).firstOrNull?.messages ?? const [],
 );
 
+/// بديلٌ تُركّبه الحزمةُ لتقيس ما تعرضه الشاشةُ ببيانةٍ معلومة.
+///
+/// **ولولاه لَقاست الشاشةُ نفسَها بنفسها:** تُقرأ منها الأرقامُ ويُقارَن بها،
+/// فيمرّ كلُّ شيء. فتُركَّب بيانةٌ معروفةٌ ويُسأل: أهذا ما عُرض؟
+CustomerCard? demoCustomerCardOverride;
+
+/// وخطأٌ يُرمى ليُقاس أنّ الشاشةَ تقوله ولا تبتلعه.
+String? demoCustomerCardThrows;
+
+/// بطاقةُ عميلٍ في وضع العرض — **بلا صورة**، فسلّةُ `avatars` لا تُفتح هنا.
+Future<CustomerCard?> demoCustomerCard(String conversationId) {
+  final boom = demoCustomerCardThrows;
+  if (boom != null) return Future<CustomerCard?>.error(boom);
+  final fake = demoCustomerCardOverride;
+  if (fake != null) return demoDelay<CustomerCard?>(fake);
+  return demoDelay(
+    CustomerCard(
+      fullName: _threads.where((t) => t.id == conversationId).firstOrNull?.otherName ?? 'عميل',
+      avatarPath: '',
+      governorate: 'صنعاء',
+      bookingsCount: 3,
+      completedCount: 2,
+      cancelledCount: 0,
+      upcomingCount: 1,
+      firstBookingAt: _at(120),
+      totalPaid: 640000,
+    ),
+  );
+}
+
 String demoOpenConversation(String providerId) {
   final existing = _threads.where((t) => t.providerId == providerId).firstOrNull;
   if (existing != null) return existing.id;

@@ -13,6 +13,7 @@ import '../ui/kit.dart';
 import '../ui/media.dart';
 import '../ui/viewer.dart';
 import 'chat_attach.dart';
+import 'customer_card.dart';
 import 'provider_public.dart';
 
 /// خيط المحادثة.
@@ -48,16 +49,21 @@ class ChatScreen extends StatefulWidget {
   /// اسم الطرف الآخر — تحسبه القاعدة لأن لكلٍّ «آخرَ» غير آخر صاحبه.
   final String otherName;
 
-  /// مسارُ صورته — فارغٌ لمن لا صورةَ له، **ولمقدّم الخدمة أبداً**: سياسةُ
-  /// `app_users` تمنعه من قراءة صفّ العميل. والتفصيلُ في `supabase/chat.sql`.
+  /// مسارُ صورته — فارغٌ لمن لا صورةَ له، **ولمقدّم الخدمة أبداً** في قائمة
+  /// المحادثات: سياسةُ `app_users` تمنعه من قراءة صفّ العميل، والتفصيلُ في
+  /// `supabase/chat.sql`.
+  ///
+  /// **وتصله في البطاقة لا هنا** — من دالّةٍ ضيّقةٍ تُخرج الصورةَ والمحافظةَ
+  /// وحدَهما (`api_customer_card`)، لا من وصلٍ في طريقة عرض.
   final String otherAvatar;
 
-  /// مقدّمُ الخدمة في هذه المحادثة — **وبه وحدَه يُفتح ملفُّه**.
+  /// مقدّمُ الخدمة في هذه المحادثة — **وبه وحدَه يُفتح ملفُّه العامّ**.
   ///
-  /// **ولا يُفتح إلّا للعميل**، وهو اختيارُ صاحب المنصّة من اثنين: العميلُ
-  /// يضغط فيرى ملفَّ القاعة؛ ومقدّمُ الخدمة لا يضغط، **لأنّ العميلَ لا ملفَّ
-  /// عامّ له في التطبيق أصلاً** — وشريطٌ يُضغط فلا يفتح شيئاً أسوأُ من شريطٍ
-  /// لا يُضغط.
+  /// **ويعني العميلَ وحدَه.** ومقدّمُ الخدمة لا يحتاجه: وجهتُه بطاقةُ العميل،
+  /// ومفتاحُها معرّفُ المحادثة لا معرّفُ مزوّد.
+  ///
+  /// **وكان الشريطُ عنده لا يُضغط أصلاً** — إذ لا ملفَّ عامّ للعميل. فضغطه
+  /// صاحبُ المنصّة فلم يقع شيء، فاختار أن تُبنى البطاقة.
   final String? providerId;
   final ChatSide mySide;
 
@@ -438,16 +444,27 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  /// **وملفُّ مقدّم الخدمة يُفتح من الشريط** — طلبه صاحبُ المنصّة: «خلّيه
+  /// **وملفُّ الطرف الآخر يُفتح من الشريط** — طلبه صاحبُ المنصّة: «خلّيه
   /// قابل للضغط وانتقل إلى الملف الشخصي».
   ///
   /// ويعود `null` لمن لا وجهةَ له، فلا يُلبَس الشريطُ لبسَ الأزرار ثمّ لا
   /// يفعل شيئاً.
   VoidCallback? _openProfile(BuildContext context) {
-    final id = _providerId;
-    if (widget.mySide != ChatSide.customer || id == null || id.isEmpty) {
-      return null;
+    // **ولكلّ جانبٍ وجهتُه:** العميلُ يفتح ملفَّ القاعة العامّ؛ ومقدّمُ
+    // الخدمة يفتح **بطاقةَ العميل** — وهي ما بُني بعد أن ضغط فلم يقع شيء،
+    // إذ لا ملفَّ عامّ للعميل. وحدُّ ما فيها في `customer_card.dart`.
+    if (widget.mySide == ChatSide.provider) {
+      return () => Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => CustomerCardScreen(
+            conversationId: widget.conversationId,
+            name: widget.otherName,
+          ),
+        ),
+      );
     }
+    final id = _providerId;
+    if (id == null || id.isEmpty) return null;
     return () => Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => PublicProviderScreen(providerId: id, name: widget.otherName),

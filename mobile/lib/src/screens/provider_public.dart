@@ -185,12 +185,15 @@ class _PublicProviderScreenState extends State<PublicProviderScreen> {
                 // `layoutExtent` أكبر من `paintExtent` ببكسلين — فيرمي
                 // الرسمُ عند أوّل إطار. و`primary: false` تُلغي حسابَ شريط
                 // الحالة الذي هو أصلُ البكسلين.
-                const SliverAppBar(
+                // **ولونُه يُسأل من الثيمة لا يُسمّى.** كان `AppColors.page`
+                // مكتوباً بيده، فلمّا ابيضّت أرضيّةُ التطبيق بقي ورديّاً وسط
+                // البياض. وهو يريد أرضيّةَ الشاشة أيّاً كانت، فيقولها هكذا.
+                SliverAppBar(
                   pinned: true,
                   primary: false,
                   automaticallyImplyLeading: false,
                   toolbarHeight: 0,
-                  backgroundColor: AppColors.page,
+                  backgroundColor: Theme.of(context).scaffoldBackgroundColor,
                   surfaceTintColor: Colors.transparent,
                   elevation: 0,
                   bottom: _ProviderTabs(),
@@ -624,7 +627,9 @@ class _ProviderTabs extends StatelessWidget implements PreferredSizeWidget {
   Widget build(BuildContext context) => Container(
     // أرضيّةٌ صريحة: الشريط يثبت والمحتوى يمرّ تحته، وبلا أرضيّةٍ يُقرأ
     // النصّان فوق بعضهما.
-    color: AppColors.page,
+    //
+    // **وتُسأل من الثيمة لا تُسمّى** — انظر `SliverAppBar` أعلاه.
+    color: Theme.of(context).scaffoldBackgroundColor,
     child: TabBar(
       labelColor: AppColors.accent,
       unselectedLabelColor: AppColors.muted,
