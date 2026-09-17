@@ -123,6 +123,14 @@ void main() {
 
     final out = Platform.environment['SHOTS'] ?? '/tmp/shots';
     await _shoot(tester, find.byKey(const ValueKey('shot')), '$out/service-category-today.png');
+
+    // **والورقةُ تُغلَق قبل أن ينتهي الاختبار — لا تُترك معلّقةً.** ورقةٌ
+    // سفليّةٌ حيّةٌ عند عودة الدالّة تُعلّق تنظيفَ الاختبار (وهو ما وقع
+    // بعينه هنا، فتعلّق الراسمُ بعد هذه اللقطة بالذات) — فتُغلَق بالنقر
+    // على حاجزها، ونبضاتٌ محدودةٌ بعدها لا `pumpAndSettle`.
+    await tester.tap(find.byType(ModalBarrier).first);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
   });
 
   testWidgets('المقترح — قائمةٌ منسدلة', (tester) async {
