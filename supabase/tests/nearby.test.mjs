@@ -359,7 +359,12 @@ for (const fn of ['api_services_nearby', 'api_providers_nearby']) {
   ok(`و${fn} يناديها التطبيق`, dart.includes(`'${fn}'`))
 }
 
-const called = [...dart.matchAll(/rpc\('(api_\w*nearby)',\s*params:\s*\{([^}]*)\}/g)]
+// **ويتحمّل النمطُ إعادةَ التنسيق.** كان `rpc\('` بلا فسحة، فلمّا مدّ
+// `dart format` النداءَ سطرين — `db.rpc(` ثمّ `'api_services_nearby',` —
+// وجد صفراً فاحمرّت الحزمةُ على شيفرةٍ سليمة. **وحارسٌ يقرأ نصَّ المصدر
+// يجب أن يحتمل تنسيقَه**، وإلّا كسره المنسّقُ الذي يطلبه المستودعُ نفسُه في
+// `analysis_options.yaml`.
+const called = [...dart.matchAll(/rpc\(\s*'(api_\w*nearby)',\s*params:\s*\{([^}]*)\}/g)]
 ok('تجهيزٌ: نداءان في api.dart', called.length === 2, `${called.length}`)
 
 for (const [, fn, body] of called) {

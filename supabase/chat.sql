@@ -233,8 +233,31 @@ select
             case when c.user_id = public.current_app_user()
                  then c.customer_read_at else c.provider_read_at end,
             'epoch'::timestamptz)
-  ) as unread_count
+  ) as unread_count,
+  -- ── صورةُ الطرف الآخر ──────────────────────────────────────────────────
+  --
+  -- طلبها صاحبُ المنصّة في شريط المحادثة: «أحسّ الشريط العلوي يبغي تحط
+  -- صورة». وكانت القائمةُ تُرجع اسمَه ولا تُرجع صورتَه.
+  --
+  -- **وهي شعارُ القاعة للعميل، ولا شيءَ لمقدّم الخدمة — وذلك عن عمد.**
+  -- `security_invoker` يعني أنّ الوصلَ يمرّ بسياسة المتصل، وسياسةُ
+  -- `app_users` صريحة: «العميل يرى ويعدّل حسابه هو. لا يرى حسابات غيره
+  -- إطلاقاً» — وهي تشمل مقدّمَ الخدمة. فوصلٌ إلى `app_users` هنا يعود
+  -- فارغاً أبداً، وكتابتُه تُوهم أنّه يعمل.
+  --
+  -- **وتوسيعُ السياسة لم يُفعل ولن يُفعل صمتاً:** صفُّ `app_users` يحمل
+  -- البريدَ والجوالَ والحالة، لا الصورةَ وحدَها. ومن أراد صورةَ العميل
+  -- لمقدّم الخدمة فطريقُه دالّةٌ `security definer` تُرجع **الصورةَ وحدَها**
+  -- لمن بينه وبينه محادثة — قرارٌ يُعرض ويُقرَّر، لا يُدسّ في وصلٍ.
+  case
+    when c.user_id = public.current_app_user()
+      then coalesce(sp.logo_path, '')
+    else ''
+  end as other_avatar
 from public.conversations c
+-- **ووصلٌ خارجيٌّ لا داخليّ:** محادثةٌ حُذف مزوّدُها (`on delete set null`)
+-- تبقى للعميل، ووصلٌ داخليٌّ يُخفيها من قائمته فتختفي رسائلُه بلا سبب.
+left join public.service_providers sp on sp.id = c.provider_id
 where c.user_id = public.current_app_user()
    or c.provider_id = public.current_provider();
 
@@ -283,4 +306,12 @@ select 'الدوال', count(*)::text from pg_proc p
                      'api_mark_conversation_read', 'conversation_touch')
 union all
 select 'طريقة العرض', count(*)::text from information_schema.views
- where table_schema = 'public' and table_name = 'v_my_conversations';
+ where table_schema = 'public' and table_name = 'v_my_conversations'
+union all
+-- **ويُقاس العمودُ الجديد لا وجودُ الطريقة وحدَه.** `create or replace view`
+-- على طريقةٍ قائمةٍ يسقط إن تغيّرت أعمدتُها، فيبقى القديمُ ويُظنّ أنّ
+-- الجديدَ نزل — والتطبيقُ يسأل عن عمودٍ لا وجودَ له.
+select 'صورة الطرف الآخر', count(*)::text
+  from information_schema.columns
+ where table_schema = 'public' and table_name = 'v_my_conversations'
+   and column_name = 'other_avatar';

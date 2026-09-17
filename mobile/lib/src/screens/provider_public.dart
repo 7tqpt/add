@@ -88,6 +88,8 @@ class _PublicProviderScreenState extends State<PublicProviderScreen> {
           builder: (_) => ChatScreen(
             conversationId: id,
             otherName: p.businessName,
+            otherAvatar: p.logoPath,
+            providerId: p.id,
             mySide: ChatSide.customer,
           ),
         ),
@@ -144,9 +146,7 @@ class _PublicProviderScreenState extends State<PublicProviderScreen> {
           if (p == null) {
             return EmptyBlock(
               title: tr('الملفّ غير متاح'),
-              description: tr(
-                'قد يكون مقدّم الخدمة قد أوقف عرضه أو لم تُوثّقه الإدارة بعد.',
-              ),
+              description: tr('قد يكون مقدّم الخدمة قد أوقف عرضه أو لم تُوثّقه الإدارة بعد.'),
             );
           }
 
@@ -305,10 +305,7 @@ class _Head extends StatelessWidget {
                         ),
                       ),
                     ),
-                    if (p.isVerified) ...[
-                      const SizedBox(width: 6),
-                      const VerifiedMark(size: 19),
-                    ],
+                    if (p.isVerified) ...[const SizedBox(width: 6), const VerifiedMark(size: 19)],
                   ],
                 ),
               ),
@@ -462,17 +459,11 @@ class _Stats extends StatelessWidget {
 class _Divider extends StatelessWidget {
   const _Divider();
   @override
-  Widget build(BuildContext context) =>
-      Container(width: 1, height: 34, color: AppColors.hairline);
+  Widget build(BuildContext context) => Container(width: 1, height: 34, color: AppColors.hairline);
 }
 
 class _Cell extends StatelessWidget {
-  const _Cell({
-    required this.value,
-    required this.label,
-    required this.icon,
-    required this.tone,
-  });
+  const _Cell({required this.value, required this.label, required this.icon, required this.tone});
   final String value;
   final String label;
   final IconData icon;
@@ -488,11 +479,7 @@ class _Cell extends StatelessWidget {
         Text(
           value,
           maxLines: 1,
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w700,
-            color: AppColors.ink,
-          ),
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.ink),
         ),
         Muted(label, size: 10.5),
       ],
@@ -513,11 +500,7 @@ class _Tag extends StatelessWidget {
     ),
     child: Text(
       label,
-      style: const TextStyle(
-        fontSize: 11.5,
-        color: AppColors.accent,
-        fontWeight: FontWeight.w600,
-      ),
+      style: const TextStyle(fontSize: 11.5, color: AppColors.accent, fontWeight: FontWeight.w600),
     ),
   );
 }
@@ -553,11 +536,9 @@ class _Services extends StatelessWidget {
                 item: item,
                 // اسمُ المزوّد لا يُكرَّر في صفحته: القارئ فيها يعرف عند من هو.
                 showProvider: false,
-                onOpen: () => Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => ServiceDetailScreen(serviceId: item.id),
-                  ),
-                ),
+                onOpen: () => Navigator.of(
+                  context,
+                ).push(MaterialPageRoute(builder: (_) => ServiceDetailScreen(serviceId: item.id))),
               ),
               const SizedBox(height: Space.md),
             ],
@@ -692,10 +673,7 @@ class _About extends StatelessWidget {
         // **وكان ناقصاً كلَّه.** نقطةُ المزوّد تُحفظ ويُرتَّب بها البحث، ولا
         // يراها العميل في شيء. ومن قرأ «أمانة العاصمة» لا يعرف أفي حدّة هو أم
         // في سعوان — وبينهما نصفُ ساعةٍ ليلةَ العرس.
-        if (p.point != null) ...[
-          _LocationCard(provider: p),
-          const SizedBox(height: Space.md),
-        ],
+        if (p.point != null) ...[_LocationCard(provider: p), const SizedBox(height: Space.md)],
         if (p.bio.isEmpty)
           EmptyBlock(
             title: tr('لا نبذة بعد'),

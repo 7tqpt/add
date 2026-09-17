@@ -10,14 +10,15 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../core/app_lock.dart';
 import '../core/i18n.dart';
 import '../core/geo.dart';
 import 'kit.dart';
 
 Future<void> openMap(BuildContext context, GeoPoint point) async {
-  final ok = await launchUrl(
-    Uri.parse(mapsUrl(point)),
-    mode: LaunchMode.externalApplication,
+  // **ورحلةٌ لا غياب** — انظر `awayFromApp`.
+  final ok = await awayFromApp(
+    () => launchUrl(Uri.parse(mapsUrl(point)), mode: LaunchMode.externalApplication),
   );
   // **والإحداثيّتان في الرسالة عمداً:** من لا تطبيقَ خرائطَ في جهازه يستطيع
   // نسخهما وإرسالهما، وهو خيرٌ من «تعذّر» مجرّدة.

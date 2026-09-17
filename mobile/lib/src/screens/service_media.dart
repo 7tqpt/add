@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../core/app_lock.dart';
 import '../core/i18n.dart';
 import '../core/format.dart';
 import '../core/theme.dart';
@@ -83,14 +84,17 @@ class _ServiceMediaScreenState extends State<ServiceMediaScreen> {
   Future<void> _addImage(int taken) async {
     final source = await _askSource(tr('صورة'));
     if (source == null) return;
-    final file = await ImagePicker().pickImage(
-      source: source,
-      // القياس قبل الرفع لا بعده: صورةُ جوالٍ حديثة تقارب الاثني عشر
-      // ميجابايت، وثمانٍ منها ترفع فاتورة التخزين وتُبطئ فتحَ الخدمة على
-      // شبكةٍ ضعيفة — ولا تُرى منها على شاشة الجوال إلّا ما يُرى من ‎١٦٠٠‎.
-      maxWidth: 1600,
-      maxHeight: 1600,
-      imageQuality: 85,
+    // **ورحلةٌ لا غياب** — انظر `awayFromApp`.
+    final file = await awayFromApp(
+      () => ImagePicker().pickImage(
+        source: source,
+        // القياس قبل الرفع لا بعده: صورةُ جوالٍ حديثة تقارب الاثني عشر
+        // ميجابايت، وثمانٍ منها ترفع فاتورة التخزين وتُبطئ فتحَ الخدمة على
+        // شبكةٍ ضعيفة — ولا تُرى منها على شاشة الجوال إلّا ما يُرى من ‎١٦٠٠‎.
+        maxWidth: 1600,
+        maxHeight: 1600,
+        imageQuality: 85,
+      ),
     );
     if (file == null) return; // إلغاءٌ لا خطأ
     await _upload(file, MediaKind.image, sortOrder: taken);
@@ -99,11 +103,13 @@ class _ServiceMediaScreenState extends State<ServiceMediaScreen> {
   Future<void> _addVideo() async {
     final source = await _askSource(tr('مقطعاً'));
     if (source == null) return;
-    final file = await ImagePicker().pickVideo(
-      source: source,
-      // الحدُّ هنا يقيّد الكاميرا وقت التصوير، ولا يقيّد ما يُختار من
-      // المعرض — فالقياس بعده لا غنى عنه.
-      maxDuration: const Duration(seconds: Api.mediaMaxSeconds),
+    final file = await awayFromApp(
+      () => ImagePicker().pickVideo(
+        source: source,
+        // الحدُّ هنا يقيّد الكاميرا وقت التصوير، ولا يقيّد ما يُختار من
+        // المعرض — فالقياس بعده لا غنى عنه.
+        maxDuration: const Duration(seconds: Api.mediaMaxSeconds),
+      ),
     );
     if (file == null) return;
     await _upload(file, MediaKind.video);
@@ -113,9 +119,8 @@ class _ServiceMediaScreenState extends State<ServiceMediaScreen> {
     // `file_picker` لا `image_picker`: الثاني لا يفتح الصوت أصلاً. وهذه
     // نسخته الثانية عشرة، وهي أوّل نسخةٍ تُبنى مع AGP 9 — وقد كانت الحادية
     // عشرة سببَ العدول عنها في شاشة المستندات.
-    final picked = await FilePicker.pickFile(
-      type: FileType.audio,
-      dialogTitle: tr('اختر مقطعاً صوتياً'),
+    final picked = await awayFromApp(
+      () => FilePicker.pickFile(type: FileType.audio, dialogTitle: tr('اختر مقطعاً صوتياً')),
     );
     if (picked == null) return;
     await _upload(picked.xFile, MediaKind.audio, uri: picked.uri);
@@ -132,8 +137,10 @@ class _ServiceMediaScreenState extends State<ServiceMediaScreen> {
       final bytes = await file.readAsBytes();
       if (bytes.length > Api.mediaMaxBytes) {
         throw _Rejected(
-          trf('الملف {0} والحدّ {1}. صوّر بجودةٍ أقلّ أو اقصص المقطع.',
-              [formatBytes(bytes.length), formatBytes(Api.mediaMaxBytes)]),
+          trf('الملف {0} والحدّ {1}. صوّر بجودةٍ أقلّ أو اقصص المقطع.', [
+            formatBytes(bytes.length),
+            formatBytes(Api.mediaMaxBytes),
+          ]),
         );
       }
 
@@ -145,8 +152,10 @@ class _ServiceMediaScreenState extends State<ServiceMediaScreen> {
         }
         if (seconds > Api.mediaMaxSeconds) {
           throw _Rejected(
-            trf('المقطع {0} والحدّ {1}. اقصصه ثم أعد الرفع.',
-                [formatSeconds(seconds), formatSeconds(Api.mediaMaxSeconds)]),
+            trf('المقطع {0} والحدّ {1}. اقصصه ثم أعد الرفع.', [
+              formatSeconds(seconds),
+              formatSeconds(Api.mediaMaxSeconds),
+            ]),
           );
         }
       }
@@ -232,10 +241,7 @@ class _ServiceMediaScreenState extends State<ServiceMediaScreen> {
             children: [
               Muted(widget.serviceTitle),
               const SizedBox(height: Space.md),
-              if (_note != null) ...[
-                _Note(_note!),
-                const SizedBox(height: Space.md),
-              ],
+              if (_note != null) ...[_Note(_note!), const SizedBox(height: Space.md)],
               _ImagesCard(
                 images: images,
                 busy: _busy,
@@ -284,10 +290,7 @@ class _Note extends StatelessWidget {
       border: Border.all(color: AppColors.critical.withValues(alpha: 0.35)),
       borderRadius: BorderRadius.circular(12),
     ),
-    child: Text(
-      text,
-      style: const TextStyle(color: AppColors.critical, height: 1.6, fontSize: 13),
-    ),
+    child: Text(text, style: const TextStyle(color: AppColors.critical, height: 1.6, fontSize: 13)),
   );
 }
 
@@ -325,8 +328,7 @@ class _ImagesCard extends StatelessWidget {
           spacing: Space.sm,
           runSpacing: Space.sm,
           children: [
-            for (final m in images)
-              _Thumb(media: m, onDelete: busy ? null : () => onDelete(m)),
+            for (final m in images) _Thumb(media: m, onDelete: busy ? null : () => onDelete(m)),
             if (!full)
               _AddTile(
                 icon: Icons.add_a_photo_outlined,
@@ -448,7 +450,9 @@ class _ClipCard extends StatelessWidget {
         const SizedBox(height: Space.xs),
         Muted(
           _video
-              ? tr('دقيقةٌ على الأكثر. أرِ ما لا تُريه صورة: القاعة وهي ممتلئة، أو الطبخ وهو يُقدَّم.')
+              ? tr(
+                  'دقيقةٌ على الأكثر. أرِ ما لا تُريه صورة: القاعة وهي ممتلئة، أو الطبخ وهو يُقدَّم.',
+                )
               : tr('دقيقةٌ على الأكثر. للفنانين والفرق: صورتُك لا تقول شيئاً عن صوتك.'),
         ),
         const SizedBox(height: Space.md),

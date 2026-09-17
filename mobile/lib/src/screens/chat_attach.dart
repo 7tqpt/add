@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../core/app_lock.dart';
 import '../core/i18n.dart';
 import '../data/models.dart';
 
@@ -57,12 +58,15 @@ class DeviceAttachmentPicker implements AttachmentPicker {
 
   @override
   Future<PickedAttachment?> image({required bool camera}) async {
-    final picked = await ImagePicker().pickImage(
-      source: camera ? ImageSource.camera : ImageSource.gallery,
-      // ضغطٌ عند الالتقاط: صورةُ كاميرا الجوال بدقّتها الكاملة تُقارب عشرة
-      // ميجابايت، ويُنزّلها الطرف الآخر كاملةً على شبكةٍ يمنية ليرى كوشة.
-      maxWidth: 1600,
-      imageQuality: 82,
+    // **ورحلةٌ لا غياب** — انظر `awayFromApp`.
+    final picked = await awayFromApp(
+      () => ImagePicker().pickImage(
+        source: camera ? ImageSource.camera : ImageSource.gallery,
+        // ضغطٌ عند الالتقاط: صورةُ كاميرا الجوال بدقّتها الكاملة تُقارب عشرة
+        // ميجابايت، ويُنزّلها الطرف الآخر كاملةً على شبكةٍ يمنية ليرى كوشة.
+        maxWidth: 1600,
+        imageQuality: 82,
+      ),
     );
     if (picked == null) return null;
     return PickedAttachment(
@@ -76,9 +80,11 @@ class DeviceAttachmentPicker implements AttachmentPicker {
 
   @override
   Future<PickedAttachment?> video() async {
-    final picked = await ImagePicker().pickVideo(
-      source: ImageSource.camera,
-      maxDuration: const Duration(seconds: chatVideoMaxSeconds),
+    final picked = await awayFromApp(
+      () => ImagePicker().pickVideo(
+        source: ImageSource.camera,
+        maxDuration: const Duration(seconds: chatVideoMaxSeconds),
+      ),
     );
     if (picked == null) return null;
 
@@ -99,10 +105,12 @@ class DeviceAttachmentPicker implements AttachmentPicker {
   Future<PickedAttachment?> document() async {
     // `pickFile` لا `pickFiles`: ملفٌّ واحدٌ في الرسالة، والثانية مهجورةٌ
     // لاختيارٍ مفرد في هذه النسخة.
-    final picked = await FilePicker.pickFile(
-      type: FileType.custom,
-      allowedExtensions: const ['pdf'],
-      dialogTitle: tr('اختر ملفاً'),
+    final picked = await awayFromApp(
+      () => FilePicker.pickFile(
+        type: FileType.custom,
+        allowedExtensions: const ['pdf'],
+        dialogTitle: tr('اختر ملفاً'),
+      ),
     );
     if (picked == null) return null;
     final bytes = await picked.readAsBytes();

@@ -208,7 +208,8 @@ const demoProviders = [
   PublicProvider(
     id: 'p1',
     businessName: 'قاعة التاج',
-    bio: 'قاعتان في حي السنينة تتّسعان لأربعمئة ضيف، مع تنسيقٍ كامل وإضاءةٍ '
+    bio:
+        'قاعتان في حي السنينة تتّسعان لأربعمئة ضيف، مع تنسيقٍ كامل وإضاءةٍ '
         'وطاقم استقبال. نعمل منذ ٢٠١٤ ونستقبل الخطوبات والأعراس.',
     logoPath: '',
     governorate: 'أمانة العاصمة',
@@ -239,7 +240,8 @@ const demoProviders = [
   PublicProvider(
     id: 'p3',
     businessName: 'استوديو السعادة',
-    bio: 'تصويرٌ فوتوغرافيّ وفيديو بفريقٍ من ثلاثة مصوّرين ودرون، والتسليم '
+    bio:
+        'تصويرٌ فوتوغرافيّ وفيديو بفريقٍ من ثلاثة مصوّرين ودرون، والتسليم '
         'خلال أسبوعين.',
     logoPath: '',
     governorate: 'عدن',
@@ -455,7 +457,13 @@ List<WeddingPlan> demoPlans = [
 /// النسبة، فيمرّ عطبٌ في حسابهما بلا أن يُرى.
 List<PlanTask> demoPlanTasks = [
   const PlanTask(id: 'tk1', title: 'حجز القاعة ومعاينتها', done: true, dueDate: '', sortOrder: 10),
-  const PlanTask(id: 'tk2', title: 'الاتفاق على المهر وتسليمه', done: true, dueDate: '', sortOrder: 20),
+  const PlanTask(
+    id: 'tk2',
+    title: 'الاتفاق على المهر وتسليمه',
+    done: true,
+    dueDate: '',
+    sortOrder: 20,
+  ),
   const PlanTask(id: 'tk3', title: 'عقد القران وتوثيقه', done: true, dueDate: '', sortOrder: 30),
   const PlanTask(id: 'tk4', title: 'حجز المصوّر والفيديو', done: false, dueDate: '', sortOrder: 40),
   const PlanTask(id: 'tk5', title: 'فستان العروس وتفصيله', done: false, dueDate: '', sortOrder: 50),
@@ -473,23 +481,26 @@ PlanProgress demoPlanProgress(String planId) {
     tasksDone: done,
     percent: demoPlanTasks.isEmpty ? 0 : (100 * done / demoPlanTasks.length).round(),
     upcomingBookings: demoBookings
-        .where((b) => b.status == BookingStatus.confirmed ||
-                      b.status == BookingStatus.pendingProvider)
+        .where(
+          (b) => b.status == BookingStatus.confirmed || b.status == BookingStatus.pendingProvider,
+        )
         .length,
   );
 }
 
 void demoTogglePlanTask(String taskId) {
   demoPlanTasks = demoPlanTasks
-      .map((t) => t.id != taskId
-          ? t
-          : PlanTask(
-              id: t.id,
-              title: t.title,
-              done: !t.done,
-              dueDate: t.dueDate,
-              sortOrder: t.sortOrder,
-            ))
+      .map(
+        (t) => t.id != taskId
+            ? t
+            : PlanTask(
+                id: t.id,
+                title: t.title,
+                done: !t.done,
+                dueDate: t.dueDate,
+                sortOrder: t.sortOrder,
+              ),
+      )
       .toList();
 }
 
@@ -729,8 +740,7 @@ int _seq = 500;
 /// ما لا تملك. والتجربةُ تحاكي القاعدة أو لا تُصدَّق.
 const double demoCommissionPercent = 10;
 
-const Map<String, ({String description, bool percent, num value, num cap})>
-    demoCoupons = {
+const Map<String, ({String description, bool percent, num value, num cap})> demoCoupons = {
   'EID25': (description: 'حملة العيد', percent: true, value: 25, cap: 0),
   'SDD5000': (description: 'خصم ٥٠٠٠ ريال', percent: false, value: 5000, cap: 0),
 };
@@ -754,10 +764,7 @@ CouponCheck demoCheckCoupon(String code, String serviceId) {
   );
 }
 
-num _demoDiscount(
-  ({String description, bool percent, num value, num cap}) c,
-  num price,
-) {
+num _demoDiscount(({String description, bool percent, num value, num cap}) c, num price) {
   var d = c.percent ? (price * c.value / 100).round() : c.value;
   if (c.percent && c.cap > 0) d = d < c.cap ? d : c.cap;
   final commission = (price * demoCommissionPercent / 100).round();
@@ -767,8 +774,15 @@ num _demoDiscount(
   return d;
 }
 
-Booking demoCreateBooking(String serviceId, String date, String? time, int guests,
-    String address, [String couponCode = '', GeoPoint? point]) {
+Booking demoCreateBooking(
+  String serviceId,
+  String date,
+  String? time,
+  int guests,
+  String address, [
+  String couponCode = '',
+  GeoPoint? point,
+]) {
   final service = demoServices.firstWhere((s) => s.id == serviceId);
   final key = couponCode.trim().toUpperCase();
   num discount = 0;
@@ -959,8 +973,7 @@ void demoSetServiceActive(String id, bool active) {
 
   DateTime? blocking;
   for (final b in demoProviderRequests) {
-    if (b.status != BookingStatus.pendingProvider &&
-        b.status != BookingStatus.confirmed) {
+    if (b.status != BookingStatus.pendingProvider && b.status != BookingStatus.confirmed) {
       continue;
     }
     if (!b.serviceTitle.contains(service.title)) continue;
@@ -1234,8 +1247,7 @@ bool demoDeletePaymentMethod(String id) {
   final before = demoPaymentMethods.length;
   demoPaymentMethods.removeWhere((m) => m.id == id);
   final gone = demoPaymentMethods.length < before;
-  if (gone && demoPaymentMethods.isNotEmpty &&
-      !demoPaymentMethods.any((m) => m.isDefault)) {
+  if (gone && demoPaymentMethods.isNotEmpty && !demoPaymentMethods.any((m) => m.isDefault)) {
     final m = demoPaymentMethods.first;
     demoPaymentMethods[0] = SavedPaymentMethod(
       id: m.id,
@@ -1264,15 +1276,16 @@ void demoRegisterProfile({
   required String phone,
   required String governorate,
 }) {
-  _demoProfile = _demoProfile.copyWith(
-    fullName: fullName,
-    phone: phone,
-    governorate: governorate,
-  );
+  _demoProfile = _demoProfile.copyWith(fullName: fullName, phone: phone, governorate: governorate);
 }
 
 MyProfile demoUpdateProfile(
-    String name, String? phone, String? govId, String? avatar, String? cover) {
+  String name,
+  String? phone,
+  String? govId,
+  String? avatar,
+  String? cover,
+) {
   _demoProfile = _demoProfile.copyWith(
     fullName: name,
     phone: phone,
@@ -1326,14 +1339,10 @@ Map<String, List<ServiceMedia>> demoMedia = {
 ///
 /// وبيانات العرض تربط الوسائط بالخدمة لا بالمزوّد، فيُجمع عبر خدماته.
 List<ServiceMedia> demoProviderGallery(String providerId) {
-  final ids = demoServices
-      .where((s) => s.providerId == providerId)
-      .map((s) => s.id)
-      .toSet();
+  final ids = demoServices.where((s) => s.providerId == providerId).map((s) => s.id).toSet();
   return [
     for (final entry in demoMedia.entries)
-      if (ids.contains(entry.key))
-        ...entry.value.where((m) => m.kind == MediaKind.image),
+      if (ids.contains(entry.key)) ...entry.value.where((m) => m.kind == MediaKind.image),
   ];
 }
 
@@ -1368,8 +1377,7 @@ void demoAddMedia(
 
 void demoRemoveMedia(String id) {
   demoMedia = {
-    for (final entry in demoMedia.entries)
-      entry.key: entry.value.where((m) => m.id != id).toList(),
+    for (final entry in demoMedia.entries) entry.key: entry.value.where((m) => m.id != id).toList(),
   };
 }
 
@@ -1494,14 +1502,19 @@ List<Conversation> demoConversationList() {
     final last = t.messages.isEmpty ? null : t.messages.last;
     final mine = chatSideValue(t.mySide);
     final unread = t.messages
-        .where((m) =>
-            chatSideValue(m.sender) != mine &&
-            (t.readAt == null || m.createdAt.compareTo(t.readAt!) > 0))
+        .where(
+          (m) =>
+              chatSideValue(m.sender) != mine &&
+              (t.readAt == null || m.createdAt.compareTo(t.readAt!) > 0),
+        )
         .length;
     return Conversation(
       id: t.id,
       providerId: t.providerId,
       otherName: t.otherName,
+      // **وبيانةُ العرض بلا صورة، وذلك صادق.** سلّةُ `avatars` لا تُفتح في
+      // وضع العرض، ومسارٌ مكتوبٌ هنا يُنتج قرصاً مكسوراً لا صورة.
+      otherAvatar: '',
       mySide: t.mySide,
       lastMessageAt: last?.createdAt ?? '',
       lastMessageBody: last == null
@@ -1515,19 +1528,16 @@ List<Conversation> demoConversationList() {
   return rows;
 }
 
-List<ChatMessage> demoMessagesOf(String conversationId) =>
-    List<ChatMessage>.from(
-      _threads.where((t) => t.id == conversationId).firstOrNull?.messages ?? const [],
-    );
+List<ChatMessage> demoMessagesOf(String conversationId) => List<ChatMessage>.from(
+  _threads.where((t) => t.id == conversationId).firstOrNull?.messages ?? const [],
+);
 
 String demoOpenConversation(String providerId) {
   final existing = _threads.where((t) => t.providerId == providerId).firstOrNull;
   if (existing != null) return existing.id;
   _chatSeq += 1;
-  final name = demoServices
-          .where((s) => s.providerId == providerId)
-          .firstOrNull
-          ?.providerName ??
+  final name =
+      demoServices.where((s) => s.providerId == providerId).firstOrNull?.providerName ??
       'مقدّم الخدمة';
   final thread = _DemoThread(
     id: 'cv-new$_chatSeq',
@@ -1595,9 +1605,10 @@ void demoMarkRead(String conversationId) {
 /// وجانبُها هنا `provider`: قائمةُ المحادثات تعرض «الطرف الآخر»، والآخرُ عند
 /// صاحب القاعة هو العميل — عكسُ ما يراه العميل في الخيط نفسه.
 String demoOpenConversationWithCustomer(String bookingId) {
-  final booking = [...demoProviderRequests, ...demoBookings]
-      .where((b) => b.id == bookingId)
-      .firstOrNull;
+  final booking = [
+    ...demoProviderRequests,
+    ...demoBookings,
+  ].where((b) => b.id == bookingId).firstOrNull;
   final name = booking?.userName ?? 'العميل';
   final existing = _threads.where((t) => t.otherName == name).firstOrNull;
   if (existing != null) return existing.id;
@@ -1682,8 +1693,7 @@ void demoResetNotifications() {
   ];
 }
 
-List<AppNotification> demoNotificationList() =>
-    List<AppNotification>.from(demoNotifications);
+List<AppNotification> demoNotificationList() => List<AppNotification>.from(demoNotifications);
 
 AppNotification _readCopy(AppNotification n) => AppNotification(
   id: n.id,
@@ -1696,8 +1706,9 @@ AppNotification _readCopy(AppNotification n) => AppNotification(
 );
 
 void demoMarkNotificationRead(String id) {
-  demoNotifications =
-      demoNotifications.map((n) => n.id == id && n.isUnread ? _readCopy(n) : n).toList();
+  demoNotifications = demoNotifications
+      .map((n) => n.id == id && n.isUnread ? _readCopy(n) : n)
+      .toList();
 }
 
 void demoMarkAllNotificationsRead() {
@@ -1839,15 +1850,10 @@ List<DayMark> demoDays = [
     blocked: true,
     note: 'محجوز — BK-2026-0001',
   ),
-  DayMark(
-    day: DateTime.now().add(const Duration(days: 20)),
-    blocked: true,
-    note: 'صيانة',
-  ),
+  DayMark(day: DateTime.now().add(const Duration(days: 20)), blocked: true, note: 'صيانة'),
 ];
 
-bool _sameDay(DateTime a, DateTime b) =>
-    a.year == b.year && a.month == b.month && a.day == b.day;
+bool _sameDay(DateTime a, DateTime b) => a.year == b.year && a.month == b.month && a.day == b.day;
 
 /// علاماتُ الأيّام في مدىً — **ويُقارَن اليومُ يوماً لا لحظة.**
 ///
@@ -1867,9 +1873,7 @@ List<DayMark> demoMyDays(DateTime from, DateTime to) {
   DateTime dayOf(DateTime d) => DateTime(d.year, d.month, d.day);
   final start = dayOf(from);
   final end = dayOf(to);
-  return demoDays
-      .where((d) => !dayOf(d.day).isBefore(start) && !dayOf(d.day).isAfter(end))
-      .toList()
+  return demoDays.where((d) => !dayOf(d.day).isBefore(start) && !dayOf(d.day).isAfter(end)).toList()
     ..sort((a, b) => a.day.compareTo(b.day));
 }
 
@@ -1890,24 +1894,19 @@ DayMark? demoSetAvailability(DateTime day, bool blocked, String note) {
   return mark;
 }
 
-Set<DateTime> demoBlockedDays(String providerId, DateTime from, DateTime to) =>
-    demoMyDays(from, to)
-        .where((d) => d.blocked)
-        .map((d) => DateTime(d.day.year, d.day.month, d.day.day))
-        .toSet();
+Set<DateTime> demoBlockedDays(String providerId, DateTime from, DateTime to) => demoMyDays(
+  from,
+  to,
+).where((d) => d.blocked).map((d) => DateTime(d.day.year, d.day.month, d.day.day)).toSet();
 
 void demoResetDays() => demoDays = [
-      DayMark(
-        day: DateTime.now().add(const Duration(days: 12)),
-        blocked: true,
-        note: 'محجوز — BK-2026-0001',
-      ),
-      DayMark(
-        day: DateTime.now().add(const Duration(days: 20)),
-        blocked: true,
-        note: 'صيانة',
-      ),
-    ];
+  DayMark(
+    day: DateTime.now().add(const Duration(days: 12)),
+    blocked: true,
+    note: 'محجوز — BK-2026-0001',
+  ),
+  DayMark(day: DateTime.now().add(const Duration(days: 20)), blocked: true, note: 'صيانة'),
+];
 
 // ----- الاشتراكات -----
 
@@ -2059,8 +2058,7 @@ void demoResetPromo() => demoPromoPending = false;
 /// يُظهر «آخر ظهور منذ سبع دقائق» — فيرى من يبني بلا قاعدةٍ الفرعين كليهما.
 DateTime demoConversationPresence() => DateTime.now();
 
-DateTime demoProviderPresence() =>
-    DateTime.now().subtract(const Duration(minutes: 7));
+DateTime demoProviderPresence() => DateTime.now().subtract(const Duration(minutes: 7));
 
 // ── حاجزُ تحقّق الرقم — في وضع العرض ────────────────────────────────────────
 //

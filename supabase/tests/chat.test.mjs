@@ -155,6 +155,44 @@ ok('صاحب القاعة يرى رسالتين لم يقرأهما', Number(for
 ok('ويرى اسم العميل لا اسم قاعته', forProvider?.other_name === 'أحمد الشرعبي')
 ok('وجانبه «provider»', forProvider?.my_side === 'provider')
 
+// ── ٣ب. صورةُ الطرف الآخر في القائمة ────────────────────────────────────────
+//
+// طلبها صاحبُ المنصّة في شريط المحادثة. **ويُقاس الطرفان**: أنّها تصل
+// العميل، وأنّها **لا تصل مقدّمَ الخدمة** — وذلك عن عمدٍ لا نقصاً: سياسةُ
+// `app_users` تمنعه من قراءة صفّ العميل، وتوسيعُها يكشف البريدَ والجوالَ
+// والحالة لا الصورةَ وحدَها.
+await db.query(
+  `update public.service_providers set logo_path = $2 where id = $1`,
+  [providerId, 'p1/logo-9.jpg'])
+
+const avatarFor = async (uid) => {
+  const { rows } = await as(uid,
+    `select other_avatar from public.v_my_conversations where id = $1`,
+    [conversationId])
+  return rows[0]?.other_avatar
+}
+
+ok('العميلُ يرى شعارَ القاعة في قائمته',
+  (await avatarFor(customerAuth)) === 'p1/logo-9.jpg',
+  String(await avatarFor(customerAuth)))
+ok('**ومقدّمُ الخدمة لا تصله صورةُ العميل** — سياسةُ `app_users` تمنعها',
+  (await avatarFor(hallAuth)) === '',
+  String(await avatarFor(hallAuth)))
+
+// **ومحادثةٌ حُذف مزوّدُها تبقى لصاحبها.** `on delete set null` يُفرغ
+// `provider_id` ولا يحذف الخيط. **وهذا ما لم تكن الحزمةُ تعرفه**: كُتب ضابطٌ
+// سالبٌ يُبدّل الوصلَ الخارجيَّ بداخليّ فلم يسقط — لا لأنّ الوصلَ سليمٌ بأيّ
+// صورة، بل لأنّه لم يكن في القاعدة صفٌّ يكشف الفرق. فأُصلح القياسُ لا الكسر.
+const { rows: orphanRow } = await db.query(
+  `insert into public.conversations (user_id, user_name, provider_id, provider_name)
+   values ($1, 'أحمد الشرعبي', null, 'قاعةٌ محذوفة') returning id`, [customerId])
+const { rows: orphanSeen } = await as(customerAuth,
+  `select other_name, other_avatar from public.v_my_conversations where id = $1`,
+  [orphanRow[0].id])
+ok('ومحادثةٌ بلا مزوّدٍ تبقى في قائمة صاحبها',
+  orphanSeen.length === 1, `صفوف: ${orphanSeen.length}`)
+ok('وصورتُها فارغةٌ لا ساقطة', orphanSeen[0]?.other_avatar === '')
+
 const forCustomer = await unreadFor(customerAuth)
 ok('والعميل لا يرى جديداً — الرسالتان له', Number(forCustomer?.unread_count) === 0)
 ok('ويرى اسم القاعة', forCustomer?.other_name === 'قاعة التاج')

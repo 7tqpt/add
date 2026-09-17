@@ -1017,6 +1017,27 @@ class Api {
     return rows.map(Conversation.fromMap).toList();
   }
 
+  /// صفُّ محادثةٍ واحدة — **لرأس الشاشة: صورةُ الطرف الآخر ومعرّفُ مزوّدها**.
+  ///
+  /// **وتسألها الشاشةُ بنفسها ولا تُمرَّر إليها.** المحادثةُ تُفتح من ستّة
+  /// مواضع، وليس لكلٍّ منها ما يحتاجه الرأس: بيانةُ الخدمة لا تحمل شعارَ
+  /// القاعة أصلاً. فلو مُرِّرت لَخرجت الشاشةُ من بابٍ بصورةٍ ومن بابٍ بحرف،
+  /// ولَنُسي البابُ السابعُ يومَ يُكتب.
+  ///
+  /// وتعود `null` صامتةً لمن لم يُنزّل `chat.sql` بعد، أو لمحادثةٍ لا تخصّه —
+  /// **والرأسُ يبقى بالاسم الذي جاء معه**، فلا شاشةَ تسقط لأجل صورة.
+  static Future<Conversation?> conversationById(String id) async {
+    if (!isSupabaseConfigured) {
+      return demoConversationList().where((c) => c.id == id).firstOrNull;
+    }
+    try {
+      final row = await db.from('v_my_conversations').select().eq('id', id).maybeSingle();
+      return row == null ? null : Conversation.fromMap(row);
+    } catch (_) {
+      return null;
+    }
+  }
+
   /// يفتح المحادثة مع مقدّم الخدمة أو يعيد القائمة.
   ///
   /// دالّةٌ في القاعدة لا بحثٌ ثم إنشاء من هنا: الثاني ينتج خيطين حين تُضغط

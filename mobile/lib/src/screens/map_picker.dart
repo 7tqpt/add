@@ -14,6 +14,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../core/app_lock.dart';
 import '../core/i18n.dart';
 import '../core/device_location.dart';
 import '../core/geo.dart';
@@ -26,11 +27,7 @@ import '../ui/kit.dart';
 /// و`GeoPoint.zero` ليست قيمةً هنا: من أراد **محوَ** نقطته يضغط «أزل الموقع»
 /// فتعود `const GeoPoint(0, 0)` — وهي غيرُ صالحةٍ بتعريفها، فيقرؤها المتصل
 /// «أزِلْها» لا «هذه نقطتك».
-Future<GeoPoint?> pickLocation(
-  BuildContext context, {
-  GeoPoint? initial,
-  String governorate = '',
-}) {
+Future<GeoPoint?> pickLocation(BuildContext context, {GeoPoint? initial, String governorate = ''}) {
   return Navigator.of(context).push<GeoPoint>(
     MaterialPageRoute(
       builder: (_) => MapPickerScreen(initial: initial, governorate: governorate),
@@ -51,10 +48,7 @@ class MapPickerScreen extends StatefulWidget {
 class _MapPickerScreenState extends State<MapPickerScreen> {
   final _map = MapController();
   final _paste = TextEditingController();
-  late GeoPoint _point = startingPoint(
-    saved: widget.initial,
-    governorate: widget.governorate,
-  );
+  late GeoPoint _point = startingPoint(saved: widget.initial, governorate: widget.governorate);
 
   /// أوَضع صاحبُها نقطةً فعلاً، أم هي بدايةُ المحافظة وحدها؟
   ///
@@ -130,8 +124,10 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
         _results = places;
         // **و«لا نتائج» تُقال، ولا تُترك القائمةُ فارغةً بلا خبر.**
         _pasteError = places.isEmpty
-            ? tr('لم أجد مكاناً بهذا الاسم. جرّب اسم الحيّ أو المدينة، أو حرّك '
-                'الخريطة بإصبعك.')
+            ? tr(
+                'لم أجد مكاناً بهذا الاسم. جرّب اسم الحيّ أو المدينة، أو حرّك '
+                'الخريطة بإصبعك.',
+              )
             : null;
       });
     } catch (e) {
@@ -192,8 +188,7 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
           if (_placed)
             TextButton(
               onPressed: () => Navigator.of(context).pop(const GeoPoint(0, 0)),
-              child: Text(tr('أزل الموقع'),
-                  style: TextStyle(color: AppColors.critical)),
+              child: Text(tr('أزل الموقع'), style: TextStyle(color: AppColors.critical)),
             ),
         ],
       ),
@@ -216,18 +211,14 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
                     onPositionChanged: (camera, hasGesture) {
                       if (!hasGesture) return;
                       setState(() {
-                        _point = GeoPoint(
-                          camera.center.latitude,
-                          camera.center.longitude,
-                        );
+                        _point = GeoPoint(camera.center.latitude, camera.center.longitude);
                         _placed = true;
                       });
                     },
                   ),
                   children: [
                     TileLayer(
-                      urlTemplate:
-                          'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                      urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                       // شرطُ رخصة OSM: يُعرَّف التطبيقُ بنفسه.
                       userAgentPackageName: 'company.sdd.farhati',
                       maxNativeZoom: 19,
@@ -237,9 +228,12 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
                       attributions: [
                         TextSourceAttribution(
                           'OpenStreetMap',
-                          onTap: () => launchUrl(
-                            Uri.parse('https://openstreetmap.org/copyright'),
-                            mode: LaunchMode.externalApplication,
+                          // **ورحلةٌ لا غياب** — انظر `awayFromApp`.
+                          onTap: () => awayFromApp(
+                            () => launchUrl(
+                              Uri.parse('https://openstreetmap.org/copyright'),
+                              mode: LaunchMode.externalApplication,
+                            ),
                           ),
                         ),
                       ],
@@ -255,9 +249,7 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
                       Icons.location_on,
                       size: 44,
                       color: _placed ? AppColors.accent : AppColors.muted,
-                      shadows: const [
-                        Shadow(blurRadius: 6, color: Colors.black38),
-                      ],
+                      shadows: const [Shadow(blurRadius: 6, color: Colors.black38)],
                     ),
                   ),
                 ),
@@ -325,8 +317,7 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
                   Positioned(
                     top: Space.md,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: Space.md, vertical: Space.sm),
+                      padding: const EdgeInsets.symmetric(horizontal: Space.md, vertical: Space.sm),
                       decoration: BoxDecoration(
                         color: AppColors.accentDeep.withValues(alpha: 0.92),
                         borderRadius: BorderRadius.circular(999),
@@ -375,10 +366,7 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
                               child: CircularProgressIndicator(strokeWidth: 2),
                             ),
                           )
-                        : TextButton(
-                            onPressed: _readField,
-                            child: Text(tr('ابحث')),
-                          ),
+                        : TextButton(onPressed: _readField, child: Text(tr('ابحث'))),
                   ),
                   onSubmitted: (_) => _readField(),
                 ),
@@ -405,8 +393,11 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
                           return ListTile(
                             key: ValueKey('place-$i'),
                             dense: true,
-                            leading: const Icon(Icons.place_outlined,
-                                size: 18, color: AppColors.accent),
+                            leading: const Icon(
+                              Icons.place_outlined,
+                              size: 18,
+                              color: AppColors.accent,
+                            ),
                             title: Text(
                               shortPlaceName(place.name),
                               maxLines: 2,
@@ -440,18 +431,14 @@ class _MapPickerScreenState extends State<MapPickerScreen> {
                   _placed ? _point.text : tr('لم يُحدَّد موقعٌ بعد'),
                   textDirection: TextDirection.ltr,
                   textAlign: TextAlign.start,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: _placed ? AppColors.ink2 : AppColors.muted,
-                  ),
+                  style: TextStyle(fontSize: 12, color: _placed ? AppColors.ink2 : AppColors.muted),
                 ),
                 const SizedBox(height: Space.md),
                 FilledButton(
                   // **ولا يُؤكَّد ما لم يُوضع.** الزرُّ معطَّلٌ حتى يحرّك
                   // الخريطةَ أو يلصق رابطاً، فلا يُحفظ مركزُ المحافظة
                   // موقعاً للعرس.
-                  onPressed:
-                      _placed ? () => Navigator.of(context).pop(_point) : null,
+                  onPressed: _placed ? () => Navigator.of(context).pop(_point) : null,
                   child: Text(tr('تأكيد الموقع')),
                 ),
               ],
@@ -484,11 +471,7 @@ class LocationRow extends StatelessWidget {
   final ValueChanged<GeoPoint?> onChanged;
 
   Future<void> _open(BuildContext context) async {
-    final picked = await pickLocation(
-      context,
-      initial: point,
-      governorate: governorate,
-    );
+    final picked = await pickLocation(context, initial: point, governorate: governorate);
     if (picked == null) return;
     // **النقطةُ غيرُ الصالحة تعني «أزِلْها»** — وهي ما يعيده زرُّ «أزل الموقع»
     // في المنتقي. فلا حاجة إلى نوعٍ ثانٍ ولا إلى علمٍ منفصل.
@@ -537,12 +520,7 @@ class LocationRow extends StatelessWidget {
 
 /// زرُّ تكبيرٍ صغيرٌ أبيضُ على الخريطة.
 class _ZoomButton extends StatelessWidget {
-  const _ZoomButton({
-    super.key,
-    required this.icon,
-    required this.tooltip,
-    required this.onTap,
-  });
+  const _ZoomButton({super.key, required this.icon, required this.tooltip, required this.onTap});
 
   final IconData icon;
   final String tooltip;
@@ -559,11 +537,7 @@ class _ZoomButton extends StatelessWidget {
         onTap: onTap,
         child: Tooltip(
           message: tooltip,
-          child: SizedBox(
-            width: 38,
-            height: 38,
-            child: Icon(icon, size: 20, color: AppColors.ink),
-          ),
+          child: SizedBox(width: 38, height: 38, child: Icon(icon, size: 20, color: AppColors.ink)),
         ),
       ),
     );

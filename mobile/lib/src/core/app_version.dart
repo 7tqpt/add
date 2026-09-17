@@ -22,10 +22,10 @@ import 'package:flutter/foundation.dart';
 /// **وهو المقارَن لا اسمُ النسخة.** «1.0.0» نصٌّ يُقارَن بالحروف فيصير
 /// «1.0.10» أقدمَ من «1.0.9»، ورقمُ البناء عددٌ صحيحٌ يزيد أبداً — وعليه
 /// قيدُ `unique (platform, build)` في القاعدة.
-const appBuild = 72;
+const appBuild = 73;
 
 /// اسمُ النسخة كما يُعرض للناس — الجزءُ الذي قبل `+`.
-const appVersionName = '1.51.0';
+const appVersionName = '1.52.0';
 
 /// ما يُعرض لصاحب الجهاز — «الإصدار ١٫٠٫٨ (٩)».
 ///
@@ -42,5 +42,4 @@ String get appVersionLabel => 'الإصدار $appVersionName ($appBuild)';
 ///
 /// **و`defaultTargetPlatform` لا `Platform.isIOS`:** الثانية من `dart:io`،
 /// واستيرادُها يكسر بناءَ الويب — وهذا درسٌ مدفوعٌ في هذا المشروع من قبل.
-String get appPlatform =>
-    defaultTargetPlatform == TargetPlatform.iOS ? 'ios' : 'android';
+String get appPlatform => defaultTargetPlatform == TargetPlatform.iOS ? 'ios' : 'android';
