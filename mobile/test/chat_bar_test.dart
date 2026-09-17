@@ -6,10 +6,12 @@
 // الشخصي». وعُرضت عليه ثلاثةُ أشكالٍ مرسومةٍ فاختار: **قرصٌ ومعه سهمٌ يقول
 // إنّ الشريط يُضغط**.
 //
-// **والوجهةُ اختيارٌ ثانٍ، وله سببٌ لا ذوق.** العميلُ يضغط فيفتح ملفَّ
-// القاعة — وهو موجود. **ومقدّمُ الخدمة لا يضغط، لأنّ العميلَ لا ملفَّ عامّ
-// له في التطبيق أصلاً.** فعُرض عليه: أن تُبنى للعميل بطاقةٌ، أو أن تكون
-// الضغطةُ للعميل وحدَه — فاختار الثاني.
+// **والوجهةُ اختيارٌ ثانٍ، وقد تبدّل بطلبه.** عُرض عليه أوّلاً: أن تُبنى
+// للعميل بطاقةٌ، أو أن تكون الضغطةُ للعميل وحدَه — فاختار الثاني. ثمّ ضغط
+// بحساب مقدّم خدمةٍ فلم يقع شيء، فاختار أن تُبنى البطاقة.
+//
+// **فصار لكلّ جانبٍ وجهتُه:** العميلُ يفتح ملفَّ القاعة العامّ، ومقدّمُ
+// الخدمة يفتح بطاقةَ العميل. **ولا تُخلطان** — ويُقاس ذلك.
 //
 // ── وما يُقاس هنا ──────────────────────────────────────────────────────────
 //
@@ -27,6 +29,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:aras/src/core/theme.dart';
 import 'package:aras/src/data/models.dart';
 import 'package:aras/src/screens/chat.dart';
+import 'package:aras/src/screens/customer_card.dart';
 import 'package:aras/src/screens/provider_public.dart';
 
 const _tap = ValueKey('chat-open-profile');
@@ -76,21 +79,41 @@ void main() {
         reason: 'ضُغط الشريطُ فلم يُفتح شيء');
   });
 
-  testWidgets('**ومقدّمُ الخدمة لا يجد ما يُضغط**', (tester) async {
-    // **ولا يَعِدُه سهمٌ بما لا يوجد:** لا ملفَّ عامّ للعميل في التطبيق.
+  testWidgets('**ومقدّمُ الخدمة يضغط فتُفتح بطاقةُ العميل**', (tester) async {
+    // **وهذا نقضٌ لما كان، بطلبه.** كان الشريطُ عنده لا يُضغط أصلاً — إذ لا
+    // ملفَّ عامّ للعميل — فضغطه فلم يقع شيء، فاختار أن تُبنى البطاقة.
     _phone(tester);
     await tester.pumpWidget(
       _wrap(_chat(side: ChatSide.provider, providerId: 'p1')),
     );
     await tester.pumpAndSettle();
 
-    expect(find.byKey(_tap), findsNothing,
-        reason: 'شريطٌ يُضغط فلا يفتح شيئاً أسوأُ من شريطٍ لا يُضغط');
-    expect(find.byIcon(Icons.chevron_left), findsNothing,
-        reason: 'سهمٌ يَعِدُ بوجهةٍ لا توجد');
+    expect(find.byKey(_tap), findsOneWidget);
+    await tester.tap(find.byKey(_tap));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(CustomerCardScreen), findsOneWidget,
+        reason: 'ضُغط الشريطُ عند مقدّم الخدمة فلم يُفتح شيء');
+    // **ولا يُفتح له ملفُّ القاعة**: وجهتُه العميلُ لا قاعتُه هو.
+    expect(find.byType(PublicProviderScreen), findsNothing);
   });
 
-  testWidgets('**ولا ضغطةَ بلا مزوّدٍ معروف**', (tester) async {
+  testWidgets('**ولا تُخلط الوجهتان**', (tester) async {
+    // العميلُ لا يُفتح له بطاقةُ عميل، ومقدّمُ الخدمة لا يُفتح له ملفُّ
+    // قاعة. ولولا هذا لَمرّ كسرٌ يفتح للجميع وجهةً واحدة.
+    _phone(tester);
+    await tester.pumpWidget(
+      _wrap(_chat(side: ChatSide.customer, providerId: 'p1')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(_tap));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(CustomerCardScreen), findsNothing,
+        reason: 'فُتحت للعميل بطاقةُ عميل');
+  });
+
+  testWidgets('**ولا ضغطةَ بلا مزوّدٍ معروف — عند العميل**', (tester) async {
     // محادثةٌ حُذف مزوّدُها (`on delete set null`) تبقى للعميل — وضغطةٌ
     // تفتح ملفَّ `null` تُسقط الشاشة.
     _phone(tester);

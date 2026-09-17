@@ -1038,6 +1038,25 @@ class Api {
     }
   }
 
+  /// بطاقةُ العميل لمقدّم الخدمة — **من دالّةٍ ضيّقةٍ لا من صفّ العميل**.
+  ///
+  /// سياسةُ `app_users` تمنعه من قراءة صفّه، فالدالّةُ `security definer`
+  /// تُخرج **الصورةَ والمحافظةَ وحدَهما** ومعهما سجلُّ حجوزاته معه.
+  /// والتفصيلُ في `supabase/customer_card.sql`.
+  ///
+  /// **ولا تُبتلع أخطاؤها**: من لم يُنزّل `customer_card.sql` بعد، أو استدعى
+  /// محادثةً ليست له، يرى رسالةَ الخادم — لا شاشةً فارغةً بلا سبب.
+  static Future<CustomerCard?> customerCard(String conversationId) async {
+    if (!isSupabaseConfigured) return demoCustomerCard(conversationId);
+    final rows = await db.rpc(
+      'api_customer_card',
+      params: {'p_conversation_id': conversationId},
+    );
+    final list = (rows as List?) ?? const [];
+    if (list.isEmpty) return null;
+    return CustomerCard.fromMap(list.first as Map<String, dynamic>);
+  }
+
   /// يفتح المحادثة مع مقدّم الخدمة أو يعيد القائمة.
   ///
   /// دالّةٌ في القاعدة لا بحثٌ ثم إنشاء من هنا: الثاني ينتج خيطين حين تُضغط

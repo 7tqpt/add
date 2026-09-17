@@ -898,6 +898,55 @@ class Conversation {
   );
 }
 
+/// بطاقةُ العميل كما يراها مقدّمُ الخدمة — **حقلان من صفّه، وسجلٌّ من حجوزاته**.
+///
+/// **وضيقُها مقصود.** سياسةُ `app_users` تمنع مقدّمَ الخدمة من قراءة صفّ
+/// العميل، فتأتي الصورةُ والمحافظةُ من دالّةٍ `security definer` تُخرج هذين
+/// وحدَهما — لا بريدَ ولا جوّالَ ولا حالةَ حساب. والتفصيلُ في
+/// `supabase/customer_card.sql`.
+///
+/// **وما عداهما من حجوزات مقدّم الخدمة نفسِه** — يقرؤها اليوم بسياسته،
+/// وتُجمع هنا في نداءٍ واحدٍ بدل خمسة.
+class CustomerCard {
+  const CustomerCard({
+    required this.fullName,
+    required this.avatarPath,
+    required this.governorate,
+    required this.bookingsCount,
+    required this.completedCount,
+    required this.cancelledCount,
+    required this.upcomingCount,
+    required this.firstBookingAt,
+    required this.totalPaid,
+  });
+
+  final String fullName;
+  final String avatarPath;
+  final String governorate;
+  final int bookingsCount;
+  final int completedCount;
+  final int cancelledCount;
+  final int upcomingCount;
+
+  /// أوّلُ حجزٍ بينكما — `null` لمن راسلك ولم يحجز بعد.
+  final String firstBookingAt;
+
+  /// ما دفعه لك **ناقصَ ما رُدّ** — لا ما وُعد به.
+  final num totalPaid;
+
+  factory CustomerCard.fromMap(Map<String, dynamic> m) => CustomerCard(
+    fullName: (m['full_name'] ?? '') as String,
+    avatarPath: (m['avatar_path'] ?? '') as String,
+    governorate: (m['governorate'] ?? '') as String,
+    bookingsCount: ((m['bookings_count'] ?? 0) as num).toInt(),
+    completedCount: ((m['completed_count'] ?? 0) as num).toInt(),
+    cancelledCount: ((m['cancelled_count'] ?? 0) as num).toInt(),
+    upcomingCount: ((m['upcoming_count'] ?? 0) as num).toInt(),
+    firstBookingAt: (m['first_booking_at'] ?? '') as String,
+    totalPaid: (m['total_paid'] ?? 0) as num,
+  );
+}
+
 /// نوعُ مرفقٍ في المحادثة — كما يقيّده `message_attachment_kind`.
 enum ChatAttachment { image, audio, video, file }
 
