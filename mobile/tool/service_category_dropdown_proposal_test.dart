@@ -11,24 +11,30 @@
 // «تقديم خدمة» (`become_provider.dart`) وحقل المحافظة في مواضعَ أخرى —
 // فالمنسدلةُ نمطٌ قائمٌ في التطبيق لا اختراعٌ جديد.
 //
-// ── واللقطتان معاً حقلٌ واحدٌ مُعادُ بناؤه لا الورقةُ كلُّها ─────────────────
+// ── واللقطةُ الوحيدةُ هنا هي المقترحُ — لا اليوم ───────────────────────────
 //
-// **وقد جُرِّب فتحُ الورقة الحقيقيّة** (`_ServiceEditor` بالضغط على زرّ
-// «خدمة جديدة» العائم) — وهي خاصّةٌ بملفّها فلا تُستورَد هنا، لكنّ الضغطَ
-// الحقيقيّ يدفعها فعلاً. **وتعلّق الراسمُ بعدها معلّقاً كاملاً** حتى بعد
-// إغلاق الورقة بالنقر على حاجزها — عشرَ دقائقَ كاملةً حتى ضربَه سقفُ
-// `flutter test` نفسِه، لا سببٌ فُهم ولا حلٌّ وُجد له في وقتٍ معقول. فلا
-// تُفتَح الورقةُ الحقيقيّةُ هنا إطلاقاً — **وهذا مرسومٌ لا مصوَّر**، حسبَ
-// القاعدة: ما لا يمكن تصويرُه يُقال إنّه مرسوم.
+// **صورةُ اليوم مُلتقَطةٌ من قبلُ حقيقةً**: `ServicesScreen` مشحونةٌ، ضغطُ
+// زرّها العائم الحقيقيّ فتحَ ورقةَ `_ServiceEditor` الحقيقيّة، والتُقطت وهي
+// كذلك — وأُرسلت إلى صاحب المنصّة فعلاً في هذا الحوار. وتلك الصورةُ صحيحةٌ.
 //
-// **وما فيه حقيقيّ رغم ذلك**: `PickChip` في اللقطة الأولى و
-// `DropdownButtonFormField<String>` في الثانية هما الودجتان نفساهما
-// المشحونتان في `_ServiceEditor`، بثيمة التطبيق (`buildTheme()`) وبيانةِ
-// `demoCategories` — نفسِها التي يُرجعها `Api.categories()` بلا خادم — لا
-// صندوقٌ مرسومٌ بالألوان. وطرازُ المنسدلة — تسميةٌ عائمةٌ دائماً، وتلميحٌ
-// رماديّ — هو طرازُ حقل القسم في `become_provider.dart` بحرفه. **والمنسدلةُ
-// تبقى مغلقة**: فتحُها يدفع طريقاً في `Overlay` الملاحة لا يسكن
-// `pumpAndSettle` — وهو ما وقع بعينه في `dropdowns_shot_test.dart`.
+// **ولا تُعاد محاولةُ التقاطها في هذا الملفّ إطلاقاً**: تبيّن — بعد محاولاتٍ
+// كثيرةٍ، بالورقة الحقيقيّة وبإعادة بنائها بـ`Wrap`، بقياساتٍ شتّى للشاشة،
+// وبمحتوًى مختلفٍ كلَّ مرّة (شرائحُ وحدَها، منسدلةٌ وحدَها) — أنّ `toImage`
+// نفسَها (تحويلَ `RepaintBoundary` إلى صورة) قد **يُكتَب ملفُّها صحيحاً على
+// القرص، ثمّ يتعلّق الراسمُ بعدها** في هذا الحاضنِ (البرمجيّاتيُّ الرسم —
+// `--enable-software-rendering` بلا شاشةٍ حقيقيّة) لا في شيءٍ يخصّ الشجرةَ
+// المصوَّرة. **فالمقياسُ هنا: وجودُ الملفّ وصحّةُ أبعاده**، لا خروجُ
+// `flutter test` بنجاح — وهذا مذكورٌ صراحةً هنا لا مخفيّاً.
+//
+// وحسمَ ذلك قرارَ ألّا تُعاد لقطةُ اليوم: صورتُها الصحيحةُ موجودةٌ من قبلُ
+// (السطر ١٦ أعلاه) فلا حاجةَ لمجازفةٍ أخرى بهذا العطب لأجل ما وصل فعلاً.
+//
+// **والمنسدلةُ وحدَها ما يُصوَّر هنا** — `DropdownButtonFormField` الودجتُ
+// نفسُه الذي سيُشحن، بثيمة التطبيق (`buildTheme()`) وبيانةِ `demoCategories`
+// نفسِها التي يُرجعها `Api.categories()` بلا خادم، وطرازُه — تسميةٌ عائمةٌ
+// دائماً، وتلميحٌ رماديّ — هو طرازُ حقل القسم في `become_provider.dart`
+// بحرفه. **وتبقى مغلقة**: فتحُها يدفع طريقاً في `Overlay` الملاحة لا يسكن
+// `pumpAndSettle` — كما في `dropdowns_shot_test.dart`.
 import 'dart:io';
 import 'dart:ui' as ui;
 
@@ -94,8 +100,6 @@ Widget _wrap(Widget child) => RepaintBoundary(
                 children: [
                   Muted(tr('الحقل وحده — بقيّةُ الورقة كما هي')),
                   const SizedBox(height: Space.md),
-                  Align(alignment: AlignmentDirectional.centerStart, child: Muted(tr('القسم'))),
-                  const SizedBox(height: Space.sm),
                   child,
                 ],
               ),
@@ -107,42 +111,6 @@ Widget _wrap(Widget child) => RepaintBoundary(
 
 void main() {
   setUpAll(_loadFonts);
-
-  testWidgets('اليومَ — شريطُ شرائح', (tester) async {
-    tester.view.physicalSize = const Size(1080, 700);
-    tester.view.devicePixelRatio = 3.0;
-    addTearDown(tester.view.reset);
-
-    const categories = demoCategories;
-    String? categoryId = categories.first.id;
-
-    // **نفسُ `Wrap` من `PickChip` الذي في `_ServiceEditor` بحرفه.**
-    await tester.pumpWidget(_wrap(
-      StatefulBuilder(
-        builder: (context, setState) => Wrap(
-          spacing: Space.sm,
-          runSpacing: Space.sm,
-          children: [
-            for (final c in categories)
-              PickChip(
-                label: c.name,
-                active: categoryId == c.id,
-                onTap: () => setState(() => categoryId = c.id),
-              ),
-          ],
-        ),
-      ),
-    ));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 400));
-
-    expect(find.byType(PickChip), findsWidgets,
-        reason: 'شرائحُ القسم غابت — فلا مقارنةَ بلا اليوم');
-    expect(tester.takeException(), isNull);
-
-    final out = Platform.environment['SHOTS'] ?? '/tmp/shots';
-    await _shoot(tester, find.byKey(const ValueKey('shot')), '$out/service-category-today.png');
-  });
 
   testWidgets('المقترح — قائمةٌ منسدلة', (tester) async {
     tester.view.physicalSize = const Size(1080, 500);
