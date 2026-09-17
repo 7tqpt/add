@@ -1512,9 +1512,10 @@ List<Conversation> demoConversationList() {
       id: t.id,
       providerId: t.providerId,
       otherName: t.otherName,
-      // **وبيانةُ العرض بلا صورة، وذلك صادق.** سلّةُ `avatars` لا تُفتح في
-      // وضع العرض، ومسارٌ مكتوبٌ هنا يُنتج قرصاً مكسوراً لا صورة.
-      otherAvatar: '',
+      // **ومسارُ صورةٍ لأوّلها وحدَها.** `Api.avatarUrl` تردّ `null` بلا
+      // خادم، فلا يُرسم منه شيءٌ في وضع العرض — لكنّه يُمكّن الحزمةَ من
+      // قياس الحالين معاً: صفٌّ له مسارٌ وصفٌّ بلا مسار.
+      otherAvatar: t.id == _threads.first.id ? 'demo/avatar-1.jpg' : '',
       mySide: t.mySide,
       lastMessageAt: last?.createdAt ?? '',
       lastMessageBody: last == null

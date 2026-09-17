@@ -102,21 +102,7 @@ class _Row extends StatelessWidget {
     final unread = c.unreadCount > 0;
     return ListTile(
       onTap: onTap,
-      leading: CircleAvatar(
-        radius: 22,
-        backgroundColor: AppColors.accent.withValues(alpha: 0.10),
-        child: Text(
-          // أوّلُ حرفٍ من الاسم بدل أيقونةٍ واحدة للجميع: الصفُّ يُمسح بالعين،
-          // وعشرةُ صفوفٍ بالأيقونة نفسها تُقرأ كتلةً.
-          c.otherName.isEmpty ? tr('؟') : c.otherName.characters.first,
-          style: const TextStyle(
-            fontSize: 17,
-            fontWeight: FontWeight.w600,
-            color: AppColors.accent,
-            fontFamilyFallback: arabicFallback,
-          ),
-        ),
-      ),
+      leading: _Avatar(name: c.otherName, path: c.otherAvatar),
       title: Row(
         children: [
           Expanded(
@@ -162,6 +148,63 @@ class _Row extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// قرصُ الطرف الآخر في القائمة — صورتُه، أو حرفُ اسمه.
+///
+/// **والصورةُ تصل الجانبين بعد `conversation_avatars.sql`.** كانت تصل العميلَ
+/// وحدَه (شعارَ القاعة)، وكان مقدّمُ الخدمة يرى حروفاً أبداً لأنّ سياسةَ
+/// `app_users` تمنعه من قراءة صفّ العميل. فرآها صاحبُ المنصّة وقال: «اجلب لي
+/// صورة من ملف العميل، خلّه تظهر في المحادثة بدل الحروف».
+///
+/// **والحرفُ يبقى ولا يُحذف:** أكثرُ الحسابات بلا صورة، وهو ما يُرى غالباً.
+/// وأوّلُ حرفٍ من الاسم بدل أيقونةٍ واحدة للجميع: الصفُّ يُمسح بالعين، وعشرةُ
+/// صفوفٍ بالأيقونة نفسها تُقرأ كتلةً.
+class _Avatar extends StatelessWidget {
+  const _Avatar({required this.name, required this.path});
+
+  final String name;
+  final String path;
+
+  static const _size = 44.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final url = Api.avatarUrl(path);
+    final trimmed = name.trim();
+    final letter = Text(
+      trimmed.isEmpty ? tr('؟') : trimmed.characters.first,
+      style: const TextStyle(
+        fontSize: 17,
+        fontWeight: FontWeight.w600,
+        color: AppColors.accent,
+        fontFamilyFallback: arabicFallback,
+      ),
+    );
+
+    return Container(
+      key: const ValueKey('convo-avatar'),
+      width: _size,
+      height: _size,
+      alignment: Alignment.center,
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: AppColors.accent.withValues(alpha: 0.10),
+        shape: BoxShape.circle,
+      ),
+      child: url == null
+          ? letter
+          // **وصورةٌ تسقط تعود حرفاً لا مربّعاً مكسوراً** — الشبكةُ هنا
+          // تُسقط الطلبَ كثيراً، والقائمةُ تبقى مقروءة.
+          : Image.network(
+              url,
+              fit: BoxFit.cover,
+              width: _size,
+              height: _size,
+              errorBuilder: (_, _, _) => letter,
+            ),
     );
   }
 }

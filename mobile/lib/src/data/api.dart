@@ -1006,15 +1006,21 @@ class Api {
 
   /// محادثاتي مرتّبةً بالأحدث.
   ///
-  /// من `v_my_conversations` لا من الجدول: الطريقة تحسب اسم الطرف الآخر وعدد
-  /// ما لم يُقرأ في صفٍّ واحد. وحسابُهما في التطبيق يعني نداءً لكل محادثة.
+  /// من دالّةٍ لا من الجدول: تحسب اسم الطرف الآخر وعدد ما لم يُقرأ في صفٍّ
+  /// واحد. وحسابُهما في التطبيق يعني نداءً لكل محادثة.
+  ///
+  /// **ودالّةٌ لا طريقةُ عرض — وذلك لأجل الصورة وحدَها.** كانت
+  /// `v_my_conversations`، وهي `security_invoker`: وصلُها إلى صفّ العميل يمرّ
+  /// بسياسته «لا يرى حسابات غيره إطلاقاً»، فكان مقدّمُ الخدمة يرى حروفاً في
+  /// قائمته أبداً. والدالّةُ `security definer` تُرجع الصورةَ للجانبين ولا
+  /// تُخرج بريداً ولا جوّالاً — والتفصيلُ في
+  /// `supabase/conversation_avatars.sql`.
   static Future<List<Conversation>> myConversations() async {
     if (!isSupabaseConfigured) return demoDelay(demoConversationList());
-    final rows = await db
-        .from('v_my_conversations')
-        .select()
-        .order('last_message_at', ascending: false);
-    return rows.map(Conversation.fromMap).toList();
+    final rows = await db.rpc('api_my_conversations');
+    return ((rows as List?) ?? const [])
+        .map((r) => Conversation.fromMap(r as Map<String, dynamic>))
+        .toList();
   }
 
   /// صفُّ محادثةٍ واحدة — **لرأس الشاشة: صورةُ الطرف الآخر ومعرّفُ مزوّدها**.
@@ -1031,8 +1037,15 @@ class Api {
       return demoConversationList().where((c) => c.id == id).firstOrNull;
     }
     try {
-      final row = await db.from('v_my_conversations').select().eq('id', id).maybeSingle();
-      return row == null ? null : Conversation.fromMap(row);
+      // **ومن الدالّة نفسِها لا من الطريقة** — وإلّا خرج الرأسُ بصورةٍ
+      // والقائمةُ بحرف.
+      final rows = await db.rpc(
+        'api_my_conversations',
+        params: {'p_conversation_id': id},
+      );
+      final list = (rows as List?) ?? const [];
+      if (list.isEmpty) return null;
+      return Conversation.fromMap(list.first as Map<String, dynamic>);
     } catch (_) {
       return null;
     }
@@ -1642,8 +1655,17 @@ class Api {
     return db.storage.from('category-images').getPublicUrl(path);
   }
 
+  /// بديلٌ تُركّبه الحزمةُ لتقيس رسمَ الصور — **ولولاه لَما قيس شيءٌ منها**.
+  ///
+  /// لا سلّةَ في `flutter test`، فتعود `avatarUrl` فارغةً أبداً: فكلُّ قرصٍ
+  /// يرسم حرفاً، وكسرٌ يمحو المسارَ لا يغيّر شيئاً يُرى. **وقد كُتب ضابطٌ
+  /// سالبٌ لذلك فلم يسقط**، فأُصلح القياسُ بهذا البديل لا الشيفرة.
+  static String? Function(String path)? avatarUrlOverride;
+
   static String? avatarUrl(String path, {int? version}) {
     if (path.isEmpty) return null;
+    final fake = avatarUrlOverride;
+    if (fake != null) return fake(path);
     if (!isSupabaseConfigured) return null;
     final url = db.storage.from('avatars').getPublicUrl(path);
     return version == null ? url : '$url?v=$version';
