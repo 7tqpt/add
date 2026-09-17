@@ -18,11 +18,7 @@ import 'chat.dart';
 import 'provider_public.dart';
 
 class ServiceDetailScreen extends StatefulWidget {
-  const ServiceDetailScreen({
-    super.key,
-    required this.serviceId,
-    this.coverPath,
-  });
+  const ServiceDetailScreen({super.key, required this.serviceId, this.coverPath});
   final String serviceId;
 
   /// غلافُ الخدمة كما تعرفه البطاقةُ التي فُتحت منها.
@@ -76,9 +72,8 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
   Future<void> _pickAddress() async {
     final picked = await Navigator.of(context).push<SavedAddress>(
       MaterialPageRoute(
-        builder: (routeContext) => AddressesScreen(
-          onPick: (a) => Navigator.of(routeContext).pop(a),
-        ),
+        builder: (routeContext) =>
+            AddressesScreen(onPick: (a) => Navigator.of(routeContext).pop(a)),
       ),
     );
     if (picked != null && mounted) {
@@ -140,6 +135,9 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
           builder: (_) => ChatScreen(
             conversationId: id,
             otherName: item.providerName,
+            // **ولا شعارَ في بيانة الخدمة** — فيبقى الحرفُ حتى يصل
+            // `_loadHeader`. والمعرّفُ يُمرَّر فيُضغط الشريطُ من أوّل إطار.
+            providerId: item.providerId,
             mySide: ChatSide.customer,
           ),
         ),
@@ -164,8 +162,7 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
     _daysLoaded = true;
     final now = DateTime.now();
     try {
-      final days = await Api.blockedDays(
-          providerId, now, now.add(const Duration(days: 730)));
+      final days = await Api.blockedDays(providerId, now, now.add(const Duration(days: 730)));
       if (mounted) setState(() => _busyDays = days);
     } catch (_) {
       // تعذّرت القراءة: يبقى التقويم مفتوحاً والقاعدة ترفض ما لا يصحّ.
@@ -270,8 +267,10 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
                 formatMoney(booking.discountAmount),
                 booking.couponCode,
               ])
-            : trf('رقم حجزك {0}\nالعربون {1}',
-                [booking.reference, formatMoney(booking.depositAmount)]),
+            : trf('رقم حجزك {0}\nالعربون {1}', [
+                booking.reference,
+                formatMoney(booking.depositAmount),
+              ]),
         actionLabel: tr('إلى حجوزاتي'),
       );
       if (!mounted) return;
@@ -344,9 +343,7 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
                 ),
               ),
             ),
-          Expanded(
-            child: _body(context),
-          ),
+          Expanded(child: _body(context)),
         ],
       ),
     );
@@ -354,279 +351,279 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
 
   Widget _body(BuildContext context) {
     return FutureBuilder<ServiceItem?>(
-        future: _future,
-        builder: (context, snap) {
-          if (snap.connectionState != ConnectionState.done) return const LoadingBlock();
-          if (snap.hasError) return ErrorBlock(message: messageOf(snap.error!));
-          final item = snap.data;
-          if (item == null) return EmptyBlock(title: tr('الخدمة غير موجودة'));
+      future: _future,
+      builder: (context, snap) {
+        if (snap.connectionState != ConnectionState.done) return const LoadingBlock();
+        if (snap.hasError) return ErrorBlock(message: messageOf(snap.error!));
+        final item = snap.data;
+        if (item == null) return EmptyBlock(title: tr('الخدمة غير موجودة'));
 
-          final deposit = (item.price * item.depositPercent / 100).round();
+        final deposit = (item.price * item.depositPercent / 100).round();
 
-          return ListView(
-            padding: const EdgeInsets.all(Space.lg),
-            children: [
-              // الوسائط فوق كل شيء: من فتح الخدمة يريد أن يرى ما يشتريه قبل
-              // أن يقرأ عنه. والسعرُ تحتها لأن السعر يُحكَم عليه بعد الرؤية
-              // لا قبلها.
-              _Media(
-                media: _media,
-                // **والصورُ تُعرض هنا فقط لمن جاء بلا غلاف.** من فُتحت له
-                // الشاشةُ من بطاقةٍ تحمل غلافَها يراها في الأعلى، ومن جاء
-                // من موضعٍ لا يعرف الغلافَ (إشعارٌ، رابط) لا يرى صورةً
-                // أصلاً لولا هذا.
-                showImages: widget.coverPath == null,
-              ),
-              AppCard(
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+        return ListView(
+          padding: const EdgeInsets.all(Space.lg),
+          children: [
+            // الوسائط فوق كل شيء: من فتح الخدمة يريد أن يرى ما يشتريه قبل
+            // أن يقرأ عنه. والسعرُ تحتها لأن السعر يُحكَم عليه بعد الرؤية
+            // لا قبلها.
+            _Media(
+              media: _media,
+              // **والصورُ تُعرض هنا فقط لمن جاء بلا غلاف.** من فُتحت له
+              // الشاشةُ من بطاقةٍ تحمل غلافَها يراها في الأعلى، ومن جاء
+              // من موضعٍ لا يعرف الغلافَ (إشعارٌ، رابط) لا يرى صورةً
+              // أصلاً لولا هذا.
+              showImages: widget.coverPath == null,
+            ),
+            AppCard(
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(child: SectionTitle(item.title)),
+                    if (item.providerIsFeatured) ...[
+                      const SizedBox(width: Space.sm),
+                      StatusBadge(tr('مميّز'), color: AppColors.warning),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: Space.md),
+                // صاحبُ الخدمة بابٌ لا سطرَ نصّ.
+                //
+                // كان اسمُه هنا حرفاً رمادياً لا يُضغط، فمن أعجبته الخدمة لم
+                // يجد سبيلاً إلى بقيّة ما يعرضه صاحبُها ولا إلى ما قاله من
+                // تعامل معه. وهو لا يشتري خدمةً بل يشتري من يُسلّمه ليلةً لا
+                // تُعاد.
+                _ProviderRow(item: item),
+                if (item.description.isNotEmpty) ...[
+                  const SizedBox(height: Space.md),
+                  Text(item.description, style: const TextStyle(height: 1.8)),
+                ],
+                const SizedBox(height: Space.md),
+                // في بطاقة المزوّد لا عند زرّ الحجز: السؤال يسبق الحجز ولا
+                // يليه. ومن لا يجد أين يسأل يذهب إلى واتساب، فيخرج الحجز
+                // من المنصّة كلّه ومعه سجلُّه.
+                OutlinedButton.icon(
+                  onPressed: _busy ? null : () => _message(item),
+                  icon: const Icon(Icons.forum_outlined, size: 19),
+                  label: Text(trf('راسل {0}', [item.providerName])),
+                ),
+              ],
+            ),
+            const SizedBox(height: Space.md),
+            AppCard(
+              children: [
+                SectionTitle(tr('السعر')),
+                KeyValue(
+                  tr('السعر'),
+                  item.priceTo == null
+                      ? formatMoney(item.price)
+                      : '${formatMoney(item.price)} – ${formatMoney(item.priceTo!)}',
+                ),
+                KeyValue(tr('الوحدة'), item.unit),
+                KeyValue(trf('العربون {0}٪', ['${item.depositPercent}']), formatMoney(deposit)),
+                if (item.cancellationPolicyName != null)
+                  KeyValue(tr('سياسة الإلغاء'), item.cancellationPolicyName!),
+                const SizedBox(height: Space.sm),
+                // السعر المعروض للاطّلاع، والمعتمد ما يحسبه الخادم عند الحجز:
+                // لو قبِل سعراً من التطبيق لأمكن حجز قاعة بريال واحد.
+                Muted(tr('المبلغ النهائي يحسبه النظام عند تأكيد الحجز.'), size: 11),
+              ],
+            ),
+            const SizedBox(height: Space.md),
+            AppCard(
+              children: [
+                SectionTitle(tr('احجز')),
+                const SizedBox(height: Space.md),
+                // منتقي تاريخ لا حقل نصّي: كتابة «2026-09-15» بيدك على جوال
+                // مصدرُ خطأ لا داعي له.
+                OutlinedButton.icon(
+                  onPressed: () => _pickDate(item.providerId),
+                  icon: const Icon(Icons.calendar_today_outlined, size: 20),
+                  label: Text(
+                    _date == null ? tr('اختر تاريخ العرس') : formatDate(_date!.toIso8601String()),
+                  ),
+                ),
+                const SizedBox(height: Space.sm),
+                OutlinedButton.icon(
+                  onPressed: () async {
+                    final picked = await showTimePicker(context: context, initialTime: _time);
+                    if (picked != null) setState(() => _time = picked);
+                  },
+                  icon: const Icon(Icons.access_time, size: 20),
+                  label: Text(
+                    trf('الوقت: {0}', [
+                      formatTime(
+                        '${_time.hour.toString().padLeft(2, '0')}'
+                        ':${_time.minute.toString().padLeft(2, '0')}',
+                      ),
+                    ]),
+                  ),
+                ),
+                const SizedBox(height: Space.md),
+                TextField(
+                  controller: _guests,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(labelText: tr('عدد الضيوف')),
+                ),
+                const SizedBox(height: Space.md),
+                // **العنوانُ يملأ نفسه من الدفتر.** كان يُكتب في كل حجز،
+                // وعنوانُ بيت العرس واحدٌ لا يتغيّر: فمن حجز قاعةً ومصوّراً
+                // وكوشةً كتبه ثلاثاً وأخطأ في إحداها.
+                //
+                // ويبقى الحقلُ **قابلاً للكتابة**: عنوانُ عرسٍ في قاعةٍ غير
+                // عنوان بيت، فالدفترُ يختصر لا يحبس.
+                TextField(
+                  controller: _address,
+                  decoration: InputDecoration(
+                    labelText: tr('عنوان المناسبة'),
+                    hintText: tr('حي السنينة — صنعاء'),
+                    suffixIcon: IconButton(
+                      tooltip: tr('من عناويني'),
+                      icon: const Icon(Icons.bookmark_border_rounded, size: 22),
+                      onPressed: _pickAddress,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: Space.sm),
+                // موقعُ العرس على الخريطة — يصل مقدّمَ الخدمة فيفتحه في
+                // خرائط جهازه بدل أن يتّصل ليسأل عن الطريق.
+                LocationRow(
+                  point: _point,
+                  governorate: '',
+                  onChanged: (p) => setState(() => _point = p),
+                ),
+                const SizedBox(height: Space.md),
+                if (_plans.isNotEmpty) ...[
+                  const SizedBox(height: Space.md),
+                  Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: Muted(tr('أضِفه إلى خطة العرس')),
+                  ),
+                  const SizedBox(height: Space.sm),
+                  Wrap(
+                    spacing: Space.sm,
+                    runSpacing: Space.sm,
                     children: [
-                      Expanded(child: SectionTitle(item.title)),
-                      if (item.providerIsFeatured) ...[
-                        const SizedBox(width: Space.sm),
-                        StatusBadge(tr('مميّز'), color: AppColors.warning),
-                      ],
+                      for (final p in _plans)
+                        PickChip(
+                          label: p.title,
+                          active: _planId == p.id,
+                          onTap: () => setState(() => _planId = p.id),
+                        ),
+                      PickChip(
+                        label: tr('بلا خطة'),
+                        active: _planId == null,
+                        onTap: () => setState(() => _planId = null),
+                      ),
                     ],
                   ),
                   const SizedBox(height: Space.md),
-                  // صاحبُ الخدمة بابٌ لا سطرَ نصّ.
-                  //
-                  // كان اسمُه هنا حرفاً رمادياً لا يُضغط، فمن أعجبته الخدمة لم
-                  // يجد سبيلاً إلى بقيّة ما يعرضه صاحبُها ولا إلى ما قاله من
-                  // تعامل معه. وهو لا يشتري خدمةً بل يشتري من يُسلّمه ليلةً لا
-                  // تُعاد.
-                  _ProviderRow(item: item),
-                  if (item.description.isNotEmpty) ...[
-                    const SizedBox(height: Space.md),
-                    Text(item.description, style: const TextStyle(height: 1.8)),
-                  ],
-                  const SizedBox(height: Space.md),
-                  // في بطاقة المزوّد لا عند زرّ الحجز: السؤال يسبق الحجز ولا
-                  // يليه. ومن لا يجد أين يسأل يذهب إلى واتساب، فيخرج الحجز
-                  // من المنصّة كلّه ومعه سجلُّه.
-                  OutlinedButton.icon(
-                    onPressed: _busy ? null : () => _message(item),
-                    icon: const Icon(Icons.forum_outlined, size: 19),
-                    label: Text(trf('راسل {0}', [item.providerName])),
-                  ),
                 ],
-              ),
-              const SizedBox(height: Space.md),
-              AppCard(
-                children: [
-                  SectionTitle(tr('السعر')),
-                  KeyValue(
-                    tr('السعر'),
-                    item.priceTo == null
-                        ? formatMoney(item.price)
-                        : '${formatMoney(item.price)} – ${formatMoney(item.priceTo!)}',
-                  ),
-                  KeyValue(tr('الوحدة'), item.unit),
-                  KeyValue(trf('العربون {0}٪', ['${item.depositPercent}']), formatMoney(deposit)),
-                  if (item.cancellationPolicyName != null)
-                    KeyValue(tr('سياسة الإلغاء'), item.cancellationPolicyName!),
-                  const SizedBox(height: Space.sm),
-                  // السعر المعروض للاطّلاع، والمعتمد ما يحسبه الخادم عند الحجز:
-                  // لو قبِل سعراً من التطبيق لأمكن حجز قاعة بريال واحد.
-                  Muted(tr('المبلغ النهائي يحسبه النظام عند تأكيد الحجز.'), size: 11),
-                ],
-              ),
-              const SizedBox(height: Space.md),
-              AppCard(
-                children: [
-                  SectionTitle(tr('احجز')),
-                  const SizedBox(height: Space.md),
-                  // منتقي تاريخ لا حقل نصّي: كتابة «2026-09-15» بيدك على جوال
-                  // مصدرُ خطأ لا داعي له.
-                  OutlinedButton.icon(
-                    onPressed: () => _pickDate(item.providerId),
-                    icon: const Icon(Icons.calendar_today_outlined, size: 20),
-                    label: Text(
-                      _date == null ? tr('اختر تاريخ العرس') : formatDate(_date!.toIso8601String()),
-                    ),
-                  ),
-                  const SizedBox(height: Space.sm),
-                  OutlinedButton.icon(
-                    onPressed: () async {
-                      final picked = await showTimePicker(context: context, initialTime: _time);
-                      if (picked != null) setState(() => _time = picked);
-                    },
-                    icon: const Icon(Icons.access_time, size: 20),
-                    label: Text(
-                      trf('الوقت: {0}', [
-                        formatTime('${_time.hour.toString().padLeft(2, '0')}'
-                            ':${_time.minute.toString().padLeft(2, '0')}'),
-                      ]),
-                    ),
-                  ),
-                  const SizedBox(height: Space.md),
-                  TextField(
-                    controller: _guests,
-                    keyboardType: TextInputType.number,
-                    decoration: InputDecoration(labelText: tr('عدد الضيوف')),
-                  ),
-                  const SizedBox(height: Space.md),
-                  // **العنوانُ يملأ نفسه من الدفتر.** كان يُكتب في كل حجز،
-                  // وعنوانُ بيت العرس واحدٌ لا يتغيّر: فمن حجز قاعةً ومصوّراً
-                  // وكوشةً كتبه ثلاثاً وأخطأ في إحداها.
-                  //
-                  // ويبقى الحقلُ **قابلاً للكتابة**: عنوانُ عرسٍ في قاعةٍ غير
-                  // عنوان بيت، فالدفترُ يختصر لا يحبس.
-                  TextField(
-                    controller: _address,
-                    decoration: InputDecoration(
-                      labelText: tr('عنوان المناسبة'),
-                      hintText: tr('حي السنينة — صنعاء'),
-                      suffixIcon: IconButton(
-                        tooltip: tr('من عناويني'),
-                        icon: const Icon(Icons.bookmark_border_rounded, size: 22),
-                        onPressed: _pickAddress,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: Space.sm),
-                  // موقعُ العرس على الخريطة — يصل مقدّمَ الخدمة فيفتحه في
-                  // خرائط جهازه بدل أن يتّصل ليسأل عن الطريق.
-                  LocationRow(
-                    point: _point,
-                    governorate: '',
-                    onChanged: (p) => setState(() => _point = p),
-                  ),
-                  const SizedBox(height: Space.md),
-                  if (_plans.isNotEmpty) ...[
-                    const SizedBox(height: Space.md),
-                    Align(
-                      alignment: AlignmentDirectional.centerStart,
-                      child: Muted(tr('أضِفه إلى خطة العرس')),
-                    ),
-                    const SizedBox(height: Space.sm),
-                    Wrap(
-                      spacing: Space.sm,
-                      runSpacing: Space.sm,
-                      children: [
-                        for (final p in _plans)
-                          PickChip(
-                            label: p.title,
-                            active: _planId == p.id,
-                            onTap: () => setState(() => _planId = p.id),
-                          ),
-                        PickChip(
-                          label: tr('بلا خطة'),
-                          active: _planId == null,
-                          onTap: () => setState(() => _planId = null),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: Space.md),
-                  ],
-                  // ── كود الخصم ─────────────────────────────────────────
-                  //
-                  // **ولا يُطبَّق كودٌ لم يتحقّق منه الخادم.** فلو أُرسل ما في
-                  // الحقل كما هو لَظهر الخطأ بعد ضغطة «تأكيد الحجز» — بعد أن
-                  // يكون العميل قد ملأ التاريخ والضيوف والعنوان.
-                  TextField(
-                    controller: _coupon,
-                    textCapitalization: TextCapitalization.characters,
-                    // **وأيُّ حرفٍ يُكتب يُسقط ما تحقّق قبله.** ومن تحقّق من
-                    // كودٍ ثم بدّله بقي الخصمُ القديم معروضاً على الشاشة
-                    // وأُرسل الكود القديم — وهذا كذبٌ على العميل في رقمٍ ماليّ.
-                    onChanged: (_) {
-                      if (_applied != null || _couponError != null) {
-                        setState(() {
-                          _applied = null;
-                          _couponError = null;
-                        });
-                      }
-                    },
-                    decoration: InputDecoration(
-                      labelText: tr('كود الخصم (اختياري)'),
-                      hintText: tr('إن كان لديك كود'),
-                      suffixIcon: _checking
-                          ? const Padding(
-                              padding: EdgeInsets.all(12),
-                              child: SizedBox(
-                                height: 18,
-                                width: 18,
-                                child: CircularProgressIndicator(strokeWidth: 2),
-                              ),
-                            )
-                          : TextButton(
-                              onPressed: () => _checkCoupon(item),
-                              child: Text(tr('تحقّق')),
-                            ),
-                    ),
-                  ),
-                  if (_applied != null) ...[
-                    const SizedBox(height: Space.sm),
-                    // مفتاحٌ لا اسمُ نصّ: عنوانُ الحقل نفسه فيه كلمة «الخصم»،
-                    // فحارسٌ يبحث عن الكلمة يجدها ولو لم يُطبَّق كوبونٌ قطّ.
-                    Row(
-                      key: const ValueKey('coupon-applied'),
-                      children: [
-                        const Icon(Icons.check_circle_rounded,
-                            size: 18, color: AppColors.good),
-                        const SizedBox(width: Space.sm),
-                        Expanded(
-                          child: Text(
-                            _applied!.description.isEmpty
-                                ? trf('خصم {0}', [formatMoney(_applied!.discount)])
-                                : trf('خصم {0} — {1}', [
-                                    formatMoney(_applied!.discount),
-                                    _applied!.description,
-                                  ]),
-                            style: const TextStyle(
-                                color: AppColors.good,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                  if (_couponError != null) ...[
-                    const SizedBox(height: Space.sm),
-                    Text(_couponError!,
-                        style: const TextStyle(
-                            color: AppColors.critical, fontSize: 13)),
-                  ],
-                  const SizedBox(height: Space.md),
-                  TextField(
-                    controller: _notes,
-                    maxLines: 3,
-                    decoration: InputDecoration(
-                      labelText: tr('ملاحظات (اختياري)'),
-                      hintText: tr('أي تفاصيل يحتاجها مقدّم الخدمة'),
-                    ),
-                  ),
-                  if (_error != null) ...[
-                    const SizedBox(height: Space.md),
-                    Text(_error!, style: const TextStyle(color: AppColors.critical, fontSize: 13)),
-                  ],
-                  const SizedBox(height: Space.lg),
-                  FilledButton(
-                    onPressed: _busy ? null : () => _book(item),
-                    child: _busy
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: AppColors.accentInk,
+                // ── كود الخصم ─────────────────────────────────────────
+                //
+                // **ولا يُطبَّق كودٌ لم يتحقّق منه الخادم.** فلو أُرسل ما في
+                // الحقل كما هو لَظهر الخطأ بعد ضغطة «تأكيد الحجز» — بعد أن
+                // يكون العميل قد ملأ التاريخ والضيوف والعنوان.
+                TextField(
+                  controller: _coupon,
+                  textCapitalization: TextCapitalization.characters,
+                  // **وأيُّ حرفٍ يُكتب يُسقط ما تحقّق قبله.** ومن تحقّق من
+                  // كودٍ ثم بدّله بقي الخصمُ القديم معروضاً على الشاشة
+                  // وأُرسل الكود القديم — وهذا كذبٌ على العميل في رقمٍ ماليّ.
+                  onChanged: (_) {
+                    if (_applied != null || _couponError != null) {
+                      setState(() {
+                        _applied = null;
+                        _couponError = null;
+                      });
+                    }
+                  },
+                  decoration: InputDecoration(
+                    labelText: tr('كود الخصم (اختياري)'),
+                    hintText: tr('إن كان لديك كود'),
+                    suffixIcon: _checking
+                        ? const Padding(
+                            padding: EdgeInsets.all(12),
+                            child: SizedBox(
+                              height: 18,
+                              width: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
                             ),
                           )
-                        : Text(tr('تأكيد الحجز')),
+                        : TextButton(onPressed: () => _checkCoupon(item), child: Text(tr('تحقّق'))),
                   ),
+                ),
+                if (_applied != null) ...[
                   const SizedBox(height: Space.sm),
-                  Muted(
-                    tr('الحجز يبقى «بانتظار مقدّم الخدمة» حتى يقبله. لو اعتذر، يُستردّ كل ما دفعته.'),
-                    size: 11,
+                  // مفتاحٌ لا اسمُ نصّ: عنوانُ الحقل نفسه فيه كلمة «الخصم»،
+                  // فحارسٌ يبحث عن الكلمة يجدها ولو لم يُطبَّق كوبونٌ قطّ.
+                  Row(
+                    key: const ValueKey('coupon-applied'),
+                    children: [
+                      const Icon(Icons.check_circle_rounded, size: 18, color: AppColors.good),
+                      const SizedBox(width: Space.sm),
+                      Expanded(
+                        child: Text(
+                          _applied!.description.isEmpty
+                              ? trf('خصم {0}', [formatMoney(_applied!.discount)])
+                              : trf('خصم {0} — {1}', [
+                                  formatMoney(_applied!.discount),
+                                  _applied!.description,
+                                ]),
+                          style: const TextStyle(
+                            color: AppColors.good,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
-              ),
-            ],
-          );
-        },
+                if (_couponError != null) ...[
+                  const SizedBox(height: Space.sm),
+                  Text(
+                    _couponError!,
+                    style: const TextStyle(color: AppColors.critical, fontSize: 13),
+                  ),
+                ],
+                const SizedBox(height: Space.md),
+                TextField(
+                  controller: _notes,
+                  maxLines: 3,
+                  decoration: InputDecoration(
+                    labelText: tr('ملاحظات (اختياري)'),
+                    hintText: tr('أي تفاصيل يحتاجها مقدّم الخدمة'),
+                  ),
+                ),
+                if (_error != null) ...[
+                  const SizedBox(height: Space.md),
+                  Text(_error!, style: const TextStyle(color: AppColors.critical, fontSize: 13)),
+                ],
+                const SizedBox(height: Space.lg),
+                FilledButton(
+                  onPressed: _busy ? null : () => _book(item),
+                  child: _busy
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: AppColors.accentInk,
+                          ),
+                        )
+                      : Text(tr('تأكيد الحجز')),
+                ),
+                const SizedBox(height: Space.sm),
+                Muted(
+                  tr('الحجز يبقى «بانتظار مقدّم الخدمة» حتى يقبله. لو اعتذر، يُستردّ كل ما دفعته.'),
+                  size: 11,
+                ),
+              ],
+            ),
+          ],
+        );
+      },
     );
   }
 }
@@ -649,10 +646,8 @@ class _ProviderRow extends StatelessWidget {
         borderRadius: radius,
         onTap: () => Navigator.of(context).push(
           MaterialPageRoute(
-            builder: (_) => PublicProviderScreen(
-              providerId: item.providerId,
-              name: item.providerName,
-            ),
+            builder: (_) =>
+                PublicProviderScreen(providerId: item.providerId, name: item.providerName),
           ),
         ),
         child: Padding(
@@ -813,9 +808,7 @@ class _GalleryState extends State<_Gallery> {
           child: PageView(
             controller: _controller,
             onPageChanged: (i) => setState(() => _page = i),
-            children: [
-              for (final m in widget.images) MediaThumb(url: Api.mediaUrl(m.path)),
-            ],
+            children: [for (final m in widget.images) MediaThumb(url: Api.mediaUrl(m.path))],
           ),
         ),
         // النقاط تغيب مع الصورة الواحدة: نقطةٌ واحدة تحت صورةٍ واحدة تقول
@@ -830,8 +823,7 @@ class _GalleryState extends State<_Gallery> {
               // بيضاء وصورةٌ داكنةٌ تبتلع نقاطاً نبيذيّة — والقرصُ يجعلها
               // تُرى على كلّ صورة.
               child: Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: Space.sm, vertical: 5),
+                padding: const EdgeInsets.symmetric(horizontal: Space.sm, vertical: 5),
                 decoration: BoxDecoration(
                   color: Colors.black.withValues(alpha: 0.34),
                   borderRadius: BorderRadius.circular(999),
@@ -846,9 +838,7 @@ class _GalleryState extends State<_Gallery> {
                         width: i == _page ? 16 : 5,
                         height: 5,
                         decoration: BoxDecoration(
-                          color: i == _page
-                              ? Colors.white
-                              : Colors.white.withValues(alpha: 0.55),
+                          color: i == _page ? Colors.white : Colors.white.withValues(alpha: 0.55),
                           borderRadius: BorderRadius.circular(999),
                         ),
                       ),

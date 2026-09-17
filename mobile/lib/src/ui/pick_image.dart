@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../core/app_lock.dart';
 import '../core/i18n.dart';
 import '../core/theme.dart';
 
@@ -52,11 +53,14 @@ Future<PickedImage?> pickImage(
   );
   if (source == null) return null;
 
-  final file = await ImagePicker().pickImage(
-    source: source,
-    maxWidth: maxWidth,
-    maxHeight: maxHeight,
-    imageQuality: quality,
+  // **ورحلةٌ لا غياب** — وإلّا عاد من المعرض إلى شاشة الرمز وضاع ما انتقى.
+  final file = await awayFromApp(
+    () => ImagePicker().pickImage(
+      source: source,
+      maxWidth: maxWidth,
+      maxHeight: maxHeight,
+      imageQuality: quality,
+    ),
   );
   if (file == null) return null;
   return (name: file.name, bytes: await file.readAsBytes());

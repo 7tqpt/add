@@ -40,6 +40,10 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
         builder: (_) => ChatScreen(
           conversationId: c.id,
           otherName: c.otherName,
+          // يُمرَّران ليُرسم الرأسُ كاملاً من أوّل إطار — ثمّ يُسألان من
+          // القاعة على كلّ حال (`_loadHeader`).
+          otherAvatar: c.otherAvatar,
+          providerId: c.providerId,
           mySide: c.mySide,
         ),
       ),
@@ -75,7 +79,10 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
               itemCount: rows.length,
               separatorBuilder: (_, _) =>
                   const Divider(height: 1, color: AppColors.hairline, indent: 72),
-              itemBuilder: (context, i) => FadeSlideIn(index: i, child: _Row(conversation: rows[i], onTap: () => _open(rows[i]))),
+              itemBuilder: (context, i) => FadeSlideIn(
+                index: i,
+                child: _Row(conversation: rows[i], onTap: () => _open(rows[i])),
+              ),
             ),
           );
         },
@@ -127,10 +134,7 @@ class _Row extends StatelessWidget {
           const SizedBox(width: Space.sm),
           Text(
             formatRelative(c.lastMessageAt),
-            style: TextStyle(
-              fontSize: 10.5,
-              color: unread ? AppColors.accent : AppColors.muted,
-            ),
+            style: TextStyle(fontSize: 10.5, color: unread ? AppColors.accent : AppColors.muted),
           ),
         ],
       ),
@@ -154,10 +158,7 @@ class _Row extends StatelessWidget {
                 ),
               ),
             ),
-            if (unread) ...[
-              const SizedBox(width: Space.sm),
-              UnreadDot(count: c.unreadCount),
-            ],
+            if (unread) ...[const SizedBox(width: Space.sm), UnreadDot(count: c.unreadCount)],
           ],
         ),
       ),

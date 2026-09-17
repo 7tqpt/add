@@ -126,8 +126,7 @@ class ServiceItem {
     imagesCount: ((m['images_count'] ?? 0) as num).toInt(),
     hasVideo: (m['has_video'] ?? false) as bool,
     hasAudio: (m['has_audio'] ?? false) as bool,
-    providerPoint:
-        pointFromRow(m, 'provider_latitude', 'provider_longitude'),
+    providerPoint: pointFromRow(m, 'provider_latitude', 'provider_longitude'),
   );
 }
 
@@ -295,11 +294,7 @@ class Booking {
 /// منصّةٍ عمولتُها ١٠٪ يُقصّ عند العشرة، فيُعرض للعميل ما سيُخصم حقّاً قبل
 /// أن يؤكّد — لا رقمٌ يعِد بما لا يقع.
 class CouponCheck {
-  const CouponCheck({
-    required this.code,
-    required this.description,
-    required this.discount,
-  });
+  const CouponCheck({required this.code, required this.description, required this.discount});
 
   final String code;
   final String description;
@@ -647,11 +642,7 @@ class ProviderDocument {
 /// وتبقى في الأخرى — فيقرأ العميل «٣ حجوزات» في الرئيسية ثمّ يعدّ اثنين في
 /// الشاشة، فلا يثق بالرقمين معاً.
 class BookingsSummary {
-  const BookingsSummary({
-    required this.upcoming,
-    required this.confirmed,
-    required this.pending,
-  });
+  const BookingsSummary({required this.upcoming, required this.confirmed, required this.pending});
 
   /// القادمةُ مرتّبةً بالأقرب.
   final List<Booking> upcoming;
@@ -788,8 +779,7 @@ class SavedAddress {
   final GeoPoint? point;
 
   /// ما يُكتب في `bookings.address`: الاسمُ وحدَه لا يكفي من يبحث عن البيت.
-  String get forBooking =>
-      [if (governorate.isNotEmpty) governorate, details].join(' — ');
+  String get forBooking => [if (governorate.isNotEmpty) governorate, details].join(' — ');
 
   factory SavedAddress.fromMap(Map<String, dynamic> m) => SavedAddress(
     id: (m['id'] ?? '') as String,
@@ -856,8 +846,7 @@ class UserSettings {
 /// جانبُ من يتكلّم. النصّ هو ما يقبله قيد الجدول حرفياً.
 enum ChatSide { customer, provider }
 
-ChatSide chatSideFrom(String raw) =>
-    raw == 'provider' ? ChatSide.provider : ChatSide.customer;
+ChatSide chatSideFrom(String raw) => raw == 'provider' ? ChatSide.provider : ChatSide.customer;
 
 String chatSideValue(ChatSide s) => s == ChatSide.provider ? 'provider' : 'customer';
 
@@ -867,6 +856,7 @@ class Conversation {
     required this.id,
     required this.providerId,
     required this.otherName,
+    required this.otherAvatar,
     required this.mySide,
     required this.lastMessageAt,
     required this.lastMessageBody,
@@ -879,6 +869,12 @@ class Conversation {
 
   /// اسم الطرف **الآخر** — تحسبه القاعدة لأن لكل طرفٍ «آخرَ» غير آخر صاحبه.
   final String otherName;
+
+  /// مسارُ صورته في سلّة `avatars` — **وتُرجعها القاعدةُ للعميل وحدَه**.
+  ///
+  /// سياسةُ `app_users` تمنع مقدّمَ الخدمة من قراءة صفّ العميل، فتعود فارغةً
+  /// عنده. والتفصيلُ في `supabase/chat.sql` عند العمود.
+  final String otherAvatar;
   final ChatSide mySide;
   final String lastMessageAt;
   final String lastMessageBody;
@@ -889,6 +885,9 @@ class Conversation {
     id: m['id'] as String,
     providerId: m['provider_id'] as String?,
     otherName: (m['other_name'] ?? '') as String,
+    // **وتُقرأ بافتراضٍ فارغ**: من لم يُنزّل `chat.sql` بعدُ لا يرسل العمود،
+    // وقائمةُ محادثاتٍ تسقط لأجل صورةٍ أسوأُ من قائمةٍ بلا صور.
+    otherAvatar: (m['other_avatar'] ?? '') as String,
     mySide: chatSideFrom((m['my_side'] ?? 'customer') as String),
     lastMessageAt: (m['last_message_at'] ?? '') as String,
     lastMessageBody: (m['last_message_body'] ?? '') as String,
@@ -1013,9 +1012,7 @@ class AppNotification {
     kind: notificationKindFrom((m['kind'] ?? 'general') as String),
     title: (m['title'] ?? '') as String,
     body: (m['body'] ?? '') as String,
-    data: m['data'] == null
-        ? const {}
-        : Map<String, dynamic>.from(m['data'] as Map),
+    data: m['data'] == null ? const {} : Map<String, dynamic>.from(m['data'] as Map),
     readAt: m['read_at'] as String?,
     createdAt: (m['created_at'] ?? '') as String,
   );
@@ -1252,12 +1249,7 @@ class PlanProgress {
 
   int get tasksLeft => tasksTotal - tasksDone;
 
-  static const empty = PlanProgress(
-    tasksTotal: 0,
-    tasksDone: 0,
-    percent: 0,
-    upcomingBookings: 0,
-  );
+  static const empty = PlanProgress(tasksTotal: 0, tasksDone: 0, percent: 0, upcomingBookings: 0);
 
   factory PlanProgress.fromMap(Map<String, dynamic> m) => PlanProgress(
     tasksTotal: ((m['tasks_total'] ?? 0) as num).toInt(),
@@ -1482,11 +1474,7 @@ class PromoSlot {
 /// المنصّة، وأمؤكَّدٌ رقمي، وما هو رقمي. وقراءتُها في نداءين متتابعين تُري
 /// الشاشةَ حالاً نصفَ محدَّثة.
 class PhoneGate {
-  const PhoneGate({
-    required this.required_,
-    required this.verified,
-    required this.phone,
-  });
+  const PhoneGate({required this.required_, required this.verified, required this.phone});
 
   /// `require_phone_verification` في إعدادات المنصّة.
   ///
@@ -1505,15 +1493,11 @@ class PhoneGate {
   /// يجب أن تنقص فيها ميزةٌ لا أن يُحبس الناسُ خارج التطبيق.
   static const none = PhoneGate(required_: false, verified: false, phone: '');
 
-  factory PhoneGate.fromMaps(
-    Map<String, dynamic>? settings,
-    Map<String, dynamic>? me,
-  ) =>
-      PhoneGate(
-        required_: (settings?['require_phone_verification'] ?? false) as bool,
-        verified: me?['phone_verified_at'] != null,
-        phone: (me?['phone'] ?? '') as String,
-      );
+  factory PhoneGate.fromMaps(Map<String, dynamic>? settings, Map<String, dynamic>? me) => PhoneGate(
+    required_: (settings?['require_phone_verification'] ?? false) as bool,
+    verified: me?['phone_verified_at'] != null,
+    phone: (me?['phone'] ?? '') as String,
+  );
 
   /// هل يُحجَز صاحبُ الجلسة على شاشة التحقّق.
   bool get blocks => required_ && !verified;

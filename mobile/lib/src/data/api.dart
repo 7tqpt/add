@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
-import 'package:supabase_flutter/supabase_flutter.dart' show FileOptions, FunctionException, PostgrestException;
+import 'package:supabase_flutter/supabase_flutter.dart'
+    show FileOptions, FunctionException, PostgrestException;
 
 import '../core/app_update.dart';
 import '../core/app_version.dart';
@@ -24,10 +25,7 @@ const undefinedColumn = '42703';
 /// قاعدته — وفي تلك النافذة يجب أن تنقص ميزةٌ لا أن تسقط شاشة.
 ///
 /// وقد سقطت: شاشةُ المزوّد كلُّها صارت رسالةً حمراء لأجل عمود صورة.
-Future<T> whenColumnMissing<T>(
-  Future<T> Function() full,
-  Future<T> Function() lean,
-) async {
+Future<T> whenColumnMissing<T>(Future<T> Function() full, Future<T> Function() lean) async {
   try {
     return await full();
   } on PostgrestException catch (e) {
@@ -118,25 +116,25 @@ class Api {
         if (categoryId != null && s.categoryId != categoryId) return false;
         if (governorate != null && s.providerGovernorate != governorate) return false;
         if (term.isEmpty) return true;
-        return s.title.toLowerCase().contains(term) ||
-            s.providerName.toLowerCase().contains(term);
+        return s.title.toLowerCase().contains(term) || s.providerName.toLowerCase().contains(term);
       }).toList();
       if (near != null) sortByDistance(list, near, (s) => s.providerPoint);
       return demoDelay(list);
     }
 
     if (near != null) {
-      final rows = await db.rpc('api_services_nearby', params: {
-        'p_latitude': near.lat,
-        'p_longitude': near.lng,
-        'p_category_id': categoryId,
-        'p_search': (search ?? '').trim(),
-        'p_limit': 40,
-        'p_governorate': governorate,
-      });
-      return (rows as List)
-          .map((r) => ServiceItem.fromMap(r as Map<String, dynamic>))
-          .toList();
+      final rows = await db.rpc(
+        'api_services_nearby',
+        params: {
+          'p_latitude': near.lat,
+          'p_longitude': near.lng,
+          'p_category_id': categoryId,
+          'p_search': (search ?? '').trim(),
+          'p_limit': 40,
+          'p_governorate': governorate,
+        },
+      );
+      return (rows as List).map((r) => ServiceItem.fromMap(r as Map<String, dynamic>)).toList();
     }
 
     var query = db.from('v_services').select();
@@ -199,25 +197,25 @@ class Api {
         if (categoryName != null && !p.categories.contains(categoryName)) return false;
         if (governorate != null && p.governorate != governorate) return false;
         if (term.isEmpty) return true;
-        return p.businessName.toLowerCase().contains(term) ||
-            p.bio.toLowerCase().contains(term);
+        return p.businessName.toLowerCase().contains(term) || p.bio.toLowerCase().contains(term);
       }).toList();
       if (near != null) sortByDistance(list, near, (p) => p.point);
       return demoDelay(list);
     }
 
     if (near != null) {
-      final rows = await db.rpc('api_providers_nearby', params: {
-        'p_latitude': near.lat,
-        'p_longitude': near.lng,
-        'p_category': categoryName,
-        'p_search': (search ?? '').trim(),
-        'p_limit': 40,
-        'p_governorate': governorate,
-      });
-      return (rows as List)
-          .map((r) => PublicProvider.fromMap(r as Map<String, dynamic>))
-          .toList();
+      final rows = await db.rpc(
+        'api_providers_nearby',
+        params: {
+          'p_latitude': near.lat,
+          'p_longitude': near.lng,
+          'p_category': categoryName,
+          'p_search': (search ?? '').trim(),
+          'p_limit': 40,
+          'p_governorate': governorate,
+        },
+      );
+      return (rows as List).map((r) => PublicProvider.fromMap(r as Map<String, dynamic>)).toList();
     }
 
     var query = db.from('v_providers').select();
@@ -297,8 +295,7 @@ class Api {
       // **ويُسجَّل في وضع العرض ليُقاس.** كان يعود صامتاً، فلا أثرَ لِما
       // أُرسل — واختبارٌ يملأ «أكمل ملفك» لا يستطيع أن يسأل أيُّ محافظةٍ
       // وصلت، فيُسأل الحقلُ عمّا يعرضه وهو يعرض ولو لم يصل شيء.
-      demoRegisterProfile(
-          fullName: fullName, phone: phone, governorate: governorate);
+      demoRegisterProfile(fullName: fullName, phone: phone, governorate: governorate);
       return;
     }
     await db.rpc(
@@ -317,6 +314,7 @@ class Api {
     required String phone,
     required String bio,
     required String governorate,
+
     /// **قسمٌ واحدٌ لا مصفوفة.** والدالّةُ في القاعدة تأخذ `uuid[]` كما
     /// هي — فتُرسَل مصفوفةٌ من عنصرٍ واحد. ولا `sql` تُبدَّل: الطرقُ تجمع
     /// الأقسامَ بـ`array_agg`، ومصفوفةٌ من واحدٍ تُقرأ كما تُقرأ من عشرة.
@@ -324,10 +322,11 @@ class Api {
   }) async {
     if (!isSupabaseConfigured) {
       demoBecomeProvider(
-          businessName: businessName,
-          governorate: governorate,
-          bio: bio,
-          categoryId: categoryId);
+        businessName: businessName,
+        governorate: governorate,
+        bio: bio,
+        categoryId: categoryId,
+      );
       return;
     }
     await db.rpc(
@@ -360,13 +359,11 @@ class Api {
     // فتُقرأ مرّةً بالعمود، وإن أنكرته القاعدة (‏`42703`‏) أُعيدت القراءة
     // بدونه. والشاشة تعمل كما كانت، ويبقى الشعار حرفاً في قرص حتى يُشغَّل
     // الملف — وهو الفرق بين ميزةٍ لم تصل وشاشةٍ مكسورة.
-    Future<Map<String, dynamic>?> read(String columns) => db
-        .from('service_providers')
-        .select(columns)
-        .eq('id', providerId)
-        .maybeSingle();
+    Future<Map<String, dynamic>?> read(String columns) =>
+        db.from('service_providers').select(columns).eq('id', providerId).maybeSingle();
 
-    const base = 'id, full_name, business_name, governorate, bio, status, rating, '
+    const base =
+        'id, full_name, business_name, governorate, bio, status, rating, '
         'reviews_count, completed_bookings, total_earnings, rejection_reason';
 
     // **وأربعةُ مستويات، لا اثنان.** القاعدةُ قد ينقصها الغلافُ وحده، أو هو
@@ -381,10 +378,7 @@ class Api {
       () => read('$base, logo_path, cover_path, latitude, longitude'),
       () => whenColumnMissing(
         () => read('$base, logo_path, cover_path'),
-        () => whenColumnMissing(
-          () => read('$base, logo_path'),
-          () => read(base),
-        ),
+        () => whenColumnMissing(() => read('$base, logo_path'), () => read(base)),
       ),
     );
     return row == null ? null : ProviderProfile.fromMap(row);
@@ -403,11 +397,13 @@ class Api {
     final ext = fileName.contains('.') ? fileName.split('.').last.toLowerCase() : 'jpg';
     final path = '$authUserId/provider.$ext';
     if (!isSupabaseConfigured) return path;
-    await db.storage.from('avatars').uploadBinary(
-      path,
-      bytes,
-      fileOptions: FileOptions(contentType: _mimeOf(ext), upsert: true),
-    );
+    await db.storage
+        .from('avatars')
+        .uploadBinary(
+          path,
+          bytes,
+          fileOptions: FileOptions(contentType: _mimeOf(ext), upsert: true),
+        );
     return path;
   }
 
@@ -425,11 +421,13 @@ class Api {
     final ext = fileName.contains('.') ? fileName.split('.').last.toLowerCase() : 'jpg';
     final path = '$authUserId/provider_cover.$ext';
     if (!isSupabaseConfigured) return path;
-    await db.storage.from('avatars').uploadBinary(
-      path,
-      bytes,
-      fileOptions: FileOptions(contentType: _mimeOf(ext), upsert: true),
-    );
+    await db.storage
+        .from('avatars')
+        .uploadBinary(
+          path,
+          bytes,
+          fileOptions: FileOptions(contentType: _mimeOf(ext), upsert: true),
+        );
     return path;
   }
 
@@ -492,8 +490,10 @@ class Api {
       // لا يعرف ما «42703»، ويعرف تماماً معنى «شغّل هذا الملف».
       if (e.code == undefinedColumn &&
           (e.message.contains('latitude') || e.message.contains('longitude'))) {
-        throw tr('قاعدتك لم تُحدَّث بعد: شغّل ملفَّي supabase/location.sql ثم '
-            'supabase/nearby.sql، ثم أعد المحاولة.');
+        throw tr(
+          'قاعدتك لم تُحدَّث بعد: شغّل ملفَّي supabase/location.sql ثم '
+          'supabase/nearby.sql، ثم أعد المحاولة.',
+        );
       }
       rethrow;
     }
@@ -567,8 +567,9 @@ class Api {
     GeoPoint? point,
   }) async {
     if (!isSupabaseConfigured) {
-      return demoDelay(demoCreateBooking(
-          serviceId, eventDate, eventTime, guests, address, couponCode, point));
+      return demoDelay(
+        demoCreateBooking(serviceId, eventDate, eventTime, guests, address, couponCode, point),
+      );
     }
     final result = await db.rpc(
       'api_create_booking',
@@ -754,11 +755,7 @@ class Api {
   /// أربعةُ أعداد.
   static Future<PlanProgress> planProgress(String planId) async {
     if (!isSupabaseConfigured) return demoDelay(demoPlanProgress(planId));
-    final row = await db
-        .from('v_plan_progress')
-        .select()
-        .eq('plan_id', planId)
-        .maybeSingle();
+    final row = await db.from('v_plan_progress').select().eq('plan_id', planId).maybeSingle();
     // **وقاعدةٌ أقدمُ من التطبيق لا تُسقط الشاشة:** من لم يشغّل
     // `plan_tasks.sql` بعدُ يرى الخطّة بلا قائمةٍ لا شاشةَ خطأ.
     return row == null ? PlanProgress.empty : PlanProgress.fromMap(row);
@@ -850,18 +847,13 @@ class Api {
   /// **ولا تُعاد رسالةٌ من الخادم.** التطبيقُ بلغتين، ورسالةٌ عربيّةٌ مرميّةٌ
   /// من القاعدة تصل كما هي فلا تُترجَم ولا يُنسَّق تاريخُها. فتُعاد حقيقةٌ
   /// وتُصاغ في الشاشة.
-  static Future<({bool deleted, DateTime? blockingDate})> deleteService(
-    String id,
-  ) async {
+  static Future<({bool deleted, DateTime? blockingDate})> deleteService(String id) async {
     if (!isSupabaseConfigured) return demoDeleteService(id);
 
     final rows = await db.rpc('api_delete_service', params: {'p_service_id': id});
     final row = (rows as List).first as Map<String, dynamic>;
     if (row['deleted'] != true) {
-      return (
-        deleted: false,
-        blockingDate: DateTime.tryParse('${row['blocking_date']}'),
-      );
+      return (deleted: false, blockingDate: DateTime.tryParse('${row['blocking_date']}'));
     }
 
     // **والملفّاتُ تُمحى بعد الصفوف لا قبلها.** القاعدةُ لا تحذف ما في
@@ -944,12 +936,15 @@ class Api {
     String osVersion = '',
   }) async {
     if (!isSupabaseConfigured) return;
-    await db.rpc('api_register_push_token', params: {
-      'p_token': token,
-      'p_platform': platform,
-      'p_model': model,
-      'p_os_version': osVersion,
-    });
+    await db.rpc(
+      'api_register_push_token',
+      params: {
+        'p_token': token,
+        'p_platform': platform,
+        'p_model': model,
+        'p_os_version': osVersion,
+      },
+    );
   }
 
   /// ينسى الرمز عند الخروج — وإلّا وصلت إشعاراتُ الحساب إلى جهازٍ غادره.
@@ -992,10 +987,7 @@ class Api {
   static Future<DateTime?> providerPresence(String providerId) async {
     if (!isSupabaseConfigured) return demoDelay(demoProviderPresence());
     try {
-      final v = await db.rpc(
-        'api_provider_presence',
-        params: {'p_provider_id': providerId},
-      );
+      final v = await db.rpc('api_provider_presence', params: {'p_provider_id': providerId});
       return v == null ? null : DateTime.tryParse(v as String)?.toLocal();
     } catch (_) {
       return null;
@@ -1015,6 +1007,27 @@ class Api {
         .select()
         .order('last_message_at', ascending: false);
     return rows.map(Conversation.fromMap).toList();
+  }
+
+  /// صفُّ محادثةٍ واحدة — **لرأس الشاشة: صورةُ الطرف الآخر ومعرّفُ مزوّدها**.
+  ///
+  /// **وتسألها الشاشةُ بنفسها ولا تُمرَّر إليها.** المحادثةُ تُفتح من ستّة
+  /// مواضع، وليس لكلٍّ منها ما يحتاجه الرأس: بيانةُ الخدمة لا تحمل شعارَ
+  /// القاعة أصلاً. فلو مُرِّرت لَخرجت الشاشةُ من بابٍ بصورةٍ ومن بابٍ بحرف،
+  /// ولَنُسي البابُ السابعُ يومَ يُكتب.
+  ///
+  /// وتعود `null` صامتةً لمن لم يُنزّل `chat.sql` بعد، أو لمحادثةٍ لا تخصّه —
+  /// **والرأسُ يبقى بالاسم الذي جاء معه**، فلا شاشةَ تسقط لأجل صورة.
+  static Future<Conversation?> conversationById(String id) async {
+    if (!isSupabaseConfigured) {
+      return demoConversationList().where((c) => c.id == id).firstOrNull;
+    }
+    try {
+      final row = await db.from('v_my_conversations').select().eq('id', id).maybeSingle();
+      return row == null ? null : Conversation.fromMap(row);
+    } catch (_) {
+      return null;
+    }
   }
 
   /// يفتح المحادثة مع مقدّم الخدمة أو يعيد القائمة.
@@ -1049,8 +1062,10 @@ class Api {
       () async {
         final rows = await db
             .from('conversation_messages')
-            .select('id, sender, body, created_at, attachment_path, attachment_kind, '
-                    'attachment_seconds, attachment_name, attachment_size')
+            .select(
+              'id, sender, body, created_at, attachment_path, attachment_kind, '
+              'attachment_seconds, attachment_name, attachment_size',
+            )
             .eq('conversation_id', conversationId)
             .order('created_at', ascending: true);
         return rows.map(ChatMessage.fromMap).toList();
@@ -1123,7 +1138,9 @@ class Api {
       return;
     }
     final path = '$conversationId/${DateTime.now().millisecondsSinceEpoch}.$extension';
-    await db.storage.from('chat-media').uploadBinary(
+    await db.storage
+        .from('chat-media')
+        .uploadBinary(
           path,
           bytes,
           fileOptions: FileOptions(contentType: contentType, upsert: false),
@@ -1136,8 +1153,9 @@ class Api {
         'attachment_path': path,
         'attachment_kind': chatAttachmentValue(kind),
         // المدّةُ للمسموع والمرئيّ وحدهما — والقاعدة ترفض مدّةً على صورة.
-        'attachment_seconds':
-            kind == ChatAttachment.audio || kind == ChatAttachment.video ? seconds : null,
+        'attachment_seconds': kind == ChatAttachment.audio || kind == ChatAttachment.video
+            ? seconds
+            : null,
         'attachment_name': name.isEmpty ? null : name,
         'attachment_size': bytes.length,
       });
@@ -1232,11 +1250,9 @@ class Api {
       demoAddMedia(serviceId, kind, path, durationSeconds, bytes.length, sortOrder);
       return;
     }
-    await db.storage.from('service-media').uploadBinary(
-      path,
-      bytes,
-      fileOptions: FileOptions(contentType: mediaMimeOf(ext)),
-    );
+    await db.storage
+        .from('service-media')
+        .uploadBinary(path, bytes, fileOptions: FileOptions(contentType: mediaMimeOf(ext)));
     try {
       await db.from('service_media').insert({
         'service_id': serviceId,
@@ -1335,9 +1351,7 @@ class Api {
   static Future<List<SavedAddress>> myAddresses() async {
     if (!isSupabaseConfigured) return demoDelay(List.of(demoAddresses));
     final rows = await db.rpc('api_my_addresses') as List<dynamic>;
-    return rows
-        .map((r) => SavedAddress.fromMap(Map<String, dynamic>.from(r as Map)))
-        .toList();
+    return rows.map((r) => SavedAddress.fromMap(Map<String, dynamic>.from(r as Map))).toList();
   }
 
   static Future<void> saveAddress({
@@ -1367,15 +1381,18 @@ class Api {
       );
       return;
     }
-    await db.rpc('api_save_address', params: {
-      'p_id': id,
-      'p_label': label,
-      'p_details': details,
-      'p_governorate_id': governorateId,
-      'p_default': makeDefault,
-      'p_latitude': point?.lat,
-      'p_longitude': point?.lng,
-    });
+    await db.rpc(
+      'api_save_address',
+      params: {
+        'p_id': id,
+        'p_label': label,
+        'p_details': details,
+        'p_governorate_id': governorateId,
+        'p_default': makeDefault,
+        'p_latitude': point?.lat,
+        'p_longitude': point?.lng,
+      },
+    );
   }
 
   static Future<void> deleteAddress(String id) async {
@@ -1411,13 +1428,16 @@ class Api {
       );
       return;
     }
-    await db.rpc('api_save_payment_method', params: {
-      'p_id': id,
-      'p_method': method,
-      'p_account_ref': accountRef,
-      'p_holder_name': holderName,
-      'p_default': makeDefault,
-    });
+    await db.rpc(
+      'api_save_payment_method',
+      params: {
+        'p_id': id,
+        'p_method': method,
+        'p_account_ref': accountRef,
+        'p_holder_name': holderName,
+        'p_default': makeDefault,
+      },
+    );
   }
 
   static Future<void> deletePaymentMethod(String id) async {
@@ -1468,19 +1488,21 @@ class Api {
     String? coverPath,
   }) async {
     if (!isSupabaseConfigured) {
-      return demoUpdateProfile(
-          fullName, phone, governorateId, avatarPath, coverPath);
+      return demoUpdateProfile(fullName, phone, governorateId, avatarPath, coverPath);
     }
     try {
-      final row = await db.rpc('api_update_profile', params: {
-        'p_full_name': fullName,
-        'p_phone': phone,
-        'p_governorate_id': governorateId,
-        'p_avatar_path': avatarPath,
-        // **ولا يُحذف حين يكون فارغاً.** الوسيطُ المحذوف يُلقي القاعدةَ على
-        // حِمل الأربعة القديم إن كان باقياً، فيُحفظ الاسمُ بلا غلاف بصمت.
-        'p_cover_path': coverPath,
-      });
+      final row = await db.rpc(
+        'api_update_profile',
+        params: {
+          'p_full_name': fullName,
+          'p_phone': phone,
+          'p_governorate_id': governorateId,
+          'p_avatar_path': avatarPath,
+          // **ولا يُحذف حين يكون فارغاً.** الوسيطُ المحذوف يُلقي القاعدةَ على
+          // حِمل الأربعة القديم إن كان باقياً، فيُحفظ الاسمُ بلا غلاف بصمت.
+          'p_cover_path': coverPath,
+        },
+      );
       return MyProfile.fromMap(Map<String, dynamic>.from(row as Map));
     } on PostgrestException catch (e) {
       // **ومن لم يشغّل الملفَّ بعدُ لا يُردّ برسالة PostgREST الإنجليزيّة.**
@@ -1502,9 +1524,7 @@ class Api {
     required String authUserId,
     required String fileName,
     required Uint8List bytes,
-  }) async =>
-      _uploadImage(authUserId: authUserId, kind: 'cover', fileName: fileName,
-          bytes: bytes);
+  }) async => _uploadImage(authUserId: authUserId, kind: 'cover', fileName: fileName, bytes: bytes);
 
   /// يبدّل الرقمَ وحدَه — من داخل حاجز التحقّق.
   ///
@@ -1522,8 +1542,7 @@ class Api {
     required String fileName,
     required Uint8List bytes,
   }) async =>
-      _uploadImage(authUserId: authUserId, kind: 'avatar', fileName: fileName,
-          bytes: bytes);
+      _uploadImage(authUserId: authUserId, kind: 'avatar', fileName: fileName, bytes: bytes);
 
   /// **ولكلّ رفعةٍ اسمٌ جديد — وهذا هو إصلاحُ «حُفظت ولا يتغيّر شيء».**
   ///
@@ -1561,11 +1580,13 @@ class Api {
     // القديمةُ تُقرأ **قبل** الرفع: بعده يصير الملفُّ يشير إلى الجديدة.
     final old = await _oldImagePath(kind);
 
-    await db.storage.from('avatars').uploadBinary(
-      path,
-      bytes,
-      fileOptions: FileOptions(contentType: _mimeOf(ext), upsert: true),
-    );
+    await db.storage
+        .from('avatars')
+        .uploadBinary(
+          path,
+          bytes,
+          fileOptions: FileOptions(contentType: _mimeOf(ext), upsert: true),
+        );
 
     if (old != null && old.isNotEmpty && old != path) {
       try {
@@ -1791,10 +1812,7 @@ class Api {
   /// نزاعاتي — والسياسة تحصرها في نزاعاتي وحدها، فلا شرط هنا.
   static Future<List<Dispute>> myDisputes() async {
     if (!isSupabaseConfigured) return demoDelay(List<Dispute>.from(demoDisputes));
-    final rows = await db
-        .from('disputes')
-        .select()
-        .order('created_at', ascending: false);
+    final rows = await db.from('disputes').select().order('created_at', ascending: false);
     return rows.map(Dispute.fromMap).toList();
   }
 
@@ -1871,20 +1889,20 @@ class Api {
   /// تقويمي أنا — بملاحظاته.
   static Future<List<DayMark>> myDays(DateTime from, DateTime to) async {
     if (!isSupabaseConfigured) return demoDelay(demoMyDays(from, to));
-    final rows = await db.rpc('api_my_days',
-        params: {'p_from': _dayOf(from), 'p_to': _dayOf(to)}) as List<dynamic>;
+    final rows = await db.rpc(
+      'api_my_days',
+      params: {'p_from': _dayOf(from), 'p_to': _dayOf(to)},
+    ) as List<dynamic>;
     return rows.map((r) => DayMark.fromMap(Map<String, dynamic>.from(r as Map))).toList();
   }
 
   /// أغلق يوماً أو افتحه. تُعيد `null` حين يُفتح — إذ لم يبقَ صفّ.
-  static Future<DayMark?> setAvailability(DateTime day, bool blocked,
-      {String note = ''}) async {
+  static Future<DayMark?> setAvailability(DateTime day, bool blocked, {String note = ''}) async {
     if (!isSupabaseConfigured) return demoSetAvailability(day, blocked, note);
-    final row = await db.rpc('api_set_availability', params: {
-      'p_day': _dayOf(day),
-      'p_blocked': blocked,
-      'p_note': note,
-    });
+    final row = await db.rpc(
+      'api_set_availability',
+      params: {'p_day': _dayOf(day), 'p_blocked': blocked, 'p_note': note},
+    );
     return dayMarkOrNull(row);
   }
 
@@ -1924,16 +1942,14 @@ class Api {
 
   /// أيامُ مزوّدٍ المشغولة — تواريخُ بلا ملاحظات، فما يخصّ حجوزات غيره ليس
   /// من شأن من يريد أن يحجز.
-  static Future<Set<DateTime>> blockedDays(
-      String providerId, DateTime from, DateTime to) async {
+  static Future<Set<DateTime>> blockedDays(String providerId, DateTime from, DateTime to) async {
     if (!isSupabaseConfigured) {
       return demoDelay(demoBlockedDays(providerId, from, to));
     }
-    final rows = await db.rpc('api_blocked_days', params: {
-      'p_provider_id': providerId,
-      'p_from': _dayOf(from),
-      'p_to': _dayOf(to),
-    }) as List<dynamic>;
+    final rows = await db.rpc(
+      'api_blocked_days',
+      params: {'p_provider_id': providerId, 'p_from': _dayOf(from), 'p_to': _dayOf(to)},
+    ) as List<dynamic>;
     return rows.map((r) => DateTime.parse(r as String)).toSet();
   }
 
@@ -1964,11 +1980,10 @@ class Api {
     String senderRef = '',
   }) async {
     if (!isSupabaseConfigured) return demoSubscribe(planId, method, senderRef);
-    final row = await db.rpc('api_subscribe', params: {
-      'p_plan_id': planId,
-      'p_method': method,
-      'p_sender_ref': senderRef,
-    });
+    final row = await db.rpc(
+      'api_subscribe',
+      params: {'p_plan_id': planId, 'p_method': method, 'p_sender_ref': senderRef},
+    );
     return MySub.fromMap(Map<String, dynamic>.from(row as Map));
   }
 
@@ -1992,8 +2007,10 @@ class Api {
     if (!isSupabaseConfigured) return demoDelay(demoSettlements);
     final rows = await db
         .from('settlements')
-        .select('id, reference, period_start, period_end, gross_amount, '
-            'commission_amount, net_amount, status')
+        .select(
+          'id, reference, period_start, period_end, gross_amount, '
+          'commission_amount, net_amount, status',
+        )
         .order('period_end', ascending: false)
         .limit(40);
     return rows.map(Settlement.fromMap).toList();
@@ -2005,9 +2022,7 @@ class Api {
   static Future<List<PromoSlot>> activePromotions() async {
     if (!isSupabaseConfigured) return demoDelay(demoPromos);
     final rows = await db.rpc('api_active_promotions') as List<dynamic>;
-    return rows
-        .map((r) => PromoSlot.fromMap(Map<String, dynamic>.from(r as Map)))
-        .toList();
+    return rows.map((r) => PromoSlot.fromMap(Map<String, dynamic>.from(r as Map))).toList();
   }
 
   /// اللافتاتُ الإعلانيّة الجارية لأعلى الرئيسية.
@@ -2035,11 +2050,10 @@ class Api {
       demoRequestPromotion(days);
       return;
     }
-    await db.rpc('api_request_promotion', params: {
-      'p_days': days,
-      'p_method': method,
-      'p_sender_ref': senderRef,
-    });
+    await db.rpc(
+      'api_request_promotion',
+      params: {'p_days': days, 'p_method': method, 'p_sender_ref': senderRef},
+    );
   }
 
   /// أحدثُ النسخ المنشورة لمنصّة هذا الجهاز.
@@ -2056,14 +2070,14 @@ class Api {
     try {
       final rows = await db
           .from('app_versions')
-          .select('build, version, notes, download_url, force_update, '
-              'rollout_percent')
+          .select(
+            'build, version, notes, download_url, force_update, '
+            'rollout_percent',
+          )
           .eq('platform', appPlatform)
           .order('build', ascending: false)
           .limit(5);
-      return rows
-          .map((r) => AppRelease.fromMap(Map<String, dynamic>.from(r)))
-          .toList();
+      return rows.map((r) => AppRelease.fromMap(Map<String, dynamic>.from(r))).toList();
     } catch (_) {
       return const [];
     }
@@ -2092,22 +2106,19 @@ class Api {
     final uid = db.auth.currentUser?.id;
     if (uid == null) return PhoneGate.none;
 
-    return whenColumnMissing<PhoneGate>(
-      () async {
-        final settings = await db
-            .from('app_settings')
-            .select('require_phone_verification')
-            .eq('id', 1)
-            .maybeSingle();
-        final me = await db
-            .from('app_users')
-            .select('phone, phone_verified_at')
-            .eq('auth_user_id', uid)
-            .maybeSingle();
-        return PhoneGate.fromMaps(settings, me);
-      },
-      () async => PhoneGate.none,
-    );
+    return whenColumnMissing<PhoneGate>(() async {
+      final settings = await db
+          .from('app_settings')
+          .select('require_phone_verification')
+          .eq('id', 1)
+          .maybeSingle();
+      final me = await db
+          .from('app_users')
+          .select('phone, phone_verified_at')
+          .eq('auth_user_id', uid)
+          .maybeSingle();
+      return PhoneGate.fromMaps(settings, me);
+    }, () async => PhoneGate.none);
   }
 
   /// يطلب رمزاً على واتساب. يرمي نصّاً عربيّاً جاهزاً للعرض عند الردّ.
@@ -2117,10 +2128,7 @@ class Api {
       return;
     }
     try {
-      await db.functions.invoke(
-        'phone-otp',
-        body: {'action': 'send', 'phone': phone},
-      );
+      await db.functions.invoke('phone-otp', body: {'action': 'send', 'phone': phone});
     } on FunctionException catch (e) {
       _rethrowOtp(e);
     }

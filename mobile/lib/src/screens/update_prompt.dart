@@ -15,6 +15,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../core/app_lock.dart';
 import '../core/app_update.dart';
 import '../core/app_version.dart';
 import '../core/i18n.dart';
@@ -52,11 +53,7 @@ class UpdateGate extends ChangeNotifier {
       final releases = await (releasesOverride ?? Api.releases)();
       if (releases.isEmpty) return;
       final bucket = updateBucketOverride ?? await updateBucket();
-      final pick = pickUpdate(
-        releases,
-        installedBuild: appBuild,
-        bucket: bucket,
-      );
+      final pick = pickUpdate(releases, installedBuild: appBuild, bucket: bucket);
       // **ولا منعَ بلا مخرج.** شاشةٌ تقول «لا بدّ من التحديث» وزرُّها لا يفتح
       // شيئاً تحبس صاحبَ الجهاز — وهو أذىً أكبرُ من نسخةٍ قديمة.
       //
@@ -94,7 +91,8 @@ Future<void> openDownload(BuildContext context, String url) async {
   }
   var ok = false;
   try {
-    ok = await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+    // **ورحلةٌ لا غياب** — انظر `awayFromApp`.
+    ok = await awayFromApp(() => launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication));
   } catch (_) {
     ok = false;
   }
@@ -105,11 +103,7 @@ Future<void> openDownload(BuildContext context, String url) async {
 
 /// شريطُ «صدرت نسخةٌ أحدث» — يُطوى بـ«لاحقاً».
 class UpdateBanner extends StatelessWidget {
-  const UpdateBanner({
-    super.key,
-    required this.release,
-    required this.onDismiss,
-  });
+  const UpdateBanner({super.key, required this.release, required this.onDismiss});
 
   final AppRelease release;
   final VoidCallback onDismiss;
@@ -130,8 +124,7 @@ class UpdateBanner extends StatelessWidget {
                 children: [
                   Text(
                     trf('صدرت نسخة {0}', [release.version]),
-                    style: const TextStyle(
-                        fontSize: 13, fontWeight: FontWeight.w700),
+                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
                   ),
                   if (release.notes.trim().isNotEmpty)
                     Muted(release.notes.trim(), size: 11, maxLines: 2),
@@ -176,29 +169,24 @@ class ForcedUpdateScreen extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.system_update,
-                    size: 44, color: AppColors.accent),
+                const Icon(Icons.system_update, size: 44, color: AppColors.accent),
                 const SizedBox(height: Space.lg),
                 Text(
                   tr('لا بدّ من التحديث'),
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
-                      fontSize: 18, fontWeight: FontWeight.w700),
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: Space.sm),
                 Text(
-                  trf('نسختُك لم تعد تعمل مع الخدمة. نزّل نسخة {0} لتُكمل.',
-                      [release.version]),
+                  trf('نسختُك لم تعد تعمل مع الخدمة. نزّل نسخة {0} لتُكمل.', [release.version]),
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
-                      fontSize: 12, color: AppColors.muted, height: 1.8),
+                  style: const TextStyle(fontSize: 12, color: AppColors.muted, height: 1.8),
                 ),
                 if (release.notes.trim().isNotEmpty) ...[
                   const SizedBox(height: Space.lg),
                   AppCard(
                     children: [
-                      Text(release.notes.trim(),
-                          style: const TextStyle(fontSize: 12, height: 1.8)),
+                      Text(release.notes.trim(), style: const TextStyle(fontSize: 12, height: 1.8)),
                     ],
                   ),
                 ],

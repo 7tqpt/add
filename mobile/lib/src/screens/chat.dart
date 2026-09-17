@@ -13,6 +13,7 @@ import '../ui/kit.dart';
 import '../ui/media.dart';
 import '../ui/viewer.dart';
 import 'chat_attach.dart';
+import 'provider_public.dart';
 
 /// خيط المحادثة.
 ///
@@ -25,6 +26,8 @@ class ChatScreen extends StatefulWidget {
     super.key,
     required this.conversationId,
     required this.otherName,
+    this.otherAvatar = '',
+    this.providerId,
     required this.mySide,
     this.recorder,
     this.picker,
@@ -44,6 +47,18 @@ class ChatScreen extends StatefulWidget {
 
   /// اسم الطرف الآخر — تحسبه القاعدة لأن لكلٍّ «آخرَ» غير آخر صاحبه.
   final String otherName;
+
+  /// مسارُ صورته — فارغٌ لمن لا صورةَ له، **ولمقدّم الخدمة أبداً**: سياسةُ
+  /// `app_users` تمنعه من قراءة صفّ العميل. والتفصيلُ في `supabase/chat.sql`.
+  final String otherAvatar;
+
+  /// مقدّمُ الخدمة في هذه المحادثة — **وبه وحدَه يُفتح ملفُّه**.
+  ///
+  /// **ولا يُفتح إلّا للعميل**، وهو اختيارُ صاحب المنصّة من اثنين: العميلُ
+  /// يضغط فيرى ملفَّ القاعة؛ ومقدّمُ الخدمة لا يضغط، **لأنّ العميلَ لا ملفَّ
+  /// عامّ له في التطبيق أصلاً** — وشريطٌ يُضغط فلا يفتح شيئاً أسوأُ من شريطٍ
+  /// لا يُضغط.
+  final String? providerId;
   final ChatSide mySide;
 
   @override
@@ -73,15 +88,32 @@ class _ChatScreenState extends State<ChatScreen> {
   Timer? _tick;
   StreamSubscription<Object>? _failure;
 
-  /// آخرُ ظهورٍ للطرف الآخر — `null` قبل أن يصل الجواب، ولمن لا ظهورَ له.
+  /// آخرُ ظهورٍ للطرف الآخر — `null` قبل أن يصل الجواب، ولمن لا ظهورَه.
   DateTime? _seen;
   Timer? _seenTick;
+
+  /// رأسُ الشاشة: صورةُ الطرف الآخر ومعرّفُ مزوّد المحادثة.
+  ///
+  /// يبدآن بما جاء مع الشاشة — وقد لا يجيء شيء — ثمّ يُسألان من القاعة.
+  late String _avatar = widget.otherAvatar;
+  late String? _providerId = widget.providerId;
 
   @override
   void initState() {
     super.initState();
     _open();
     _watchPresence();
+    _loadHeader();
+  }
+
+  /// **ويُسأل الرأسُ من القاعة لا من المنادي.** انظر `Api.conversationById`.
+  Future<void> _loadHeader() async {
+    final row = await Api.conversationById(widget.conversationId);
+    if (row == null || !mounted) return;
+    setState(() {
+      _avatar = row.otherAvatar;
+      _providerId = row.providerId;
+    });
   }
 
   /// حضورُ الطرف الآخر — يُسأل عند الفتح ثم كلَّ نصف دقيقة.
@@ -318,13 +350,15 @@ class _ChatScreenState extends State<ChatScreen> {
         if (mounted) showMessage(context, tr('التسجيل قصيرٌ جداً.'));
         return;
       }
-      await _sendAttachment(PickedAttachment(
-        kind: ChatAttachment.audio,
-        bytes: clip.bytes,
-        extension: 'm4a',
-        contentType: 'audio/mp4',
-        seconds: clip.seconds,
-      ));
+      await _sendAttachment(
+        PickedAttachment(
+          kind: ChatAttachment.audio,
+          bytes: clip.bytes,
+          extension: 'm4a',
+          contentType: 'audio/mp4',
+          seconds: clip.seconds,
+        ),
+      );
     } catch (e) {
       if (mounted) showMessage(context, messageOf(e));
     }
@@ -382,19 +416,7 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        // الاسمُ وتحته الحضور. و`titleSpacing` يبقى كما هو: العمودُ يملأ
-        // ارتفاع الشريط ولا يزيده — `PresenceLine` سطرٌ واحدٌ باثني عشر.
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(widget.otherName, maxLines: 1, overflow: TextOverflow.ellipsis),
-            PresenceLine(lastSeen: _seen, size: 11.5),
-          ],
-        ),
-      ),
+      appBar: AppBar(titleSpacing: Space.sm, title: _title(context)),
       body: Column(
         children: [
           Expanded(child: _body()),
@@ -413,6 +435,63 @@ class _ChatScreenState extends State<ChatScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  /// **وملفُّ مقدّم الخدمة يُفتح من الشريط** — طلبه صاحبُ المنصّة: «خلّيه
+  /// قابل للضغط وانتقل إلى الملف الشخصي».
+  ///
+  /// ويعود `null` لمن لا وجهةَ له، فلا يُلبَس الشريطُ لبسَ الأزرار ثمّ لا
+  /// يفعل شيئاً.
+  VoidCallback? _openProfile(BuildContext context) {
+    final id = _providerId;
+    if (widget.mySide != ChatSide.customer || id == null || id.isEmpty) {
+      return null;
+    }
+    return () => Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => PublicProviderScreen(providerId: id, name: widget.otherName),
+      ),
+    );
+  }
+
+  /// الاسمُ وتحته الحضور، وإلى يمينهما صورتُه.
+  ///
+  /// **والسهمُ لا يُرسم إلّا حيث تقع الضغطة** — وهو اختيارُ صاحب المنصّة من
+  /// شكلين عُرضا عليه: قرصٌ وحدَه، أو قرصٌ ومعه سهمٌ يقول إنّ الشريط يُضغط.
+  Widget _title(BuildContext context) {
+    final open = _openProfile(context);
+    final row = Row(
+      children: [
+        _OtherAvatar(name: widget.otherName, path: _avatar),
+        const SizedBox(width: Space.md),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(widget.otherName, maxLines: 1, overflow: TextOverflow.ellipsis),
+              PresenceLine(lastSeen: _seen, size: 11.5),
+            ],
+          ),
+        ),
+        if (open != null) const Icon(Icons.chevron_left, size: 22, color: AppColors.muted),
+      ],
+    );
+
+    if (open == null) {
+      return Padding(
+        // حشوةٌ مساويةٌ لحشوة المضغوط، فلا يقفز الشريطُ بين الحالين.
+        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
+        child: row,
+      );
+    }
+    return InkWell(
+      key: const ValueKey('chat-open-profile'),
+      onTap: open,
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4), child: row),
     );
   }
 
@@ -465,10 +544,7 @@ class _DayMark extends StatelessWidget {
           color: AppColors.surface2,
           borderRadius: BorderRadius.circular(999),
         ),
-        child: Text(
-          formatDate(iso),
-          style: const TextStyle(fontSize: 11, color: AppColors.muted),
-        ),
+        child: Text(formatDate(iso), style: const TextStyle(fontSize: 11, color: AppColors.muted)),
       ),
     ),
   );
@@ -588,11 +664,7 @@ class _Composer extends StatelessWidget {
         // كتابةٍ ظاهرٌ والميكروفون يعمل يدعو إلى الكتابة أثناء الكلام، ثم
         // تضيع إحداهما.
         child: recording
-            ? _RecordingBar(
-                seconds: recorded,
-                onStop: onStop,
-                onCancel: onCancelRecording,
-              )
+            ? _RecordingBar(seconds: recorded, onStop: onStop, onCancel: onCancelRecording)
             : Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
@@ -611,10 +683,7 @@ class _Composer extends StatelessWidget {
                       maxLines: 5,
                       textInputAction: TextInputAction.newline,
                       keyboardType: TextInputType.multiline,
-                      decoration: InputDecoration(
-                        hintText: tr('اكتب رسالتك…'),
-                        isDense: true,
-                      ),
+                      decoration: InputDecoration(hintText: tr('اكتب رسالتك…'), isDense: true),
                     ),
                   ),
                   const SizedBox(width: Space.xs),
@@ -641,11 +710,7 @@ class _Composer extends StatelessWidget {
 
 /// شريطُ التسجيل — نقطةٌ حمراء وعدّادٌ ومخرجان.
 class _RecordingBar extends StatelessWidget {
-  const _RecordingBar({
-    required this.seconds,
-    required this.onStop,
-    required this.onCancel,
-  });
+  const _RecordingBar({required this.seconds, required this.onStop, required this.onCancel});
 
   final int seconds;
   final VoidCallback onStop;
@@ -667,10 +732,7 @@ class _RecordingBar extends StatelessWidget {
         Container(
           width: 10,
           height: 10,
-          decoration: const BoxDecoration(
-            color: AppColors.critical,
-            shape: BoxShape.circle,
-          ),
+          decoration: const BoxDecoration(color: AppColors.critical, shape: BoxShape.circle),
         ),
         const SizedBox(width: Space.sm),
         Expanded(
@@ -719,13 +781,19 @@ class _AttachmentState extends State<_Attachment> {
     final m = widget.message;
     switch (m.attachment!) {
       case ChatAttachment.image:
-        openImageViewer(context, url: url,
-            title: m.attachmentName.isEmpty ? tr('صورة') : m.attachmentName);
+        openImageViewer(
+          context,
+          url: url,
+          title: m.attachmentName.isEmpty ? tr('صورة') : m.attachmentName,
+        );
       case ChatAttachment.video:
         openVideoViewer(context, url: url);
       case ChatAttachment.file:
-        openPdfViewer(context, url: url,
-            name: m.attachmentName.isEmpty ? tr('ملف') : m.attachmentName);
+        openPdfViewer(
+          context,
+          url: url,
+          name: m.attachmentName.isEmpty ? tr('ملف') : m.attachmentName,
+        );
       case ChatAttachment.audio:
         // الصوتُ يُسمع في مكانه؛ لا شاشةَ له.
         break;
@@ -750,9 +818,7 @@ class _AttachmentState extends State<_Attachment> {
                 borderRadius: BorderRadius.circular(10),
                 child: AspectRatio(
                   aspectRatio: 4 / 3,
-                  child: loading
-                      ? Container(color: AppColors.surface2)
-                      : MediaThumb(url: url),
+                  child: loading ? Container(color: AppColors.surface2) : MediaThumb(url: url),
                 ),
               ),
             );
@@ -859,3 +925,59 @@ class _AttachmentState extends State<_Attachment> {
   }
 }
 
+/// قرصُ الطرف الآخر في الشريط — صورتُه، أو حرفُ اسمه إن لم تكن له صورة.
+///
+/// **والحرفُ ليس حالَ عطبٍ بل الحالُ الغالبة:** أكثرُ الناس بلا صورة، ومقدّمُ
+/// الخدمة لا تصله صورةُ العميل أصلاً (سياسةُ `app_users`). فيُرسم قرصاً
+/// مكتملاً لا مربّعاً مكسوراً.
+class _OtherAvatar extends StatelessWidget {
+  const _OtherAvatar({required this.name, required this.path});
+
+  final String name;
+  final String path;
+
+  static const _size = 36.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final url = Api.avatarUrl(path);
+    final trimmed = name.trim();
+    final letter = trimmed.isEmpty ? tr('؟') : trimmed.characters.first;
+
+    return Container(
+      key: const ValueKey('chat-other-avatar'),
+      width: _size,
+      height: _size,
+      alignment: Alignment.center,
+      clipBehavior: Clip.antiAlias,
+      decoration: const BoxDecoration(color: AppColors.accent, shape: BoxShape.circle),
+      child: url == null
+          ? Text(
+              letter,
+              style: const TextStyle(
+                fontSize: _size * 0.44,
+                fontWeight: FontWeight.w700,
+                color: AppColors.accentInk,
+                fontFamilyFallback: arabicFallback,
+              ),
+            )
+          // **وصورةٌ تسقط تعود حرفاً لا مربّعاً مكسوراً**: الشبكةُ اليمنيّةُ
+          // تُسقط الطلبَ كثيراً، والشريطُ يبقى مقروءاً.
+          : Image.network(
+              url,
+              fit: BoxFit.cover,
+              width: _size,
+              height: _size,
+              errorBuilder: (_, _, _) => Text(
+                letter,
+                style: const TextStyle(
+                  fontSize: _size * 0.44,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.accentInk,
+                  fontFamilyFallback: arabicFallback,
+                ),
+              ),
+            ),
+    );
+  }
+}

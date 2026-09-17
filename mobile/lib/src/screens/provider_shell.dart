@@ -97,6 +97,10 @@ class _ProviderShellState extends State<ProviderShell> {
             builder: (_) => ChatScreen(
               conversationId: convo.id,
               otherName: convo.otherName,
+              // يُمرَّران ليُرسم الرأسُ كاملاً من أوّل إطار — ثمّ يُسألان
+              // من القاعة على كلّ حال (`_loadHeader`).
+              otherAvatar: convo.otherAvatar,
+              providerId: convo.providerId,
               mySide: convo.mySide,
             ),
           ),
@@ -113,8 +117,7 @@ class _ProviderShellState extends State<ProviderShell> {
   void _followUp(BuildContext context, AppNotification n) => _openFrom(n.data, popFrom: context);
 
   Future<void> _openChats() async {
-    await Navigator.of(context)
-        .push(MaterialPageRoute(builder: (_) => ConversationsScreen()));
+    await Navigator.of(context).push(MaterialPageRoute(builder: (_) => ConversationsScreen()));
     if (mounted) _countUnread();
   }
 

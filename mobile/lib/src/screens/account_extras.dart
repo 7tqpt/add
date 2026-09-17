@@ -10,6 +10,7 @@ import '../core/app_lock.dart';
 import '../core/biometrics.dart';
 import '../core/i18n.dart';
 import '../core/notification_tone.dart';
+
 import 'package:url_launcher/url_launcher.dart';
 
 import '../core/geo.dart';
@@ -74,8 +75,9 @@ class _AddressesScreenState extends State<AddressesScreen> {
     final yes = await confirmDanger(
       context,
       title: tr('حذف العنوان؟'),
-      body: trf('سيُحذف «{0}» من عناوينك. والحجوزاتُ التي كُتب فيها لا تتأثّر.',
-          [a.label.isEmpty ? a.details : a.label]),
+      body: trf('سيُحذف «{0}» من عناوينك. والحجوزاتُ التي كُتب فيها لا تتأثّر.', [
+        a.label.isEmpty ? a.details : a.label,
+      ]),
       confirm: tr('حذف'),
     );
     if (yes != true) return;
@@ -109,8 +111,7 @@ class _AddressesScreenState extends State<AddressesScreen> {
           if (rows.isEmpty) {
             return EmptyBlock(
               title: tr('لا عناوين محفوظة'),
-              description:
-                  tr('احفظ عنوان بيت العرس مرّةً واحدة، فيملأ نفسه في كل حجزٍ بعدها.'),
+              description: tr('احفظ عنوان بيت العرس مرّةً واحدة، فيملأ نفسه في كل حجزٍ بعدها.'),
             );
           }
           return ListView.separated(
@@ -136,15 +137,11 @@ class _AddressesScreenState extends State<AddressesScreen> {
                       ),
                       // الافتراضيُّ يُعلَّم: قائمةٌ من ثلاثةٍ بلا علامةٍ لا
                       // يعرف صاحبها أيُّها سيملأ نموذج الحجز.
-                      if (a.isDefault)
-                        StatusBadge(tr('الافتراضي'), color: AppColors.good),
+                      if (a.isDefault) StatusBadge(tr('الافتراضي'), color: AppColors.good),
                     ],
                   ),
                   const SizedBox(height: Space.xs),
-                  Text(
-                    a.forBooking,
-                    style: const TextStyle(height: 1.6, color: AppColors.ink2),
-                  ),
+                  Text(a.forBooking, style: const TextStyle(height: 1.6, color: AppColors.ink2)),
                   if (widget.onPick == null) ...[
                     const SizedBox(height: Space.sm),
                     Row(
@@ -252,8 +249,7 @@ class _AddressSheetState extends State<_AddressSheet> {
           decoration: InputDecoration(labelText: tr('المحافظة')),
           items: [
             DropdownMenuItem<String?>(value: null, child: Text(tr('غير محدّدة'))),
-            for (final g in _govs)
-              DropdownMenuItem<String?>(value: g.id, child: Text(g.name)),
+            for (final g in _govs) DropdownMenuItem<String?>(value: g.id, child: Text(g.name)),
           ],
           onChanged: (v) => setState(() => _govId = v),
         ),
@@ -342,8 +338,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
     final yes = await confirmDanger(
       context,
       title: tr('حذف الوسيلة؟'),
-      body: trf('سيُحذف «{0}» من طرق دفعك. والحوالاتُ التي أُبلغ بها لا تتأثّر.',
-          [m.accountRef]),
+      body: trf('سيُحذف «{0}» من طرق دفعك. والحوالاتُ التي أُبلغ بها لا تتأثّر.', [m.accountRef]),
       confirm: tr('حذف'),
     );
     if (yes != true) return;
@@ -401,8 +396,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                           ),
                         ),
                       ),
-                      if (m.isDefault)
-                        StatusBadge(tr('الافتراضي'), color: AppColors.good),
+                      if (m.isDefault) StatusBadge(tr('الافتراضي'), color: AppColors.good),
                     ],
                   ),
                   const SizedBox(height: Space.xs),
@@ -414,10 +408,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                     textAlign: TextAlign.left,
                     style: const TextStyle(fontSize: 14, color: AppColors.ink2),
                   ),
-                  if (m.holderName.isNotEmpty) ...[
-                    const SizedBox(height: 2),
-                    Muted(m.holderName),
-                  ],
+                  if (m.holderName.isNotEmpty) ...[const SizedBox(height: 2), Muted(m.holderName)],
                   if (widget.onPick == null) ...[
                     const SizedBox(height: Space.sm),
                     Row(
@@ -503,7 +494,9 @@ class _PaymentSheetState extends State<_PaymentSheet> {
         // **ويُقال ما يُحفظ وما لا يُحفظ.** من رأى «طرق الدفع» ظنّ بطاقةً
         // تُخزَّن، ومن ظنّ ذلك امتنع.
         InfoNote(
-          tr('نحفظ رقم محفظتك التي تُحوّل منها ليملأ نفسه عند الإبلاغ بالحوالة — ولا نحفظ بطاقات ولا أرقاماً سرّية.'),
+          tr(
+            'نحفظ رقم محفظتك التي تُحوّل منها ليملأ نفسه عند الإبلاغ بالحوالة — ولا نحفظ بطاقات ولا أرقاماً سرّية.',
+          ),
         ),
         const SizedBox(height: Space.md),
         // **حقلٌ منسدلٌ لا شرائح.** الشرائحُ كانت العنصرَ الوحيدَ في هذه
@@ -613,10 +606,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       await appLock.setBiometric(on);
       if (mounted) {
         showMessage(
-            context,
-            on
-                ? tr('صار القفل يُفتح ببصمتك — والرمز باقٍ تحتها.')
-                : tr('أُطفئ فتحُ القفل بالبصمة.'));
+          context,
+          on ? tr('صار القفل يُفتح ببصمتك — والرمز باقٍ تحتها.') : tr('أُطفئ فتحُ القفل بالبصمة.'),
+        );
       }
     } catch (e) {
       if (mounted) showMessage(context, messageOf(e));
@@ -706,7 +698,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -755,17 +746,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       // **شاشةُ القناة أوّلاً، وإعداداتُ التطبيق احتياطاً.**
                       // الأولى تنزله على «الصوت» مباشرةً، والثانية تعرض
                       // قائمةَ القنوات فيلزمه أن يعرف أيَّها يفتح.
-                      onTap: () async {
+                      // **ورحلةٌ لا غياب** — انظر `awayFromApp`. وتلفّ
+                      // الاثنتين معاً: الأولى تفتح شاشةَ القناة والثانية
+                      // إعداداتِ التطبيق، وكلتاهما تُخرج من التطبيق.
+                      onTap: () => awayFromApp(() async {
                         if (await openNotificationTone()) return;
-                        await AppSettings.openAppSettings(
-                            type: AppSettingsType.notification);
-                      },
+                        await AppSettings.openAppSettings(type: AppSettingsType.notification);
+                      }),
                       child: Padding(
                         padding: const EdgeInsets.symmetric(vertical: Space.sm),
                         child: Row(
                           children: [
-                            const Icon(Icons.music_note_outlined,
-                                size: 20, color: AppColors.accent),
+                            const Icon(
+                              Icons.music_note_outlined,
+                              size: 20,
+                              color: AppColors.accent,
+                            ),
                             const SizedBox(width: Space.md),
                             Expanded(
                               child: Column(
@@ -773,13 +769,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 children: [
                                   Text(tr('نغمة الإشعار')),
                                   SizedBox(height: 2),
-                                  Muted(tr('اختر النغمة والاهتزاز من إعدادات جهازك'),
-                                      size: 11),
+                                  Muted(tr('اختر النغمة والاهتزاز من إعدادات جهازك'), size: 11),
                                 ],
                               ),
                             ),
-                            const Icon(Icons.open_in_new,
-                                size: 16, color: AppColors.muted),
+                            const Icon(Icons.open_in_new, size: 16, color: AppColors.muted),
                           ],
                         ),
                       ),
@@ -800,10 +794,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         key: const ValueKey('battery-restriction'),
                         borderRadius: BorderRadius.circular(12),
                         onTap: () async {
-                          if (!await batterySettingsOpener()) {
-                            await AppSettings.openAppSettings(
-                                type: AppSettingsType.batteryOptimization);
-                          }
+                          // **ورحلةٌ لا غياب** — انظر `awayFromApp`.
+                          await awayFromApp(() async {
+                            if (!await batterySettingsOpener()) {
+                              await AppSettings.openAppSettings(
+                                type: AppSettingsType.batteryOptimization,
+                              );
+                            }
+                          });
                           // ويُعاد السؤالُ عند العودة، فالتحذيرُ يغيب متى رُفع
                           // القيد.
                           await _probeBattery();
@@ -812,8 +810,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           padding: const EdgeInsets.symmetric(vertical: Space.sm),
                           child: Row(
                             children: [
-                              const Icon(Icons.battery_alert_outlined,
-                                  size: 20, color: AppColors.warning),
+                              const Icon(
+                                Icons.battery_alert_outlined,
+                                size: 20,
+                                color: AppColors.warning,
+                              ),
                               const SizedBox(width: Space.md),
                               Expanded(
                                 child: Column(
@@ -825,14 +826,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     // لا يعرف الأثرَ لا يمضي في ثلاث شاشاتِ
                                     // إعدادات.
                                     Muted(
-                                        tr('فقد يتأخّر إشعارُ الحجز أو لا يصل والتطبيق مغلق. '
-                                            'اسمح له بالعمل بلا قيدٍ من إعدادات البطّاريّة.'),
-                                        size: 11),
+                                      tr(
+                                        'فقد يتأخّر إشعارُ الحجز أو لا يصل والتطبيق مغلق. '
+                                        'اسمح له بالعمل بلا قيدٍ من إعدادات البطّاريّة.',
+                                      ),
+                                      size: 11,
+                                    ),
                                   ],
                                 ),
                               ),
-                              const Icon(Icons.open_in_new,
-                                  size: 16, color: AppColors.muted),
+                              const Icon(Icons.open_in_new, size: 16, color: AppColors.muted),
                             ],
                           ),
                         ),
@@ -852,8 +855,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     // احتمال — قفلُ خصوصيّةٍ لا حصنُ أمان. ومن ظنّه حصناً
                     // وضع فيه ما لا يُوضع.
                     Muted(
-                      tr('يمنع من يفتح جوالك أن يرى حجوزاتك ومحادثاتك. وليس '
-                          'حمايةً من سرقة الحساب — تلك كلمةُ مرورك.'),
+                      tr(
+                        'يمنع من يفتح جوالك أن يرى حجوزاتك ومحادثاتك. وليس '
+                        'حمايةً من سرقة الحساب — تلك كلمةُ مرورك.',
+                      ),
                       size: 11,
                     ),
                     const SizedBox(height: Space.md),
@@ -866,8 +871,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     // عن زرٍّ كان هنا يجب أن يجد لماذا ذهب.
                     Row(
                       children: [
-                        const Icon(Icons.lock_outline,
-                            size: 20, color: AppColors.accent),
+                        const Icon(Icons.lock_outline, size: 20, color: AppColors.accent),
                         const SizedBox(width: Space.md),
                         Expanded(
                           child: Column(
@@ -876,8 +880,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               Text(tr('القفل مفعّل')),
                               const SizedBox(height: 2),
                               Muted(
-                                tr('مطلوبٌ من المنصّة ولا يُطفأ — ولك أن '
-                                    'تبدّل رمزه.'),
+                                tr(
+                                  'مطلوبٌ من المنصّة ولا يُطفأ — ولك أن '
+                                  'تبدّل رمزه.',
+                                ),
                                 size: 11,
                               ),
                             ],
@@ -898,26 +904,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       // عشرةَ دقيقة، وهي الحالُ الغالبة.
                       Row(
                         children: [
-                          const Icon(Icons.bolt_rounded,
-                              size: 18, color: AppColors.accent),
+                          const Icon(Icons.bolt_rounded, size: 18, color: AppColors.accent),
                           const SizedBox(width: Space.sm),
-                          Expanded(
-                            child: Muted(
-                              tr('يُطلب الرمز فورَ خروجك من التطبيق'),
-                              size: 12,
-                            ),
-                          ),
+                          Expanded(child: Muted(tr('يُطلب الرمز فورَ خروجك من التطبيق'), size: 12)),
                         ],
                       ),
                       // **والبصمةُ لا تُعرض إلّا لمن جهازُه يقرؤها** — ومفتاحٌ
                       // يُرفع فلا يقع شيءٌ أسوأُ من مفتاحٍ غائب.
                       if (_canBiometric) ...[
-                        const Divider(
-                            height: Space.lg, color: AppColors.hairline),
+                        const Divider(height: Space.lg, color: AppColors.hairline),
                         Row(
                           children: [
-                            const Icon(Icons.fingerprint,
-                                size: 20, color: AppColors.accent),
+                            const Icon(Icons.fingerprint, size: 20, color: AppColors.accent),
                             const SizedBox(width: Space.md),
                             Expanded(
                               child: Column(
@@ -927,16 +925,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   const SizedBox(height: 2),
                                   // **ويُقال إنّ الرمزَ باقٍ.** من ظنّ البصمةَ
                                   // بديلاً عن الرمز نسيه، ثمّ أخفق حسّاسُه.
-                                  Muted(tr('والرمز يبقى لمن أخفقت بصمته'),
-                                      size: 11),
+                                  Muted(tr('والرمز يبقى لمن أخفقت بصمته'), size: 11),
                                 ],
                               ),
                             ),
                             Switch(
                               key: const ValueKey('biometric-toggle'),
                               value: appLock.biometricEnabled,
-                              onChanged:
-                                  _busy ? null : (v) => _toggleBiometric(v),
+                              onChanged: _busy ? null : (v) => _toggleBiometric(v),
                             ),
                           ],
                         ),
@@ -985,13 +981,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     // والخدمات والمزوّدين تأتي من القاعدة بالعربيّة، فمن بدّل
                     // اللغة يرى أزراراً إنجليزيّةً فوق محتوىً عربيّ. وقولُها
                     // هنا أصدقُ من أن يكتشفها بنفسه فيظنّ الترجمةَ ناقصة.
-                    Muted(
-                      tr(tr('أسماء الخدمات والمزوّدين تبقى كما كتبها أصحابها.')),
-                      size: 11,
-                    ),
+                    Muted(tr(tr('أسماء الخدمات والمزوّدين تبقى كما كتبها أصحابها.')), size: 11),
                   ],
                 ),
-
 
                 // ── القانونيّ ──────────────────────────────────────────
                 //
@@ -1041,7 +1033,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 }
 
-
 /// رابطٌ يفتح صفحةً قانونيّةً في المتصفّح.
 ///
 /// وخارج التطبيق لا داخله: الصفحةُ تُحدَّث بلا إصدارٍ جديد، ونسخةٌ مدفونةٌ في
@@ -1070,13 +1061,12 @@ class _LegalLink extends StatelessWidget {
       // موجود» — وهو أسوأُ من ألّا يكون هناك رابط.
       key: ValueKey(url),
       onTap: () async {
-        final ok = await launchUrl(
-          Uri.parse(url),
-          mode: LaunchMode.externalApplication,
+        // **ورحلةٌ لا غياب** — انظر `awayFromApp`.
+        final ok = await awayFromApp(
+          () => launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication),
         );
         if (!ok && context.mounted) {
-          showMessage(context,
-              trf('تعذّر فتح الرابط — افتح {0} في متصفّحك.', [url]));
+          showMessage(context, trf('تعذّر فتح الرابط — افتح {0} في متصفّحك.', [url]));
         }
       },
       child: Padding(

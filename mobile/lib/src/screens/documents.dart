@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../core/app_lock.dart';
 import '../core/i18n.dart';
 import '../core/format.dart';
 import '../core/session.dart';
@@ -51,12 +52,15 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
   }
 
   Future<void> _upload(String type, ImageSource source) async {
-    final file = await ImagePicker().pickImage(
-      source: source,
-      // ضغطٌ عند الالتقاط: صورة هوية بدقّة الكاميرا كاملةً تتجاوز حدّ الحاوية
-      // على كثيرٍ من الأجهزة، وهي تُقرأ بلا تلك الدقّة.
-      maxWidth: 2200,
-      imageQuality: 85,
+    // **ورحلةٌ لا غياب** — انظر `awayFromApp`.
+    final file = await awayFromApp(
+      () => ImagePicker().pickImage(
+        source: source,
+        // ضغطٌ عند الالتقاط: صورة هوية بدقّة الكاميرا كاملةً تتجاوز حدّ الحاوية
+        // على كثيرٍ من الأجهزة، وهي تُقرأ بلا تلك الدقّة.
+        maxWidth: 2200,
+        imageQuality: 85,
+      ),
     );
     if (file == null) return;
     final bytes = await file.readAsBytes();
@@ -166,8 +170,10 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
                   SectionTitle(tr('ما المطلوب')),
                   SizedBox(height: Space.sm),
                   Text(
-                    tr('صوّر هويتك الشخصية، والسجل التجاري إن وُجد. الصور خاصّة '
-                        'لا يراها إلا فريق التوثيق، ولا تظهر للعملاء إطلاقاً.'),
+                    tr(
+                      'صوّر هويتك الشخصية، والسجل التجاري إن وُجد. الصور خاصّة '
+                      'لا يراها إلا فريق التوثيق، ولا تظهر للعملاء إطلاقاً.',
+                    ),
                     style: const TextStyle(height: 1.7),
                   ),
                 ],

@@ -114,6 +114,10 @@ class _CustomerShellState extends State<CustomerShell> {
             builder: (_) => ChatScreen(
               conversationId: convo.id,
               otherName: convo.otherName,
+              // يُمرَّران ليُرسم الرأسُ كاملاً من أوّل إطار — ثمّ يُسألان
+              // من القاعة على كلّ حال (`_loadHeader`).
+              otherAvatar: convo.otherAvatar,
+              providerId: convo.providerId,
               mySide: convo.mySide,
             ),
           ),
@@ -145,13 +149,7 @@ class _CustomerShellState extends State<CustomerShell> {
   Widget build(BuildContext context) {
     // الترتيب: الرئيسية أوّلاً — وهي في العربية أقصى اليمين، أوّلُ ما يقع
     // عليه الإبهام. وحسابي آخراً: أقلُّها فتحاً وأبعدُها عن الوسط.
-    final titles = [
-      tr('الرئيسية'),
-      tr('حجوزاتي'),
-      tr('استكشف'),
-      tr('خطة العرس'),
-      tr('حسابي'),
-    ];
+    final titles = [tr('الرئيسية'), tr('حجوزاتي'), tr('استكشف'), tr('خطة العرس'), tr('حسابي')];
     final pages = [
       HomeScreen(session: widget.session, onGoTo: _goTo),
       MyBookingsScreen(session: widget.session),

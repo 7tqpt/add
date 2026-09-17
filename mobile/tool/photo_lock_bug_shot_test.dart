@@ -1,5 +1,8 @@
-// **تصويرُ عطلٍ قائم — لا مقترح.** الشيفرةُ المشحونةُ كما هي، ولا سطرَ في
-// `lib/` تغيّر.
+// **تصويرُ ما صار — والعطلُ الذي كان مكتوبٌ تحته.**
+//
+// كان هذا الراسمُ يُثبت العطلَ قبل إصلاحه: يسأل الشجرةَ «أظهرت شاشةُ
+// الرمز؟» ويشترط أن تظهر. فلمّا أُصلح انقلب شرطُه — **ولم يُحذف بل قُلب**،
+// فصار يصوّر الطرفين: أنّ الرحلةَ تُعفى، وأنّ الغيابَ ما زال يقفل.
 //
 //   SHOTS=<مجلّد> flutter test tool/photo_lock_bug_shot_test.dart
 //
@@ -126,7 +129,7 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('**رحلةٌ إلى المعرض تُلقيه على شاشة الرمز**', (tester) async {
+  Future<AppLock> opened(WidgetTester tester) async {
     tester.view.physicalSize = const Size(1080, 2400);
     tester.view.devicePixelRatio = 3.0;
     addTearDown(tester.view.reset);
@@ -139,22 +142,42 @@ void main() {
 
     await tester.pumpWidget(_wrap(RootScreen(session: _session(), lock: lock)));
     await settle(tester);
-
     expect(find.byType(LockScreen), findsNothing,
         reason: 'دخل مقفلاً — فلا معنى لما بعده');
-    await _shoot(tester, '$out/lock-bug-before.png');
+    return lock;
+  }
 
-    // ── وهنا يُفتح المعرض: نافذةُ نظامٍ تُنزل التطبيقَ إلى الخلفيّة ──────
+  Future<void> cycle(WidgetTester tester) async {
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
     await tester.pump();
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
     await settle(tester);
+  }
 
-    // **وهذا هو العطلُ بعينه.**
+  testWidgets('**رحلةٌ إلى المعرض لم تعد تُلقيه على شاشة الرمز**',
+      (tester) async {
+    final lock = await opened(tester);
+
+    // ── يُفتح المعرض: نافذةٌ يفتحها التطبيقُ نفسُه ───────────────────────
+    lock.beginExcursion();
+    await cycle(tester);
+
+    expect(find.byType(LockScreen), findsNothing,
+        reason: 'عاد العطلُ — فلا تُصوَّر صورةٌ تُطمئن');
+    await _shoot(tester, '$out/lock-fixed-excursion.png');
+    lock.endExcursion();
+  });
+
+  testWidgets('**وغيابٌ عاديٌّ ما زال يُلقيه عليها**', (tester) async {
+    // **وهذه نصفُ الصورة الثاني، ولا تُحذف.** لقطةٌ تُري الإعفاءَ وحدَه
+    // تُطمئن على قفلٍ قد يكون أُلغي — فيُصوَّر أنّه ما زال يقفل.
+    final lock = await opened(tester);
+
+    await cycle(tester);
+
     expect(find.byType(LockScreen), findsOneWidget,
-        reason: 'لم يقع العطلُ — فلعلّه أُصلح، فلا تُصوَّر صورةٌ تكذب');
+        reason: 'صار الإصلاحُ إلغاءً للقفل — فلا تُصوَّر صورةٌ تكذب');
     expect(lock.locked, isTrue);
-
-    await _shoot(tester, '$out/lock-bug-after.png');
+    await _shoot(tester, '$out/lock-still-locks.png');
   });
 }
