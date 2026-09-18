@@ -742,9 +742,17 @@ class _Gallery extends StatelessWidget {
             crossAxisSpacing: Space.sm,
           ),
           itemCount: items.length,
-          itemBuilder: (context, i) => ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: MediaThumb(url: Api.mediaUrl(items[i].path)),
+          // **وصورةُ المعرض تُفتح ملءَ الشاشة كالشعار والغلاف فوقها.**
+          // كانت وحدَها في هذه الشاشة ثابتةً لا تستجيب، وصورةُ قاعةٍ في
+          // مربّعٍ نصفِ عرضِ الشاشة لا يُرى منها تفصيل. ولا `onEdit`: العميلُ
+          // يرى صورَ غيره.
+          itemBuilder: (context, i) => GestureDetector(
+            key: ValueKey('gallery-photo-tap-$i'),
+            onTap: () => openPhoto(context, url: Api.mediaUrl(items[i].path)),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: MediaThumb(url: Api.mediaUrl(items[i].path)),
+            ),
           ),
         );
       },

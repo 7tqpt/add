@@ -370,24 +370,31 @@ class _ServiceEditorState extends State<_ServiceEditor> {
               ),
             ),
             const SizedBox(height: Space.lg),
-            Align(alignment: AlignmentDirectional.centerStart, child: Muted(tr('القسم'))),
-            const SizedBox(height: Space.sm),
+            // **نفسُ طراز حقل القسم في `become_provider.dart` بحرفه** —
+            // تسميةٌ عائمةٌ دائماً، وتلميحٌ رماديّ. كان شريطَ شرائح فطُلب
+            // منسدلةً كحقل المحافظة وحقل القسم هناك.
             FutureBuilder<List<ServiceCategory>>(
               future: _categories,
               builder: (context, snap) {
                 final rows = snap.data ?? const <ServiceCategory>[];
                 if (rows.isEmpty) return const Muted('…');
-                return Wrap(
-                  spacing: Space.sm,
-                  runSpacing: Space.sm,
-                  children: [
+                return DropdownButtonFormField<String>(
+                  key: const ValueKey('service-category-field'),
+                  initialValue: _categoryId,
+                  isExpanded: true,
+                  decoration: InputDecoration(
+                    labelText: tr('القسم'),
+                    floatingLabelBehavior: FloatingLabelBehavior.always,
+                  ),
+                  hint: Text(tr('اختر القسم'), style: const TextStyle(color: AppColors.muted)),
+                  items: [
                     for (final c in rows)
-                      PickChip(
-                        label: c.name,
-                        active: _categoryId == c.id,
-                        onTap: () => setState(() => _categoryId = c.id),
+                      DropdownMenuItem<String>(
+                        value: c.id,
+                        child: Text(c.name, overflow: TextOverflow.ellipsis),
                       ),
                   ],
+                  onChanged: (v) => setState(() => _categoryId = v),
                 );
               },
             ),

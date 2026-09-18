@@ -140,6 +140,7 @@ const Map<String, String> englishStrings = {
   'اختر تاريخ العرس': 'Choose the wedding date',
   'اختر تاريخ العرس.': 'Choose the wedding date.',
   'اختر رمزاً من أربعة أرقام': 'Choose a four-digit code',
+  'اختر القسم': 'Pick the category',
   'اختر قسمك': 'Pick your category',
   'اختر ما يصفك لنبدأ من مكانك الصحيح': 'Pick what describes you so we start in the right place',
   'اختر محافظتك': 'Pick your governorate',

@@ -196,6 +196,9 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen> {
               },
             ),
 
+            // **بطاقةٌ واحدةٌ متّصلةٌ بلا فواصل** — بطلب صاحب المنصّة: «خليه
+            // كلهن دخل بطاقة كامل». كانت ثلاثَ مجموعاتٍ يقطعها شريطان
+            // رماديّان (`MenuGap`).
             MenuSheet(
               children: [
                 // «كما يراك العميل» لا «تعديل»: صاحبُ القاعة يريد أن يرى
@@ -210,6 +213,12 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen> {
                     ),
                   ),
                 ),
+                // **ثانياً بطلبه** — كانت سابعةً قبلَ الخروج.
+                MenuRow(
+                  icon: Icons.swap_horiz,
+                  label: tr('العودة إلى وضع العميل'),
+                  onTap: () => widget.session.switchTo(provider: false),
+                ),
                 MenuRow(
                   icon: Icons.edit_outlined,
                   label: tr('تعديل الاسم والتعريف'),
@@ -223,11 +232,7 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen> {
                       builder: (_) => DocumentsScreen(session: widget.session),
                     ),
                   ),
-                  last: true,
                 ),
-
-                const MenuGap(),
-
                 MenuRow(
                   icon: Icons.workspace_premium_outlined,
                   label: tr('الباقات والاشتراك'),
@@ -239,11 +244,7 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen> {
                   label: tr('مستحقّاتي'),
                   onTap: () =>
                       _push(tr('مستحقّاتي'), EarningsScreen(session: widget.session)),
-                  last: true,
                 ),
-
-                const MenuGap(),
-
                 MenuRow(
                   icon: Icons.support_agent_outlined,
                   label: tr('الدعم'),
@@ -252,11 +253,6 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen> {
                       builder: (_) => SupportScreen(session: widget.session),
                     ),
                   ),
-                ),
-                MenuRow(
-                  icon: Icons.swap_horiz,
-                  label: tr('العودة إلى وضع العميل'),
-                  onTap: () => widget.session.switchTo(provider: false),
                 ),
                 // **ويُسأل عن الخروج هنا كما يُسأل عنه في «حسابي».** كانت
                 // ضغطةٌ واحدةٌ بالخطأ تُخرج صاحبَ القاعة ثم تطلب منه بريده

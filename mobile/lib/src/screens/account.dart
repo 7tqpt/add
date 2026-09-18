@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 
 import '../core/i18n.dart';
 import '../core/session.dart';
+import '../core/app_lock.dart';
 import '../core/app_version.dart';
+import '../core/biometrics.dart';
 import '../core/theme.dart';
 import '../ui/kit.dart';
 import '../ui/photo_view.dart';
@@ -42,10 +44,51 @@ class _AccountScreenState extends State<AccountScreen> {
   /// الغلافُ يُرفع الآن — يُعطَّل الزرّ وتدور دوّارةٌ مكان الرمز.
   bool _coverBusy = false;
 
+  /// **أيقرأ هذا الجهازُ بصمةً أصلاً؟** ومفتاحٌ يُرفع فلا يقع شيءٌ أسوأُ من
+  /// مفتاحٍ غائب — فلا يُعرض الصفُّ لمن لا حسّاسَ له، كما في الإعدادات.
+  bool _canBiometric = false;
+
+  /// البصمةُ تُسأل الآن — يُجمَّد المفتاح ريثما يُجاب.
+  bool _lockBusy = false;
+
   @override
   void initState() {
     super.initState();
     _load();
+    _probeBiometric();
+  }
+
+  Future<void> _probeBiometric() async {
+    final ok = await biometrics.available();
+    if (mounted) setState(() => _canBiometric = ok);
+  }
+
+  /// يشغّل فتحَ القفل بالبصمة أو يطفئه — **وهو منطقُ الإعدادات بحرفه.**
+  ///
+  /// **ولا يُشغَّل حتى تُقرأ بصمةٌ فعلاً.** مفتاحٌ يُرفع بلا تجربةٍ يَعِد
+  /// صاحبَه بما لم يُختبَر — فإن أخفق الحسّاسُ يومَ الحاجة وجد نفسه أمام
+  /// وعدٍ لم يُوفَّ به. فتُطلب البصمةُ الآن، ولا يُكتب التفضيلُ إن أخفقت.
+  Future<void> _toggleBiometric(bool on) async {
+    setState(() => _lockBusy = true);
+    try {
+      if (on && !await biometrics.authenticate()) {
+        if (mounted) showMessage(context, tr('لم تُقرأ البصمة. لم يتغيّر شيء.'));
+        return;
+      }
+      await appLock.setBiometric(on);
+      if (mounted) {
+        showMessage(
+          context,
+          on
+              ? tr('صار القفل يُفتح ببصمتك — والرمز باقٍ تحتها.')
+              : tr('أُطفئ فتحُ القفل بالبصمة.'),
+        );
+      }
+    } catch (e) {
+      if (mounted) showMessage(context, messageOf(e));
+    } finally {
+      if (mounted) setState(() => _lockBusy = false);
+    }
   }
 
   Future<void> _load() async {
@@ -127,6 +170,23 @@ class _AccountScreenState extends State<AccountScreen> {
               label: tr('الملف الشخصي'),
               onTap: () => _openProfile(context),
             ),
+            // **ثانياً بطلب صاحب المنصّة** — كان سادساً آخرَ المجموعة.
+            //
+            // مقدّمُ الخدمة: بابٌ واحدٌ بوجهين — من له ملفٌّ يبدّل الوضع، ومن
+            // لا ملفَّ له يطلبه. ولا يُعرض البابان معاً فيحتار أيَّهما له.
+            MenuRow(
+              icon: provider ? Icons.storefront_outlined : Icons.add_business_outlined,
+              label: provider
+                  ? tr('التبديل إلى وضع مقدّم الخدمة')
+                  : tr('أريد تقديم خدمة'),
+              onTap: provider
+                  ? () => session.switchTo(provider: true)
+                  : () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => BecomeProviderScreen(session: session),
+                      ),
+                    ),
+            ),
             MenuRow(
               icon: Icons.receipt_long_outlined,
               label: tr('فواتيري'),
@@ -151,26 +211,28 @@ class _AccountScreenState extends State<AccountScreen> {
               label: tr('طرق الدفع'),
               onTap: () => Navigator.of(context)
                   .push(MaterialPageRoute(builder: (_) => const PaymentMethodsScreen())),
-            ),
-            // مقدّمُ الخدمة: بابٌ واحدٌ بوجهين — من له ملفٌّ يبدّل الوضع، ومن
-            // لا ملفَّ له يطلبه. ولا يُعرض البابان معاً فيحتار أيَّهما له.
-            MenuRow(
-              icon: provider ? Icons.storefront_outlined : Icons.add_business_outlined,
-              label: provider
-                  ? tr('التبديل إلى وضع مقدّم الخدمة')
-                  : tr('أريد تقديم خدمة'),
-              onTap: provider
-                  ? () => session.switchTo(provider: true)
-                  : () => Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => BecomeProviderScreen(session: session),
-                      ),
-                    ),
               last: true,
             ),
 
             const MenuGap(),
 
+            // **والبصمةُ هنا لا في الإعدادات** — كانت ثلاثَ ضغطاتٍ بعيدة
+            // (الإعدادات ← الخصوصية والأمان ← المفتاح)، واختار صاحبُ المنصّة
+            // صفّاً بمفتاحٍ يُشغّل ويُطفئ في مكانه لا باباً يفتح شاشة.
+            //
+            // **ولا يُعرض لمن لا قفلَ له ولا لجهازٍ لا يقرأ بصمة**: البصمةُ
+            // بابٌ ثانٍ إلى القفل لا بديلٌ عنه، ومفتاحٌ بلا قفلٍ تحته يَعِد
+            // بما لا يقع. وهو شرطُ الإعدادات نفسُه.
+            //
+            // **ويبقى مفتاحُ الإعدادات مكانه**: من تعوّد أن يجده هناك يجده،
+            // والحالُ واحدةٌ في الموضعين لأنّ مصدرَها `appLock` لا نسخةٌ في
+            // كلّ شاشة.
+            if (appLock.enabled && _canBiometric)
+              _BiometricRow(
+                on: appLock.biometricEnabled,
+                busy: _lockBusy,
+                onChanged: _toggleBiometric,
+              ),
             MenuRow(
               icon: Icons.settings_outlined,
               label: tr('الإعدادات'),
@@ -335,6 +397,54 @@ class _AccountScreenState extends State<AccountScreen> {
     );
     if (yes == true) widget.session.signOut();
   }
+}
+
+/// صفُّ «افتح بالبصمة» في أبواب «حسابي» — مفتاحٌ في مكانه لا بابٌ يفتح.
+///
+/// **ويُرسم كصفوف `MenuRow` حوله**: الأيقونةُ نفسُها مقاساً ولوناً، والحشوةُ
+/// نفسُها، وخيطٌ تحته — فلا يقف صفٌّ غريبٌ وسط الأبواب.
+class _BiometricRow extends StatelessWidget {
+  const _BiometricRow({
+    required this.on,
+    required this.busy,
+    required this.onChanged,
+  });
+
+  final bool on;
+  final bool busy;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(Space.lg, Space.md, Space.lg, Space.md),
+            child: Row(
+              children: [
+                const Icon(Icons.fingerprint, size: 22, color: AppColors.accent),
+                const SizedBox(width: Space.md),
+                Expanded(
+                  child: Text(
+                    tr('افتح بالبصمة'),
+                    style: const TextStyle(
+                      fontSize: 15,
+                      color: AppColors.ink,
+                      fontFamilyFallback: arabicFallback,
+                    ),
+                  ),
+                ),
+                Switch(
+                  key: const ValueKey('account-biometric-toggle'),
+                  value: on,
+                  onChanged: busy ? null : onChanged,
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1, color: AppColors.hairline),
+        ],
+      );
 }
 
 /// قرص الصورة في بطاقة الهويّة.
