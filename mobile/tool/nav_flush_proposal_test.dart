@@ -157,7 +157,17 @@ Widget _stage(Widget bar) => Container(
     );
 
 /// شريطٌ ملتصقٌ مُعادُ البناء — بلا هامشٍ، ومحتواه مُزاحٌ فوق خطّ النظام.
-Widget _flush({required bool roundedTop}) {
+///
+/// **والمقاديرُ تُمرَّر لا تُكتب**: طُلب تصغيرُ الأيقونات ولم يُذكر كم،
+/// فتُرسم ثلاثةُ مقاديرَ في صورةٍ واحدةٍ ويُختار منها بالعين. وكلُّ مقدارٍ
+/// ثلاثةُ أرقامٍ تتحرّك معاً — أيقونةُ الجار، وقطرُ القرص، وأيقونتُه —
+/// ولو صُغّر أحدُها وحدَه لَاختلّت نسبتُه إلى أخويه.
+Widget _flush({
+  required bool roundedTop,
+  double iconSize = 21,
+  double discSize = 54,
+  double discIcon = 24,
+}) {
   const barHeight = GlassNavBar.barHeight;
   const raise = GlassNavBar.raise;
   final radius = roundedTop
@@ -198,7 +208,7 @@ Widget _flush({required bool roundedTop}) {
                             : Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Icon(_items[i].icon, size: 21, color: AppColors.ink2),
+                                  Icon(_items[i].icon, size: iconSize, color: AppColors.ink2),
                                   const SizedBox(height: 3),
                                   Text(
                                     _items[i].label,
@@ -232,8 +242,8 @@ Widget _flush({required bool roundedTop}) {
                   child: i == 0
                       ? Center(
                           child: Container(
-                            width: 54,
-                            height: 54,
+                            width: discSize,
+                            height: discSize,
                             alignment: Alignment.center,
                             decoration: BoxDecoration(
                               color: AppColors.accent,
@@ -248,7 +258,7 @@ Widget _flush({required bool roundedTop}) {
                               ],
                             ),
                             child: Icon(_items[i].activeIcon,
-                                size: 24, color: AppColors.accentInk),
+                                size: discIcon, color: AppColors.accentInk),
                           ),
                         )
                       : const SizedBox.shrink(),
@@ -264,8 +274,8 @@ Widget _flush({required bool roundedTop}) {
 void main() {
   setUpAll(_loadFonts);
 
-  testWidgets('اليومَ وشكلا الالتصاق', (tester) async {
-    tester.view.physicalSize = const Size(1180, 1500);
+  testWidgets('الملتصقُ بأربعة مقادير', (tester) async {
+    tester.view.physicalSize = const Size(1180, 1900);
     tester.view.devicePixelRatio = 2.0;
     addTearDown(tester.view.reset);
 
@@ -275,12 +285,14 @@ void main() {
         child: ListView(
           padding: EdgeInsets.zero,
           children: [
-            _caption('اليومَ — بطاقةٌ تطفو، لها هامشٌ من ثلاث جهات'),
-            _stage(GlassNavBar(index: 0, onSelect: (_) {}, items: _items)),
-            _caption('(أ) ملتصقٌ — وحافّتاه العلويّتان مستديرتان'),
+            _caption('ملتصقٌ بحافّته — والمقاسُ كما هو اليوم (٢١ · ٥٤ · ٢٤)'),
             _stage(_flush(roundedTop: true)),
-            _caption('(ب) ملتصقٌ — وحوافُّه مسوّاةٌ كلُّها'),
-            _stage(_flush(roundedTop: false)),
+            _caption('(١) أصغرُ قليلاً — ١٩ · ٤٨ · ٢١'),
+            _stage(_flush(roundedTop: true, iconSize: 19, discSize: 48, discIcon: 21)),
+            _caption('(٢) أصغرُ منها — ١٧ · ٤٤ · ١٩'),
+            _stage(_flush(roundedTop: true, iconSize: 17, discSize: 44, discIcon: 19)),
+            _caption('(٣) أصغرُها — ١٦ · ٤٠ · ١٧'),
+            _stage(_flush(roundedTop: true, iconSize: 16, discSize: 40, discIcon: 17)),
             const SizedBox(height: Space.lg),
           ],
         ),
@@ -289,7 +301,6 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
 
-    expect(find.byType(GlassNavBar), findsOneWidget);
     expect(tester.takeException(), isNull);
 
     final out = Platform.environment['SHOTS'] ?? '/tmp/shots';
