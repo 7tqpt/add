@@ -1321,9 +1321,18 @@ class Api {
     await db.storage.from('service-media').remove([media.path]);
   }
 
+  /// بديلٌ تُركّبه الحزمةُ لتقيس ما يُبنى على وجود الرابط — **ولولاه لَما
+  /// قيس شيءٌ منه**: بلا خادمٍ يعود `mediaUrl` بـ`null` أبداً، فضغطةٌ على
+  /// صورةٍ لا تفتح عارضاً سواءٌ وُصلت أو لم تُوصل، والضابطُ السالبُ لا يسقط.
+  /// وهو أخو `avatarUrlOverride`.
+  static String? Function(String path)? mediaUrlOverride;
+
   /// الرابط العلنيّ للوسيط — السلّة عامّة فلا توقيع ينتهي.
   static String? mediaUrl(String? path) {
-    if (path == null || path.isEmpty || !isSupabaseConfigured) return null;
+    if (path == null || path.isEmpty) return null;
+    final fake = mediaUrlOverride;
+    if (fake != null) return fake(path);
+    if (!isSupabaseConfigured) return null;
     return db.storage.from('service-media').getPublicUrl(path);
   }
 
