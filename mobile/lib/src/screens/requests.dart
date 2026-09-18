@@ -137,8 +137,10 @@ class _RequestsScreenState extends State<RequestsScreen> {
         return RefreshIndicator(
           onRefresh: () async => _reload(),
           child: ListView.separated(
+            // **وآخرُ الطلبات فوق الزجاج لا تحته** — الشريطُ السفليُّ يطفو
+            // فوق المحتوى، فبلا هذه المسافة اختفى آخرُ طلبٍ خلفه.
             padding: EdgeInsets.fromLTRB(
-              Space.lg, glassHeaderTop(context), Space.lg, Space.lg),
+              Space.lg, glassHeaderTop(context), Space.lg, glassNavSpace),
             itemCount: rows.length,
             separatorBuilder: (_, _) => const SizedBox(height: Space.md),
             itemBuilder: (context, i) {

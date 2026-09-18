@@ -632,6 +632,24 @@ class ProfileHeader extends StatelessWidget {
   /// ارتفاعُ شريط الغلاف تحت شريط الحالة.
   static const double coverBand = 152;
 
+  /// سطرُ المحافظة (أو البريد) — **يُبنى في موضعٍ واحدٍ ويُركَّب في اثنين:**
+  /// وحدَه لمن لا شارةَ معه، وداخلَ صفٍّ مع الشارة لمن معه شارة. ولو كُتب
+  /// مرّتين لَافترقَ نمطاهما يومَ يُصحَّح أحدُهما.
+  Widget _subtitleText() => Text(
+        subtitle,
+        // **والاتجاهُ يتبع ما يُعرض لا الصفحة:** جوالٌ أو بريدٌ لاتينيٌّ
+        // بلا `ltr` تتقدّم نقطتُه وامتدادُه إلى غير موضعهما فيُقرأ مقلوباً.
+        textDirection: subtitleLtr ? TextDirection.ltr : null,
+        textAlign: subtitleLtr ? TextAlign.left : null,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(
+          fontSize: 13,
+          color: AppColors.muted,
+          fontFamilyFallback: arabicFallback,
+        ),
+      );
+
   @override
   Widget build(BuildContext context) {
     // **ويمتدّ تحت شريط الحالة.** الصورةُ تبدأ من أعلى الشاشة كما كان
@@ -722,23 +740,30 @@ class ProfileHeader extends StatelessWidget {
                       ),
                       if (subtitle.isNotEmpty) ...[
                         const SizedBox(height: 4),
-                        Text(
-                          subtitle,
-                          // **والاتجاهُ يتبع ما يُعرض لا الصفحة:** جوالٌ أو
-                          // بريدٌ لاتينيٌّ بلا `ltr` تتقدّم نقطتُه وامتدادُه
-                          // إلى غير موضعهما فيُقرأ مقلوباً.
-                          textDirection: subtitleLtr ? TextDirection.ltr : null,
-                          textAlign: subtitleLtr ? TextAlign.left : null,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: AppColors.muted,
-                            fontFamilyFallback: arabicFallback,
-                          ),
-                        ),
+                        // **والشارةُ تركب سطرَ المحافظة بدل سطرٍ تستقلّ به**
+                        // — بطلب صاحب المنصّة: «كلمة موثّق أخذت مساحة،
+                        // أريدها جنب المحافظة». والرأسُ يقصُر سطراً فترتفع
+                        // الأبوابُ تحته.
+                        //
+                        // **و`Flexible` على المحافظة لا على الشارة:**
+                        // «قيد المراجعة» ضِعفُ «موثّق» طولاً وهي حالُ كلِّ
+                        // مزوّدٍ جديد — فتُقَصّ المحافظةُ بنقاطٍ إن ضاق
+                        // العرضُ وتبقى الشارةُ كاملة. والحالُ هي المعلومة،
+                        // والمحافظةُ يعرفها صاحبُها.
+                        if (!badgeBesideTitle && badge.isNotEmpty)
+                          Row(
+                            children: [
+                              Flexible(child: _subtitleText()),
+                              const SizedBox(width: Space.sm),
+                              _GoldBadge(badge),
+                            ],
+                          )
+                        else
+                          _subtitleText(),
                       ],
-                      if (!badgeBesideTitle && badge.isNotEmpty) ...[
+                      // **ومن لا محافظةَ له تبقى شارتُه في سطرها** — لا
+                      // تُرفع لأنّ سطرَها الجديدَ غيرُ موجود.
+                      if (subtitle.isEmpty && !badgeBesideTitle && badge.isNotEmpty) ...[
                         const SizedBox(height: Space.sm),
                         _GoldBadge(badge),
                       ],
@@ -1959,7 +1984,10 @@ void showMessage(BuildContext context, String message) {
 /// ثابتٌ مشترك لا رقمٌ مكرّر: الشريط يطفو والمحتوى يمرّ تحته، فآخرُ بطاقةٍ في
 /// أي قائمةٍ تختفي خلفه ما لم تُحسب هذه المسافة. ونسيانُها في شاشةٍ واحدة عيبٌ
 /// لا يظهر إلا حين يصل المستخدم إلى آخر القائمة.
-const double glassNavSpace = 96;
+///
+/// **وزادت بمقدار ارتفاع القرص** (`GlassNavBar.raise`): المختارُ صار يعلو
+/// حافّةَ الشريط، فلو بقيت على قدره لَحجب القرصُ آخرَ سطرٍ في كلّ قائمة.
+const double glassNavSpace = 96 + GlassNavBar.raise;
 
 /// شريط تنقّلٍ سفليٌّ زجاجيّ يطفو فوق المحتوى.
 ///
@@ -1979,45 +2007,95 @@ class GlassNavBar extends StatelessWidget {
   final ValueChanged<int> onSelect;
   final List<GlassNavItem> items;
 
+  /// ارتفاعُ الشريط نفسِه — دون القرص الذي يعلوه.
+  static const double barHeight = 66;
+
+  /// كم يعلو القرصُ المختارُ حافّةَ الشريط.
+  ///
+  /// **وهو ما يُزاد على `glassNavSpace`**: القرصُ يخرج عن الشريط إلى أعلى،
+  /// فلو بقيت المسافةُ على قدر الشريط لَحجب القرصُ آخرَ ما في القائمة.
+  static const double raise = 18;
+
   @override
   Widget build(BuildContext context) {
     return SafeArea(
       top: false,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(Space.md, 0, Space.md, Space.md),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(24),
-          child: BackdropFilter(
-            // التمويه هو ما يجعله زجاجاً لا لوناً شفّافاً: بدونه يُرى ما تحته
-            // كما هو، فيبدو الشريط ورقةً باهتة لا سطحاً.
-            filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-            child: Container(
-              height: 66,
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.72),
-                borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.75), width: 1),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.ink.withValues(alpha: 0.10),
-                    blurRadius: 24,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
-              ),
-              child: Row(
-                children: [
-                  for (var i = 0; i < items.length; i++)
-                    Expanded(
-                      child: _GlassNavCell(
-                        item: items[i],
-                        active: i == index,
-                        onTap: () => onSelect(i),
+        child: SizedBox(
+          height: barHeight + raise,
+          // **والقرصُ يخرج عن الشريط، فلا قصَّ فوقه.** `ClipRRect` باقيةٌ
+          // على الزجاج وحدَه — هي التي تُدوّر حافّته وتحبس تمويهَه — والقرصُ
+          // فوقها في كومةٍ لا تقصّ.
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Align(
+                alignment: Alignment.bottomCenter,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(24),
+                  child: BackdropFilter(
+                    // التمويه هو ما يجعله زجاجاً لا لوناً شفّافاً: بدونه يُرى
+                    // ما تحته كما هو، فيبدو الشريط ورقةً باهتة لا سطحاً.
+                    filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+                    child: Container(
+                      height: barHeight,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.72),
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.75),
+                          width: 1,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.ink.withValues(alpha: 0.10),
+                            blurRadius: 24,
+                            offset: const Offset(0, 8),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          for (var i = 0; i < items.length; i++)
+                            Expanded(
+                              child: i == index
+                                  // المختارُ في قرصه فوق — وخانتُه هنا فارغةٌ
+                                  // تحفظ عرضَها فلا ينزاح جيرانُه.
+                                  ? const SizedBox.shrink()
+                                  : _GlassNavCell(
+                                      item: items[i],
+                                      onTap: () => onSelect(i),
+                                    ),
+                            ),
+                        ],
                       ),
                     ),
-                ],
+                  ),
+                ),
               ),
-            ),
+              // **والقرصُ يُضغط كما تُضغط الخانة** — ولولا ذلك لَصار المختارُ
+              // وحدَه لا يُضغط، وهو أكبرُ هدفٍ في الشريط.
+              Positioned.fill(
+                child: Row(
+                  children: [
+                    for (var i = 0; i < items.length; i++)
+                      Expanded(
+                        child: i == index
+                            ? Align(
+                                alignment: Alignment.topCenter,
+                                child: _GlassNavDisc(
+                                  icon: items[i].activeIcon,
+                                  label: items[i].label,
+                                  onTap: () => onSelect(i),
+                                ),
+                              )
+                            : const SizedBox.shrink(),
+                      ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -2032,46 +2110,80 @@ class GlassNavItem {
   final IconData activeIcon;
 }
 
+/// القرصُ المرتفع — المختارُ وحدَه، نصفُه فوق الشريط.
+///
+/// اختار صاحبُ المنصّة (أ) من ثلاثٍ عُرضت عليه: «الزجاجُ يبقى كما هو،
+/// والمختارُ يرتفع في قرصٍ نبيذيّ».
+///
+/// **والطوقُ بلون الصفحة لا بلون القرص:** القرصُ ينزل نصفُه في الزجاج،
+/// فبلا طوقٍ يفصله التصق به فلم يُرَ مرتفعاً — وهو كلُّ الفكرة.
+///
+/// **ولا كلمةَ تحته.** الكلماتُ باقيةٌ لجيرانه، وهذه هي الصورةُ التي أُقرّت.
+/// ومن هو في تبويبه يعرفه من شاشته، ومن أراد اسمَه فهو في `Semantics` لقارئ
+/// الشاشة.
+class _GlassNavDisc extends StatelessWidget {
+  const _GlassNavDisc({required this.icon, required this.label, required this.onTap});
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  static const double size = 54;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+        label: label,
+        selected: true,
+        button: true,
+        child: GestureDetector(
+          onTap: onTap,
+          child: Container(
+            width: size,
+            height: size,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: AppColors.accent,
+              shape: BoxShape.circle,
+              border: Border.all(color: AppColors.surface2, width: 4),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.ink.withValues(alpha: 0.18),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Icon(icon, size: 24, color: AppColors.accentInk),
+          ),
+        ),
+      );
+}
+
 class _GlassNavCell extends StatelessWidget {
-  const _GlassNavCell({required this.item, required this.active, required this.onTap});
+  const _GlassNavCell({required this.item, required this.onTap});
   final GlassNavItem item;
-  final bool active;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final tone = active ? AppColors.accent : AppColors.ink2;
+    // **وخانةُ غيرِ المختار وحدَها هنا** — المختارُ صار قرصاً فوق الشريط،
+    // فلا حالَ ثانيةً في هذه الخليّة ولا حبّةَ تحت أيقونتها.
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(18),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // حبّةٌ مصبوغة تحت الأيقونة المختارة: علامةٌ ثانية غير اللون، فمن لا
-          // يفرّق الألوان يعرف أين هو. والأيقونة مصمتةٌ للمختار ومفرَّغة لغيره
-          // — علامةٌ ثالثة.
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 180),
-            curve: Curves.easeOut,
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-            decoration: BoxDecoration(
-              color: active
-                  ? AppColors.accent.withValues(alpha: 0.14)
-                  : Colors.transparent,
-              borderRadius: BorderRadius.circular(999),
-            ),
-            child: Icon(active ? item.activeIcon : item.icon, size: 21, color: tone),
-          ),
+          Icon(item.icon, size: 21, color: AppColors.ink2),
           const SizedBox(height: 3),
           Text(
             item.label,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: TextStyle(
+            style: const TextStyle(
               fontSize: 10.5,
               height: 1.2,
-              fontWeight: active ? FontWeight.w600 : FontWeight.w500,
-              color: tone,
+              fontWeight: FontWeight.w500,
+              color: AppColors.ink2,
               fontFamilyFallback: arabicFallback,
             ),
           ),
