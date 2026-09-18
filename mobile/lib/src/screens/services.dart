@@ -148,8 +148,11 @@ class _ServicesScreenState extends State<ServicesScreen> {
             );
           }
           return ListView.separated(
+            // **والمسافةُ ثابتُ الشريط لا رقمٌ مكتوبٌ بيده**: زاد الشريطُ
+            // بالقرص المرتفع، ورقمٌ منسوخٌ هنا يبقى على قدره القديم فيحجب
+            // آخرَ خدمة.
             padding: EdgeInsets.fromLTRB(
-              Space.lg, glassHeaderTop(context), Space.lg, 96),
+              Space.lg, glassHeaderTop(context), Space.lg, glassNavSpace),
             itemCount: rows.length,
             separatorBuilder: (_, _) => const SizedBox(height: Space.md),
             itemBuilder: (context, i) {

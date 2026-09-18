@@ -130,7 +130,9 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
     return RefreshIndicator(
       onRefresh: () async => _load(),
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 96, 16, 24),
+        // **وآخرُ الشهر فوق الزجاج** — الشريطُ يطفو، فبلا هذه المسافة اختفى
+        // آخرُ ما في القائمة خلفه.
+        padding: const EdgeInsets.fromLTRB(16, 96, 16, glassNavSpace),
         children: [
           _MonthBar(month: _month, onShift: _shift),
           const SizedBox(height: 12),

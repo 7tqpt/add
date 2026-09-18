@@ -132,6 +132,10 @@ class _ProviderShellState extends State<ProviderShell> {
     ];
 
     return Scaffold(
+      // **والمحتوى يمرّ تحت الشريط لا فوقه** — وهذا ما يعطي التمويهَ ما
+      // يموّهه. ولذلك تُنهي كلُّ شاشةٍ من الأربع محتواها بمسافة
+      // `glassNavSpace`، وإلّا اختفى آخرُ سطرٍ فيها خلف الزجاج.
+      extendBody: true,
       // الشريط العلوي في `Stack` لا في خانة `appBar`: خانة Scaffold تحجز
       // ارتفاعها وتدفع المحتوى تحتها، فلا يمرّ شيءٌ خلف الزجاج ولا يجد
       // التمويهُ ما يموّهه. وهنا يطفو فوقه كما يطفو الشريط السفلي.
@@ -152,14 +156,33 @@ class _ProviderShellState extends State<ProviderShell> {
           child: pages[_index],
         ),
       ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _index,
-        onDestinationSelected: (i) => setState(() => _index = i),
-        destinations: [
-          NavigationDestination(icon: Icon(Icons.inbox_outlined), label: tr('الطلبات')),
-          NavigationDestination(icon: Icon(Icons.event_note_outlined), label: tr('تقويمي')),
-          NavigationDestination(icon: Icon(Icons.sell_outlined), label: tr('خدماتي')),
-          NavigationDestination(icon: Icon(Icons.storefront_outlined), label: tr('ملفي')),
+      // **وشريطُ المزوّد زجاجيٌّ كشريط العميل** — بطلب صاحب المنصّة. وكان
+      // `NavigationBar` مادّيّاً يقف تحت المحتوى ويحجز ارتفاعَه، فكانت
+      // الشاشتان تفترقان في أظهر ما فيهما.
+      bottomNavigationBar: GlassNavBar(
+        index: _index,
+        onSelect: (i) => setState(() => _index = i),
+        items: [
+          GlassNavItem(
+            label: tr('الطلبات'),
+            icon: Icons.inbox_outlined,
+            activeIcon: Icons.inbox,
+          ),
+          GlassNavItem(
+            label: tr('تقويمي'),
+            icon: Icons.event_note_outlined,
+            activeIcon: Icons.event_note,
+          ),
+          GlassNavItem(
+            label: tr('خدماتي'),
+            icon: Icons.sell_outlined,
+            activeIcon: Icons.sell,
+          ),
+          GlassNavItem(
+            label: tr('ملفي'),
+            icon: Icons.storefront_outlined,
+            activeIcon: Icons.storefront,
+          ),
         ],
       ),
     );
