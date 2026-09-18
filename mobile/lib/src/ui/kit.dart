@@ -632,6 +632,24 @@ class ProfileHeader extends StatelessWidget {
   /// ارتفاعُ شريط الغلاف تحت شريط الحالة.
   static const double coverBand = 152;
 
+  /// سطرُ المحافظة (أو البريد) — **يُبنى في موضعٍ واحدٍ ويُركَّب في اثنين:**
+  /// وحدَه لمن لا شارةَ معه، وداخلَ صفٍّ مع الشارة لمن معه شارة. ولو كُتب
+  /// مرّتين لَافترقَ نمطاهما يومَ يُصحَّح أحدُهما.
+  Widget _subtitleText() => Text(
+        subtitle,
+        // **والاتجاهُ يتبع ما يُعرض لا الصفحة:** جوالٌ أو بريدٌ لاتينيٌّ
+        // بلا `ltr` تتقدّم نقطتُه وامتدادُه إلى غير موضعهما فيُقرأ مقلوباً.
+        textDirection: subtitleLtr ? TextDirection.ltr : null,
+        textAlign: subtitleLtr ? TextAlign.left : null,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(
+          fontSize: 13,
+          color: AppColors.muted,
+          fontFamilyFallback: arabicFallback,
+        ),
+      );
+
   @override
   Widget build(BuildContext context) {
     // **ويمتدّ تحت شريط الحالة.** الصورةُ تبدأ من أعلى الشاشة كما كان
@@ -722,23 +740,30 @@ class ProfileHeader extends StatelessWidget {
                       ),
                       if (subtitle.isNotEmpty) ...[
                         const SizedBox(height: 4),
-                        Text(
-                          subtitle,
-                          // **والاتجاهُ يتبع ما يُعرض لا الصفحة:** جوالٌ أو
-                          // بريدٌ لاتينيٌّ بلا `ltr` تتقدّم نقطتُه وامتدادُه
-                          // إلى غير موضعهما فيُقرأ مقلوباً.
-                          textDirection: subtitleLtr ? TextDirection.ltr : null,
-                          textAlign: subtitleLtr ? TextAlign.left : null,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: AppColors.muted,
-                            fontFamilyFallback: arabicFallback,
-                          ),
-                        ),
+                        // **والشارةُ تركب سطرَ المحافظة بدل سطرٍ تستقلّ به**
+                        // — بطلب صاحب المنصّة: «كلمة موثّق أخذت مساحة،
+                        // أريدها جنب المحافظة». والرأسُ يقصُر سطراً فترتفع
+                        // الأبوابُ تحته.
+                        //
+                        // **و`Flexible` على المحافظة لا على الشارة:**
+                        // «قيد المراجعة» ضِعفُ «موثّق» طولاً وهي حالُ كلِّ
+                        // مزوّدٍ جديد — فتُقَصّ المحافظةُ بنقاطٍ إن ضاق
+                        // العرضُ وتبقى الشارةُ كاملة. والحالُ هي المعلومة،
+                        // والمحافظةُ يعرفها صاحبُها.
+                        if (!badgeBesideTitle && badge.isNotEmpty)
+                          Row(
+                            children: [
+                              Flexible(child: _subtitleText()),
+                              const SizedBox(width: Space.sm),
+                              _GoldBadge(badge),
+                            ],
+                          )
+                        else
+                          _subtitleText(),
                       ],
-                      if (!badgeBesideTitle && badge.isNotEmpty) ...[
+                      // **ومن لا محافظةَ له تبقى شارتُه في سطرها** — لا
+                      // تُرفع لأنّ سطرَها الجديدَ غيرُ موجود.
+                      if (subtitle.isEmpty && !badgeBesideTitle && badge.isNotEmpty) ...[
                         const SizedBox(height: Space.sm),
                         _GoldBadge(badge),
                       ],
