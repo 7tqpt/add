@@ -16,7 +16,16 @@ import 'chat.dart';
 /// الآخر» — وتحسبه القاعدة في `v_my_conversations`. وشاشتان متطابقتان تفترقان
 /// بمرور الوقت، فيُصلَح عيبٌ في إحداهما ويبقى في الأخرى.
 class ConversationsScreen extends StatefulWidget {
-  const ConversationsScreen({super.key});
+  const ConversationsScreen({super.key, this.embedded = false});
+
+  /// أهي تبويبٌ داخل قشرةٍ، أم شاشةٌ تُفتح طريقاً؟
+  ///
+  /// **وتبويباً يسقط شريطُها العلويّ**: القشرةُ ترسم رأسَها الزجاجيَّ فوقها،
+  /// فلو بقي شريطُها لَاجتمع رأسان أحدُهما تحت الآخر.
+  ///
+  /// **وتأخذ مسافةَ الرأس والشريط السفليّ**: المحتوى يمرّ تحتهما معاً، فبلا
+  /// المسافتين اختفى أوّلُ صفٍّ تحت الرأس وآخرُه خلفَ الزجاج.
+  final bool embedded;
 
   @override
   State<ConversationsScreen> createState() => _ConversationsScreenState();
@@ -56,7 +65,8 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(tr('المحادثات'))),
+      backgroundColor: widget.embedded ? Colors.transparent : null,
+      appBar: widget.embedded ? null : AppBar(title: Text(tr('المحادثات'))),
       body: FutureBuilder<List<Conversation>>(
         future: _future,
         builder: (context, snap) {
@@ -75,7 +85,10 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
             onRefresh: () async => _reload(),
             color: AppColors.accent,
             child: ListView.separated(
-              padding: const EdgeInsets.symmetric(vertical: Space.sm),
+              padding: widget.embedded
+                  // تبويباً: تحت الرأس الزجاجيّ وفوق الشريط السفليّ.
+                  ? EdgeInsets.fromLTRB(0, glassHeaderTop(context), 0, glassNavSpace)
+                  : const EdgeInsets.symmetric(vertical: Space.sm),
               itemCount: rows.length,
               separatorBuilder: (_, _) =>
                   const Divider(height: 1, color: AppColors.hairline, indent: 72),

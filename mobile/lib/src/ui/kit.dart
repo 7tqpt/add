@@ -2118,10 +2118,21 @@ class GlassNavBar extends StatelessWidget {
 }
 
 class GlassNavItem {
-  const GlassNavItem({required this.label, required this.icon, required this.activeIcon});
+  const GlassNavItem({
+    required this.label,
+    required this.icon,
+    required this.activeIcon,
+    this.unread = 0,
+  });
   final String label;
   final IconData icon;
   final IconData activeIcon;
+
+  /// عددُ ما لم يُقرأ على هذا البند — صفرٌ يُسقط الحبّة.
+  ///
+  /// **ودخلت حين خرجت أيقونةُ الرسائل من الشريط العلويّ**: كانت تحمل
+  /// عدّادَها هناك، فلمّا رُفعت لم يبقَ في الشاشة موضعٌ يقول «عندك رسالة».
+  final int unread;
 }
 
 /// القرصُ المرتفع — المختارُ وحدَه، نصفُه فوق الشريط.
@@ -2187,7 +2198,21 @@ class _GlassNavCell extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(item.icon, size: GlassNavBar.iconSize, color: AppColors.ink2),
+          // **والحبّةُ فوق الأيقونة لا تزيحُها.** `Stack` لا `Row`: صفٌّ
+          // يدفع الأيقونةَ عن مركز خانتها فتقف بنداً واحداً منحرفاً عن
+          // إخوته — ويُرى ذلك قبل أن يُسمّى.
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Icon(item.icon, size: GlassNavBar.iconSize, color: AppColors.ink2),
+              if (item.unread > 0)
+                Positioned(
+                  top: -7,
+                  left: -12,
+                  child: UnreadDot(count: item.unread),
+                ),
+            ],
+          ),
           const SizedBox(height: 3),
           Text(
             item.label,
