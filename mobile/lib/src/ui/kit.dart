@@ -1987,7 +1987,7 @@ void showMessage(BuildContext context, String message) {
 ///
 /// **وزادت بمقدار ارتفاع القرص** (`GlassNavBar.raise`): المختارُ صار يعلو
 /// حافّةَ الشريط، فلو بقيت على قدره لَحجب القرصُ آخرَ سطرٍ في كلّ قائمة.
-const double glassNavSpace = 96 + GlassNavBar.raise;
+const double glassNavSpace = GlassNavBar.barHeight + GlassNavBar.raise + 36;
 
 /// شريط تنقّلٍ سفليٌّ زجاجيّ يطفو فوق المحتوى.
 ///
@@ -1995,6 +1995,9 @@ const double glassNavSpace = 96 + GlassNavBar.raise;
 /// أبيضَ يعطي ‎١٫٠٤:١‎ — أي لا شيء. فالمختار بلون العلامة وغيرُه رماديّ، وكلاهما
 /// مقيسٌ على الزجاج نفسه لا مقدَّر. والزجاج الأبيض بأيقوناتٍ بيضاء إنما يصلح
 /// فوق خلفيةٍ داكنة.
+/// استدارةُ الشريط السفليّ — العلويّتان وحدَهما.
+const BorderRadius _navRadius = BorderRadius.vertical(top: Radius.circular(24));
+
 class GlassNavBar extends StatelessWidget {
   const GlassNavBar({
     super.key,
@@ -2016,14 +2019,23 @@ class GlassNavBar extends StatelessWidget {
   /// فلو بقيت المسافةُ على قدر الشريط لَحجب القرصُ آخرَ ما في القائمة.
   static const double raise = 18;
 
+  /// مقاسُ أيقونة الجار — **اختاره صاحبُ المنصّة من أربعةٍ عُرضت عليه**
+  /// («بس صغّر حجم أيقونات»). وهو وقطرُ القرص وأيقونتُه ثلاثةٌ تتحرّك معاً،
+  /// فلو صُغّر أحدُها وحدَه لَاختلّت نسبتُه إلى أخويه.
+  static const double iconSize = 17;
+
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      top: false,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(Space.md, 0, Space.md, Space.md),
-        child: SizedBox(
-          height: barHeight + raise,
+    // **وشريطُ النظام تحته ليس فراغاً.** في جوالات الإيماءة خطٌّ للنظام
+    // أسفلَ الشاشة؛ والملتصقُ يمتدّ تحته **ويُزاح محتواه فوقه** — ولولا ذلك
+    // لَوقعت الأيقوناتُ على خطّه. ولذلك لا `SafeArea` هنا: هي تدفع الشريطَ
+    // كلَّه فوق الخطّ فيعود هامشاً من حيث أُريد الالتصاق.
+    final systemBar = MediaQuery.paddingOf(context).bottom;
+
+    return SizedBox(
+      // **ملتصقٌ بحافّتَي الشاشة وأسفلِها** — بطلب صاحب المنصّة: «خليه جزء
+      // من التطبيق». وكان بطاقةً لها هامشٌ من ثلاث جهات.
+      height: barHeight + raise + systemBar,
           // **والقرصُ يخرج عن الشريط، فلا قصَّ فوقه.** `ClipRRect` باقيةٌ
           // على الزجاج وحدَه — هي التي تُدوّر حافّته وتحبس تمويهَه — والقرصُ
           // فوقها في كومةٍ لا تقصّ.
@@ -2033,25 +2045,29 @@ class GlassNavBar extends StatelessWidget {
               Align(
                 alignment: Alignment.bottomCenter,
                 child: ClipRRect(
-                  borderRadius: BorderRadius.circular(24),
+                  // **والعلويّتان وحدَهما مستديرتان** — اختار صاحبُ المنصّة
+                  // ذلك من شكلين. والسفليّتان لا معنى لاستدارتهما: تقعان على
+                  // حافّة الشاشة.
+                  borderRadius: _navRadius,
                   child: BackdropFilter(
                     // التمويه هو ما يجعله زجاجاً لا لوناً شفّافاً: بدونه يُرى
                     // ما تحته كما هو، فيبدو الشريط ورقةً باهتة لا سطحاً.
                     filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
                     child: Container(
-                      height: barHeight,
+                      height: barHeight + systemBar,
+                      // الأيقوناتُ فوق خطّ النظام، والزجاجُ يمتدّ تحته.
+                      padding: EdgeInsets.only(bottom: systemBar),
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.72),
-                        borderRadius: BorderRadius.circular(24),
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.75),
-                          width: 1,
-                        ),
+                        borderRadius: _navRadius,
                         boxShadow: [
                           BoxShadow(
                             color: AppColors.ink.withValues(alpha: 0.10),
                             blurRadius: 24,
-                            offset: const Offset(0, 8),
+                            // **والظلُّ إلى أعلى لا إلى أسفل**: أسفلُه على
+                            // حافّة الشاشة فلا يُرى منه شيء، وما يُفصَل عنه
+                            // هو المحتوى فوقه.
+                            offset: const Offset(0, -4),
                           ),
                         ],
                       ),
@@ -2097,8 +2113,6 @@ class GlassNavBar extends StatelessWidget {
               ),
             ],
           ),
-        ),
-      ),
     );
   }
 }
@@ -2127,7 +2141,7 @@ class _GlassNavDisc extends StatelessWidget {
   final String label;
   final VoidCallback onTap;
 
-  static const double size = 54;
+  static const double size = 44;
 
   @override
   Widget build(BuildContext context) => Semantics(
@@ -2152,7 +2166,7 @@ class _GlassNavDisc extends StatelessWidget {
                 ),
               ],
             ),
-            child: Icon(icon, size: 24, color: AppColors.accentInk),
+            child: Icon(icon, size: 19, color: AppColors.accentInk),
           ),
         ),
       );
@@ -2173,7 +2187,7 @@ class _GlassNavCell extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(item.icon, size: 21, color: AppColors.ink2),
+          Icon(item.icon, size: GlassNavBar.iconSize, color: AppColors.ink2),
           const SizedBox(height: 3),
           Text(
             item.label,

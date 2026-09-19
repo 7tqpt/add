@@ -111,6 +111,32 @@ void main() {
     });
   });
 
+  group('ملتصقٌ بالحافّة', () {
+    testWidgets('**يمتدّ إلى حافّتَي الشاشة بلا هامش**', (tester) async {
+      // «خليه جزء من التطبيق» — وكان بطاقةً لها هامشٌ من ثلاث جهات.
+      _phone(tester);
+      await tester.pumpWidget(_wrap(index: 0));
+      await tester.pumpAndSettle();
+
+      final bar = tester.getRect(find.byType(GlassNavBar));
+      final screen = tester.getRect(find.byType(MaterialApp));
+      expect(bar.left, screen.left, reason: 'بقي هامشٌ يساراً');
+      expect(bar.right, screen.right, reason: 'بقي هامشٌ يميناً');
+      expect(bar.bottom, screen.bottom, reason: 'بقي هامشٌ أسفلَه');
+    });
+
+    testWidgets('**وأيقوناتُه بالمقاس الذي اختير**', (tester) async {
+      // ثلاثةٌ تتحرّك معاً — ولو صُغّر أحدُها وحدَه لَاختلّت نسبتُه.
+      _phone(tester);
+      await tester.pumpWidget(_wrap(index: 0));
+      await tester.pumpAndSettle();
+
+      final neighbour = tester.widget<Icon>(find.byIcon(Icons.person_outline));
+      expect(neighbour.size, GlassNavBar.iconSize);
+      expect(GlassNavBar.iconSize, lessThan(21), reason: 'لم تصغر عمّا كانت');
+    });
+  });
+
   group('المسافةُ تحت المحتوى', () {
     test('**تكفي الشريطَ وقرصَه معاً**', () {
       // ولو بقيت على قدر الشريط وحدَه لَحجب القرصُ آخرَ سطرٍ في كلّ قائمة.

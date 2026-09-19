@@ -96,7 +96,7 @@ run "(ج) كلماتُ الجيران تذهب" \
 # ثمّ يبلغ صاحبُها آخرَ سطرٍ فيجده تحت القرص.
 run "(د) المسافةُ لا تزيد" \
   sub "$K" \
-"const double glassNavSpace = 96 + GlassNavBar.raise;" \
+"const double glassNavSpace = GlassNavBar.barHeight + GlassNavBar.raise + 36;" \
 "const double glassNavSpace = 60;"
 
 echo; echo "== ضوابطُ شريط المزوّد =="
@@ -130,6 +130,24 @@ run "(و) المحتوى لا يمرّ تحته" \
   sub "$P" \
 "      extendBody: true," \
 "      extendBody: false,"
+
+echo; echo "== ضوابطُ الالتصاق والمقاس =="
+
+# ── ز) يعود الهامشُ فيطفو الشريطُ بطاقةً ───────────────────────────────────
+#
+# وهو الحالُ الذي طُلب تغييرُه: «خليه جزء من التطبيق».
+run "(ز) عودةُ الهامش" \
+  sub "$K" \
+"    return SizedBox(" \
+"    return Padding(
+      padding: const EdgeInsets.fromLTRB(Space.md, 0, Space.md, Space.md),
+      child: SizedBox("
+
+# ── ح) وتكبر الأيقوناتُ إلى ما كانت ────────────────────────────────────────
+run "(ح) الأيقوناتُ تكبر" \
+  sub "$K" \
+"  static const double iconSize = 17;" \
+"  static const double iconSize = 21;"
 
 echo
 echo "الساقط: $PASS — الباقي: $FAIL"
