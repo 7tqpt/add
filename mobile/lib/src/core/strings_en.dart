@@ -322,6 +322,8 @@ const Map<String, String> englishStrings = {
   'المبلغ النهائي يحسبه النظام عند تأكيد الحجز.': 'The final amount is worked out by the system when the booking is confirmed.',
   'المتبقّي عليك': 'Left to pay',
   'المحادثات': 'Chats',
+  // بندُ الشريط السفليّ — أقصرُ من «المحادثات» لأنّ الخانة ضيّقة.
+  'الرسائل': 'Messages',
   'المحافظة': 'Governorate',
   'المحويت': 'Al-Mahwit',
   'المدفوع': 'Paid',

@@ -66,7 +66,7 @@ void main() {
     expect(find.byType(NavigationBar), findsNothing);
   });
 
-  testWidgets('**وبنودُه الأربعةُ بترتيبها**', (tester) async {
+  testWidgets('**وبنودُه الخمسةُ بترتيبها**', (tester) async {
     _phone(tester);
     await tester.pumpWidget(_wrap(_provider()));
     await _settle(tester);
@@ -76,7 +76,8 @@ void main() {
         .map((t) => t.data)
         .whereType<String>()
         .toList();
-    const wanted = ['الطلبات', 'تقويمي', 'خدماتي', 'ملفي'];
+    // **بترتيب صاحب المنصّة**: «خدماتي» فوق «تقويمي»، و«الرسائل» رابعةً.
+    const wanted = ['الطلبات', 'خدماتي', 'تقويمي', 'الرسائل', 'ملفي'];
     expect(labels.where(wanted.contains).toList(), containsAllInOrder(wanted),
         reason: 'ترتيبُ بنود الشريط تبدّل');
   });

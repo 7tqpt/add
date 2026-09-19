@@ -116,18 +116,36 @@ class _ProviderShellState extends State<ProviderShell> {
 
   void _followUp(BuildContext context, AppNotification n) => _openFrom(n.data, popFrom: context);
 
-  Future<void> _openChats() async {
-    await Navigator.of(context).push(MaterialPageRoute(builder: (_) => ConversationsScreen()));
-    if (mounted) _countUnread();
+  /// موضعُ «الرسائل» في الشريط — يُسمّى ولا يُكتب رقمُه في موضعين.
+  static const _chatTab = 3;
+
+  /// **ويُعاد عدُّ ما لم يُقرأ عند دخول تبويب الرسائل وعند الخروج منه.**
+  /// الحبّةُ على البند، ومن قرأ رسائلَه ثمّ انتقل يجب ألّا يجدها كما كانت.
+  /// ولا يُعدّ عند كلّ نقلة: نداءُ شبكةٍ لا يفيد من ينتقل بين الطلبات
+  /// والتقويم.
+  void _select(int i) {
+    final was = _index;
+    setState(() => _index = i);
+    if (was == _chatTab || i == _chatTab) _countUnread();
   }
 
   @override
   Widget build(BuildContext context) {
-    final titles = [tr('الطلبات'), tr('تقويمي'), tr('خدماتي'), tr('ملفي')];
+    // **خمسةُ بنودٍ بترتيب صاحب المنصّة**، ودخلت «الرسائل» رابعةً — وكانت
+    // شاشةً تُفتح من أيقونةٍ في الرأس.
+    final titles = [
+      tr('الطلبات'),
+      tr('خدماتي'),
+      tr('تقويمي'),
+      tr('الرسائل'),
+      tr('ملفي'),
+    ];
     final pages = [
       RequestsScreen(session: widget.session),
-      AvailabilityScreen(session: widget.session),
       ServicesScreen(session: widget.session),
+      AvailabilityScreen(session: widget.session),
+      // **تبويباً لا طريقاً**: يسقط شريطُها العلويُّ لئلّا يجتمع رأسان.
+      const ConversationsScreen(embedded: true),
       ProviderProfileScreen(session: widget.session),
     ];
 
@@ -150,9 +168,10 @@ class _ProviderShellState extends State<ProviderShell> {
         child: GlassHeaderHost(
           title: titles[_index],
           tab: _index,
-          // الجرسُ في أوّل الشريط — أقصى اليمين — والرسائلُ في آخره.
-          start: BellIconButton(unread: _alerts, onTap: _openAlerts),
-          end: ChatIconButton(unread: _unread, onTap: _openChats),
+          // **والجرسُ وحدَه في الرأس، ويقف مكانَ الرسائل** — بطلب صاحب
+          // المنصّة. وأيقونةُ الرسائل رُفعت: صارت بنداً في الشريط السفليّ،
+          // وبابان لغرفةٍ واحدةٍ يُحتار فيهما.
+          end: BellIconButton(unread: _alerts, onTap: _openAlerts),
           child: pages[_index],
         ),
       ),
@@ -161,7 +180,7 @@ class _ProviderShellState extends State<ProviderShell> {
       // الشاشتان تفترقان في أظهر ما فيهما.
       bottomNavigationBar: GlassNavBar(
         index: _index,
-        onSelect: (i) => setState(() => _index = i),
+        onSelect: _select,
         items: [
           GlassNavItem(
             label: tr('الطلبات'),
@@ -169,14 +188,26 @@ class _ProviderShellState extends State<ProviderShell> {
             activeIcon: Icons.inbox,
           ),
           GlassNavItem(
+            label: tr('خدماتي'),
+            icon: Icons.sell_outlined,
+            activeIcon: Icons.sell,
+          ),
+          GlassNavItem(
             label: tr('تقويمي'),
             icon: Icons.event_note_outlined,
             activeIcon: Icons.event_note,
           ),
+          // **فقّاعةٌ فيها برق** — اختارها صاحبُ المنصّة من ستٍّ عُرضت عليه،
+          // وهي أقربُ ما في أيقونات التطبيق إلى شكل مسنجر. وأيقونةُ فيسبوك
+          // نفسُها لا تُوضع: علامةٌ تجاريّةٌ لغيرنا تُوهم صلةً لا وجودَ لها.
+          //
+          // **وعليها عدّادُ ما لم يُقرأ**: كان في أيقونة الرأس، فلمّا رُفعت
+          // لم يبقَ في الشاشة موضعٌ يقول «عندك رسالة».
           GlassNavItem(
-            label: tr('خدماتي'),
-            icon: Icons.sell_outlined,
-            activeIcon: Icons.sell,
+            label: tr('الرسائل'),
+            icon: Icons.quickreply_outlined,
+            activeIcon: Icons.quickreply_rounded,
+            unread: _unread,
           ),
           GlassNavItem(
             label: tr('ملفي'),

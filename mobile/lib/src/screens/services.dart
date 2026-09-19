@@ -128,10 +128,26 @@ class _ServicesScreenState extends State<ServicesScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _edit(),
-        icon: const Icon(Icons.add),
-        label: Text(tr('خدمة جديدة')),
+      // **والزرُّ يُرفع فوق الشريط الزجاجيّ.** هذه الشاشةُ سقّالةٌ داخل
+      // سقّالة القشرة، وزرُّها يقف على قاعها — ولمّا صار شريطُ المزوّد
+      // زجاجيّاً دخلت معه `extendBody` فامتدّ الجسمُ تحته، فصار قاعُ هذه
+      // السقّالة قاعَ الجوال ونزل الزرُّ خلفَ الزجاج فلم يُضغط. شُكي منه.
+      //
+      // **ويُرفع بما تقوله السقّالةُ لا بثوابتَ تُجمع باليد.** السقّالةُ ذاتُ
+      // `extendBody` تضع ارتفاعَ شريطها كلَّه — الشريطَ وقرصَه وخطَّ النظام
+      // تحته — في `padding.bottom` لجسمها. فهذا الرقمُ هو الحاجةُ بعينها،
+      // ويتبع الشريطَ إن تغيّر ولا يبقى على قدره القديم.
+      //
+      // **وقد جُمعت الثوابتُ هنا أوّلَ مرّةٍ فوقها** فطار الزرُّ ارتفاعَ
+      // الشريط مرّتين — ولم يكشفه اختبارٌ يسأل «أهو فوق الشريط؟» لأنّه فوقه
+      // في الحالين. كشفه ضابطٌ سالبٌ لم يسقط.
+      floatingActionButton: Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.paddingOf(context).bottom),
+        child: FloatingActionButton.extended(
+          onPressed: () => _edit(),
+          icon: const Icon(Icons.add),
+          label: Text(tr('خدمة جديدة')),
+        ),
       ),
       body: FutureBuilder<List<MyService>>(
         future: _future,
