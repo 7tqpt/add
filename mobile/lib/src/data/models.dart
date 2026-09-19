@@ -545,6 +545,7 @@ class Review {
     required this.rating,
     required this.comment,
     required this.createdAt,
+    this.avatarPath = '',
   });
 
   final String id;
@@ -553,12 +554,22 @@ class Review {
   final String comment;
   final String createdAt;
 
+  /// صورةُ صاحب الرأي في `app_users.avatar_path`.
+  ///
+  /// **ولا تصل من الجدول**: سياسةُ `app_users` «لا يرى حسابات غيره إطلاقاً»،
+  /// وصفحةُ المزوّد يفتحها غيرُ صاحب الرأي أبداً. فمصدرُها `api_provider_reviews`
+  /// وحدَها — والتفصيلُ في `supabase/review_avatars.sql`.
+  ///
+  /// وتبقى فارغةً لمن لم يرفع صورةً، ولمن حُذف حسابُه ورأيُه باقٍ.
+  final String avatarPath;
+
   factory Review.fromMap(Map<String, dynamic> m) => Review(
     id: m['id'] as String,
     userName: (m['user_name'] ?? '') as String,
     rating: ((m['rating'] ?? 0) as num).toInt(),
     comment: (m['comment'] ?? '') as String,
     createdAt: (m['created_at'] ?? '') as String,
+    avatarPath: (m['avatar_path'] ?? '') as String,
   );
 }
 

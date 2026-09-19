@@ -17,6 +17,13 @@ import 'demo.dart';
 /// والرمز جزءٌ من المعيار.
 const undefinedColumn = '42703';
 
+/// رمزُ PostgREST لدالّةٍ لا يعرفها مخزَّنُ المخطّط — أي لم تُشغَّل بعد.
+///
+/// وهو أخو `undefinedColumn` في علّته: التطبيقُ يُحدَّث من متجرٍ أو رابط،
+/// والقاعدةُ بيد صاحبها في محرّر SQL. فبينهما نافذةٌ يجب أن تنقص فيها ميزةٌ
+/// لا أن تسقط شاشة.
+const undefinedFunction = 'PGRST202';
+
 /// ينفّذ القراءةَ الكاملة، فإن أنكرت القاعدةُ عموداً أعاد الأضيق منها.
 ///
 /// **ولماذا هذا موجود:** التطبيق يُحدَّث من متجرٍ أو رابط، والقاعدة تُحدَّث
@@ -250,17 +257,39 @@ class Api {
     return rows.map(ServiceItem.fromMap).toList();
   }
 
-  /// آراءُ العملاء — الأحدثُ أوّلاً.
+  /// آراءُ العملاء — الأحدثُ أوّلاً، ومع كلّ رأيٍ صورةُ صاحبه.
+  ///
+  /// **ودالّةٌ لا جدول — وذلك لأجل الصورة وحدَها.** كان الجدولُ `reviews`
+  /// يُقرأ مباشرةً، وليس فيه صورة؛ وصورةُ العميل في `app_users.avatar_path`،
+  /// وسياستُها «لا يرى حسابات غيره إطلاقاً» — وصفحةُ المزوّد يفتحها غيرُ
+  /// صاحب الرأي أبداً. والدالّةُ `security definer` تُخرج الصورةَ ولا تُخرج
+  /// بريداً ولا جوّالاً، وحدّاها: مزوّدٌ بعينه، والمنشورُ وحدَه — والتفصيلُ
+  /// في `supabase/review_avatars.sql`.
+  ///
+  /// **وتعود إلى الجدول إن لم تُشغَّل الدالّةُ بعد**: القاعدةُ تُحدَّث بيد
+  /// صاحبها، فبينها وبين التطبيق نافذةٌ يجب أن تنقص فيها الصورةُ لا أن يسقط
+  /// تبويبُ التقييمات كلُّه.
   static Future<List<Review>> providerReviews(String providerId) async {
     if (!isSupabaseConfigured) return demoDelay(demoReviewsOf(providerId));
-    final rows = await db
-        .from('reviews')
-        .select('id, user_name, rating, comment, created_at')
-        .eq('provider_id', providerId)
-        .eq('status', 'published')
-        .order('created_at', ascending: false)
-        .limit(20);
-    return rows.map(Review.fromMap).toList();
+    try {
+      final rows = await db.rpc(
+        'api_provider_reviews',
+        params: {'p_provider_id': providerId},
+      );
+      return ((rows as List?) ?? const [])
+          .map((r) => Review.fromMap(Map<String, dynamic>.from(r as Map)))
+          .toList();
+    } on PostgrestException catch (e) {
+      if (e.code != undefinedFunction) rethrow;
+      final rows = await db
+          .from('reviews')
+          .select('id, user_name, rating, comment, created_at')
+          .eq('provider_id', providerId)
+          .eq('status', 'published')
+          .order('created_at', ascending: false)
+          .limit(20);
+      return rows.map(Review.fromMap).toList();
+    }
   }
 
   // ----- الحساب -----
