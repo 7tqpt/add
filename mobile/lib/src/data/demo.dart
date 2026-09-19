@@ -291,6 +291,9 @@ const demoProviders = [
 ///
 /// وفيها رأيٌ بثلاث نجوم: صفحةُ كلُّها خمسٌ لا تُصدَّق، ومن رأى نقداً معقولاً
 /// وثِق بالبقيّة.
+///
+/// **وبعضُهم بلا صورةٍ عن قصد**: من لم يرفع صورةً في ملفّه يبقى حرفُه، وذلك
+/// نصفُ الحالات لا حالةٌ نادرة — فيجب أن يُرى في وضع العرض لا أن يُوعد به.
 final Map<String, List<Review>> _demoReviews = {
   'p1': [
     Review(
@@ -299,6 +302,7 @@ final Map<String, List<Review>> _demoReviews = {
       rating: 5,
       comment: 'قاعة نظيفة والاستقبال ممتاز، والتزموا بالوقت تماماً.',
       createdAt: _at(24 * 9),
+      avatarPath: 'demo-u1/avatar.jpg',
     ),
     Review(
       id: 'r2',
@@ -306,6 +310,7 @@ final Map<String, List<Review>> _demoReviews = {
       rating: 5,
       comment: 'التنسيق فاق ما اتّفقنا عليه، والإضاءة كانت جميلة في الصور.',
       createdAt: _at(24 * 26),
+      avatarPath: 'demo-u2/avatar.jpg',
     ),
     Review(
       id: 'r3',
@@ -322,6 +327,7 @@ final Map<String, List<Review>> _demoReviews = {
       rating: 5,
       comment: 'المندي كان ممتازاً والكمّية كافية لأكثر من العدد المتّفق عليه.',
       createdAt: _at(24 * 14),
+      avatarPath: 'demo-u4/avatar.jpg',
     ),
     Review(
       id: 'r5',

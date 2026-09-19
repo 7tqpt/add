@@ -581,7 +581,13 @@ class _Reviews extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      ProviderAvatar(name: r.userName, size: 30),
+                      // **وصورةُ صاحب الرأي من ملفّه الشخصيّ** — تأتي من
+                      // `api_provider_reviews`، وتبقى حرفاً لمن لم يرفع صورة.
+                      ProviderAvatar(
+                        name: r.userName,
+                        imageUrl: Api.avatarUrl(r.avatarPath),
+                        size: 30,
+                      ),
                       const SizedBox(width: Space.sm),
                       Expanded(
                         child: Text(
