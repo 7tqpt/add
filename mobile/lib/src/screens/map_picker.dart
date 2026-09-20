@@ -510,7 +510,7 @@ class LocationRow extends StatelessWidget {
                 ],
               ),
             ),
-            const Icon(Icons.chevron_left, size: 20, color: AppColors.muted),
+            const Icon(Icons.chevron_right, size: 20, color: AppColors.muted),
           ],
         ),
       ),

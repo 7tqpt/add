@@ -2078,14 +2078,55 @@ class Api {
   // الحجز، و`settlements_owner_read` تحصر التسويات في صاحبها. فما يُقرأ هنا
   // هو ما سمحت به القاعدة لا ما اختار التطبيق أن يعرضه.
 
+  /// فواتيري — **ومعها مرجعُ حجزِ كلٍّ منها**.
+  ///
+  /// **ولماذا يُضمَّن الحجز:** جدولُ الفواتير فيه `booking_id` وحدَه، وهو
+  /// معرّفٌ عشوائيٌّ لا يعرفه صاحبُه. فالبطاقةُ كانت تعرض رقمَ فاتورةٍ
+  /// ومبلغاً وتاريخاً — وفواتيرُ الرجل متشابهةٌ إلّا في رقمٍ لا يقول شيئاً.
+  ///
+  /// **وتعود إلى القراءة الضيّقة إن لم تُعرف الصلة**: القاعدةُ تُحدَّث بيد
+  /// صاحبها، فبينها وبين التطبيق نافذةٌ يجب أن ينقص فيها المرجعُ لا أن تسقط
+  /// شاشةُ الفواتير كلُّها.
+  static const _invoiceColumns =
+      'id, number, booking_id, subtotal, commission, total, status, issued_at';
+
   static Future<List<Invoice>> myInvoices() async {
-    if (!isSupabaseConfigured) return demoDelay(demoInvoices);
-    final rows = await db
-        .from('invoices')
-        .select('id, number, booking_id, subtotal, commission, total, status, issued_at')
-        .order('issued_at', ascending: false)
-        .limit(60);
-    return rows.map(Invoice.fromMap).toList();
+    if (!isSupabaseConfigured) {
+      // وفي وضع العرض يُوصل المرجعُ من بيانات الحجوزات نفسِها.
+      return demoDelay([
+        for (final inv in demoInvoices)
+          Invoice(
+            id: inv.id,
+            number: inv.number,
+            bookingId: inv.bookingId,
+            subtotal: inv.subtotal,
+            commission: inv.commission,
+            total: inv.total,
+            status: inv.status,
+            issuedAt: inv.issuedAt,
+            bookingReference: demoBookings
+                    .where((b) => b.id == inv.bookingId)
+                    .firstOrNull
+                    ?.reference ??
+                '',
+          ),
+      ]);
+    }
+    try {
+      final rows = await db
+          .from('invoices')
+          .select('$_invoiceColumns, bookings(reference)')
+          .order('issued_at', ascending: false)
+          .limit(60);
+      return rows.map(Invoice.fromMap).toList();
+    } on PostgrestException {
+      final rows = await db
+          .from('invoices')
+          .select(_invoiceColumns)
+          .order('issued_at', ascending: false)
+          .limit(60);
+      return rows.map(Invoice.fromMap).toList();
+    }
   }
 
   static Future<List<Settlement>> mySettlements() async {

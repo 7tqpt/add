@@ -192,7 +192,7 @@ class _MonthBar extends StatelessWidget {
         ),
         IconButton(
           onPressed: () => onShift(1),
-          icon: const Icon(Icons.chevron_left),
+          icon: const Icon(Icons.chevron_right),
           tooltip: tr('الشهر التالي'),
         ),
       ],

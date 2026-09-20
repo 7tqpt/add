@@ -341,7 +341,7 @@ class _DoneBar extends StatelessWidget {
                 color: AppColors.good,
               ),
             ),
-            const Icon(Icons.chevron_left, size: 20, color: AppColors.good),
+            const Icon(Icons.chevron_right, size: 20, color: AppColors.good),
           ],
         ),
       ),

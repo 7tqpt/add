@@ -173,7 +173,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                         // **وسهمٌ يقول إنّها تُفتح** — اختاره صاحبُ المنصّة:
                         // الانخفاضُ تحت الإصبع لا يُعلم إلّا بعد أن يُجرَّب.
                         const SizedBox(width: Space.xs),
-                        const Icon(Icons.chevron_left, size: 20, color: AppColors.muted),
+                        const Icon(Icons.chevron_right, size: 20, color: AppColors.muted),
                       ],
                     ),
                     const SizedBox(height: Space.xs),

@@ -510,7 +510,11 @@ class MenuRow extends StatelessWidget {
               ),
             ),
             // سهمٌ لا أيقونةٌ ثانية: الصفُّ يُفتح، والسهمُ يقول ذلك.
-            Icon(Icons.chevron_left, size: 20, color: AppColors.muted),
+            //
+            // **وصورتُه اللاتينيّةُ تُكتب ويقلبها الإطار**: الأيقونةُ
+            // `matchTextDirection`، فكتابةُ `chevron_left` في تطبيقٍ عربيٍّ
+            // انعكاسٌ ثانٍ يجعل السهمَ يشير إلى الخلف. (مقولٌ في `CardTitleBar`.)
+            Icon(Icons.chevron_right, size: 20, color: AppColors.muted),
           ],
         ),
       ),
@@ -1097,11 +1101,19 @@ class CardTitleBar extends StatelessWidget {
         if (opens) ...[
           const SizedBox(width: Space.xs),
           // **والجهةُ تتبع اتّجاهَ اللغة**: في العربيّة يُتقدَّم إلى اليسار.
-          // و`chevron_left` ثابتةٌ لا تنقلب، فتُسأل الجهةُ ولا تُفترض.
-          Icon(
-            Directionality.of(context) == TextDirection.rtl
-                ? Icons.chevron_left
-                : Icons.chevron_right,
+          //
+          // **ولا تُسأل الجهةُ هنا، فالأيقونةُ تنقلب بنفسها.** كنتُ كتبتُ
+          // `rtl ? chevron_left : chevron_right` وفي رأسي أنّ الأيقونةَ
+          // ثابتة — وليست كذلك: `chevron_left` و`chevron_right` كلتاهما
+          // `matchTextDirection: true` في Flutter، أي تنعكسان مع اللغة.
+          // فكان سؤالُ الجهة انعكاساً ثانياً يُلغي الأوّل، **والسهمُ يشير
+          // إلى الخلف في العربيّة كلِّها**. ولم يظهر ذلك إلّا في لقطةٍ
+          // للشاشة الحقيقيّة.
+          //
+          // فتُكتب الصورةُ اللاتينيّةُ وحدَها (تشير إلى الأمام في الإنجليزيّة)
+          // ويتكفّل الإطارُ بقلبها في العربيّة.
+          const Icon(
+            Icons.chevron_right,
             size: 20,
             color: AppColors.accentInk,
           ),
