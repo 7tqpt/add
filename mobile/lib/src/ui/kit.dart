@@ -1987,7 +1987,11 @@ void showMessage(BuildContext context, String message) {
 ///
 /// **وزادت بمقدار ارتفاع القرص** (`GlassNavBar.raise`): المختارُ صار يعلو
 /// حافّةَ الشريط، فلو بقيت على قدره لَحجب القرصُ آخرَ سطرٍ في كلّ قائمة.
-const double glassNavSpace = GlassNavBar.barHeight + GlassNavBar.raise + 36;
+///
+/// **وبهامشه السفليّ معه**: الشريطُ صار عائماً لا ملتصقاً، فتحته فرجةٌ
+/// يجب أن تُحسب أيضاً.
+const double glassNavSpace =
+    GlassNavBar.barHeight + GlassNavBar.raise + GlassNavBar.bottomGap + 36;
 
 /// شريط تنقّلٍ سفليٌّ زجاجيّ يطفو فوق المحتوى.
 ///
@@ -1995,8 +1999,94 @@ const double glassNavSpace = GlassNavBar.barHeight + GlassNavBar.raise + 36;
 /// أبيضَ يعطي ‎١٫٠٤:١‎ — أي لا شيء. فالمختار بلون العلامة وغيرُه رماديّ، وكلاهما
 /// مقيسٌ على الزجاج نفسه لا مقدَّر. والزجاج الأبيض بأيقوناتٍ بيضاء إنما يصلح
 /// فوق خلفيةٍ داكنة.
-/// استدارةُ الشريط السفليّ — العلويّتان وحدَهما.
-const BorderRadius _navRadius = BorderRadius.vertical(top: Radius.circular(24));
+/// حفرةُ الشريط حول القرص — ومعها استدارةُ أركانه الأربعة.
+///
+/// **والشكلُ معياريٌّ لا مُخترَع:** `CircularNotchedRectangle` هي التي تقصّ
+/// بها فلاتر `BottomAppBar` حول زرّها العائم، فمدخلا الحفرة يلتقيان بحافّة
+/// الشريط التقاءً أملسَ لا بزاويةٍ حادّة. ثمّ تُقاطَع بمستطيلٍ مستديرِ
+/// الأركان لتُستدير حوافُّه.
+class _NavNotchClipper extends CustomClipper<Path> {
+  const _NavNotchClipper({required this.cx});
+
+  /// مركزُ القرص من يسار الشريط — يُحسب لا يُكتب، فالاتّجاهان يقلبانه.
+  final double cx;
+
+  Path build(Size size) {
+    final host = Rect.fromLTWH(
+      0,
+      GlassNavBar.raise,
+      size.width,
+      size.height - GlassNavBar.raise,
+    );
+    final rounded = Path()
+      ..addRRect(RRect.fromRectAndRadius(
+        host,
+        const Radius.circular(GlassNavBar.corner),
+      ));
+    // **والضيفُ أوسعُ من القرص بـ`notchGap`** — وتلك الفرجةُ هي التي يُرى
+    // منها ما تحت الشريط، فيبدو القرصُ جالساً في حفرته لا واقفاً عليها.
+    final guest = Rect.fromCircle(
+      center: Offset(cx, GlassNavBar.raise),
+      radius: GlassNavBar.discSize / 2 + GlassNavBar.notchGap,
+    );
+    final notched = const CircularNotchedRectangle().getOuterPath(host, guest);
+    return Path.combine(PathOperation.intersect, rounded, notched);
+  }
+
+  @override
+  Path getClip(Size size) => build(size);
+
+  @override
+  bool shouldReclip(_NavNotchClipper old) => old.cx != cx;
+}
+
+/// ظلُّ الشريط — يُرسم على شكل حفرته نفسِه.
+///
+/// **ولا يصلح `BoxShadow` هنا**: الصندوقُ مقصوصٌ بـ`ClipPath`، والقصُّ يبتلع
+/// ظلَّ ما بداخله. فلو تُرك الظلُّ في الصندوق لَخرج الشريطُ بلا ظلٍّ إطلاقاً
+/// — ولا يُرى النقصُ إلّا بمقارنةٍ جنباً إلى جنب.
+class _NavShadowPainter extends CustomPainter {
+  const _NavShadowPainter(this.clipper);
+  final _NavNotchClipper clipper;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.drawPath(
+      clipper.build(size).shift(const Offset(0, -2)),
+      Paint()
+        ..color = AppColors.ink.withValues(alpha: 0.10)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8),
+    );
+  }
+
+  @override
+  bool shouldRepaint(_NavShadowPainter old) => old.clipper != clipper;
+}
+
+/// خطٌّ رفيعٌ يحدّ الشريطَ وحفرتَه.
+///
+/// **وهو لازمٌ لا زينة.** الشريطُ الذي أرسله صاحبُ المنصّة أزرقُ داكنٌ على
+/// أبيضَ فحفرتُه تُرى بنفسها؛ وشريطُنا زجاجٌ فاتحٌ على صفحةٍ فاتحة — فبلا
+/// خطٍّ لا يكاد يُعرف أين انقطع الزجاجُ وأين بدأت الصفحة. **وهو الخطُّ الذي
+/// طلبه أوّلاً** («خطّ خفيف يفصل بين أيقونة وشريط»)، فصار جزءاً من الشكل.
+class _NavOutlinePainter extends CustomPainter {
+  const _NavOutlinePainter(this.clipper);
+  final _NavNotchClipper clipper;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.drawPath(
+      clipper.build(size),
+      Paint()
+        ..color = AppColors.ink.withValues(alpha: 0.14)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.2,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_NavOutlinePainter old) => old.clipper != clipper;
+}
 
 class GlassNavBar extends StatelessWidget {
   const GlassNavBar({
@@ -2017,7 +2107,32 @@ class GlassNavBar extends StatelessWidget {
   ///
   /// **وهو ما يُزاد على `glassNavSpace`**: القرصُ يخرج عن الشريط إلى أعلى،
   /// فلو بقيت المسافةُ على قدر الشريط لَحجب القرصُ آخرَ ما في القائمة.
-  static const double raise = 18;
+  ///
+  /// **وهو نصفُ القرص بالضبط لا رقمٌ يُختار**: مركزُ القرص على حافّة الشريط،
+  /// فنصفُه فوقها ونصفُه في حفرته — وعليه تُبنى الحفرةُ نفسُها.
+  static const double raise = discSize / 2;
+
+  /// قطرُ القرص المرتفع.
+  static const double discSize = 44;
+
+  /// الفرجةُ بين القرص وحافّة حفرته.
+  ///
+  /// **وهي التي أغنت عن الطوق الأبيض**: كان القرصُ يقف على الزجاج فيُطوَّق
+  /// بلون الصفحة ليُفصَل عنه؛ وصار في حفرةٍ تفصله بفرجةٍ حقيقيّةٍ يُرى منها
+  /// ما تحت الشريط — فطوقٌ فوق فرجةٍ حدّان لشيءٍ واحد.
+  static const double notchGap = 7;
+
+  /// هامشُ الشريط من جانبَي الشاشة، ومن أسفلِها فوق خطّ النظام.
+  ///
+  /// **وهذا نقضٌ لاختيارٍ سابقٍ بطلب صاحبه.** كان ملتصقاً بالحافّة («خليه
+  /// جزء من التطبيق»، ثمّ «ألصِقه بحافّة الشاشة»)، فلمّا أرسل شريطاً عائماً
+  /// ذا حفرةٍ وقال «أريد نفس الاستايل» عُرضت عليه الحالان مفرَّقتين — ومعهما
+  /// التنبيهُ أنّ العائمَ ينقض طلبَه السابق — فاختار العائمَ بالأسماء.
+  static const double sideMargin = Space.lg;
+  static const double bottomGap = 10;
+
+  /// استدارةُ أركانه الأربعة.
+  static const double corner = 24;
 
   /// مقاسُ أيقونة الجار — **اختاره صاحبُ المنصّة من أربعةٍ عُرضت عليه**
   /// («بس صغّر حجم أيقونات»). وهو وقطرُ القرص وأيقونتُه ثلاثةٌ تتحرّك معاً،
@@ -2031,88 +2146,88 @@ class GlassNavBar extends StatelessWidget {
     // لَوقعت الأيقوناتُ على خطّه. ولذلك لا `SafeArea` هنا: هي تدفع الشريطَ
     // كلَّه فوق الخطّ فيعود هامشاً من حيث أُريد الالتصاق.
     final systemBar = MediaQuery.paddingOf(context).bottom;
+    final rtl = Directionality.of(context) == TextDirection.rtl;
 
     return SizedBox(
-      // **ملتصقٌ بحافّتَي الشاشة وأسفلِها** — بطلب صاحب المنصّة: «خليه جزء
-      // من التطبيق». وكان بطاقةً لها هامشٌ من ثلاث جهات.
-      height: barHeight + raise + systemBar,
-          // **والقرصُ يخرج عن الشريط، فلا قصَّ فوقه.** `ClipRRect` باقيةٌ
-          // على الزجاج وحدَه — هي التي تُدوّر حافّته وتحبس تمويهَه — والقرصُ
-          // فوقها في كومةٍ لا تقصّ.
-          child: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              Align(
-                alignment: Alignment.bottomCenter,
-                child: ClipRRect(
-                  // **والعلويّتان وحدَهما مستديرتان** — اختار صاحبُ المنصّة
-                  // ذلك من شكلين. والسفليّتان لا معنى لاستدارتهما: تقعان على
-                  // حافّة الشاشة.
-                  borderRadius: _navRadius,
+      // **عائمٌ له هامشٌ من الجوانب وأسفلِه** — اختار صاحبُ المنصّة ذلك من
+      // ثلاثةٍ عُرضت عليه بعد أن أرسل شريطاً ذا حفرة.
+      height: barHeight + raise + bottomGap + systemBar,
+      child: Padding(
+        padding: EdgeInsets.only(
+          left: sideMargin,
+          right: sideMargin,
+          // **والهامشُ فوق خطّ النظام لا تحته**: الشريطُ لم يعد يمتدّ إلى
+          // حافّة الشاشة، فلو تُرك على قدر `bottomGap` وحدَه لَوقع على خطّ
+          // الإيماءة في جوالاتٍ وبقي معلّقاً في أخرى.
+          bottom: bottomGap + systemBar,
+        ),
+        // العرضُ يُقاس لا يُقدَّر: مركزُ الحفرة نصفُ خانةٍ من طرف الشريط،
+        // والخانةُ عرضُ الشريط مقسوماً على البنود.
+        child: LayoutBuilder(
+          builder: (context, box) {
+            final cell = box.maxWidth / items.length;
+            // **والاتّجاهُ يقلب الحساب**: البندُ الأوّل في العربيّة أقصى
+            // اليمين. وموضعُ القصّ بكسلٌ من اليسار لا بندٌ في صفّ.
+            final centre = (index + 0.5) * cell;
+            final cx = rtl ? box.maxWidth - centre : centre;
+            final clipper = _NavNotchClipper(cx: cx);
+
+            return Stack(
+              clipBehavior: Clip.none,
+              fit: StackFit.expand,
+              children: [
+                // الظلُّ خارجَ القصّ — وإلّا ابتلعه.
+                CustomPaint(painter: _NavShadowPainter(clipper)),
+                ClipPath(
+                  clipper: clipper,
                   child: BackdropFilter(
                     // التمويه هو ما يجعله زجاجاً لا لوناً شفّافاً: بدونه يُرى
                     // ما تحته كما هو، فيبدو الشريط ورقةً باهتة لا سطحاً.
                     filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-                    child: Container(
-                      height: barHeight + systemBar,
-                      // الأيقوناتُ فوق خطّ النظام، والزجاجُ يمتدّ تحته.
-                      padding: EdgeInsets.only(bottom: systemBar),
-                      decoration: BoxDecoration(
+                    child: Padding(
+                      // الزجاجُ يبدأ تحت القرص: ما فوق `raise` حفرةٌ وهواء.
+                      padding: const EdgeInsets.only(top: raise),
+                      child: ColoredBox(
                         color: Colors.white.withValues(alpha: 0.72),
-                        borderRadius: _navRadius,
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppColors.ink.withValues(alpha: 0.10),
-                            blurRadius: 24,
-                            // **والظلُّ إلى أعلى لا إلى أسفل**: أسفلُه على
-                            // حافّة الشاشة فلا يُرى منه شيء، وما يُفصَل عنه
-                            // هو المحتوى فوقه.
-                            offset: const Offset(0, -4),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        children: [
-                          for (var i = 0; i < items.length; i++)
-                            Expanded(
-                              child: i == index
-                                  // المختارُ في قرصه فوق — وخانتُه هنا فارغةٌ
-                                  // تحفظ عرضَها فلا ينزاح جيرانُه.
-                                  ? const SizedBox.shrink()
-                                  : _GlassNavCell(
-                                      item: items[i],
-                                      onTap: () => onSelect(i),
-                                    ),
-                            ),
-                        ],
+                        child: Row(
+                          children: [
+                            for (var i = 0; i < items.length; i++)
+                              Expanded(
+                                child: i == index
+                                    // المختارُ في قرصه فوق — وخانتُه هنا
+                                    // فارغةٌ تحفظ عرضَها فلا ينزاح جيرانُه.
+                                    ? const SizedBox.shrink()
+                                    : _GlassNavCell(
+                                        item: items[i],
+                                        onTap: () => onSelect(i),
+                                      ),
+                              ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
-              // **والقرصُ يُضغط كما تُضغط الخانة** — ولولا ذلك لَصار المختارُ
-              // وحدَه لا يُضغط، وهو أكبرُ هدفٍ في الشريط.
-              Positioned.fill(
-                child: Row(
-                  children: [
-                    for (var i = 0; i < items.length; i++)
-                      Expanded(
-                        child: i == index
-                            ? Align(
-                                alignment: Alignment.topCenter,
-                                child: _GlassNavDisc(
-                                  icon: items[i].activeIcon,
-                                  label: items[i].label,
-                                  onTap: () => onSelect(i),
-                                ),
-                              )
-                            : const SizedBox.shrink(),
-                      ),
-                  ],
+                // والخطُّ فوق الزجاج ليحدّ الحفرةَ نفسَها.
+                IgnorePointer(
+                  child: CustomPaint(painter: _NavOutlinePainter(clipper)),
                 ),
-              ),
-            ],
-          ),
+                // **والقرصُ يُضغط كما تُضغط الخانة** — ولولا ذلك لَصار
+                // المختارُ وحدَه لا يُضغط، وهو أكبرُ هدفٍ في الشريط.
+                Positioned(
+                  left: cx - discSize / 2,
+                  top: 0,
+                  child: _GlassNavDisc(
+                    icon: items[index].activeIcon,
+                    label: items[index].label,
+                    onTap: () => onSelect(index),
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+      ),
     );
   }
 }
@@ -2140,8 +2255,10 @@ class GlassNavItem {
 /// اختار صاحبُ المنصّة (أ) من ثلاثٍ عُرضت عليه: «الزجاجُ يبقى كما هو،
 /// والمختارُ يرتفع في قرصٍ نبيذيّ».
 ///
-/// **والطوقُ بلون الصفحة لا بلون القرص:** القرصُ ينزل نصفُه في الزجاج،
-/// فبلا طوقٍ يفصله التصق به فلم يُرَ مرتفعاً — وهو كلُّ الفكرة.
+/// **وكان يُطوَّق بلون الصفحة، فأغنت الحفرةُ عن طوقه.** القرصُ كان يقف على
+/// الزجاج فيلتصق به ما لم يُفصل بطوق؛ وصار مركزُه على حافّة الشريط وحولَه
+/// فرجةٌ مقصوصةٌ من الزجاج نفسِه يُرى منها ما تحته — والطوقُ فوق ذلك حدٌّ
+/// ثانٍ لشيءٍ واحد، يسدّ الفرجةَ التي هي كلُّ الفكرة.
 ///
 /// **ولا كلمةَ تحته.** الكلماتُ باقيةٌ لجيرانه، وهذه هي الصورةُ التي أُقرّت.
 /// ومن هو في تبويبه يعرفه من شاشته، ومن أراد اسمَه فهو في `Semantics` لقارئ
@@ -2152,7 +2269,7 @@ class _GlassNavDisc extends StatelessWidget {
   final String label;
   final VoidCallback onTap;
 
-  static const double size = 44;
+  static const double size = GlassNavBar.discSize;
 
   @override
   Widget build(BuildContext context) => Semantics(
@@ -2168,16 +2285,15 @@ class _GlassNavDisc extends StatelessWidget {
             decoration: BoxDecoration(
               color: AppColors.accent,
               shape: BoxShape.circle,
-              border: Border.all(color: AppColors.surface2, width: 4),
               boxShadow: [
                 BoxShadow(
-                  color: AppColors.ink.withValues(alpha: 0.18),
+                  color: AppColors.ink.withValues(alpha: 0.22),
                   blurRadius: 12,
                   offset: const Offset(0, 4),
                 ),
               ],
             ),
-            child: Icon(icon, size: 19, color: AppColors.accentInk),
+            child: Icon(icon, size: 20, color: AppColors.accentInk),
           ),
         ),
       );
