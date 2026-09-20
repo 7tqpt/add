@@ -850,4 +850,20 @@ const Map<String, String> englishStrings = {
   'تخرج من حسابك وتدخل ببريدك وكلمة مرورك، ثمّ تضبط رمزاً جديداً.': 'You sign out, sign in with your email and password, then set a new code.',
   'اضبط الرمز الآن': 'Set the code now',
   'خروج من الحساب': 'Sign out',
+
+  // ── شاشةُ تفصيل الحجز ──────────────────────────────────────────────────
+  'تفاصيل الحجز': 'Booking details',
+  'أين وصل حجزك': 'Where your booking stands',
+  'المبالغ': 'Amounts',
+  'إجمالي الخدمة': 'Service total',
+  'الخصم': 'Discount',
+  'خصمُ الكود {0}': 'Code {0} discount',
+  'العربون المطلوب': 'Deposit required',
+  'المتبقّي عند التسليم': 'Due on delivery',
+  'تفاصيل المناسبة': 'Event details',
+  'التاريخ': 'Date',
+  'الضيوف': 'Guests',
+  'حُجز في': 'Booked on',
+  'افتح الموقع على الخريطة': 'Open location on the map',
+  'المطلوب الآن': 'Due now',
 };

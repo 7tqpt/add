@@ -13,6 +13,7 @@ import 'package:aras/src/data/demo.dart';
 import 'package:aras/src/data/models.dart';
 import 'package:aras/src/screens/disputes.dart';
 import 'package:aras/src/screens/my_bookings.dart';
+import 'package:aras/src/ui/kit.dart';
 
 Session _session() => Session()
   ..userId = 'u1'
@@ -44,21 +45,51 @@ void _phone(WidgetTester tester, {double height = 3600}) {
   addTearDown(tester.view.reset);
 }
 
+/// **وبابُ النزاع انتقل من البطاقة إلى شاشة التفصيل.**
+///
+/// اختار صاحبُ المنصّة أن تُنقل أفعالُ البطاقة كلُّها إلى شاشةٍ تُفتح
+/// بالضغط، فتصير البطاقةُ ملخّصاً هادئاً. والضمانةُ هي هي — أن يُفتح النزاعُ
+/// وأن يتبدّل الزرُّ بعده — وإنّما تبدّل الطريقُ إليها، فيُسلك الطريقُ
+/// الجديد ولا تُحذف الضمانة.
+Future<void> _openDetail(WidgetTester tester) async {
+  await tester.pumpWidget(
+      _wrap(Scaffold(body: MyBookingsScreen(session: _session()))));
+  await _settle(tester);
+
+  final card = find.byWidgetPredicate(
+    (w) => w is AppCard && '${w.key}'.contains('booking-card-'),
+  );
+  expect(card, findsWidgets, reason: 'لا بطاقةَ حجزٍ في القائمة');
+  await tester.tap(card.first);
+  await _settle(tester);
+  // والأفعالُ في آخر الصفحة، والقائمةُ كسولةٌ فلا تُبنى إلّا ما يُرى.
+  await tester.drag(find.byType(ListView), const Offset(0, -1400));
+  await _settle(tester);
+}
+
 void main() {
   setUp(demoResetDisputes);
 
-  testWidgets('بطاقةُ الحجز فيها بابٌ إلى النزاع', (tester) async {
+  testWidgets('شاشةُ الحجز فيها بابٌ إلى النزاع', (tester) async {
     _phone(tester);
-    await tester.pumpWidget(_wrap(Scaffold(body: MyBookingsScreen(session: _session()))));
+    await _openDetail(tester);
+
+    expect(find.text('عندي مشكلة في هذا الحجز'), findsOneWidget);
+  });
+
+  testWidgets('**ولا بابَ له في البطاقة بعد النقل**', (tester) async {
+    // بابان لغرفةٍ واحدةٍ يجعل أحدَهما يبدو غيرَ الآخر.
+    _phone(tester);
+    await tester.pumpWidget(
+        _wrap(Scaffold(body: MyBookingsScreen(session: _session()))));
     await _settle(tester);
 
-    expect(find.text('عندي مشكلة في هذا الحجز'), findsWidgets);
+    expect(find.text('عندي مشكلة في هذا الحجز'), findsNothing);
   });
 
   testWidgets('وفتحُه يقلب الزرّ إلى «متابعة النزاع»', (tester) async {
     _phone(tester);
-    await tester.pumpWidget(_wrap(Scaffold(body: MyBookingsScreen(session: _session()))));
-    await _settle(tester);
+    await _openDetail(tester);
 
     await tester.tap(find.text('عندي مشكلة في هذا الحجز').first);
     await _settle(tester);
@@ -79,8 +110,7 @@ void main() {
     // القاعدة تقبل أي نصّ، فالحارس هنا لأجل الإدارة: نزاعٌ عنوانه «؟» يصل
     // اللوحة ولا يقول شيئاً، فيُطلب من صاحبه أن يشرح بعد أن نسي.
     _phone(tester);
-    await tester.pumpWidget(_wrap(Scaffold(body: MyBookingsScreen(session: _session()))));
-    await _settle(tester);
+    await _openDetail(tester);
 
     await tester.tap(find.text('عندي مشكلة في هذا الحجز').first);
     await _settle(tester);

@@ -59,6 +59,25 @@ Booking _unpaid() => demoBookings.firstWhere((b) => b.paidAmount < b.depositAmou
 Booking _settled() => demoBookings.firstWhere((b) => b.paidAmount >= b.totalPrice,
     orElse: () => demoBookings.first);
 
+/// **وبابُ الدفع انتقل من البطاقة إلى شريطٍ ثابتٍ في شاشة التفصيل.**
+///
+/// اختار صاحبُ المنصّة أن تُنقل أفعالُ البطاقة إلى شاشةٍ تُفتح بالضغط، وأن
+/// يكون الدفعُ في شريطٍ لا ينزل مع الصفحة. والضمانةُ هي هي — أنّ الزرَّ
+/// موجودٌ وأنّه يقول ما يُدفع وأنّه بنمط الثيمة — وإنّما تبدّل الطريقُ
+/// إليها، فيُسلك الجديدُ ولا تُحذف الضمانة.
+Future<void> _openDetail(WidgetTester tester) async {
+  await tester.pumpWidget(
+      _wrap(Scaffold(body: MyBookingsScreen(session: _session()))));
+  await _settle(tester);
+
+  final card = find.byWidgetPredicate(
+    (w) => w is AppCard && '${w.key}'.contains('booking-card-'),
+  );
+  expect(card, findsWidgets, reason: 'لا بطاقةَ حجزٍ في القائمة');
+  await tester.tap(card.first);
+  await _settle(tester);
+}
+
 void main() {
   setUp(demoResetPayments);
 
@@ -123,12 +142,21 @@ void main() {
     expect(find.text('قيد التأكيد'), findsOneWidget);
   });
 
-  testWidgets('وبطاقةُ الحجز فيها بابٌ إلى الدفع', (tester) async {
+  testWidgets('وشاشةُ الحجز فيها بابٌ إلى الدفع', (tester) async {
     _phone(tester);
-    await tester.pumpWidget(_wrap(Scaffold(body: MyBookingsScreen(session: _session()))));
-    await _settle(tester);
+    await _openDetail(tester);
 
     expect(find.textContaining('ادفع العربون'), findsWidgets);
+  });
+
+  testWidgets('**ولا بابَ له في البطاقة بعد النقل**', (tester) async {
+    // زرّان لفعلٍ واحدٍ يجعل أحدَهما يبدو غيرَ الآخر.
+    _phone(tester);
+    await tester.pumpWidget(
+        _wrap(Scaffold(body: MyBookingsScreen(session: _session()))));
+    await _settle(tester);
+
+    expect(find.textContaining('ادفع العربون'), findsNothing);
   });
 
   testWidgets('ومن دفع عربونه يُدعى إلى إكمال الباقي لا إلى دفعه ثانيةً', (tester) async {
@@ -140,6 +168,8 @@ void main() {
     await _settle(tester);
 
     if (b.paidAmount >= b.depositAmount && b.paidAmount < b.totalPrice) {
+      // ويُفتح التفصيلُ ليُرى الزرُّ في شريطه.
+      await _openDetail(tester);
       expect(find.textContaining('أكمل المبلغ'), findsWidgets);
     }
   });
@@ -172,8 +202,7 @@ void main() {
 
   testWidgets('وزرُّ الدفع نبيذيٌّ على الأبيض كما كان', (tester) async {
     _phone(tester);
-    await tester.pumpWidget(_wrap(Scaffold(body: MyBookingsScreen(session: _session()))));
-    await _settle(tester);
+    await _openDetail(tester);
 
     final pay = find.ancestor(
       of: find.textContaining('ادفع العربون'),
