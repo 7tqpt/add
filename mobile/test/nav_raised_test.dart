@@ -34,6 +34,40 @@ final _items = <GlassNavItem>[
   const GlassNavItem(label: 'حسابي', icon: Icons.person_outline, activeIcon: Icons.person),
 ];
 
+/// خمسةُ بنودٍ — **وهو عددُ الشاشتين الحقيقيّتين**.
+///
+/// **ولا يُقاس الطرفُ بثلاثة.** الخانةُ تتّسع بقلّة البنود فيبتعد مركزُها
+/// عن الركن، فلا يقع العطبُ أصلاً. وقد وقع ذلك: كُسر الحبسُ عن الركنين في
+/// الضابط السالب فلم تحمرّ الحزمةُ — لأنّ شريطَها ثلاثةٌ لا خمسة.
+final _five = <GlassNavItem>[
+  ..._items,
+  const GlassNavItem(
+    label: 'خطة العرس',
+    icon: Icons.fact_check_outlined,
+    activeIcon: Icons.fact_check,
+  ),
+  const GlassNavItem(label: 'استكشف', icon: Icons.search, activeIcon: Icons.saved_search),
+];
+
+Widget _wrapFive({required int index}) => MaterialApp(
+  theme: buildTheme(),
+  locale: const Locale('ar'),
+  supportedLocales: const [Locale('ar')],
+  localizationsDelegates: const [
+    GlobalMaterialLocalizations.delegate,
+    GlobalWidgetsLocalizations.delegate,
+    GlobalCupertinoLocalizations.delegate,
+  ],
+  home: Directionality(
+    textDirection: TextDirection.rtl,
+    child: Scaffold(
+      extendBody: true,
+      body: const SizedBox.expand(),
+      bottomNavigationBar: GlassNavBar(index: index, onSelect: (_) {}, items: _five),
+    ),
+  ),
+);
+
 Widget _wrap({required int index, ValueChanged<int>? onSelect}) => MaterialApp(
   theme: buildTheme(),
   locale: const Locale('ar'),
@@ -237,6 +271,63 @@ void main() {
       final disc = tester.getRect(find.byIcon(Icons.home));
       expect((disc.center.dy - box.top - GlassNavBar.raise).abs(), lessThan(1.5),
           reason: 'القرصُ ليس على الحافّة');
+    });
+
+    // ── والسؤالُ الذي كان ناقصاً ──────────────────────────────────────────
+    //
+    // **عطبٌ وقع ومرّ صامتاً.** الحفرةُ تُقاطَع بمستطيلٍ مستديرِ الأركان،
+    // فلمّا وقعت على ركنٍ أكل القطعُ نصفَها: لا حفرةَ، ويتدلّى القرصُ خارجَ
+    // الشريط. وكسر ذلك التبويبَ الأوّل والأخير وحدَهما — وهما أكثرُ ما
+    // يُفتح — حتى ظنّ صاحبُ المنصّة أنّ الشكلَ لم يُنفَّذ.
+    //
+    // **والحزمةُ كانت خضراء**: تجسّ المسارَ عند مركز القرص وتسأل «أمقصوصٌ
+    // هنا؟» — وهو مقصوصٌ في الطرف أيضاً، بل أكثرُ ممّا يجب. **فالنقصُ في
+    // السؤال لا في الجواب**، وهذا هو السؤالُ الناقص.
+    testWidgets('**والقرصُ داخلَ الشريط في كلّ تبويب**', (tester) async {
+      // **بخمسةِ بنودٍ كالشاشتين**: بثلاثةٍ تتّسع الخانةُ فلا يقع العطب.
+      for (var i = 0; i < _five.length; i++) {
+        _phone(tester);
+        await tester.pumpWidget(_wrapFive(index: i));
+        await tester.pumpAndSettle();
+
+        final glass = tester.getRect(find.descendant(
+          of: find.byType(GlassNavBar),
+          matching: find.byType(ClipPath),
+        ));
+        // القرصُ هو الأيقونةُ المصمتةُ للمختار؛ وتُقاس حدودُ قرصه لا أيقونته.
+        final icon = tester.getRect(find.byIcon(_five[i].activeIcon));
+        final left = icon.center.dx - GlassNavBar.discSize / 2;
+        final right = icon.center.dx + GlassNavBar.discSize / 2;
+
+        expect(left, greaterThanOrEqualTo(glass.left),
+            reason: 'القرصُ يتدلّى خارجَ الشريط يساراً في التبويب $i');
+        expect(right, lessThanOrEqualTo(glass.right),
+            reason: 'القرصُ يتدلّى خارجَ الشريط يميناً في التبويب $i');
+
+        // **ولا يكفي أن يكون القرصُ داخلَه.** الحفرةُ أوسعُ منه بـ`notchGap`،
+        // وهي التي تُؤكل على الركن — والقرصُ يبقى داخلَ الشريط في الحالين،
+        // فسؤالُ «أهو داخله؟» وحدَه لا يكشف شيئاً. **وقد جُرّب فلم يكشف.**
+        //
+        // فيُسأل عمّا ينكسر: **أَثَمَّ زجاجٌ على جانبَي الحفرة؟** إن أُكلت
+        // على ركنٍ لم يبقَ من ذلك الجانب زجاجٌ أصلاً.
+        final clipper = tester.widget<ClipPath>(find.descendant(
+          of: find.byType(GlassNavBar),
+          matching: find.byType(ClipPath),
+        )).clipper!;
+        final path = clipper.getClip(glass.size);
+        final cx = icon.center.dx - glass.left;
+        final reach = GlassNavBar.discSize / 2 + GlassNavBar.notchGap + 6;
+        for (final side in [-1, 1]) {
+          expect(
+            path.contains(Offset(cx + side * reach, GlassNavBar.raise + 2)),
+            isTrue,
+            reason: 'لا زجاجَ بجانب الحفرة في التبويب $i — أُكلت على الركن',
+          );
+        }
+        // وداخلَها لا زجاج.
+        expect(path.contains(Offset(cx, GlassNavBar.raise + 2)), isFalse,
+            reason: 'لا حفرةَ في التبويب $i');
+      }
     });
 
     testWidgets('**والحفرةُ تتبع المختارَ لا تقف في مكانها**', (tester) async {

@@ -104,6 +104,21 @@ void main() {
     await _shoot(tester, find.byKey(const ValueKey('shot')), '$out/nav-done-customer.png');
   });
 
+  // **والحفرةُ تتبع المختار** — تُصوَّر في تبويبٍ آخرَ ليُرى ذلك لا يُوصف.
+  testWidgets('العميل في تبويبٍ آخر', (tester) async {
+    tester.view.physicalSize = const Size(1080, 2340);
+    tester.view.devicePixelRatio = 3.0;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(_wrap(CustomerShell(session: _customer())));
+    await _settle(tester);
+    await tester.tap(find.text('حسابي'));
+    await _settle(tester);
+
+    expect(tester.takeException(), isNull);
+    await _shoot(tester, find.byKey(const ValueKey('shot')), '$out/nav-done-account.png');
+  });
+
   testWidgets('شاشةُ مقدّم الخدمة', (tester) async {
     tester.view.physicalSize = const Size(1080, 2340);
     tester.view.devicePixelRatio = 3.0;
