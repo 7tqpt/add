@@ -250,7 +250,9 @@ void main() {
       await tester.pumpWidget(_wrap(MyBookingsScreen(session: _customer())));
       await _settle(tester);
 
-      expect(find.byIcon(Icons.chevron_left), findsWidgets,
+      // والسهمُ `chevron_right` في تطبيقٍ عربيّ: الأيقونةُ تنقلب مع اللغة
+      // بنفسها، فالمكتوبُ صورتُها اللاتينيّة. (يُنظر `chevron_direction_test`.)
+      expect(find.byIcon(Icons.chevron_right), findsWidgets,
           reason: 'لا سهمَ يقول إنّ البطاقة تُفتح');
 
       // **وتُضغط البطاقةُ نفسُها بمفتاحها** لا نصٌّ فيها: نصُّ العنوان يأتي

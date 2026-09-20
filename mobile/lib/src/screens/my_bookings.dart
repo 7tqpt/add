@@ -86,7 +86,10 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
     return FutureBuilder<List<Booking>>(
       future: _future,
       builder: (context, snap) {
-        if (snap.connectionState != ConnectionState.done) return const LoadingBlock();
+        if (snap.connectionState != ConnectionState.done) {
+          // هيكلٌ بشكل بطاقات الحجز لا دوّارةٌ في بياض.
+          return const SkeletonList(rows: 3);
+        }
         if (snap.hasError) {
           return ErrorBlock(message: messageOf(snap.error!), onRetry: _reload);
         }
@@ -170,7 +173,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                         // **وسهمٌ يقول إنّها تُفتح** — اختاره صاحبُ المنصّة:
                         // الانخفاضُ تحت الإصبع لا يُعلم إلّا بعد أن يُجرَّب.
                         const SizedBox(width: Space.xs),
-                        const Icon(Icons.chevron_left, size: 20, color: AppColors.muted),
+                        const Icon(Icons.chevron_right, size: 20, color: AppColors.muted),
                       ],
                     ),
                     const SizedBox(height: Space.xs),

@@ -671,6 +671,7 @@ const Map<String, String> englishStrings = {
   'لا': 'No',
   'لا عناوين محفوظة': 'No saved addresses',
   'لا فواتير بعد': 'No invoices yet',
+  'لم يعد هذا الحجز في قائمة حجوزاتك.': 'This booking is no longer in your bookings list.',
   'لا محادثات بعد': 'No chats yet',
   'لا مزوّدين في هذا القسم': 'No providers in this category',
   'لا مستحقّات بعد': 'No earnings yet',

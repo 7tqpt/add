@@ -70,7 +70,9 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
       body: FutureBuilder<List<Conversation>>(
         future: _future,
         builder: (context, snap) {
-          if (snap.connectionState != ConnectionState.done) return const LoadingBlock();
+          if (snap.connectionState != ConnectionState.done) {
+            return const SkeletonList(rows: 4, thumb: true);
+          }
           if (snap.hasError) {
             return ErrorBlock(message: messageOf(snap.error!), onRetry: _reload);
           }

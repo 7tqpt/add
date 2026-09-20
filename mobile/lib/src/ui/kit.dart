@@ -510,7 +510,11 @@ class MenuRow extends StatelessWidget {
               ),
             ),
             // سهمٌ لا أيقونةٌ ثانية: الصفُّ يُفتح، والسهمُ يقول ذلك.
-            Icon(Icons.chevron_left, size: 20, color: AppColors.muted),
+            //
+            // **وصورتُه اللاتينيّةُ تُكتب ويقلبها الإطار**: الأيقونةُ
+            // `matchTextDirection`، فكتابةُ `chevron_left` في تطبيقٍ عربيٍّ
+            // انعكاسٌ ثانٍ يجعل السهمَ يشير إلى الخلف. (مقولٌ في `CardTitleBar`.)
+            Icon(Icons.chevron_right, size: 20, color: AppColors.muted),
           ],
         ),
       ),
@@ -1097,11 +1101,19 @@ class CardTitleBar extends StatelessWidget {
         if (opens) ...[
           const SizedBox(width: Space.xs),
           // **والجهةُ تتبع اتّجاهَ اللغة**: في العربيّة يُتقدَّم إلى اليسار.
-          // و`chevron_left` ثابتةٌ لا تنقلب، فتُسأل الجهةُ ولا تُفترض.
-          Icon(
-            Directionality.of(context) == TextDirection.rtl
-                ? Icons.chevron_left
-                : Icons.chevron_right,
+          //
+          // **ولا تُسأل الجهةُ هنا، فالأيقونةُ تنقلب بنفسها.** كنتُ كتبتُ
+          // `rtl ? chevron_left : chevron_right` وفي رأسي أنّ الأيقونةَ
+          // ثابتة — وليست كذلك: `chevron_left` و`chevron_right` كلتاهما
+          // `matchTextDirection: true` في Flutter، أي تنعكسان مع اللغة.
+          // فكان سؤالُ الجهة انعكاساً ثانياً يُلغي الأوّل، **والسهمُ يشير
+          // إلى الخلف في العربيّة كلِّها**. ولم يظهر ذلك إلّا في لقطةٍ
+          // للشاشة الحقيقيّة.
+          //
+          // فتُكتب الصورةُ اللاتينيّةُ وحدَها (تشير إلى الأمام في الإنجليزيّة)
+          // ويتكفّل الإطارُ بقلبها في العربيّة.
+          const Icon(
+            Icons.chevron_right,
             size: 20,
             color: AppColors.accentInk,
           ),
@@ -1565,6 +1577,143 @@ class _LoadingBlockState extends State<LoadingBlock> {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// هيكلُ تحميلٍ بشكل ما سيأتي — بدل دوّارةٍ في منتصف بياض.
+///
+/// ── لماذا ─────────────────────────────────────────────────────────────────
+///
+/// شكا صاحبُ المنصّة أنّ التطبيق «متحجّز»، واختار الدرجةَ الثالثة. والدوّارةُ
+/// تقول «انتظر» ولا تقول ماذا تنتظر: الشاشةُ تبيضّ، ثمّ تمتلئ دفعةً واحدةً
+/// فتقفز. والهيكلُ يقول «بطاقاتٌ قادمة» ويحجز مكانَها، فلا قفزةَ حين تصل.
+///
+/// ── وليس لكلّ انتظارٍ هيكل ───────────────────────────────────────────────
+///
+/// **ولا يحلّ محلَّ كلّ دوّارة.** ما ينتظر صفوفاً يُهيكَل، وما ينتظر فعلاً —
+/// زرٌّ يُرسل، خريطةٌ تُفتح — تبقى دوّارتُه: هيكلُ بطاقةٍ داخلَ زرّ كذبٌ في
+/// الشكل. والدوّاراتُ التي في الأزرار باقيةٌ كما هي.
+///
+/// ── والنبضُ يُطفأ لمن طلب ────────────────────────────────────────────────
+///
+/// كلُّ حركةٍ في هذا التطبيق تسأل «تقليلَ الحركة» — ومن أطفأها رأى رماديّاً
+/// ساكناً، وهو يؤدّي المعنى نفسَه.
+class SkeletonList extends StatefulWidget {
+  const SkeletonList({
+    super.key,
+    this.rows = 3,
+    this.thumb = false,
+    this.padding = const EdgeInsets.all(Space.lg),
+    this.scrollable = true,
+  });
+
+  /// كم بطاقةً تُرسم. ثلاثٌ تكفي: الهيكلُ يقول «قادمٌ» لا «هذا عددُها».
+  final int rows;
+
+  /// أفي البطاقة صورةٌ مربّعةٌ إلى جانبها؟ — كبطاقات الخدمات.
+  final bool thumb;
+
+  final EdgeInsets padding;
+
+  /// أيمرَّر الهيكلُ بنفسه؟
+  ///
+  /// **ويُرفع حيث يكون داخلَ ممرَّرٍ آخر.** قائمةٌ داخل قائمةٍ رأسيّةٍ ترمي
+  /// «ارتفاعٌ بلا حدّ» — والشاشةُ تسقط حمراءَ وقتَ التحميل وحدَه، فلا يراها
+  /// إلّا من فتح على شبكةٍ بطيئة. **وقد وقع ذلك وكشفه اختبار.**
+  final bool scrollable;
+
+  @override
+  State<SkeletonList> createState() => _SkeletonListState();
+}
+
+class _SkeletonListState extends State<SkeletonList>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 900),
+  )..repeat(reverse: true);
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  Widget _bar(double width, double height) => Container(
+    width: width,
+    height: height,
+    decoration: BoxDecoration(
+      color: AppColors.ink.withValues(alpha: 0.07),
+      borderRadius: BorderRadius.circular(6),
+    ),
+  );
+
+  Widget _card() => AppCard(
+    children: [
+      Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (widget.thumb) ...[
+            Container(
+              width: 76,
+              height: 76,
+              decoration: BoxDecoration(
+                color: AppColors.ink.withValues(alpha: 0.07),
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            const SizedBox(width: Space.md),
+          ],
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _bar(double.infinity, 14),
+                const SizedBox(height: Space.sm),
+                _bar(140, 11),
+                const SizedBox(height: Space.sm),
+                _bar(96, 13),
+              ],
+            ),
+          ),
+        ],
+      ),
+    ],
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    final still = reduceMotion(context);
+    final list = widget.scrollable
+        ? ListView.separated(
+            padding: widget.padding,
+            itemCount: widget.rows,
+            separatorBuilder: (_, _) => const SizedBox(height: Space.md),
+            itemBuilder: (_, _) => _card(),
+          )
+        : Padding(
+            padding: widget.padding,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (var i = 0; i < widget.rows; i++) ...[
+                  if (i > 0) const SizedBox(height: Space.md),
+                  _card(),
+                ],
+              ],
+            ),
+          );
+    // **ولا يُضغط الهيكل.** هو صورةُ ما سيأتي لا ما أتى، وضغطةٌ عليه تفتح
+    // لا شيء — فتُعلّم صاحبَها أنّ الضغط لا يُجدي.
+    final quiet = IgnorePointer(child: list);
+    if (still) return quiet;
+    return FadeTransition(
+      opacity: Tween<double>(begin: 0.55, end: 1).animate(
+        CurvedAnimation(parent: _c, curve: Curves.easeInOut),
+      ),
+      child: quiet,
     );
   }
 }

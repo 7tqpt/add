@@ -161,7 +161,7 @@ void main() {
       expect(
         find.descendant(
           of: _done,
-          matching: find.byIcon(Icons.chevron_left),
+          matching: find.byIcon(Icons.chevron_right),
         ),
         findsOneWidget,
       );

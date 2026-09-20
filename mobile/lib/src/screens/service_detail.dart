@@ -14,6 +14,7 @@ import '../ui/kit.dart';
 import 'account_extras.dart';
 import 'map_picker.dart';
 import '../ui/media.dart';
+import '../ui/photo_view.dart';
 import 'chat.dart';
 import 'provider_public.dart';
 
@@ -335,10 +336,35 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
                     final images = (snap.data ?? const <ServiceMedia>[])
                         .where((m) => m.kind == MediaKind.image)
                         .toList();
+                    // **والغلافُ يُفتح بالضغط ملءَ الشاشة.** «صورة غير قابلة
+                    // للضغط هنا» — وكانت هذه وحدَها الباقيةَ ساكنةً: صورُ
+                    // معرض المزوّد وشعارُه وغلافُه تُفتح منذ جولةٍ سابقة.
+                    //
+                    // **ويُقلَّب فيه بين الصور كلِّها** — اختار صاحبُ المنصّة
+                    // (ج) من ثلاث. ومن لم يكن لخدمته إلّا صورةٌ واحدةٌ فُتحت
+                    // وحدَها بلا عدّاد.
                     if (images.length < 2) {
-                      return MediaThumb(url: Api.mediaUrl(widget.coverPath));
+                      return GestureDetector(
+                        key: const ValueKey('service-cover-tap'),
+                        onTap: () => openGallery(
+                          context,
+                          urls: [Api.mediaUrl(widget.coverPath) ?? ''],
+                        ),
+                        child: MediaThumb(url: Api.mediaUrl(widget.coverPath)),
+                      );
                     }
-                    return _Gallery(images: images);
+                    // **ويُفتح على المعروضة الآن لا على أوّلها**: من قلّب
+                    // إلى الثالثة وضغط يريد الثالثة.
+                    return _Gallery(
+                      images: images,
+                      onOpen: (i) => openGallery(
+                        context,
+                        urls: [
+                          for (final m in images) Api.mediaUrl(m.path) ?? '',
+                        ],
+                        initialIndex: i,
+                      ),
+                    );
                   },
                 ),
               ),
@@ -760,7 +786,19 @@ class _MediaState extends State<_Media> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             if (widget.showImages && images.isNotEmpty) ...[
-              SizedBox(height: 230, child: _Gallery(images: images)),
+              // **وهذه تُفتح كأختها في الأعلى.** يراها من جاء من موضعٍ لا
+              // يعرف الغلافَ — إشعارٌ أو رابط — وهو أحوجُ إلى أن يرى.
+              SizedBox(
+                height: 230,
+                child: _Gallery(
+                  images: images,
+                  onOpen: (i) => openGallery(
+                    context,
+                    urls: [for (final m in images) Api.mediaUrl(m.path) ?? ''],
+                    initialIndex: i,
+                  ),
+                ),
+              ),
               const SizedBox(height: Space.md),
             ],
             if (video != null) ...[
@@ -783,8 +821,11 @@ class _MediaState extends State<_Media> {
 }
 
 class _Gallery extends StatefulWidget {
-  const _Gallery({required this.images});
+  const _Gallery({required this.images, required this.onOpen});
   final List<ServiceMedia> images;
+
+  /// يُنادى بفهرس الصورة المعروضة حين تُضغط.
+  final void Function(int index) onOpen;
 
   @override
   State<_Gallery> createState() => _GalleryState();
@@ -808,7 +849,14 @@ class _GalleryState extends State<_Gallery> {
           child: PageView(
             controller: _controller,
             onPageChanged: (i) => setState(() => _page = i),
-            children: [for (final m in widget.images) MediaThumb(url: Api.mediaUrl(m.path))],
+            children: [
+              for (final (i, m) in widget.images.indexed)
+                GestureDetector(
+                  key: ValueKey('service-cover-tap-$i'),
+                  onTap: () => widget.onOpen(i),
+                  child: MediaThumb(url: Api.mediaUrl(m.path)),
+                ),
+            ],
           ),
         ),
         // النقاط تغيب مع الصورة الواحدة: نقطةٌ واحدة تحت صورةٍ واحدة تقول

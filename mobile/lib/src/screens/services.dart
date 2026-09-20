@@ -152,7 +152,9 @@ class _ServicesScreenState extends State<ServicesScreen> {
       body: FutureBuilder<List<MyService>>(
         future: _future,
         builder: (context, snap) {
-          if (snap.connectionState != ConnectionState.done) return const LoadingBlock();
+          if (snap.connectionState != ConnectionState.done) {
+            return const SkeletonList(rows: 3);
+          }
           if (snap.hasError) {
             return ErrorBlock(message: messageOf(snap.error!), onRetry: _reload);
           }

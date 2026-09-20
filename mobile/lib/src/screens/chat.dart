@@ -493,7 +493,7 @@ class _ChatScreenState extends State<ChatScreen> {
             ],
           ),
         ),
-        if (open != null) const Icon(Icons.chevron_left, size: 22, color: AppColors.muted),
+        if (open != null) const Icon(Icons.chevron_right, size: 22, color: AppColors.muted),
       ],
     );
 

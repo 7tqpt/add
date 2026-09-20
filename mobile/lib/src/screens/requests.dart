@@ -123,7 +123,9 @@ class _RequestsScreenState extends State<RequestsScreen> {
     return FutureBuilder<List<Booking>>(
       future: _future,
       builder: (context, snap) {
-        if (snap.connectionState != ConnectionState.done) return const LoadingBlock();
+        if (snap.connectionState != ConnectionState.done) {
+          return const SkeletonList(rows: 3);
+        }
         if (snap.hasError) {
           return ErrorBlock(message: messageOf(snap.error!), onRetry: _reload);
         }
@@ -339,7 +341,7 @@ class _DoneBar extends StatelessWidget {
                 color: AppColors.good,
               ),
             ),
-            const Icon(Icons.chevron_left, size: 20, color: AppColors.good),
+            const Icon(Icons.chevron_right, size: 20, color: AppColors.good),
           ],
         ),
       ),

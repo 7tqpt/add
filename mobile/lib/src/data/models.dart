@@ -1388,6 +1388,7 @@ class Invoice {
     required this.total,
     required this.status,
     required this.issuedAt,
+    this.bookingReference = '',
   });
 
   final String id;
@@ -1399,16 +1400,33 @@ class Invoice {
   final String status;
   final DateTime issuedAt;
 
-  factory Invoice.fromMap(Map<String, dynamic> m) => Invoice(
-    id: m['id'] as String,
-    number: (m['number'] ?? '') as String,
-    bookingId: (m['booking_id'] ?? '') as String,
-    subtotal: (m['subtotal'] ?? 0) as num,
-    commission: (m['commission'] ?? 0) as num,
-    total: (m['total'] ?? 0) as num,
-    status: (m['status'] ?? 'issued') as String,
-    issuedAt: DateTime.parse(m['issued_at'] as String),
-  );
+  /// مرجعُ الحجز الذي صدرت عنه — «BK-2026-000318».
+  ///
+  /// **ولا يأتي من جدول الفواتير**: فيه `booking_id` وحدَه، وهو معرّفٌ
+  /// عشوائيٌّ لا يعرفه صاحبُه. فيُقرأ من صفّ الحجز مع الفاتورة.
+  ///
+  /// **ويبقى فارغاً على قاعدةٍ أقدم** — فتُعرض البطاقةُ كما كانت ولا تسقط.
+  final String bookingReference;
+
+  factory Invoice.fromMap(Map<String, dynamic> m) {
+    // **والحجزُ يصل مُضمَّناً أو لا يصل.** PostgREST يضع الصفَّ المضمَّن
+    // خريطةً تحت اسم جدوله، وقد يأتي قائمةً بصفٍّ واحدٍ في بعض الصيغ.
+    final joined = m['bookings'];
+    final booking = joined is List
+        ? (joined.isEmpty ? null : joined.first as Map?)
+        : joined as Map?;
+    return Invoice(
+      id: m['id'] as String,
+      number: (m['number'] ?? '') as String,
+      bookingId: (m['booking_id'] ?? '') as String,
+      subtotal: (m['subtotal'] ?? 0) as num,
+      commission: (m['commission'] ?? 0) as num,
+      total: (m['total'] ?? 0) as num,
+      status: (m['status'] ?? 'issued') as String,
+      issuedAt: DateTime.parse(m['issued_at'] as String),
+      bookingReference: (booking?['reference'] ?? '') as String,
+    );
+  }
 }
 
 /// تسويةُ مستحقّات — ما تدين به المنصّة لمقدّم الخدمة عن فترة.

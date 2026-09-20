@@ -99,7 +99,7 @@ void main() {
     await _settle(tester);
 
     // خدمتان فسهمان — ولا ثالثَ من مكانٍ آخر.
-    expect(find.byIcon(Icons.chevron_left), findsNWidgets(2),
+    expect(find.byIcon(Icons.chevron_right), findsNWidgets(2),
         reason: 'لا سهمَ يقول إنّ البطاقة تُفتح');
   });
 
@@ -118,11 +118,18 @@ void main() {
       expect(find.byIcon(Icons.chevron_right), findsNothing);
     });
 
-    testWidgets('**والجهةُ تتبع اتّجاهَ اللغة**', (tester) async {
-      // في العربيّة يُتقدَّم إلى اليسار، وفي الإنجليزيّة إلى اليمين.
+    testWidgets('**والجهةُ تتبع اتّجاهَ اللغة — بلا سؤالِ جهة**', (tester) async {
+      // **وكان هذا الاختبارُ نفسُه يحرس العطب.** كان يطلب `chevron_left` في
+      // العربيّة و`chevron_right` في الإنجليزيّة، وهو ما كانت الشيفرةُ
+      // تكتبه — فمرّ أخضرَ والسهمُ يشير إلى الخلف في التطبيق كلِّه. **ولا
+      // تقول شجرةُ العناصر ذلك**: الأيقونتان `matchTextDirection`، فتنقلب
+      // كلٌّ منهما عند الرسم، والانقلابُ لا يُرى إلّا في صورة.
+      //
+      // فالمكتوبُ صورةٌ واحدةٌ في الاتّجاهين، ويتكفّل الإطارُ بقلبها.
+      // ومقياسُ الاتّجاه في `chevron_direction_test.dart`.
       await tester.pumpWidget(bar(opens: true));
       await tester.pumpAndSettle();
-      expect(find.byIcon(Icons.chevron_left), findsOneWidget);
+      expect(find.byIcon(Icons.chevron_right), findsOneWidget);
 
       await tester.pumpWidget(bar(opens: true, dir: TextDirection.ltr));
       await tester.pumpAndSettle();
