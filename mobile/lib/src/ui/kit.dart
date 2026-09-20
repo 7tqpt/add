@@ -1033,11 +1033,22 @@ class Rating extends StatelessWidget {
 /// يُقرأ — ‎١٫٧:١‎**. فشارةُ هذا الشريط بيضاءُ كلُّها: تُقرأ الحالُ من
 /// الكلمة لا من اللمحة. وهو ثمنُ الشكل الذي اختاره بعد أن عُرض عليه.
 class CardTitleBar extends StatelessWidget {
-  const CardTitleBar(this.title, {super.key, this.badge});
+  const CardTitleBar(this.title, {super.key, this.badge, this.opens = false});
   final String title;
 
   /// نصُّ الحالة — أو `null` فلا شارة.
   final String? badge;
+
+  /// هل تُفتح البطاقةُ بالضغط؟ فيُرسم سهمٌ يقول ذلك.
+  ///
+  /// **والعلامةُ تُطلب لا تُستنتج**: بطاقةٌ لها `onTap` قد يكون فعلُها
+  /// تبديلاً في مكانه لا فتحَ شاشة، وسهمٌ فوقها يَعِد بما لا يقع. فمن يفتح
+  /// شاشةً يقولها.
+  ///
+  /// **ولمَ سهمٌ والبطاقةُ تنخفض تحت الإصبع:** الانخفاضُ لا يُعلم إلّا بعد
+  /// أن يُجرَّب، والسهمُ يُعلم قبله. اختاره صاحبُ المنصّة حين شكا أنّ
+  /// «البطاقات غير قابلة للضغط» — وكانت تُضغط بعضُها ولا يُرى ذلك.
+  final bool opens;
 
   @override
   Widget build(BuildContext context) => Container(
@@ -1081,6 +1092,18 @@ class CardTitleBar extends StatelessWidget {
                 fontWeight: FontWeight.w600,
               ),
             ),
+          ),
+        ],
+        if (opens) ...[
+          const SizedBox(width: Space.xs),
+          // **والجهةُ تتبع اتّجاهَ اللغة**: في العربيّة يُتقدَّم إلى اليسار.
+          // و`chevron_left` ثابتةٌ لا تنقلب، فتُسأل الجهةُ ولا تُفترض.
+          Icon(
+            Directionality.of(context) == TextDirection.rtl
+                ? Icons.chevron_left
+                : Icons.chevron_right,
+            size: 20,
+            color: AppColors.accentInk,
           ),
         ],
       ],

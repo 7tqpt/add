@@ -212,6 +212,10 @@ class _PlanCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AppCard(
+      // **والبطاقةُ كلُّها تختار الباقة.** كانت ساكنةً ويُبحث عن زرٍّ في
+      // أسفلها، وهي أكبرُ هدفٍ في الشاشة. **والحاليّةُ لا تُضغط**: ليس لها
+      // فعلٌ، وضغطةٌ لا تفعل شيئاً تُعلّم صاحبَها أنّ الضغط لا يُجدي.
+      onTap: current || busy ? null : onPick,
       children: [
         Row(
           children: [

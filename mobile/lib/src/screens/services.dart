@@ -174,12 +174,25 @@ class _ServicesScreenState extends State<ServicesScreen> {
             itemBuilder: (context, i) {
               final s = rows[i];
               return FadeSlideIn(index: i, child: AppCard(
+                // **والبطاقةُ كلُّها تفتح التعديل.** «أحسّ تطبيقَ متحجّز،
+                // البطاقات غير قابلة للضغط» — وكانت هذه ساكنةً مهما ضُغطت،
+                // فيُبحث عن زرٍّ صغيرٍ في أسفلها. وهي تنخفض تحت الإصبع الآن
+                // بـ`Pressable` داخلَ `AppCard`.
+                //
+                // **وزرُّ «تعديل» يبقى معها**: البطاقةُ فيها أزرارٌ أخرى،
+                // فمن يقرأ يختار، ومن يضغط حيث لا زرَّ يفتح الأشهرَ منها.
+                onTap: _busyId == null ? () => _edit(s) : null,
                 children: [
                   // المعطَّلة تحمل شارتها: بلا علامةٍ ظاهرة يظنّ صاحبها أنها
                   // معروضة، ويسأل لماذا لا تصله طلبات.
+                  //
+                  // **والسهمُ يقول إنّها تُفتح** — اختاره صاحبُ المنصّة:
+                  // الانخفاضُ تحت الإصبع لا يُعلم إلّا بعد أن يُجرَّب، والسهمُ
+                  // يُعلم قبله.
                   CardTitleBar(
                     s.title,
                     badge: s.isActive ? tr('معروضة') : tr('موقوفة'),
+                    opens: true,
                   ),
                   if (s.description.isNotEmpty) ...[
                     const SizedBox(height: Space.sm),
