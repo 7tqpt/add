@@ -159,21 +159,29 @@ void main() {
   });
 
   group('في الشاشة', () {
-    testWidgets('**والزرُّ داخل السكّة لا تحتها**', (tester) async {
-      // وهي علّةُ الشكل: كان الزرُّ أسفلَ البطاقة منفصلاً عن السطر الذي يقول
-      // لماذا يُدفع. فصار في صفّ مرحلته.
+    testWidgets('**ولا زرَّ في سكّة البطاقة — انتقل إلى شريط الشاشة**',
+        (tester) async {
+      // **وهذه ضمانةٌ بُدّلت بطلب صاحبها لا حُذفت.** كان الزرُّ داخلَ السكّة
+      // في البطاقة، تحت السطر الذي يقول لماذا يُدفع. ثمّ اختار أن تُنقل
+      // أفعالُ البطاقة كلُّها إلى شاشةٍ تُفتح بالضغط، وأن يكون الدفعُ في
+      // شريطٍ ثابتٍ لا ينزل مع الصفحة.
+      //
+      // فالمقيسُ الآن أنّ السكّةَ في البطاقة **تقول ولا تفعل**: زرٌّ فيها
+      // وآخرُ في الشريط يجعل أحدَهما يبدو غيرَ الآخر. وموضعُ الزرّ الجديدُ
+      // مقيسٌ في `booking_detail_test.dart`.
       _phone(tester);
       await tester.pumpWidget(
           _wrap(Scaffold(body: MyBookingsScreen(session: _session()))));
       await _settle(tester);
 
-      final pay = find.textContaining('ادفع العربون');
-      expect(pay, findsWidgets);
+      final stages = find.byType(BookingStages);
+      expect(stages, findsWidgets, reason: 'لا سكّةَ في البطاقات');
       expect(
-        find.ancestor(of: pay.first, matching: find.byType(BookingStages)),
-        findsOneWidget,
-        reason: 'الزرُّ خارج السكّة',
+        find.descendant(of: stages.first, matching: find.byType(FilledButton)),
+        findsNothing,
+        reason: 'زرٌّ باقٍ في سكّة البطاقة',
       );
+      expect(find.textContaining('ادفع العربون'), findsNothing);
     });
 
     testWidgets('ولا زرَّ دفعٍ على حجزٍ لم يوافق عليه مزوّدُه', (tester) async {
