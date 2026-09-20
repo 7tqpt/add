@@ -569,11 +569,19 @@ void main() {
     }
 
     /// البطاقاتُ في مجموعاتٍ حسب سطرها — بتقارب المركز الرأسيّ.
+    ///
+    /// **وما فوق عنوان القسم لا يُعَدّ.** الشاشةُ فيها صورٌ أخرى —
+    /// لافتاتُ الإعلان في أعلاها — وكانت تدخل في العدّ. **ومرّ الاختبارُ
+    /// دهراً بالمصادفة**: بُنيت لافتتان فظُنَّتا بطاقتَي خدمة، فلمّا بُنيت
+    /// ثالثةٌ صار «السطرُ الأوّل» ثلاثاً وسقط — وهو لم يكن يقيس «خدماتٌ لك»
+    /// أصلاً. فيُقصّ ما فوق العنوان.
     List<List<Rect>> rows(WidgetTester tester) {
+      final title = tester.getRect(find.text('خدماتٌ لك')).center.dy;
       final boxes = find
           .byType(MediaThumb)
           .evaluate()
           .map((e) => tester.getRect(find.byWidget(e.widget)))
+          .where((r) => r.center.dy > title)
           .toList()
         ..sort((a, b) => a.center.dy.compareTo(b.center.dy));
       final out = <List<Rect>>[];

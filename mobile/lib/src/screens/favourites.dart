@@ -6,6 +6,7 @@ import '../data/api.dart';
 import '../data/models.dart';
 import '../data/supabase.dart';
 import '../ui/kit.dart';
+import '../ui/motion.dart';
 import '../ui/service_card.dart';
 import 'provider_public.dart';
 import 'service_detail.dart';
@@ -114,8 +115,12 @@ class _FavouritesScreenState extends State<FavouritesScreen> {
                 ),
                 const SizedBox(height: Space.md),
               ],
-              for (final item in data.items) ...[
-                ServiceListCard(
+              // **والصفوفُ تتتابع.** وفهرسُها يُعدّ هنا لأنّ القائمةَ
+              // `children` لا `itemBuilder` — ولا فهرسَ يأتي من الإطار.
+              for (final (i, item) in data.items.indexed) ...[
+                FadeSlideIn(
+                  index: i,
+                  child: ServiceListCard(
                   item: item,
                   isFavourite: true,
                   onToggleFavourite: () => _remove(item),
@@ -133,6 +138,7 @@ class _FavouritesScreenState extends State<FavouritesScreen> {
                         providerId: item.providerId,
                         name: item.providerName,
                       ),
+                    ),
                     ),
                   ),
                 ),

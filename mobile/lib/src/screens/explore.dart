@@ -357,7 +357,18 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   description: tr('جرّب قسماً آخر أو امسح البحث.'),
                 );
               }
-              return ListView.separated(
+              // **وتُسحب للتحديث كأخواتها.** كانت هذه و«خدماتي» وحدَهما بلا
+              // سحب — وهذه شاشةُ بحثٍ تتبدّل نتائجُها بما يُضيفه المزوّدون.
+              return RefreshIndicator(
+                // **وتُقرأ المفضّلةُ معها لا النتائجُ وحدَها.** القلوبُ
+                // المملوءةُ تأتي من نداءٍ آخر، فسحبٌ يُحدّث النتائجَ ويترك
+                // القلوبَ على حالها يُري صاحبَه محفوظاً لم يعد محفوظاً — أو
+                // العكس. **وكشفه اختبارٌ يسأل عمّا قُرئ لا عمّا دار.**
+                onRefresh: () async {
+                  _reload();
+                  await _loadFavourites();
+                },
+                child: ListView.separated(
                 padding: const EdgeInsets.fromLTRB(Space.lg, Space.lg, Space.lg, glassNavSpace),
                 itemCount: items.length,
                 separatorBuilder: (_, _) => const SizedBox(height: Space.md),
@@ -389,6 +400,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                     ),
                   ),
                 )),
+                ),
               );
             },
           ),

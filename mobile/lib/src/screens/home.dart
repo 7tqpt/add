@@ -111,15 +111,21 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               // اللافتاتُ الإعلانيّة — وتغيب كلَّها إن لم تكن هناك حملةٌ
               // جارية، فلا يبقى في أعلى الشاشة صندوقٌ فارغٌ ينتظر إعلاناً.
+              // **وأقسامُها تتتابع لا تقع دفعةً واحدة.** وهي أقسامٌ لا
+              // صفوف، فالتدرّجُ بينها لا داخلَها: ثلاثُ كتلٍ تتبعها العين
+              // من أعلى الشاشة إلى أسفلها.
               if (data.banners.isNotEmpty) ...[
-                _Banners(banners: data.banners),
+                FadeSlideIn(index: 0, child: _Banners(banners: data.banners)),
                 const SizedBox(height: Space.lg),
               ],
               if (data.promos.isNotEmpty) ...[
-                _pad(_Promoted(promos: data.promos)),
+                FadeSlideIn(index: 1, child: _pad(_Promoted(promos: data.promos))),
                 const SizedBox(height: Space.md),
               ],
-              _pad(_Suggested(onExplore: () => widget.onGoTo(2))),
+              FadeSlideIn(
+                index: 2,
+                child: _pad(_Suggested(onExplore: () => widget.onGoTo(2))),
+              ),
               const SizedBox(height: Space.lg),
             ],
           ),
