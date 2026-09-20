@@ -76,7 +76,9 @@ class _FavouritesScreenState extends State<FavouritesScreen> {
       child: FutureBuilder<({List<ServiceItem> items, int missing})>(
         future: _future,
         builder: (context, snap) {
-          if (snap.connectionState != ConnectionState.done) return const LoadingBlock();
+          if (snap.connectionState != ConnectionState.done) {
+            return const SkeletonList(rows: 3, thumb: true);
+          }
           if (snap.hasError) {
             return ErrorBlock(message: messageOf(snap.error!), onRetry: _reload);
           }
@@ -122,6 +124,9 @@ class _FavouritesScreenState extends State<FavouritesScreen> {
                   index: i,
                   child: ServiceListCard(
                   item: item,
+                  // **والغلافُ يطير إلى صفحة الخدمة.** قائمةُ المفضّلة لا
+                  // تكرّر خدمةً — والوسمُ يجب أن يكون فريداً في الشاشة.
+                  flyCover: true,
                   isFavourite: true,
                   onToggleFavourite: () => _remove(item),
                   onOpen: () => Navigator.of(context).push(

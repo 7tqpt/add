@@ -77,7 +77,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       body: FutureBuilder<List<AppNotification>>(
         future: _future,
         builder: (context, snap) {
-          if (snap.connectionState != ConnectionState.done) return const LoadingBlock();
+          if (snap.connectionState != ConnectionState.done) {
+            return const SkeletonList(rows: 4);
+          }
           if (snap.hasError) {
             return ErrorBlock(message: messageOf(snap.error!), onRetry: _reload);
           }

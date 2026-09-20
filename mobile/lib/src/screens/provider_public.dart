@@ -520,7 +520,13 @@ class _Services extends StatelessWidget {
       future: future,
       builder: (context, snap) {
         if (snap.connectionState != ConnectionState.done) {
-          return const Padding(padding: EdgeInsets.all(Space.lg), child: LoadingBlock());
+          // **ومرفوعُ التمرير**: هذا داخلَ عمودٍ في ممرَّرٍ آخر.
+          return const SkeletonList(
+            rows: 3,
+            thumb: true,
+            padding: EdgeInsets.zero,
+            scrollable: false,
+          );
         }
         if (snap.hasError) {
           return ErrorBlock(message: messageOf(snap.error!), onRetry: onRetry);
@@ -542,6 +548,9 @@ class _Services extends StatelessWidget {
                 index: i,
                 child: ServiceListCard(
                   item: item,
+                  // **والغلافُ يطير إلى صفحة الخدمة.** خدماتُ المزوّد لا
+                  // تتكرّر في هذه الشاشة، فالوسمُ فريدٌ فيها.
+                  flyCover: true,
                   // اسمُ المزوّد لا يُكرَّر في صفحته: القارئ فيها يعرف عند من هو.
                   showProvider: false,
                   onOpen: () => Navigator.of(context).push(
