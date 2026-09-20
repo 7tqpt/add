@@ -7,6 +7,7 @@ import '../data/api.dart';
 import '../data/models.dart';
 import '../data/supabase.dart';
 import '../ui/kit.dart';
+import '../ui/motion.dart';
 
 /// صندوق الإشعارات.
 ///
@@ -115,7 +116,15 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     ),
                   );
                 }
-                return _Row(notification: rows[i - 1], onTap: () => _open(rows[i - 1]));
+                // **والصفوفُ تتتابع لا تقع دفعةً واحدة.** الأداةُ موجودةٌ
+                // وتعمل في شاشاتٍ أخرى، وكانت هذه تُلقي قائمتَها كتلةً.
+                return FadeSlideIn(
+                  index: i,
+                  child: _Row(
+                    notification: rows[i - 1],
+                    onTap: () => _open(rows[i - 1]),
+                  ),
+                );
               },
             ),
           );

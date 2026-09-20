@@ -8,6 +8,7 @@ import '../data/api.dart';
 import '../data/models.dart';
 import '../data/supabase.dart';
 import '../ui/kit.dart';
+import '../ui/motion.dart';
 import 'labels.dart';
 import 'plan_editor.dart';
 
@@ -186,13 +187,16 @@ class _PlanBlockState extends State<_PlanBlock> {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _ProgressCard(progress: progress),
+                // **وأقسامُها تتتابع لا تقع دفعةً واحدة.**
+                FadeSlideIn(index: 0, child: _ProgressCard(progress: progress)),
                 const SizedBox(height: Space.md),
-                _Tiles(plan: p, progress: progress),
+                FadeSlideIn(index: 1, child: _Tiles(plan: p, progress: progress)),
                 const SizedBox(height: Space.md),
 
                 // ── قائمة التجهيز ──────────────────────────────────────────
-                AppCard(
+                FadeSlideIn(
+                  index: 2,
+                  child: AppCard(
                   children: [
                     Row(
                       children: [
@@ -258,6 +262,7 @@ class _PlanBlockState extends State<_PlanBlock> {
                       ],
                     ),
                   ],
+                  ),
                 ),
               ],
             );

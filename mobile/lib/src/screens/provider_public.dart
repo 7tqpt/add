@@ -8,6 +8,7 @@ import '../data/api.dart';
 import '../data/models.dart';
 import '../data/supabase.dart';
 import '../ui/kit.dart';
+import '../ui/motion.dart';
 import '../ui/share_button.dart';
 import '../ui/map_open.dart';
 import '../ui/media.dart';
@@ -534,14 +535,21 @@ class _Services extends StatelessWidget {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            for (final item in rows) ...[
-              ServiceListCard(
-                item: item,
-                // اسمُ المزوّد لا يُكرَّر في صفحته: القارئ فيها يعرف عند من هو.
-                showProvider: false,
-                onOpen: () => Navigator.of(
-                  context,
-                ).push(MaterialPageRoute(builder: (_) => ServiceDetailScreen(serviceId: item.id))),
+            // **وخدماتُه تتتابع لا تقع دفعةً واحدة.** وفهرسُها يُعدّ هنا:
+            // القائمةُ `children` لا `itemBuilder`، فلا فهرسَ يأتي من الإطار.
+            for (final (i, item) in rows.indexed) ...[
+              FadeSlideIn(
+                index: i,
+                child: ServiceListCard(
+                  item: item,
+                  // اسمُ المزوّد لا يُكرَّر في صفحته: القارئ فيها يعرف عند من هو.
+                  showProvider: false,
+                  onOpen: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => ServiceDetailScreen(serviceId: item.id),
+                    ),
+                  ),
+                ),
               ),
               const SizedBox(height: Space.md),
             ],

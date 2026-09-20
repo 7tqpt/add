@@ -163,7 +163,12 @@ class _ServicesScreenState extends State<ServicesScreen> {
               description: tr('أضف ما تقدّمه بسعره وعربونه، ليظهر للعملاء في الاستكشاف.'),
             );
           }
-          return ListView.separated(
+          // **وتُسحب للتحديث كأخواتها.** كانت هذه و«استكشف» وحدَهما بلا
+          // سحب، فمن غيّر شيئاً من شاشةٍ أخرى — أو شكّ أنّ قائمتَه قديمة —
+          // لم يكن له إلّا أن يخرج ويعود.
+          return RefreshIndicator(
+            onRefresh: () async => _reload(),
+            child: ListView.separated(
             // **والمسافةُ ثابتُ الشريط لا رقمٌ مكتوبٌ بيده**: زاد الشريطُ
             // بالقرص المرتفع، ورقمٌ منسوخٌ هنا يبقى على قدره القديم فيحجب
             // آخرَ خدمة.
@@ -254,6 +259,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
                 ],
               ));
             },
+            ),
           );
         },
       ),
