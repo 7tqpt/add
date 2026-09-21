@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
 """يجمع إطاراتِ `splash_proposal_test.dart` فيديوَ GIF.
 
-    python3 tool/make_gif.py <مجلّد الإطارات> [اسم الملفّ]
+    python3 tool/make_gif.py <مجلّد الإطارات> [اسم الملفّ] [نسبة التصغير]
+
+والنسبةُ تُمرَّر حين يكبر الملفّ: لوحٌ عريضٌ بأربع خلايا يخرج ستّةَ
+ميغابايتاتٍ وهي أثقلُ من أن تُرسَل في محادثة، ونصفُ الضلع يكفي لأن يُرى
+فيه كلُّ ما يُراد.
 
 ولا ffmpeg في هذه البيئة، وPIL تكفي: الإطاراتُ متقاربةٌ في ألوانها —
 نبيذيٌّ وذهبيٌّ وورقةٌ باهتة — فلوحُ ٢٥٦ لوناً لا يُفقد منها شيئاً يُرى.
@@ -17,6 +21,7 @@ from PIL import Image
 
 src = Path(sys.argv[1] if len(sys.argv) > 1 else '/tmp/shots')
 name = sys.argv[2] if len(sys.argv) > 2 else 'splash.gif'
+scale = float(sys.argv[3]) if len(sys.argv) > 3 else 1.0
 out = src / name
 
 paths = sorted(src.glob('frame_*.png'))
@@ -24,6 +29,10 @@ if not paths:
     sys.exit(f'لا إطاراتِ frame_*.png في {src}')
 
 frames = [Image.open(p).convert('RGB') for p in paths]
+if scale != 1.0:
+    w, h = frames[0].size
+    size = (round(w * scale), round(h * scale))
+    frames = [f.resize(size, Image.LANCZOS) for f in frames]
 
 # اللوحُ يُحسب من إطارٍ في منتصف الحركة: أوّلُ إطارٍ شبهُ فارغٍ من الذهب،
 # فلوحٌ منه يُفقر الألوانَ التي تأتي بعده.
