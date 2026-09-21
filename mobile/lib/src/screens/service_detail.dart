@@ -286,6 +286,9 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
   /// ارتفاعُ صندوق الغلاف — واحدٌ قبل وصول الصور وبعده، فلا يقفز ما تحته.
   static const _coverHeight = 230.0;
 
+  /// ارتفاعُ كتلة الانتظار والعطب والفراغ داخلَ الممرّ.
+  static const _blockHeight = 260.0;
+
   /// **ومستقبلٌ واحدٌ للوسائط يشترك فيه الغلافُ والجسم.** لو كان لكلٍّ نداؤه
   /// لَقُرئت وسائطُ الخدمة مرّتين في كلّ فتحة.
   late final Future<List<ServiceMedia>> _media = Api.serviceMedia(widget.serviceId);
@@ -309,7 +312,19 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
           ),
         ],
       ),
-      body: Column(
+      // **وممرَّرٌ واحدٌ يضمّ الغلافَ والمحتوى.**
+      //
+      // كان عموداً: الغلافُ بارتفاعٍ ثابتٍ ثمّ `Expanded` فيه القائمة — أي
+      // أنّ الغلافَ **خارجَ الممرَّر**، فيمشي المحتوى تحته وهو لا يتزحزح
+      // مهما مُرِّر. وقال صاحبُ المنصّة: «ليش صورة ثابتة؟ أريدها ما تكون
+      // ثابتة»، واختار (أ) من ثلاث: أن يدخل الغلافُ القائمةَ نفسَها فيخرج
+      // بالتمرير وتتّسع الشاشةُ للتفاصيل.
+      //
+      // **والغلافُ أوّلُ الأبناء لا داخلَ `FutureBuilder`** — وهو الشرطُ
+      // الذي كان يحفظه العمود، ويُحفظ هنا كما هو: القائمةُ تبني ما يُرى،
+      // وأوّلُ أبنائها يُرى في أوّل إطار.
+      body: ListView(
+        padding: EdgeInsets.zero,
         children: [
           // **والغلافُ خارجَ `FutureBuilder` عمداً.** لو كان داخلَه لَما وُجد
           // أثناء التحميل — ووقتُ التحميل هو وقتُ الانتقال بعينه، فيطير
@@ -369,7 +384,10 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
                 ),
               ),
             ),
-          Expanded(child: _body(context)),
+          Padding(
+            padding: const EdgeInsets.all(Space.lg),
+            child: _body(context),
+          ),
         ],
       ),
     );
@@ -379,15 +397,32 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
     return FutureBuilder<ServiceItem?>(
       future: _future,
       builder: (context, snap) {
-        if (snap.connectionState != ConnectionState.done) return const LoadingBlock();
-        if (snap.hasError) return ErrorBlock(message: messageOf(snap.error!));
+        // **ومساحةٌ محجوزةٌ للحالات الثلاث.** صارت هذه الكتلُ داخلَ ممرَّرٍ
+        // يلتفّ على ابنه، فتنكمش على قدر الدوّار وتلتصق بأسفل الغلاف. وكانت
+        // في `Expanded` يتوسّطها ما بقي من الشاشة.
+        if (snap.connectionState != ConnectionState.done) {
+          return const SizedBox(height: _blockHeight, child: LoadingBlock());
+        }
+        if (snap.hasError) {
+          return SizedBox(
+            height: _blockHeight,
+            child: ErrorBlock(message: messageOf(snap.error!)),
+          );
+        }
         final item = snap.data;
-        if (item == null) return EmptyBlock(title: tr('الخدمة غير موجودة'));
+        if (item == null) {
+          return SizedBox(
+            height: _blockHeight,
+            child: EmptyBlock(title: tr('الخدمة غير موجودة')),
+          );
+        }
 
         final deposit = (item.price * item.depositPercent / 100).round();
 
-        return ListView(
-          padding: const EdgeInsets.all(Space.lg),
+        // **عمودٌ لا قائمةٌ ثانية**: الممرُّ صار واحداً في الأعلى يضمّ
+        // الغلافَ وهذا، وقائمةٌ داخلَ قائمةٍ لا ارتفاعَ لها.
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             // الوسائط فوق كل شيء: من فتح الخدمة يريد أن يرى ما يشتريه قبل
             // أن يقرأ عنه. والسعرُ تحتها لأن السعر يُحكَم عليه بعد الرؤية

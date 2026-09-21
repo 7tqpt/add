@@ -403,6 +403,10 @@ void main() {
       throw StateError('COVER=<صورة> لازمة — ولا غلافَ يُعرض بلا صورة');
     }
     _coverBytes = File(path).readAsBytesSync();
+    // **ولا يكفي `HttpOverrides.global`**: حزمةُ الاختبار تلفّ جسمَ
+    // الاختبار في نطاقٍ له `HttpOverrides` خاصٌّ يردّ بأربعمئة، فيغلب.
+    // فيُبدَّل معه بابُ الصور نفسُه. (وهو درسٌ مكتوبٌ في
+    // `review_avatar_proposal_test.dart`.)
     HttpOverrides.global = _OneImageHttp(_coverBytes);
     Api.mediaUrlOverride = (p) => 'https://example.test/$p';
   });
@@ -416,6 +420,10 @@ void main() {
     tester.view.physicalSize = const Size(1240, 560);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
+
+    // **ويُوضع داخلَ جسم الاختبار ويُرفع في آخره**: حزمةُ الاختبار تتفقّد
+    // متغيّرات تنقيح الرسم بعد الجسم وقبل `tearDown`.
+    debugNetworkImageHttpClientProvider = () => _Client(_coverBytes);
 
     // **الخليّةُ الحيّةُ تُبنى مرّةً ولا تُعاد**: لو أُعيد بناؤها كلَّ إطارٍ
     // لَعاد تمريرُها إلى الصفر، ولَقيل «الغلافُ ثابتٌ» وهو لم يُمرَّر شيء.
@@ -473,5 +481,6 @@ void main() {
     expect(find.byType(ServiceDetailScreen), findsOneWidget,
         reason: 'فُتحت شاشةٌ فوق الحيّة — قُرئ السحبُ ضغطة');
     expect(tester.takeException(), isNull, reason: 'فاض اللوح');
+    debugNetworkImageHttpClientProvider = null;
   });
 }
