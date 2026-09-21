@@ -13,7 +13,14 @@
 ```bash
 cd mobile
 python3 tool/make_icons.py assets/brand/app_icon.png   # المقاسات كلُّها
+python3 tool/make_splash.py                            # علامةُ نافذة الإقلاع
 ```
+
+**و`make_splash.py` يشتقّ من `app_mark.png` لا من الأيقونة**: نافذةُ الإقلاع
+تسبق `BootScreen` مباشرةً، وتلك ترسم `app_mark.png` بعينه — فالاشتقاقُ منه
+يجعل الصورتين واحدةً شكلاً ونعومةً. وجُرّب الاشتقاقُ من `app_icon.png`
+بقاعدة التشبّع الموصوفة أدناه فوصل خيطُ اللمعان الشعارَ بالهامش الأبيض
+وخرج الإطارُ يكاد يشمل الصورة كلَّها.
 
 وقبلها تُقصّ `app_icon_src.png` إلى `app_icon.png` — والقصُّ يفعله
 `trim_margin` في `make_icons.py` نفسِه، فيمكن تمريرُ الأصل مباشرةً

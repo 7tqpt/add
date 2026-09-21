@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- أندرويد ١٢ فما فوق يرسم شاشةَ إقلاعٍ من عنده قبل نافذتنا.
+
+     ── ولولا هذا الملفِّ لَبقي البياضُ على الأجهزة الحديثة ────────────────
+
+     تلك الشاشةُ تأخذ لونَها من `windowSplashScreenBackground`، فإن لم
+     يُكتب أخذته من `windowBackground` **بشرط أن يكون لوناً مفرداً**.
+     وصار `windowBackground` عندنا `layer-list` فيه لونٌ وصورة — فلا يصلح،
+     ويعود النظامُ إلى لونه هو. أي أنّ إصلاحَ النافذة وحدَه كان يُبقي
+     الشكوى قائمةً على جوّاله.
+
+     ── ولا تُكتب أيقونةٌ للشاشة، عن قصد ──────────────────────────────────
+
+     `windowSplashScreenAnimatedIcon` يقصّه النظامُ بقناعٍ دائريٍّ يُظهر
+     ثُلثَي القماشة. وعملُ `app_mark.png` يملأ مربّعَه (هامشُه خمسةُ
+     بكسلاتٍ من ٢٥٦) وأطرافُه في الزوايا — فيُقصّ. وأيقونةُ التطبيق
+     المتكيّفةُ مصنوعةٌ للقناع أصلاً (العملُ ٦٢٪ من الضلع)، والنظامُ
+     يستعملها حين لا نكتب شيئاً. فتُترك له. -->
+<resources>
+    <style name="LaunchTheme" parent="@android:style/Theme.Light.NoTitleBar">
+        <item name="android:windowBackground">@drawable/launch_background</item>
+        <item name="android:windowSplashScreenBackground">@color/brand_splash</item>
+    </style>
+    <style name="NormalTheme" parent="@android:style/Theme.Light.NoTitleBar">
+        <item name="android:windowBackground">@color/brand_splash</item>
+    </style>
+</resources>
