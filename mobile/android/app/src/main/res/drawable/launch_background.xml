@@ -1,12 +1,40 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Modify this file to customize your launch splash screen -->
-<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:drawable="@color/brand_page" />
+<!-- نافذةُ الإقلاع: ما يراه فاتحُ التطبيق قبل أن يرسم Flutter أوّلَ إطار.
 
-    <!-- You can insert your own image assets here -->
-    <!-- <item>
+     ── ما كان هنا، ولماذا كان أبيض ────────────────────────────────────────
+
+     كان إلى جانب هذا الملفِّ ملفٌّ ثانٍ بالاسم نفسِه في `drawable-v21/`
+     يشير إلى `?android:colorBackground` — و**كلُّ جوّالٍ حديثٍ يأخذه**
+     (أندرويد ٥ فما فوق، أي منذ ٢٠١٤)، وهو في `Theme.Light.NoTitleBar`
+     أبيض. فالكريمُ المكتوبُ هنا لم يكن يراه أحد. وشكا صاحبُ المنصّة من
+     البياض وأرسل لقطته.
+
+     **فحُذف الثاني ولم يُصحَّح**: ملفّان بالاسم نفسِه يفترقان مع الوقت،
+     وأحدُهما لا يُرى — فيُعدَّل المرئيُّ منهما ويبقى الآخر. وواحدٌ
+     يحرسه اختبارٌ خيرٌ من اثنين.
+
+     ── ولمَ نبيذيٌّ وعلامة ────────────────────────────────────────────────
+
+     اختار صاحبُ المنصّة (ب) من ثلاث. والعلامةُ `launch_mark` هي
+     `assets/brand/app_mark.png` بعينه بقياس `BootScreen` نفسِه (١٠٤
+     نقطة)، فتقع في موضعها ولا تتحرّك حين يقلع التطبيق. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@color/brand_splash" />
+    <!-- **والعلامةُ ترتفع ٢٩ نقطةً عن وسط الشاشة، لا تتوسّطه.**
+
+         `BootScreen` تضع العلامةَ واسمَ «فرحتي» في عمودٍ متوسّطٍ، فيقع
+         مركزُ العلامة فوق وسط الشاشة بقدر نصفِ ما تحتها. وقياسُه ٢٩ نقطةً —
+         **مقيسٌ لا مقدَّر**: يقيسه `splash_window_test.dart` من الشاشة نفسِها
+         ويقارنه بالرقم هنا، فإن تبدّل تخطيطُ الشاشة حمرّت الحزمة.
+
+         والحشوةُ من الأسفل ضعفُ الإزاحة: صندوقُ الصورة ينقص ٥٨ من أسفله
+         فيرتفع مركزُه ٢٩.
+
+         ولولاها لَقفزت العلامةُ قفزةً صغيرةً عند أوّل إطار — وهي أردأُ من
+         ثباتٍ في غير موضعه. -->
+    <item android:bottom="58dp">
         <bitmap
             android:gravity="center"
-            android:src="@mipmap/launch_image" />
-    </item> -->
+            android:src="@drawable/launch_mark" />
+    </item>
 </layer-list>

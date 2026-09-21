@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- الليليُّ من أندرويد ١٢ — نبيذيٌّ كالنهاريّ. انظر `values-v31/styles.xml`. -->
 <resources>
-    <!-- الوضعُ الليليُّ لا يغيّر شيئاً هنا: التطبيقُ فاتحٌ وحدَه، ونافذتُه
-         نبيذيّةٌ في الحالين. وأسودُ النظام خلفه يومض سوداً قبل أوّل إطار. -->
     <style name="LaunchTheme" parent="@android:style/Theme.Black.NoTitleBar">
         <item name="android:windowBackground">@drawable/launch_background</item>
+        <item name="android:windowSplashScreenBackground">@color/brand_splash</item>
     </style>
     <style name="NormalTheme" parent="@android:style/Theme.Black.NoTitleBar">
         <item name="android:windowBackground">@color/brand_splash</item>
