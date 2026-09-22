@@ -2,7 +2,7 @@
  * ربطُ الدفع وفحصُه.
  *
  * وأهمّ ما يُثبَت هنا أن الملفّين **لا يسقطان على قاعدةٍ ليست Supabase**:
- * `supabase_functions` مخطّطٌ من صنعها، و`supabase_realtime` نشرةٌ من صنعها.
+ * `vault` و`net` مخطّطان من صنع إضافات Supabase.
  * وملفٌّ يسقط عند من شغّله على قاعدةٍ محلّية أو على مشروعٍ جديد لم تُفعَّل فيه
  * الإضافات يُوقف كلَّ ما بعده في اللصقة.
  *
@@ -47,22 +47,51 @@ await db.exec(hook)
 await db.exec(hook)
 ok('push_hook.sql يمرّ على قاعدةٍ عادية ولا يسقط', true)
 
+for (const role of ['anon', 'authenticated']) {
+  await db.exec(`set role ${role}`)
+  for (const [fn, sql] of [
+    ['enable_push_webhook', "select public.enable_push_webhook('https://attacker.example')"],
+    ['disable_push_webhook', 'select public.disable_push_webhook()'],
+  ]) {
+    let denied = false
+    try { await db.query(sql) } catch (error) {
+      denied = /permission denied/i.test(error.message)
+    }
+    ok(`${role} لا يستطيع استدعاء ${fn}`, denied)
+  }
+  await db.exec('reset role')
+}
+
 const { rows: refused } = await db.query(
   `select public.enable_push_webhook('https://demo.supabase.co') as msg`)
 ok('ويقول إن المخطّط ناقصٌ بدل أن يرمي',
-  String(refused[0].msg).includes('supabase_functions'), refused[0].msg)
+  String(refused[0].msg).includes('Vault'), refused[0].msg)
 
 const { rows: badUrl } = await db.query(`select public.enable_push_webhook('demo') as msg`)
 ok('ورابطٌ ناقص يُردّ برسالةٍ تقول شكله',
   String(badUrl[0].msg).includes('https://'), badUrl[0].msg)
 
 // ── ٢. وعلى قاعدةٍ فيها المخطّط ─────────────────────────────────────────────
-// هيكلٌ مصغّر ممّا تضيفه Supabase: دالّةُ المُشغِّل وحدها.
+// هيكلٌ مصغّر من Vault وpg_net؛ يسجل الطلب من غير شبكة.
 await db.exec(`
-  create schema if not exists supabase_functions;
-  create or replace function supabase_functions.http_request() returns trigger
-    language plpgsql as $$ begin return new; end $$;
+  create schema if not exists vault;
+  create table vault.decrypted_secrets (name text primary key, decrypted_secret text);
+  create schema if not exists net;
+  create table net.calls (url text, body jsonb, headers jsonb);
+  create or replace function net.http_post(
+    url text, body jsonb default '{}'::jsonb, params jsonb default '{}'::jsonb,
+    headers jsonb default '{}'::jsonb, timeout_milliseconds integer default 2000)
+  returns bigint language plpgsql as $$
+  begin
+    insert into net.calls values (url, body, headers);
+    return 1;
+  end $$;
 `)
+
+const { rows: noSecret } = await db.query(
+  `select public.enable_push_webhook('https://demo.supabase.co') as msg`)
+ok('ولا يربط قبل ضبط السرّ', String(noSecret[0].msg).includes('push_webhook_secret'))
+await db.exec("insert into vault.decrypted_secrets values ('push_webhook_secret', 'test-secret')")
 
 const { rows: linked } = await db.query(
   `select public.enable_push_webhook('https://demo.supabase.co/') as msg`)
@@ -76,6 +105,15 @@ let rows = await triggers()
 ok('ومُشغِّلٌ واحد', rows.length === 1)
 ok('ورابطُه كامل بلا شرطةٍ مزدوجة',
   rows[0]?.def?.includes('https://demo.supabase.co/functions/v1/push'), rows[0]?.def)
+
+await db.exec(`
+  insert into public.notifications (user_id, title, body)
+  values ((select id from public.app_users limit 1), 'فحص', 'النص من القاعدة')`)
+const { rows: calls } = await db.query('select * from net.calls')
+ok('المُشغّل يرسل سرّ Vault في الترويسة فقط',
+  calls.length === 1 && calls[0].headers['x-push-webhook-secret'] === 'test-secret')
+ok('والحمولة تحمل معرّف الإشعار لا السرّ',
+  Boolean(calls[0]?.body?.record?.id) && !JSON.stringify(calls[0].body).includes('test-secret'))
 
 // الشرطة الأخيرة في الرابط تُقصّ: `…co//functions` ينتج ٤٠٤ صامتاً.
 ok('ولا شرطة مكرّرة', !rows[0]?.def?.includes('co//functions'))

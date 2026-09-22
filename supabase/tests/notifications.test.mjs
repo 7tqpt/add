@@ -176,6 +176,24 @@ for (const fn of ['notify_user', 'notify_provider']) {
 const calls = read('api.sql').match(/perform public\.notify_(user|provider)\(/g) ?? []
 ok('وسبعةُ مواضع تستدعيها في api.sql', calls.length === 7, String(calls.length))
 
+// A direct RPC must not be able to write a forged notification. The trusted
+// message trigger above still succeeds while the helper is inaccessible here.
+for (const role of ['anon', 'authenticated']) {
+  await db.exec(`set role ${role}`)
+  for (const [fn, id] of [['notify_user', customerId], ['notify_provider', providerId]]) {
+    let denied = false
+    try {
+      await db.query(`select public.${fn}($1, 'general', 'مزور', 'نص مزور')`, [id])
+    } catch (error) {
+      denied = /permission denied/i.test(error.message)
+    }
+    ok(`${role} لا يستطيع استدعاء ${fn} مباشرة`, denied)
+  }
+  await db.exec('reset role')
+}
+ok('محاولة التزوير لم تكتب إشعاراً',
+  Number((await db.query("select count(*) as n from public.notifications where title = 'مزور'")).rows[0].n) === 0)
+
 await db.close()
 console.log(fail === 0 ? '\nكل اختبارات notifications.sql نجحت.' : `\n${fail} فشل.`)
 process.exit(fail === 0 ? 0 : 1)

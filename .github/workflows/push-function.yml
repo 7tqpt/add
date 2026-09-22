@@ -53,8 +53,8 @@ jobs:
       # **ولكلِّ دالّةٍ حكمُها في التحقّق من الجلسة — ولا يُوحَّد.**
       #
       # `push`: `--no-verify-jwt` لأنّ المنادي مُشغِّلُ قاعدة البيانات لا
-      # مستخدمٌ يحمل جلسة. ولو طُلب التحقّق لرُدَّ كلُّ إشعارٍ بـ401 بلا أن
-      # يظهر في سجلّ التطبيق شيء.
+      # مستخدمٌ يحمل جلسة. تتحقّق الدالّة بنفسها من PUSH_WEBHOOK_SECRET القادم
+      # من Vault؛ ويجب تحديث push_hook.sql قبل نشر نسخة الدالّة الجديدة.
       #
       # `phone-otp`: **بالتحقّق** — يناديها مستخدمٌ داخلٌ برمز جلسته، وكلُّ
       # نداءٍ يُنفق من رصيدٍ مدفوع. فالبوّابةُ تردّ من لا جلسةَ له قبل أن
@@ -95,10 +95,11 @@ jobs:
           {
             echo "### نُشرت دالّتان: \`push\` و\`phone-otp\`"
             echo ""
-            echo "**الإشعارات** — بقي شيئان في محرّر SQL:"
+            echo "**الإشعارات** — خطوات الإعداد:"
             echo ""
             echo '1. `supabase/notifications.sql` — إن لم يكن شُغّل بعد.'
-            echo '2. `supabase/push_hook.sql` ثم:'
+            echo '2. احفظ PUSH_WEBHOOK_SECRET في Edge ونسخته باسم push_webhook_secret في Vault.'
+            echo '3. `supabase/push_hook.sql` ثم:'
             echo '   ```sql'
             echo "   select public.enable_push_webhook('https://${{ secrets.SUPABASE_PROJECT_REF }}.supabase.co');"
             echo '   ```'

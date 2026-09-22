@@ -21,6 +21,7 @@
 // ============================================================================
 
 import { createClient } from 'jsr:@supabase/supabase-js@2'
+import { acceptsPushWebhook } from './authorization.mjs'
 
 interface NotificationRow {
   id: string
@@ -99,6 +100,13 @@ async function accessToken(): Promise<string> {
 
 // ── الإرسال ─────────────────────────────────────────────────────────────────
 Deno.serve(async (request) => {
+  // The database webhook has no user JWT. Authenticate it with a dedicated
+  // secret before parsing the payload or using the service-role client.
+  if (!acceptsPushWebhook(
+    request.headers.get('x-push-webhook-secret'),
+    Deno.env.get('PUSH_WEBHOOK_SECRET'),
+  )) return new Response('غير مصرح', { status: 401 })
+
   try {
     const payload = await request.json() as { record?: { id?: string }; type?: string }
     const id = payload.record?.id
@@ -109,12 +117,7 @@ Deno.serve(async (request) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     )
 
-    // **لا يُصدَّق ما في الحمولة إلّا المعرّف.** الدالّة منشورةٌ بلا تحقّقٍ من
-    // الرمز — لأن المنادي مُشغِّلٌ لا مستخدمٌ يحمل جلسة — ورابطُ المشروع علنيّ.
-    // فلو أُخذ العنوانُ والنصُّ من الجسد لأمكن لمن عرف الرابط أن يدفع إلى
-    // جوال أيّ مستخدمٍ رسالةً باسم «فرحتي» يكتبها هو: «حوّل العربون إلى هذا
-    // الرقم». فيُقرأ الصفُّ من القاعدة بمعرّفه، ويُرسَل ما فيها لا ما جاء.
-    // وأقصى ما يبلغه المزوِّر حينئذٍ إعادةُ إشعارٍ حقيقيٍّ إلى صاحبه.
+    // لا يُصدَّق ما في الحمولة إلّا المعرّف؛ النصّ والمستلم من القاعدة وحدها.
     const stored = await admin
       .from('notifications')
       .select('id, user_id, provider_id, kind, title, body, data')

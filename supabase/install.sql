@@ -2112,6 +2112,13 @@ create or replace function public.notify_provider(
   select p_provider_id, p_kind, p_title, p_body, p_data where p_provider_id is not null;
 $$;
 
+-- Internal helpers run inside trusted SECURITY DEFINER functions. Keep them
+-- unavailable as direct Data API RPCs, including on existing installations.
+revoke all on function public.notify_user(uuid, text, text, text, jsonb)
+  from public, anon, authenticated;
+revoke all on function public.notify_provider(uuid, text, text, text, jsonb)
+  from public, anon, authenticated;
+
 -- متوسط التقييم يُعاد حسابه من التقييمات المنشورة وحدها
 create or replace function public.recalc_provider_rating(p_provider_id uuid)
 returns void language sql security definer set search_path = public as $$

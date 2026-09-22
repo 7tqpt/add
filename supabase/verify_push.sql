@@ -45,8 +45,9 @@ with checks as (
   union all
   select 6, 'ربط الدفع بالدالّة',
          (select count(*) > 0 from pg_trigger
-           where tgname = 'push_on_notification' and not tgisinternal),
-         'شغّل push_hook.sql ثم enable_push_webhook(''https://…supabase.co'')'
+           where tgname = 'push_on_notification' and not tgisinternal
+             and pg_get_triggerdef(oid) like '%dispatch_push_webhook%'),
+         'اضبط PUSH_WEBHOOK_SECRET في Edge وVault ثم شغّل push_hook.sql وenable_push_webhook(''https://…supabase.co'')'
 
   union all
   select 7, 'أجهزةٌ سجّلت رمزها',
