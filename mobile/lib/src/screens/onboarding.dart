@@ -155,11 +155,26 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     style: TextStyle(height: 1.7),
                   ),
                   const SizedBox(height: Space.lg),
+                  // **والعنوانُ فوقَ الصندوق لا داخلَه، والصندوقُ فارغ.**
+                  //
+                  // قال صاحبُ المنصّة: «عند تسجيل حساب جديد، الاسم الكامل —
+                  // شيل النصّ الموجود»، واختار (أ) من ثلاث.
+                  //
+                  // وكان العنوانُ قابعاً في الصندوق يطفو عند الكتابة، فيُقرأ
+                  // نصّاً مكتوباً لمن لم يكتب بعد. **والحقلُ فارغٌ فعلاً**
+                  // ولا يصل الخادمَ منه شيء.
+                  //
+                  // **والمثالُ يُشال معه**: `hintText` لا يظهر ما دام العنوانُ
+                  // قابعاً، فإذا طفا العنوانُ ظهر المثالُ مكانَه — فيبقى في
+                  // الصندوق نصٌّ بعد أن طُلب أن يُفرَّغ.
+                  //
+                  // وهي صورةُ حقل «المحافظة» تحته نفسُها، فصارت الثلاثةُ على
+                  // شكلٍ واحد.
                   TextField(
                     controller: _name,
                     decoration: InputDecoration(
                       labelText: tr('الاسم الكامل'),
-                      hintText: tr('محمد الصنعاني'),
+                      floatingLabelBehavior: FloatingLabelBehavior.always,
                     ),
                   ),
                   const SizedBox(height: Space.md),
@@ -169,7 +184,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     textDirection: TextDirection.ltr,
                     decoration: InputDecoration(
                       labelText: tr('رقم الجوال'),
-                      hintText: '+967 7XX XXX XXX',
+                      floatingLabelBehavior: FloatingLabelBehavior.always,
                     ),
                   ),
                   const SizedBox(height: Space.md),
