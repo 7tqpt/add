@@ -42,7 +42,6 @@ import 'package:aras/src/core/notification_tone.dart';
 import 'package:aras/src/core/session.dart';
 import 'package:aras/src/core/theme.dart';
 import 'package:aras/src/screens/account_extras.dart';
-import 'package:aras/src/ui/kit.dart';
 
 Future<void> _load(String family, List<String> paths) async {
   final loader = FontLoader(family);

@@ -252,16 +252,33 @@ void main() {
       expect(asked, 1, reason: 'الحوارُ يعود ويُلحّ');
     });
 
-    test('**والقشرتان تسألان — لا واحدةٌ دون الأخرى**', () {
-      // طلبُ الحجز يصل المزوّدَ وردُّه يصل العميل، فالقيدُ يضرّ الاثنين.
-      // وقشرةٌ تسأل وأخرى لا تُنسى بسهولة: هما ملفّان متوازيان.
-      for (final path in [
-        'lib/src/screens/customer_shell.dart',
-        'lib/src/screens/provider_shell.dart',
-      ]) {
-        expect(_read(path), contains('askBatteryExemptionOnce()'),
-            reason: '$path لا تطلب الإعفاء');
+    test('**ولا تسأل قشرةٌ عند الدخول — ولا حوارَ يُعرض**', () {
+      // **وكان هذا الشرطُ معكوساً**: كان يُقاس أنّ القشرتين **تسألان**،
+      // فكان حوارُ أندرويد «هل تريد إيقاف تحسين استخدام البطّاريّة؟» يُفتح
+      // بعد الدخول مرّةً في عمر التثبيت.
+      //
+      // وقال صاحبُ المنصّة: «العميل يحسب فيه شيءٌ غلط — ما أريدها تظهر».
+      // فشِيل، وانقلب الشرطُ: لا يُنادى من قشرةٍ أصلاً.
+      //
+      // **ويُمشَّط `lib/` كلُّه لا القشرتان**: الحوارُ ممنوعٌ من كلّ موضعٍ
+      // يُفتح تلقائيّاً، ومن أعاده غداً في شاشةٍ ثالثةٍ سقط هنا.
+      final callers = <String>[];
+      for (final entity in Directory('lib').listSync(recursive: true)) {
+        if (entity is! File || !entity.path.endsWith('.dart')) continue;
+        // **ويُستثنى موضعُ تعريفها وحدَه** — وإلّا طابق المشطُ سطرَ
+        // التعريف نفسَه وسقط الاختبارُ على وجود الدالّة لا على ندائها.
+        // والدالّةُ تبقى: من فتح «الإعدادات» يفتح الموضعَ بضغطة.
+        if (entity.path.endsWith('core/notification_tone.dart')) continue;
+        final lines = entity.readAsLinesSync();
+        for (var i = 0; i < lines.length; i++) {
+          if (lines[i].trimLeft().startsWith('//')) continue;
+          if (lines[i].contains('askBatteryExemptionOnce(')) {
+            callers.add('${entity.path}:${i + 1}');
+          }
+        }
       }
+      expect(callers, isEmpty,
+          reason: 'حوارُ البطّاريّة يُفتح من: ${callers.join('، ')}');
     });
 
     testWidgets('**والتحذيرُ لا يُعرض لمن جهازُه غيرُ مقيِّد**', (tester) async {
