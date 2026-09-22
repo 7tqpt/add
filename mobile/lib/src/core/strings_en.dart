@@ -733,7 +733,6 @@ const Map<String, String> englishStrings = {
   'محفظة': 'Wallet',
   'محفظة جوالي': 'Jawali wallet',
   'محفظة نقدية': 'Cash wallet',
-  'محمد الصنعاني': 'Mohammed Al‑Sanani',
   'مدفوع {0}': 'Paid {0}',
   'مدفوعة': 'Paid',
   'مرحباً بك في فرحتي': 'Welcome to Farhati',
