@@ -45,6 +45,7 @@ const ok = (label, cond, extra = '') => {
 const hook = read('push_hook.sql')
 await db.exec(hook)
 await db.exec(hook)
+await db.exec(read('security_notification_rpcs.sql'))
 ok('push_hook.sql يمرّ على قاعدةٍ عادية ولا يسقط', true)
 
 for (const role of ['anon', 'authenticated']) {

@@ -38,6 +38,7 @@ for (const f of ['install.sql', 'seed.sql', 'apply.sql', 'support.sql', 'roles.s
 const file = read('notifications.sql')
 await db.exec(file)
 await db.exec(file) // إعادة التشغيل لا تكسر شيئاً
+await db.exec(read('security_notification_rpcs.sql'))
 
 let fail = 0
 const ok = (label, cond, extra = '') => {
