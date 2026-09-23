@@ -866,4 +866,16 @@ const Map<String, String> englishStrings = {
   'حُجز في': 'Booked on',
   'افتح الموقع على الخريطة': 'Open location on the map',
   'المطلوب الآن': 'Due now',
+
+  // ── مراجعة الحجز ───────────────────────────────────────────────────────
+  'مراجعة الحجز': 'Review booking',
+  'الخدمة  ←  الموعد  ←  التأكيد': 'Service  →  Date  →  Confirm',
+  'الموعد': 'Date',
+  'الوقت': 'Time',
+  'ملخّص المبلغ': 'Payment summary',
+  'السعر المبدئي': 'Estimated price',
+  'العربون المتوقع': 'Estimated deposit',
+  'المتبقي المتوقع': 'Estimated balance',
+  'كود الخصم المتحقق منه': 'Verified discount code',
+  'العودة للتعديل': 'Back to edit',
 };
