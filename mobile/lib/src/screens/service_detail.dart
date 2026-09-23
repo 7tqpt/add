@@ -217,23 +217,95 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
     }
   }
 
-  Future<void> _book(ServiceItem item) async {
+  bool _bookingFormValid() {
     if (_date == null) {
       setState(() => _error = tr('اختر تاريخ العرس.'));
-      return;
+      return false;
     }
     final guests = int.tryParse(_guests.text.trim());
     if (guests == null || guests <= 0) {
       setState(() => _error = tr('اكتب عدد الضيوف رقماً.'));
-      return;
+      return false;
     }
     if (_address.text.trim().isEmpty) {
       setState(() => _error = tr('اكتب عنوان المناسبة.'));
-      return;
+      return false;
     }
+    setState(() => _error = null);
+    return true;
+  }
+
+  Future<void> _reviewBooking(ServiceItem item) async {
+    if (_busy || !_bookingFormValid()) return;
+    final estimate = item.price;
+    final deposit = (estimate * item.depositPercent / 100).round();
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        child: SingleChildScrollView(
+          padding: EdgeInsets.fromLTRB(20, 0, 20, MediaQuery.viewInsetsOf(sheetContext).bottom + 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(tr('مراجعة الحجز'), style: Theme.of(sheetContext).textTheme.titleLarge),
+              const SizedBox(height: Space.sm),
+              Muted(tr('الخدمة  ←  الموعد  ←  التأكيد')),
+              const SizedBox(height: Space.lg),
+              AppCard(children: [
+                SectionTitle(item.title),
+                KeyValue(tr('مقدّم الخدمة'), item.providerName),
+                KeyValue(tr('الموعد'), formatDate(_date!.toIso8601String())),
+                KeyValue(tr('الوقت'), formatTime(
+                  '${_time.hour.toString().padLeft(2, '0')}:${_time.minute.toString().padLeft(2, '0')}')),
+                KeyValue(tr('عدد الضيوف'), _guests.text.trim()),
+                KeyValue(tr('العنوان'), _address.text.trim()),
+              ]),
+              const SizedBox(height: Space.md),
+              AppCard(children: [
+                SectionTitle(tr('ملخّص المبلغ')),
+                KeyValue(tr('السعر المبدئي'), formatMoney(estimate)),
+                KeyValue(tr('العربون المتوقع'), formatMoney(deposit)),
+                KeyValue(tr('المتبقي المتوقع'), formatMoney(estimate - deposit)),
+                if (_applied != null)
+                  KeyValue(tr('كود الخصم المتحقق منه'), _applied!.code),
+                const SizedBox(height: Space.sm),
+                Muted(tr('المبلغ النهائي يحسبه النظام عند تأكيد الحجز.'), size: 11),
+              ]),
+              if (item.cancellationPolicyName != null) ...[
+                const SizedBox(height: Space.md),
+                AppCard(children: [
+                  SectionTitle(tr('سياسة الإلغاء')),
+                  Muted(item.cancellationPolicyName!),
+                ]),
+              ],
+              const SizedBox(height: Space.lg),
+              FilledButton(
+                key: const ValueKey('booking-review-confirm'),
+                onPressed: () {
+                  Navigator.of(sheetContext).pop();
+                  _book(item);
+                },
+                child: Text(tr('تأكيد الحجز')),
+              ),
+              const SizedBox(height: Space.sm),
+              TextButton(
+                onPressed: () => Navigator.of(sheetContext).pop(),
+                child: Text(tr('العودة للتعديل')),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _book(ServiceItem item) async {
+    if (_busy || !_bookingFormValid()) return;
 
     setState(() {
-      _error = null;
       _busy = true;
     });
     try {
@@ -242,7 +314,7 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
         eventDate: _date!.toIso8601String().substring(0, 10),
         eventTime:
             '${_time.hour.toString().padLeft(2, '0')}:${_time.minute.toString().padLeft(2, '0')}',
-        guests: guests,
+        guests: int.parse(_guests.text.trim()),
         address: _address.text.trim(),
         notes: _notes.text.trim(),
         planId: _planId,
@@ -663,7 +735,7 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
                 ],
                 const SizedBox(height: Space.lg),
                 FilledButton(
-                  onPressed: _busy ? null : () => _book(item),
+                  onPressed: _busy ? null : () => _reviewBooking(item),
                   child: _busy
                       ? const SizedBox(
                           height: 20,
@@ -673,7 +745,7 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
                             color: AppColors.accentInk,
                           ),
                         )
-                      : Text(tr('تأكيد الحجز')),
+                      : Text(tr('مراجعة الحجز')),
                 ),
                 const SizedBox(height: Space.sm),
                 Muted(

@@ -95,6 +95,13 @@ Future<void> _tapText(WidgetTester tester, String text) async {
   await tester.pumpAndSettle();
 }
 
+Future<void> _reviewAndConfirm(WidgetTester tester) async {
+  await _tapText(tester, 'مراجعة الحجز');
+  expect(find.byKey(const ValueKey('booking-review-confirm')), findsOneWidget);
+  await tester.tap(find.byKey(const ValueKey('booking-review-confirm')));
+  await _settle(tester);
+}
+
 void main() {
   late ServiceItem service;
 
@@ -102,6 +109,28 @@ void main() {
     demoResetCoupons();
     demoBookings = [];
     service = demoServices.firstWhere((s) => s.id == 's1');
+  });
+
+  testWidgets('مراجعة الحجز تعرض المبلغ ولا تنشئ حجزاً قبل التأكيد', (tester) async {
+    _phone(tester);
+    await tester.pumpWidget(_wrap(const ServiceDetailScreen(serviceId: 's1')));
+    await _settle(tester);
+    await _pickDate(tester);
+    await _fill(tester, 'عنوان المناسبة', 'صنعاء');
+
+    await _tapText(tester, 'مراجعة الحجز');
+    final review = find.byType(BottomSheet);
+    final deposit = (service.price * service.depositPercent / 100).round();
+    expect(find.descendant(of: review, matching: find.text(formatMoney(deposit))), findsOneWidget);
+    expect(find.descendant(of: review,
+      matching: find.text(formatMoney(service.price - deposit))), findsOneWidget);
+    expect(demoBookings, isEmpty);
+
+    await tester.tap(find.text('العودة للتعديل'));
+    await tester.pumpAndSettle();
+    expect(demoBookings, isEmpty);
+    await _reviewAndConfirm(tester);
+    expect(demoBookings, hasLength(1));
   });
 
   testWidgets('حقلُ الكود في نموذج الحجز', (tester) async {
@@ -208,7 +237,7 @@ void main() {
     await _fill(tester, 'عنوان المناسبة', 'حي السنينة — صنعاء');
     await _fill(tester, 'كود الخصم (اختياري)', 'SDD5000');
     await _tapText(tester, 'تحقّق');
-    await _tapText(tester, 'تأكيد الحجز');
+    await _reviewAndConfirm(tester);
 
     final booking = demoBookings.first;
     expect(booking.couponCode, 'SDD5000');
@@ -255,7 +284,7 @@ void main() {
 
     // يبدّله بكودٍ صحيحٍ آخر ولا يضغط «تحقّق».
     await _fill(tester, 'كود الخصم (اختياري)', 'EID25');
-    await _tapText(tester, 'تأكيد الحجز');
+    await _reviewAndConfirm(tester);
 
     final booking = demoBookings.first;
     expect(booking.couponCode, '',
@@ -270,7 +299,7 @@ void main() {
 
     await _pickDate(tester);
     await _fill(tester, 'عنوان المناسبة', 'حي السنينة — صنعاء');
-    await _tapText(tester, 'تأكيد الحجز');
+    await _reviewAndConfirm(tester);
 
     final booking = demoBookings.first;
     expect(booking.couponCode, '');

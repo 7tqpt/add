@@ -1,5 +1,20 @@
 @import 'tailwindcss';
 
+/* Warm brand treatment stays inside the approved dashboard layout. */
+.dashboard-concept {
+  --accent: #7b0f2e;
+  --accent-ink: #ffffff;
+  --surface-2: #fbf4ef;
+  --text-primary: #2a1119;
+}
+
+[data-theme='dark'] .dashboard-concept {
+  --accent: #e6c473;
+  --accent-ink: #2a1119;
+  --surface-2: #30242a;
+  --text-primary: #f7faff;
+}
+
 /* Theme is driven by a single `data-theme` attribute on <html>, stamped by
    ThemeProvider (and by the inline script in index.html before first paint).
    OS preference is resolved in JS, so CSS only ever has one dark scope. */

@@ -18,6 +18,7 @@ import { BarChart } from '@/components/charts/BarChart'
 import { ConflictCalendar } from '@/components/dashboard/ConflictCalendar'
 import { PaymentsFeed } from '@/components/dashboard/PaymentsFeed'
 import { ProviderQueue } from '@/components/dashboard/ProviderQueue'
+import { RecentBookings } from '@/components/dashboard/RecentBookings'
 import { ChartCard } from '@/components/charts/ChartCard'
 import { SERIES_COLORS } from '@/components/charts/chart-utils'
 import { StatTile, type Tone, toneChip } from '@/components/charts/StatTile'
@@ -62,6 +63,7 @@ const QUEUE: {
 
 export function DashboardPage() {
   const [range, setRange] = useState<RangeDays>(30)
+  const [refreshKey, setRefreshKey] = useState(0)
   const load = useCallback(() => getDashboardStats(range), [range])
   const { data, error, loading, refetching, reload } = useAsync(load, [range])
 
@@ -84,7 +86,11 @@ export function DashboardPage() {
   ]
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="dashboard-concept flex flex-col gap-4">
+      <div>
+        <h1 className="text-2xl font-semibold text-ink">نظرة عامة</h1>
+        <p className="mt-1 text-sm text-muted">الحجوزات والطلبات التي تحتاج متابعتك</p>
+      </div>
       {/* One filter row above everything it scopes — never per-card filters. */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div
@@ -110,7 +116,7 @@ export function DashboardPage() {
 
         <button
           type="button"
-          onClick={reload}
+          onClick={() => { reload(); setRefreshKey((value) => value + 1) }}
           disabled={refetching}
           className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-lg border border-hairline bg-surface px-3 text-xs font-medium text-ink-2 transition-colors hover:text-ink disabled:cursor-not-allowed disabled:opacity-55"
         >
@@ -128,6 +134,20 @@ export function DashboardPage() {
         </p>
       ) : null}
 
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <ActionTile to="/bookings" icon={CalendarCheck} label="حجوزات الفترة" value={data.bookings.value} />
+        <ActionTile to="/providers" icon={BriefcaseBusiness} label="طلبات توثيق" value={data.pendingProviders} />
+        <ActionTile to="/support" icon={LifeBuoy} label="تذاكر مفتوحة" value={data.openTickets} />
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
+        <div className="xl:col-span-2"><RecentBookings refreshKey={refreshKey} /></div>
+        <AdminQueue stats={data} />
+      </div>
+
+      <details className="rounded-xl border border-hairline bg-surface p-3 sm:p-4">
+        <summary className="cursor-pointer text-sm font-semibold text-ink">التحليلات والتقارير التفصيلية</summary>
+        <div className="mt-4 flex flex-col gap-4">
       <div className="stagger grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatTile
           label="الحجوزات"
@@ -182,50 +202,6 @@ export function DashboardPage() {
         <div className="xl:col-span-2">
           <ConflictCalendar />
         </div>
-
-        <Card>
-          <CardHeader title="بانتظار الإدارة" subtitle="ما يحتاج قراراً الآن" />
-          <CardBody className="flex flex-col gap-1 px-2 py-2 sm:px-2">
-            {QUEUE.map((entry) => {
-              const count = data[entry.key] as number
-              return (
-                <Link
-                  key={entry.key}
-                  to={entry.to}
-                  className="flex items-center justify-between gap-3 rounded-lg px-3 py-2.5 transition-colors hover:bg-surface-2"
-                >
-                  <span className="flex min-w-0 items-center gap-2.5">
-                    {/* الصبغة لمن ينتظر عملاً وحده: بطاقةٌ صفرها لا شيء فيها
-                        لا تستحق لوناً يجذب العين إليها. */}
-                    <span
-                      style={count > 0 ? toneChip(entry.tone) : undefined}
-                      className={cn(
-                        'flex size-7 shrink-0 items-center justify-center rounded-lg',
-                        count === 0 && 'bg-surface-2 text-muted',
-                      )}
-                    >
-                      <entry.icon size={15} aria-hidden />
-                    </span>
-                    <span className="truncate text-xs text-ink-2">{entry.label}</span>
-                  </span>
-                  <span className="flex shrink-0 items-center gap-1">
-                    {/* Zero is not dimmed away: "nothing waiting" is the answer
-                        an admin came here for. */}
-                    <span
-                      className={cn(
-                        'tnum text-sm font-semibold',
-                        count > 0 ? 'text-ink' : 'text-muted',
-                      )}
-                    >
-                      {formatNumber(count)}
-                    </span>
-                    <ChevronLeft size={14} aria-hidden className="text-muted" />
-                  </span>
-                </Link>
-              )
-            })}
-          </CardBody>
-        </Card>
       </div>
 
       <ChartCard
@@ -299,7 +275,57 @@ export function DashboardPage() {
           formatTick={formatCompact}
         />
       </ChartCard>
+        </div>
+      </details>
     </div>
+  )
+}
+
+function ActionTile({ to, icon: Icon, label, value }: {
+  to: string
+  icon: LucideIcon
+  label: string
+  value: number
+}) {
+  return (
+    <Link to={to} className="flex items-center justify-between gap-3 rounded-xl border border-hairline bg-surface px-4 py-4 transition-colors hover:bg-surface-2">
+      <span className="flex items-center gap-3 text-sm text-ink-2">
+        <span className="rounded-lg bg-surface-2 p-2 text-accent"><Icon size={21} aria-hidden /></span>
+        {label}
+      </span>
+      <span className="tnum text-2xl font-semibold text-ink">{formatNumber(value)}</span>
+    </Link>
+  )
+}
+
+function AdminQueue({ stats }: { stats: DashboardStats }) {
+  return (
+    <Card>
+      <CardHeader title="يحتاج إجراءك" subtitle="قوائم العمل الحالية" />
+      <CardBody className="flex flex-col gap-1 px-2 py-2 sm:px-2">
+        {QUEUE.map((entry) => {
+          const count = stats[entry.key] as number
+          return (
+            <Link key={entry.key} to={entry.to}
+              className="flex items-center justify-between gap-3 rounded-lg px-3 py-2.5 transition-colors hover:bg-surface-2">
+              <span className="flex min-w-0 items-center gap-2.5">
+                <span style={count > 0 ? toneChip(entry.tone) : undefined}
+                  className={cn('flex size-7 shrink-0 items-center justify-center rounded-lg', count === 0 && 'bg-surface-2 text-muted')}>
+                  <entry.icon size={15} aria-hidden />
+                </span>
+                <span className="truncate text-xs text-ink-2">{entry.label}</span>
+              </span>
+              <span className="flex shrink-0 items-center gap-1">
+                <span className={cn('tnum text-sm font-semibold', count > 0 ? 'text-ink' : 'text-muted')}>
+                  {formatNumber(count)}
+                </span>
+                <ChevronLeft size={14} aria-hidden className="text-muted" />
+              </span>
+            </Link>
+          )
+        })}
+      </CardBody>
+    </Card>
   )
 }
 
