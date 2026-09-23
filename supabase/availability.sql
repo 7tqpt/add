@@ -95,6 +95,14 @@ begin
     raise exception 'لا يُعدَّل يومٌ مضى';
   end if;
 
+  -- الحجز هو مصدر الحقيقة؛ ملاحظة التقويم قد تكون عذراً سابقاً للحجز.
+  if not p_blocked and exists (
+    select 1 from public.bookings b
+     where b.provider_id = me and b.event_date = p_day and b.status = 'confirmed'
+  ) then
+    raise exception 'هذا اليوم محجوز — ألغِ الحجز أولاً';
+  end if;
+
   select note into held from public.provider_availability
    where provider_id = me and day = p_day;
 

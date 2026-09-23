@@ -389,7 +389,7 @@ declare
   message public.support_messages;
   actor   text := coalesce(nullif(public.auth_email(), ''), 'الإدارة');
 begin
-  if not public.can_write() then
+  if not public.can_write_area('support') then
     raise exception 'لا تملك صلاحية الرد';
   end if;
   if btrim(coalesce(p_body, '')) = '' then

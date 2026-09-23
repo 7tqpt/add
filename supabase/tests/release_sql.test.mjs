@@ -16,10 +16,11 @@
  */
 import { readFileSync } from 'node:fs'
 import { execFileSync } from 'node:child_process'
+import { fileURLToPath } from 'node:url'
 import { PGlite } from '@electric-sql/pglite'
 
 const read = (f) => readFileSync(new URL(`../${f}`, import.meta.url), 'utf8')
-const repo = (f) => readFileSync(new URL(`../../${f}`, import.meta.url), 'utf8')
+const repo = (f) => readFileSync(new URL(`../../${f}`, import.meta.url), 'utf8').replace(/\r\n/g, '\n')
 
 let fail = 0
 const ok = (label, cond, extra = '') => {
@@ -91,7 +92,7 @@ const buildDir = workingDirOf(buildLine)
 ok('ومجلّدُ عملِ خطوته يُقرأ من السير', buildDir !== null, String(buildDir))
 const derivedBuild = execFileSync('bash', ['-c', `${buildLine}\necho "$BUILD"`], {
   // **ويُشغَّل من حيث يشغّله السير** — لا من جذر المستودع.
-  cwd: new URL(`${buildDir}/`, new URL('../../', import.meta.url)).pathname,
+  cwd: fileURLToPath(new URL(`${buildDir}/`, new URL('../../', import.meta.url))),
   encoding: 'utf8',
 }).trim()
 ok('**والسيرُ يشتقُّ رقمَ البناء من pubspec لا من الحزمة**',

@@ -67,6 +67,18 @@ alter table public.app_settings
 comment on column public.app_settings.require_phone_verification is
   'حين يصير true لا يرى التطبيقَ من لم يؤكّد رقمه. يُقلَب بعد التأكّد من وصول واتساب.';
 
+-- هوية التطبيق التي تعتمد عليها RLS ودوال العميل والمزوّد لا تُمنح قبل
+-- التوثيق حين يكون الحاجز مفعّلاً. قراءة/تعديل الملف وOTP تستخدم auth.uid()
+-- مباشرة، فتظل طرق إكمال الملف وتأكيد الرقم متاحة. المعروض العام يبقى عاماً.
+create or replace function public.current_app_user()
+returns uuid language sql stable security definer set search_path = public as $$
+  select u.id from public.app_users u
+   where u.auth_user_id = auth.uid()
+     and (not coalesce((select s.require_phone_verification
+                         from public.app_settings s where s.id = 1), false)
+          or u.phone_verified_at is not null);
+$$;
+
 -- ----------------------------------------------------------------------------
 -- ٣. أثرُ الإرسال — للحدّ لا للسجلّ
 --
@@ -118,7 +130,8 @@ declare
 begin
   select id, phone_verified_at into v_user, v_verified
     from public.app_users
-   where auth_user_id = p_auth_user;
+   where auth_user_id = p_auth_user
+   for update;
 
   if v_user is null then
     return query select false, 'no_profile', 0;

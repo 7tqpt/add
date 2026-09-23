@@ -292,12 +292,18 @@ create policy versions_admin_write on public.app_versions
 drop policy if exists push_admin_only on public.push_notifications;
 create policy push_admin_only on public.push_notifications
   for all to authenticated
-  using (public.can_read_area('ops')) with check (public.can_write_area('ops'));
+  using (public.can_write_area('ops')) with check (public.can_write_area('ops'));
+drop policy if exists push_admin_read on public.push_notifications;
+create policy push_admin_read on public.push_notifications
+  for select to authenticated using (public.can_read_area('ops'));
 
 drop policy if exists metrics_admin_only on public.daily_metrics;
 create policy metrics_admin_only on public.daily_metrics
   for all to authenticated
-  using (public.is_admin()) with check (public.can_write_area('ops'));
+  using (public.can_write_area('ops')) with check (public.can_write_area('ops'));
+drop policy if exists metrics_admin_read on public.daily_metrics;
+create policy metrics_admin_read on public.daily_metrics
+  for select to authenticated using (public.is_admin());
 
 drop policy if exists notifications_admin_write on public.notifications;
 create policy notifications_admin_write on public.notifications

@@ -27,7 +27,7 @@ with checks as (
 
   union all
   select 4, 'سياسات RLS',
-         (select count(*) from pg_policies where schemaname = 'public'), 74
+         (select count(*) from pg_policies where schemaname = 'public'), 75
 
   -- الصفر هو الصواب هنا: جدول بلا RLS مكشوف لكل من يملك المفتاح العام.
   union all

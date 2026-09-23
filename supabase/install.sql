@@ -1,22 +1,8 @@
--- ============================================================================
---  التثبيت الكامل — منصة حجوزات وتجهيز الأعراس
---
---  الاستخدام:
---    افتح مشروعك في Supabase ← SQL Editor ← New query، ثم الصق هذا الملف
---    كاملاً واضغط Run. الملف يجمع schema.sql و policies.sql و api.sql بهذا
---    الترتيب تحديداً: الجداول قبل سياساتها، والسياسات قبل الدوال التي تعمل
---    من خلفها.
---
---  التشغيل مرة ثانية آمن: كل عبارة إما `if not exists` أو `create or replace`.
---
---  بعده — وليس قبله — نفّذ supabase/bootstrap_admin.sql لتعيين أول مسؤول،
---  و supabase/seed.sql إن أردت بيانات تجريبية للتصفّح.
--- ============================================================================
+-- التثبيت الأساسي: schema.sql ثم policies.sql ثم api.sql.
+-- بعد ملفات الميزات، شغّل security_hardening.sql أخيراً.
+-- لا تشغّل seed.sql على بيانات حقيقية.
 
--- ############################################################################
--- ##  schema.sql — الجداول والقيود والدوال المساعدة
--- ############################################################################
-
+-- Source: schema.sql
 -- ============================================================================
 --  منصة حجوزات وتجهيز الأعراس اليمنية — مخطط قاعدة البيانات
 --
@@ -72,6 +58,20 @@ create or replace function public.is_owner()
 returns boolean language sql stable security definer set search_path = public as $$
   select coalesce(public.admin_role() = 'owner', false);
 $$;
+
+-- قبل تركيب roles.sql تبقى الأدوار القديمة محصورة في owner/admin.
+-- roles.sql يستبدلها بمصفوفة المجالات؛ لا تستخدم can_write() في RPC جديد.
+do $bootstrap$
+begin
+  if to_regprocedure('public.can_write_area(text)') is null then
+    execute $definition$
+      create function public.can_write_area(p_area text)
+      returns boolean language sql stable security definer set search_path = public as
+      'select public.can_write();'
+    $definition$;
+  end if;
+end;
+$bootstrap$;
 
 -- ============================================================================
 --  2. المرجعيات: المحافظات وأقسام الخدمات
@@ -413,6 +413,10 @@ create index if not exists bookings_user_idx       on public.bookings (user_id, 
 create index if not exists bookings_provider_idx   on public.bookings (provider_id, created_at desc);
 create index if not exists bookings_plan_idx       on public.bookings (plan_id);
 create index if not exists bookings_event_date_idx on public.bookings (event_date);
+-- حجز مؤكد واحد للمزوّد في اليوم؛ الفهرس يحسم الطلبات المتزامنة أيضاً.
+create unique index if not exists bookings_confirmed_provider_day_key
+  on public.bookings (provider_id, event_date)
+  where status = 'confirmed' and provider_id is not null;
 
 -- ============================================================================
 --  5. المالية: المدفوعات والتسويات
@@ -848,6 +852,11 @@ end $$;
 --  10. دوال مساعدة
 -- ============================================================================
 
+alter table public.app_users
+  add column if not exists phone_verified_at timestamptz;
+alter table public.app_settings
+  add column if not exists require_phone_verification boolean not null default false;
+
 -- ----------------------------------------------------------------------------
 -- هوية المتصل الحالي
 --
@@ -857,7 +866,11 @@ end $$;
 -- ----------------------------------------------------------------------------
 create or replace function public.current_app_user()
 returns uuid language sql stable security definer set search_path = public as $$
-  select u.id from public.app_users u where u.auth_user_id = auth.uid();
+  select u.id from public.app_users u
+   where u.auth_user_id = auth.uid()
+     and (not coalesce((select s.require_phone_verification
+                         from public.app_settings s where s.id = 1), false)
+          or u.phone_verified_at is not null);
 $$;
 
 create or replace function public.current_provider()
@@ -916,11 +929,7 @@ $$;
 --    select id, email, 'owner' from auth.users where email = 'you@example.com';
 -- ============================================================================
 
-
--- ############################################################################
--- ##  policies.sql — سياسات RLS وصلاحيات الأدوار
--- ############################################################################
-
+-- Source: policies.sql
 -- ============================================================================
 --  سياسات الوصول (RLS) — شغّلها بعد schema.sql
 --
@@ -1003,15 +1012,9 @@ create policy users_self_read on public.app_users
   using (auth_user_id = auth.uid() or public.is_admin());
 
 drop policy if exists users_self_update on public.app_users;
-create policy users_self_update on public.app_users
-  for update to authenticated
-  using (auth_user_id = auth.uid())
-  -- الحالة والصلاحيات ليست للمستخدم؛ تُغيَّر من اللوحة أو من دوال الـ API
-  with check (auth_user_id = auth.uid());
-
 drop policy if exists users_self_insert on public.app_users;
-create policy users_self_insert on public.app_users
-  for insert to authenticated with check (auth_user_id = auth.uid());
+-- التسجيل وتعديل الملف يمران عبر api_register_profile / api_update_profile.
+-- ملكية الصف لا تمنح حق كتابة status أو phone_verified_at أو بقية أعمدته.
 
 drop policy if exists users_admin_write on public.app_users;
 create policy users_admin_write on public.app_users
@@ -1030,8 +1033,11 @@ create policy sessions_owner_insert on public.user_sessions
 drop policy if exists devices_owner on public.user_devices;
 create policy devices_owner on public.user_devices
   for all to authenticated
-  using (user_id = public.current_app_user() or public.is_admin())
-  with check (user_id = public.current_app_user() or public.can_write());
+  using (user_id = public.current_app_user() or public.can_write_area('directory'))
+  with check (user_id = public.current_app_user() or public.can_write_area('directory'));
+drop policy if exists devices_admin_read on public.user_devices;
+create policy devices_admin_read on public.user_devices
+  for select to authenticated using (public.is_admin());
 
 -- ============================================================================
 --  3. مقدّمو الخدمة
@@ -1065,7 +1071,7 @@ returns trigger language plpgsql security definer set search_path = public as $$
 begin
   -- المسؤول، أو دالة API داخلية رفعت العلم أدناه (تحديث العدّادات والتقييم بعد
   -- إتمام حجز). العلم محلّي المعاملة، فلا يتسرّب إلى طلب آخر.
-  if public.is_admin()
+  if public.can_write_area('directory')
      or coalesce(current_setting('app.internal', true), '') = 'on' then
     return new;
   end if;
@@ -1076,6 +1082,7 @@ begin
      or new.commission_percent is distinct from old.commission_percent
      or new.rating is distinct from old.rating
      or new.reviews_count is distinct from old.reviews_count
+     or new.completed_bookings is distinct from old.completed_bookings
      or new.total_earnings is distinct from old.total_earnings then
     raise exception 'هذه الحقول تُعدَّل من إدارة المنصة فقط';
   end if;
@@ -1097,8 +1104,8 @@ create policy provider_categories_read on public.provider_categories
 drop policy if exists provider_categories_owner on public.provider_categories;
 create policy provider_categories_owner on public.provider_categories
   for all to authenticated
-  using (provider_id = public.current_provider() or public.can_write())
-  with check (provider_id = public.current_provider() or public.can_write());
+  using (provider_id = public.current_provider() or public.can_write_area('catalog'))
+  with check (provider_id = public.current_provider() or public.can_write_area('catalog'));
 
 -- المستندات: خاصة تماماً — صاحبها والإدارة فقط. لا تُعرض للعامة أبداً.
 drop policy if exists documents_owner_read on public.provider_documents;
@@ -1131,8 +1138,8 @@ create policy services_public_read on public.provider_services
 drop policy if exists services_owner_write on public.provider_services;
 create policy services_owner_write on public.provider_services
   for all to authenticated
-  using (provider_id = public.current_provider() or public.can_write())
-  with check (provider_id = public.current_provider() or public.can_write());
+  using (provider_id = public.current_provider() or public.can_write_area('catalog'))
+  with check (provider_id = public.current_provider() or public.can_write_area('catalog'));
 
 -- التقويم: يقرؤه الجميع (العميل يحتاج معرفة الأيام المشغولة)، ويديره صاحبه.
 drop policy if exists availability_public_read on public.provider_availability;
@@ -1140,10 +1147,8 @@ create policy availability_public_read on public.provider_availability
   for select to anon, authenticated using (true);
 
 drop policy if exists availability_owner_write on public.provider_availability;
-create policy availability_owner_write on public.provider_availability
-  for all to authenticated
-  using (provider_id = public.current_provider() or public.can_write())
-  with check (provider_id = public.current_provider() or public.can_write());
+-- تعديل التقويم يمر عبر api_set_availability؛ الكتابة المباشرة كانت تتجاوز
+-- منع فتح يوم محجوز. مزامنة الحجوزات تعمل داخل دوال ومشغلات موثوقة.
 
 -- ============================================================================
 --  4. خطط الأعراس والحجوزات
@@ -1153,8 +1158,11 @@ create policy availability_owner_write on public.provider_availability
 drop policy if exists plans_owner on public.wedding_plans;
 create policy plans_owner on public.wedding_plans
   for all to authenticated
-  using (user_id = public.current_app_user() or public.is_admin())
-  with check (user_id = public.current_app_user() or public.can_write());
+  using (user_id = public.current_app_user() or public.can_write_area('bookings'))
+  with check (user_id = public.current_app_user() or public.can_write_area('bookings'));
+drop policy if exists plans_admin_read on public.wedding_plans;
+create policy plans_admin_read on public.wedding_plans
+  for select to authenticated using (public.is_admin());
 
 -- الحجز يراه طرفاه فقط: العميل صاحبه، ومقدّم الخدمة المعني.
 drop policy if exists bookings_parties_read on public.bookings;
@@ -1175,7 +1183,7 @@ create policy bookings_admin_write on public.bookings
 drop policy if exists favourites_owner on public.favourites;
 create policy favourites_owner on public.favourites
   for all to authenticated
-  using (user_id = public.current_app_user() or public.is_admin())
+  using (user_id = public.current_app_user())
   with check (user_id = public.current_app_user());
 
 -- ============================================================================
@@ -1286,7 +1294,7 @@ drop policy if exists dispute_messages_write on public.dispute_messages;
 create policy dispute_messages_write on public.dispute_messages
   for insert to authenticated
   with check (
-    public.can_write()
+    public.can_write_area('trust')
     or exists (
       select 1 from public.disputes d
       where d.id = dispute_id
@@ -1389,11 +1397,19 @@ create policy notifications_admin_write on public.notifications
 -- حملات الإشعارات، المقاييس، وسجل المسؤولين: لا يراها مستخدم ولا مقدّم خدمة.
 drop policy if exists push_admin_only on public.push_notifications;
 create policy push_admin_only on public.push_notifications
-  for all to authenticated using (public.is_admin()) with check (public.can_write());
+  for all to authenticated
+  using (public.can_write_area('ops')) with check (public.can_write_area('ops'));
+drop policy if exists push_admin_read on public.push_notifications;
+create policy push_admin_read on public.push_notifications
+  for select to authenticated using (public.is_admin());
 
 drop policy if exists metrics_admin_only on public.daily_metrics;
 create policy metrics_admin_only on public.daily_metrics
-  for all to authenticated using (public.is_admin()) with check (public.can_write());
+  for all to authenticated
+  using (public.can_write_area('ops')) with check (public.can_write_area('ops'));
+drop policy if exists metrics_admin_read on public.daily_metrics;
+create policy metrics_admin_read on public.daily_metrics
+  for select to authenticated using (public.is_admin());
 
 -- جدول المسؤولين: يقرأه كل مسؤول، ولا يعدّله إلا المالك.
 drop policy if exists admins_read on public.admins;
@@ -1433,11 +1449,7 @@ alter default privileges in schema public
 alter default privileges in schema public
   grant insert, update, delete on tables to authenticated;
 
-
--- ############################################################################
--- ##  api.sql — طرق العرض ودوال RPC التي يستدعيها التطبيقان
--- ############################################################################
-
+-- Source: api.sql
 -- ============================================================================
 --  الـ API — شغّلها بعد schema.sql و policies.sql
 --
@@ -1747,7 +1759,7 @@ begin
   if not found then
     raise exception 'الحجز غير موجود';
   end if;
-  if booking.user_id is distinct from me and not public.can_write() then
+  if booking.user_id is distinct from me and not public.can_write_area('bookings') then
     raise exception 'لا تملك صلاحية إلغاء هذا الحجز';
   end if;
   if booking.status in ('completed', 'cancelled', 'rejected') then
@@ -1986,7 +1998,7 @@ begin
   end if;
   -- is distinct from, لأن as_prov تكون NULL لمن ليس مقدّم خدمة، و`<>` مع NULL
   -- تعطي NULL فيمرّ الفحص ويقبل العميل حجزه بنفسه.
-  if booking.provider_id is distinct from as_prov and not public.can_write() then
+  if booking.provider_id is distinct from as_prov and not public.can_write_area('bookings') then
     raise exception 'لا تملك صلاحية الرد على هذا الحجز';
   end if;
   if booking.status <> 'pending_provider' then
@@ -1994,6 +2006,12 @@ begin
   end if;
 
   if p_accept then
+    if exists (select 1 from public.bookings b
+                where b.provider_id = booking.provider_id
+                  and b.event_date = booking.event_date
+                  and b.status = 'confirmed' and b.id <> booking.id) then
+      raise exception 'هذا اليوم محجوز بالفعل لدى مقدّم الخدمة';
+    end if;
     update public.bookings set
       status = 'confirmed',
       confirmed_at = now(),
@@ -2066,7 +2084,7 @@ begin
   if not found then
     raise exception 'الحجز غير موجود';
   end if;
-  if booking.provider_id is distinct from as_prov and not public.can_write() then
+  if booking.provider_id is distinct from as_prov and not public.can_write_area('bookings') then
     raise exception 'لا تملك صلاحية إنهاء هذا الحجز';
   end if;
   if booking.status <> 'confirmed' then

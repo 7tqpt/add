@@ -140,7 +140,7 @@ language plpgsql security definer set search_path = public as $$
 declare
   pay public.payments;
 begin
-  if not public.can_write() then
+  if not public.can_write_area('finance') then
     raise exception 'لا تملك صلاحية تأكيد المدفوعات';
   end if;
 
@@ -183,7 +183,7 @@ language plpgsql security definer set search_path = public as $$
 declare
   pay public.payments;
 begin
-  if not public.can_write() then
+  if not public.can_write_area('finance') then
     raise exception 'لا تملك صلاحية ردّ المدفوعات';
   end if;
 
@@ -242,7 +242,7 @@ declare
   bk       public.bookings;
   settled  text := 'none';   -- none | pending | paid
 begin
-  if not public.can_write() then
+  if not public.can_write_area('finance') then
     raise exception 'لا تملك صلاحية ردّ المبالغ';
   end if;
 
@@ -309,7 +309,7 @@ declare
   pay     public.payments;
   settled text;
 begin
-  if not public.can_write() then
+  if not public.can_write_area('finance') then
     raise exception 'لا تملك صلاحية ردّ المبالغ';
   end if;
 
