@@ -197,5 +197,107 @@ await mustFail('ولا صفَّ يُحذف', async () => {
 })
 await db.exec(`reset role`)
 
+// ── حدُّ المحاولات — الثغرةُ التي كشفها الفحصُ الأمنيّ ──────────────────────
+//
+// كان الإرسالُ محدوداً والتحقّقُ مفتوحاً. والمسار: يفتح المهاجمُ حساباً،
+// ينادي `send` **برقم الضحيّة** فتصلها رسالة، ثمّ يخمّن الرمزَ بلا عدد.
+// وإن أصاب، صار رقمُ الضحيّة مؤكَّداً على حسابه هو.
+console.log('\n=== وحدُّ المحاولات: خمسٌ في ربع ساعة ===')
+
+const C = '44444444-4444-4444-4444-444444444444'
+const D = '55555555-5555-5555-5555-555555555555'
+await db.exec(`
+  insert into auth.users (id, email) values
+    ('${C}', 'hani@aras.ye'), ('${D}', 'salem@aras.ye');
+  insert into public.app_users (auth_user_id, full_name, email, phone, status) values
+    ('${C}', 'هاني', 'hani@aras.ye', '772222222', 'active'),
+    ('${D}', 'سالم', 'salem@aras.ye', '773333333', 'active');
+`)
+
+const tryOtp = (uid, phone) =>
+  one(`select * from public.otp_claim_verify($1, $2)`, [uid, phone])
+
+const victim = '+967777654321'
+const results = []
+for (let i = 0; i < 6; i++) results.push(await tryOtp(C, victim))
+
+ok('الخمسُ الأُوَل تمرّ', results.slice(0, 5).every((r) => r.allowed === true),
+   results.slice(0, 5).map((r) => r.reason).join('/'))
+ok('**والسادسةُ تُردّ**', results[5].allowed === false && results[5].reason === 'attempt_limit',
+   `السبب: ${results[5].reason}`)
+ok('ويُقال كم يُنتظر', results[5].wait_seconds > 0 && results[5].wait_seconds <= 900,
+   `${results[5].wait_seconds} ثانية`)
+
+// **ولا تُسجَّل المردودةُ**، وإلّا امتدّ الحبسُ بكلّ نقرةٍ يائسة.
+const attempts = await one(
+  `select count(*)::int c from public.phone_otp_attempts where phone = $1`, [victim])
+ok('ولم تُسجَّل المردودة', attempts.c === 5, `المسجَّل: ${attempts.c}`)
+
+console.log('=== والحدُّ على الرقم لا على الحساب وحدَه ===')
+// **وهذه هي التي تُغلق الثغرةَ فعلاً.** حدٌّ على المستخدم وحدَه يُلتفّ عليه
+// بحساباتٍ تُفتح في دقيقة: عشرةُ حسابات = خمسون محاولةً على الرقم نفسِه.
+const byOther = await tryOtp(D, victim)
+ok('**حسابٌ آخرُ لا يُكمل على الرقم نفسِه**', byOther.allowed === false,
+   `السبب: ${byOther.reason}`)
+
+console.log('=== ورقمٌ آخرُ من الحساب نفسِه يمرّ ما لم يُستنفد حدُّه ===')
+const otherPhone = await tryOtp(D, '+967777111222')
+ok('يمرّ', otherPhone.allowed === true, `السبب: ${otherPhone.reason}`)
+
+console.log('=== وبعد ربع ساعةٍ يُفتح البابُ من جديد ===')
+await db.query(
+  `update public.phone_otp_attempts set created_at = created_at - interval '16 minutes'`)
+const later = await tryOtp(C, victim)
+ok('يمرّ بعد انقضاء النافذة', later.allowed === true, `السبب: ${later.reason}`)
+
+console.log('=== وعشرون في اليوم سقفٌ لا يُتجاوز ===')
+await db.exec(`delete from public.phone_otp_attempts`)
+await db.query(`
+  insert into public.phone_otp_attempts (user_id, phone, created_at)
+  select (select id from public.app_users where auth_user_id = $1), $2,
+         now() - interval '2 hours'
+    from generate_series(1, 20)`, [C, victim])
+const dayCapped = await tryOtp(C, victim)
+ok('**مردودٌ بحدّ اليوم**', dayCapped.allowed === false && dayCapped.reason === 'attempt_day_limit',
+   `السبب: ${dayCapped.reason}`)
+
+console.log('=== والمحاولاتُ تُمحى عند النجاح ===')
+// وإلّا بقي من أكّد محسوباً عليه عشرون محاولةً ليومٍ كامل — فلو بدّل رقمه
+// في اليوم نفسِه (والتبديلُ يُبطل التأكيد) وجد البابَ مغلقاً بمحاولاتٍ نجحت.
+await one(`select public.otp_clear_attempts($1, $2)`, [C, victim])
+const cleared = await one(`select count(*)::int c from public.phone_otp_attempts`)
+ok('لم يبقَ أثر', cleared.c === 0, `الباقي: ${cleared.c}`)
+const afterClear = await tryOtp(C, victim)
+ok('والبابُ مفتوح', afterClear.allowed === true)
+
+console.log('=== ومن لا ملفَّ له لا يحاول ===')
+const ghostTry = await tryOtp('66666666-6666-6666-6666-666666666666', victim)
+ok('مردود', ghostTry.allowed === false && ghostTry.reason === 'no_profile')
+
+console.log('=== والدالّتان للخدمة وحدها ===')
+// **ولو مُنحت `otp_clear_attempts` للمسجَّلين لَصُفِّر الحدُّ بنداءٍ بين كلّ
+// تخمينين** — فيصير الحدُّ زينةً كاملة.
+await db.exec(`set role authenticated`)
+await mustFail('المسجَّلُ لا ينادي otp_claim_verify',
+  () => db.query(`select * from public.otp_claim_verify($1, $2)`, [C, victim]))
+await mustFail('**ولا ينادي otp_clear_attempts**',
+  () => db.query(`select public.otp_clear_attempts($1, $2)`, [C, victim]))
+await db.exec(`reset role`)
+
+await db.exec(`set role anon`)
+await mustFail('والزائرُ كذلك', () =>
+  db.query(`select * from public.otp_claim_verify($1, $2)`, [C, victim]))
+await db.exec(`reset role`)
+
+console.log('=== وعدّادُ المحاولات لا يُقرأ ولا يُصفَّر من التطبيق ===')
+await db.exec(`set role authenticated`)
+const seenAttempts = await db.query(`select count(*)::int c from public.phone_otp_attempts`)
+ok('لا صفَّ يُرى', seenAttempts.rows[0].c === 0, 'الحرزُ مفعَّلٌ بلا سياسة')
+await mustFail('ولا صفَّ يُحذف', async () => {
+  const r = await db.query(`delete from public.phone_otp_attempts returning id`)
+  if (r.rows.length === 0) throw new Error('لم يُحذف شيء — الحرز يمنع')
+})
+await db.exec(`reset role`)
+
 console.log(fail === 0 ? '\n✅ كلّها' : `\n❌ سقط ${fail}`)
 process.exit(fail === 0 ? 0 : 1)

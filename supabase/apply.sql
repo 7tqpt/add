@@ -33,9 +33,17 @@ begin;
 -- ----------------------------------------------------------------------------
 -- مقدّمو الخدمة + أسماء أقسامهم
 -- ----------------------------------------------------------------------------
+--
+-- **و`security definer` هنا لا `invoker`، وفيها `where public.is_admin()`.**
+-- وكانت `security_invoker = true` فتتبع صلاحيةَ السائل — وهي بعد
+-- `provider_columns.sql` تعني: لا بريدَ ولا جوّالَ ولا أرباح، فتخرج اللوحةُ
+-- بأعمدةٍ فارغة. والحارسُ الآن شرطٌ في الطريقة نفسِها: من ليس مسؤولاً يقرؤها
+-- فلا يجد صفّاً واحداً.
+--
+-- (ونسختُها في `provider_columns.sql` هي هذه حرفاً. والتكرارُ مقصود: أيُّهما
+-- أُعيد تشغيلُه وحدَه لم يكسر عملَ الآخر.)
 drop view if exists public.v_admin_providers;
-create view public.v_admin_providers
-with (security_invoker = true) as
+create view public.v_admin_providers as
 select
   p.*,
   coalesce(
@@ -45,7 +53,8 @@ select
       where pc.provider_id = p.id),
     '{}'::text[]
   ) as categories
-from public.service_providers p;
+from public.service_providers p
+where public.is_admin();
 
 -- ----------------------------------------------------------------------------
 -- الخدمات + اسم مقدّمها وقسمها وسياسة إلغائها

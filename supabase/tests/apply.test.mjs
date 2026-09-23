@@ -63,6 +63,18 @@ const BASE = {
   v_admin_promotions: 'promotions',
   v_plan_summary: 'wedding_plans',
 }
+// **وتُقرأ بصفة مسؤول.** `v_admin_providers` صارت بصلاحية مالكها وفيها
+// `where public.is_admin()` (انظر `provider_columns.sql`)، فتردّ صفراً لمن
+// لا صفَّ له في `admins` — وقراءتُها بلا جلسةٍ تقيس الحارسَ لا الجمع.
+const BOSS = '77777777-7777-7777-7777-777777777777'
+await db.exec(`
+  insert into auth.users (id, email) values ('${BOSS}', 'boss@sdd.company')
+    on conflict (id) do nothing;
+  insert into public.admins (user_id, email, role)
+       values ('${BOSS}', 'boss@sdd.company', 'owner')
+  on conflict (user_id) do update set role = 'owner';
+  select set_config('request.jwt.claim.sub', '${BOSS}', false);`)
+
 for (const [view, table] of Object.entries(BASE)) {
   const { rows } = await db.query(
     `select (select count(*) from public.${view})::int as v,
@@ -74,12 +86,17 @@ for (const [view, table] of Object.entries(BASE)) {
 console.log(`✓ ${VIEWS.length} طرق عرض تطابق جداولها صفاً بصف`)
 
 // كل طريقة عرض تُنفَّذ بصلاحيات المستدعي، وإلا التفّت حول RLS.
+//
+// **إلّا ما حمل حارسَه في نصِّه** — والاستثناءُ بالشرط لا بالاسم: من أضاف
+// طريقةً بصلاحية مالكها بلا `is_admin()` فيها وجدها هنا ولو سمّاها `v_admin_*`.
+// (و`v_admin_providers` هي الوحيدةُ اليوم، وسببُها في `provider_columns.sql`.)
 const { rows: invoker } = await db.query(`
   select c.relname from pg_class c
    where c.relkind = 'v' and c.relname = any($1)
-     and coalesce(c.reloptions::text, '') not like '%security_invoker=true%'`, [VIEWS])
-assert.equal(invoker.length, 0, `طرق بلا security_invoker: ${invoker.map((r) => r.relname)}`)
-console.log('✓ security_invoker مفعّل في كلٍّ منها')
+     and coalesce(c.reloptions::text, '') not like '%security_invoker=true%'
+     and pg_get_viewdef(c.oid) not like '%is_admin()%'`, [VIEWS])
+assert.equal(invoker.length, 0, `طرق بلا security_invoker ولا حارس: ${invoker.map((r) => r.relname)}`)
+console.log('✓ security_invoker مفعّل في كلٍّ منها، أو حارسٌ في نصّها')
 
 // الأعمدة التي تُضاف فوق الجداول هي سبب وجود الملف أصلاً.
 const added = {
