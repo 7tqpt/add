@@ -268,7 +268,7 @@ void main() {
         // **ويُستثنى موضعُ تعريفها وحدَه** — وإلّا طابق المشطُ سطرَ
         // التعريف نفسَه وسقط الاختبارُ على وجود الدالّة لا على ندائها.
         // والدالّةُ تبقى: من فتح «الإعدادات» يفتح الموضعَ بضغطة.
-        if (entity.path.endsWith('core/notification_tone.dart')) continue;
+        if (entity.path.replaceAll('\\', '/').endsWith('core/notification_tone.dart')) continue;
         final lines = entity.readAsLinesSync();
         for (var i = 0; i < lines.length; i++) {
           if (lines[i].trimLeft().startsWith('//')) continue;
