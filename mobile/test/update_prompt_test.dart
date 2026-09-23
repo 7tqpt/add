@@ -8,6 +8,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:aras/src/core/app_update.dart';
+import 'package:aras/src/core/app_version.dart';
 import 'package:aras/src/core/theme.dart';
 import 'package:aras/src/screens/update_prompt.dart';
 import 'package:aras/src/ui/kit.dart';
@@ -46,6 +47,8 @@ AppRelease _r(
       rolloutPercent: rollout,
     );
 
+const _nextBuild = appBuild + 1;
+
 void main() {
   tearDown(() {
     releasesOverride = null;
@@ -77,26 +80,26 @@ void main() {
     });
 
     test('والعاديُّ يذهب إلى الشريط لا إلى المنع', () async {
-      releasesOverride = () async => [_r(99)];
+      releasesOverride = () async => [_r(_nextBuild)];
       updateBucketOverride = 0;
       final gate = UpdateGate();
       await gate.check();
-      expect(gate.banner?.build, 99);
+      expect(gate.banner?.build, _nextBuild);
       expect(gate.forced, isNull);
     });
 
     test('والإجباريُّ يذهب إلى المنع لا إلى الشريط', () async {
-      releasesOverride = () async => [_r(99, force: true)];
+      releasesOverride = () async => [_r(_nextBuild, force: true)];
       updateBucketOverride = 0;
       final gate = UpdateGate();
       await gate.check();
-      expect(gate.forced?.build, 99);
+      expect(gate.forced?.build, _nextBuild);
       expect(gate.banner, isNull);
     });
 
     test('**ولا يُمنع أحدٌ خلف شاشةٍ زرُّها لا يفتح شيئاً**', () async {
       // نسخةٌ إجباريّةٌ بلا رابط: لو مُنع بها لَحُبس صاحبُ الجهاز بلا مخرج.
-      releasesOverride = () async => [_r(99, force: true, url: '')];
+      releasesOverride = () async => [_r(_nextBuild, force: true, url: '')];
       updateBucketOverride = 0;
       final gate = UpdateGate();
       await gate.check();
@@ -105,7 +108,7 @@ void main() {
     });
 
     test('و«لاحقاً» تُخفي الشريط', () async {
-      releasesOverride = () async => [_r(99)];
+      releasesOverride = () async => [_r(_nextBuild)];
       updateBucketOverride = 0;
       final gate = UpdateGate();
       await gate.check();
@@ -115,12 +118,12 @@ void main() {
     });
 
     test('**ولا تُخفي «لاحقاً» المنعَ**', () async {
-      releasesOverride = () async => [_r(99, force: true)];
+      releasesOverride = () async => [_r(_nextBuild, force: true)];
       updateBucketOverride = 0;
       final gate = UpdateGate();
       await gate.check();
       gate.dismiss();
-      expect(gate.forced?.build, 99, reason: 'أُغلق البابُ المقفل بزرّ');
+      expect(gate.forced?.build, _nextBuild, reason: 'أُغلق البابُ المقفل بزرّ');
     });
   });
 
