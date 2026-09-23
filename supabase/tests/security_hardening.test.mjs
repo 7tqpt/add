@@ -11,7 +11,7 @@ test('bundled installation and migration match the canonical SQL', () => {
   assert.equal(read('security_hardening.sql').trimEnd(), buildHardening().trimEnd())
 })
 
-test('security boundaries hold for actual authenticated roles', async t => {
+for (const withCover of [false, true]) test(`security boundaries hold for actual authenticated roles (profile cover: ${withCover})`, async t => {
   const db = new PGlite()
   t.after(() => db.close())
   await db.exec(`
@@ -30,6 +30,11 @@ test('security boundaries hold for actual authenticated roles', async t => {
   for (const f of ['install.sql', 'support.sql', 'roles.sql', 'profile.sql', 'service_media.sql',
     'chat.sql', 'chat_media.sql', 'payments_app.sql', 'availability.sql', 'plan_tasks.sql',
     'coupons.sql', 'phone_verify.sql', 'completion_review.sql']) await db.exec(read(f))
+  if (withCover) await db.exec(read('profile_cover.sql'))
+  const profileSignature = withCover
+    ? 'public.api_update_profile(text,text,uuid,text,text)'
+    : 'public.api_update_profile(text,text,uuid,text)'
+  const profileBefore = await db.query('select pg_get_functiondef($1::regprocedure) as definition', [profileSignature])
 
   const ids = Object.fromEntries(['customer', 'provider', 'owner', 'finance', 'support', 'moderator', 'viewer', 'newuser']
     .map(role => [role, crypto.randomUUID()]))
@@ -69,6 +74,7 @@ test('security boundaries hold for actual authenticated roles', async t => {
   const permissionsBefore = await one('select jsonb_agg(x order by role,area) as matrix from public.admin_areas x')
   await db.exec(read('security_hardening.sql'))
   await db.exec(read('security_hardening.sql'))
+  assert.deepEqual(await db.query('select pg_get_functiondef($1::regprocedure) as definition', [profileSignature]), profileBefore)
   // Negative controls alter only this disposable database, never source/production.
   const mutations = {
     account: `create policy users_self_update on public.app_users for update to authenticated

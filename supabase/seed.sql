@@ -366,7 +366,11 @@ select
   sv.id, sv.title,
   sv.category_id, c.name,
   pl.id,
-  pl.wedding_date,
+  -- يومٌ مستقلٌّ لكل حجز مؤكَّد في البيانات التجريبية؛ الفهرس الأمني يمنع
+  -- ظهور حجزين مؤكّدين لمزوّدٍ واحد في يوم واحد مهما اختلف ترتيب اختيار الخدمة.
+  case when st.status = 'confirmed'
+       then current_date + row_number() over (order by pl.id, n)::integer
+       else pl.wedding_date end,
   (array['16:00','18:00','20:00','21:30'])[1 + (n % 4)]::time,
   pl.governorate,
   'حي ' || (array['السنينة','حدة','الصافية','المعلا','الكمب','القاهرة'])[1 + (n % 6)],

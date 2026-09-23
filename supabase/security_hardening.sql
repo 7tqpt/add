@@ -11,7 +11,8 @@ begin
      or to_regclass('public.plan_tasks') is null
      or to_regclass('public.service_media') is null
      or to_regclass('public.phone_otp_sends') is null
-     or to_regprocedure('public.api_update_profile(text,text,uuid,text)') is null then
+     or (to_regprocedure('public.api_update_profile(text,text,uuid,text)') is null
+         and to_regprocedure('public.api_update_profile(text,text,uuid,text,text)') is null) then
     raise exception 'تحتاج ملفات roles/support/profile/coupons/plan_tasks/service_media/phone_verify قبل هذا الترحيل';
   end if;
   if exists (select 1 from public.bookings where status = 'confirmed' and provider_id is not null
