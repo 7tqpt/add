@@ -40,12 +40,21 @@ with checks as (
                                 and c.relrowsecurity)), 0
 
   -- طريقة عرض بلا security_invoker تعمل بصلاحيات مالكها فتلتفّ حول كل السياسات.
+  --
+  -- **واستثناءٌ بشرطٍ لا استثناءٌ باسم:** `v_admin_providers` بصلاحية مالكها
+  -- عمداً — بعد نزع أعمدة البريد والأرباح في `provider_columns.sql`، طريقةٌ
+  -- تتبع صلاحية سائلها تخرج للمسؤول نفسِه بأعمدةٍ فارغة. وحرزُها شرطٌ في
+  -- نصِّها. فتُعدّ هنا الطرقُ التي **لا حارسَ في نصّها**، لا التي بلا الراية:
+  -- من أضاف طريقةً بصلاحية مالكها بلا حارسٍ وجدها هنا ولو سمّاها `v_admin_*`.
   union all
-  select 6, 'طرق عرض بلا security_invoker',
+  select 6, 'طرق عرض بلا security_invoker ولا حارس',
          (select count(*) from pg_class c
             join pg_namespace ns on ns.oid = c.relnamespace
            where ns.nspname = 'public' and c.relkind = 'v'
-             and coalesce(c.reloptions::text, '') not like '%security_invoker=true%'), 0
+             and coalesce(c.reloptions::text, '') not like '%security_invoker=true%'
+             and pg_get_viewdef(c.oid) not like '%is_admin()%'
+             and pg_get_viewdef(c.oid) not like '%current_app_user()%'
+             and pg_get_viewdef(c.oid) not like '%current_provider()%'), 0
 
   union all
   select 7, 'الأقسام (مع الطبخ)',

@@ -57,6 +57,10 @@ function limitMessage(reason: string, wait: number): string {
       return 'طلبتَ ثلاثة رموزٍ في ساعة. انتظر قليلاً ثمّ أعد المحاولة.'
     case 'day_limit':
       return 'طلبتَ رموزاً كثيرةً اليوم. حاول غداً أو راسل الدعم.'
+    case 'attempt_limit':
+      return `جرّبتَ رموزاً كثيرةً. انتظر ${Math.ceil(wait / 60)} دقيقة ثمّ أعد المحاولة.`
+    case 'attempt_day_limit':
+      return 'جرّبتَ رموزاً كثيرةً اليوم. حاول غداً أو راسل الدعم.'
     case 'already_verified':
       return 'رقمك مؤكَّدٌ أصلاً.'
     case 'no_phone':
@@ -214,6 +218,33 @@ Deno.serve(async (request) => {
       const otp = String(body.otp ?? '').trim()
       if (!/^\d{4,8}$/.test(otp)) return json({ error: 'اكتب الرمز كما وصلك.' }, 400)
 
+      // **وحدُّ المحاولات قبل سؤال المُرسِل.** كان هذا الفرعُ بلا حدٍّ أصلاً
+      // بينما الإرسالُ محروسٌ — فمن ملك جلسةً يخمّن الرمزَ ألفَ مرّة. ويفتح
+      // ذلك باباً: يُطلب رمزٌ **لرقم غيره** (والرقمُ من جسم الطلب لا من
+      // ملفّه)، ثمّ يُخمَّن، فيُربط رقمُ صاحبه بحساب المخمِّن.
+      //
+      // وتُحجز المحاولةُ قبل النداء لا بعده: من قُطع اتّصالُه بعد الجواب
+      // لا تُسجَّل عليه محاولةٌ، فيعيد بلا حساب.
+      const { data: claim, error: claimError } = await admin
+        .rpc('otp_claim_verify', { p_auth_user: authUser, p_phone: phone })
+        .single()
+
+      if (claimError) {
+        // **وقاعدةٌ لم يُشغَّل عليها الملفُّ بعد لا تُغلق الباب.** الدالّةُ
+        // تُضاف بيدٍ في محرّر SQL، وبينها وبين الدالّة المنشورة نافذة —
+        // يجب أن ينقص فيها حدٌّ لا أن يُحبس الناسُ عن تأكيد أرقامهم.
+        // ويُكتب في السجلّ كي لا تبقى النافذةُ مفتوحةً بصمت.
+        console.error('otp_claim_verify:', claimError)
+      } else {
+        const gate = claim as { allowed: boolean; reason: string; wait_seconds: number }
+        if (!gate.allowed) {
+          return json(
+            { error: limitMessage(gate.reason, gate.wait_seconds), reason: gate.reason },
+            429,
+          )
+        }
+      }
+
       const checked = await fetch(`${AUTHENTICA}/verify-otp`, {
         method: 'POST',
         headers: {
@@ -252,6 +283,15 @@ Deno.serve(async (request) => {
         console.error('otp_mark_verified:', error)
         return json({ error: 'تحقّقنا من الرمز ولم نتمكّن من حفظه. راسل الدعم.' }, 500)
       }
+
+      // **والمحاولاتُ تُمحى بعد النجاح** — وإلّا بقي من أكّد محسوباً عليه
+      // عشرون محاولةً ليومٍ كامل. وسقوطُها لا يُبطل تأكيداً وقع، فتُكتب في
+      // السجلّ ولا يُردّ بها على صاحب الجهاز.
+      const { error: clearError } = await admin.rpc('otp_clear_attempts', {
+        p_auth_user: authUser,
+        p_phone: phone,
+      })
+      if (clearError) console.error('otp_clear_attempts:', clearError)
 
       return json({ verified: true })
     }
