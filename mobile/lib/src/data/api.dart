@@ -377,8 +377,36 @@ class Api {
     demoApproveProvider();
   }
 
+  /// ملفُّ مقدّم الخدمة — **لصاحبه وحدَه**، وهي لا تُنادى بغير معرّفه.
+  ///
+  /// ── ولماذا دالّةٌ بعد أن كانت قراءةً من الجدول ────────────────────────────
+  ///
+  /// كشف فحصٌ أمنيٌّ أنّ `service_providers` كان يُقرأ بالمفتاح العامّ على
+  /// كلّ صفٍّ موثَّق — **وRLS تحجب صفوفاً لا أعمدة** — فيخرج معه بريدُ كلِّ
+  /// مزوّدٍ وجوّالُه وأرباحُه وعمولتُه. فنُزعت الأعمدةُ الخمسةُ في
+  /// `supabase/provider_columns.sql`، وبقي بابُها `api_my_provider()`:
+  /// `security definer` حدُّها `current_provider()` من الجلسة، لا معرّفٌ
+  /// يُمرَّر إليها.
+  ///
+  /// ── وتعود إلى الجدول إن لم تُشغَّل الدالّةُ بعد ──────────────────────────
+  ///
+  /// القاعدةُ تُحدَّث بيد صاحبها في محرّر SQL والتطبيقُ من متجرٍ أو رابط،
+  /// فبينهما نافذةٌ يكون فيها التطبيقُ أحدثَ. وفيها تنقص ميزةٌ ولا تسقط
+  /// شاشة — وهو النمطُ نفسُه في `providerReviews` أعلاه.
   static Future<ProviderProfile?> providerProfile(String providerId) async {
     if (!isSupabaseConfigured) return demoDelay(demoProviderProfile);
+
+    try {
+      // **و`setof <جدول>` تُعيد ما في الجدول أيّاً كان** — فلا سُلّمَ أعمدةٍ
+      // هنا: قاعدةٌ ينقصها `cover_path` تُعيد صفّاً بلا مفتاحه، و`fromMap`
+      // تقرأ ما وجدت. والسُّلّمُ أدناه باقٍ للطريق القديم وحدَه.
+      final rows = await db.rpc('api_my_provider');
+      final list = (rows as List?) ?? const [];
+      if (list.isEmpty) return null;
+      return ProviderProfile.fromMap(Map<String, dynamic>.from(list.first as Map));
+    } on PostgrestException catch (e) {
+      if (e.code != undefinedFunction) rethrow;
+    }
 
     // **العمود قد لا يكون في القاعدة بعد.**
     //

@@ -81,15 +81,34 @@ console.log(`✓ ${rows.length} جدولاً في public: كلُّها محمي�
 // طريقةُ عرضٍ بلا `security_invoker` تعمل بصلاحيات مالكها فتلتفّ حول RLS كلِّها
 // — وهي البابُ الخلفيّ الوحيدُ الذي يُبطل ما فوقه. و`views.rls.test.mjs` تسأل
 // عن سبعٍ بأسمائها؛ **وهذه تسأل عن كلّ ما يُبنى، فلا تنجو واحدةٌ تُضاف غداً.**
-const { rows: views } = await db.query(`
-  select c.relname as name from pg_class c
+//
+// ── واستثناءٌ بشرطٍ لا استثناءٌ باسم ────────────────────────────────────────
+//
+// `v_admin_providers` صارت بصلاحية مالكها **عمداً**: بعد نزع أعمدة البريد
+// والأرباح عن `authenticated` في `provider_columns.sql`، طريقةٌ تتبع صلاحيةَ
+// سائلها تخرج للمسؤول نفسِه بأعمدةٍ فارغة.
+//
+// **ولا تُستثنى باسمها.** قائمةُ أسماءٍ تكبر بلا حساب، ومن أضاف اسمَه إليها
+// أسكت الحارسَ عنه. فالشرطُ: طريقةٌ بصلاحية مالكها تُقبل **إن حملت حارسَها
+// في نصِّها** — `is_admin()` أو `current_app_user()` أو `current_provider()`.
+// وطريقةٌ بلا حارسٍ تحمّر ولو سُمّيت `v_admin_*`.
+const GUARDS = ['is_admin()', 'current_app_user()', 'current_provider()']
+
+const { rows: definer } = await db.query(`
+  select c.relname as name, pg_get_viewdef(c.oid) as body from pg_class c
     join pg_namespace n on n.oid = c.relnamespace
    where n.nspname = 'public' and c.relkind = 'v'
      and coalesce((select option_value from pg_options_to_table(c.reloptions)
                     where option_name = 'security_invoker'), 'false') <> 'true'
    order by c.relname`)
 
-assert.deepEqual(views.map((v) => v.name), [],
-  `طرقُ عرضٍ تعمل بصلاحيات مالكها فتلتفّ حول RLS:\n  ${views.map((v) => v.name).join('\n  ')}`)
+const unguarded = definer
+  .filter((v) => !GUARDS.some((g) => v.body.includes(g)))
+  .map((v) => v.name)
 
-console.log('✓ ولا طريقةَ عرضٍ تلتفّ حول الحماية')
+assert.deepEqual(unguarded, [],
+  `طرقُ عرضٍ تعمل بصلاحيات مالكها بلا حارسٍ في نصِّها، فتلتفّ حول RLS:\n  ${unguarded.join('\n  ')}`)
+
+console.log(definer.length === 0
+  ? '✓ ولا طريقةَ عرضٍ تلتفّ حول الحماية'
+  : `✓ ولا طريقةَ عرضٍ تلتفّ حول الحماية (وبصلاحية مالكها بحارسها: ${definer.map((v) => v.name).join('، ')})`)
