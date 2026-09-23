@@ -142,8 +142,8 @@ create policy media_public_read on public.service_media
 drop policy if exists media_owner_write on public.service_media;
 create policy media_owner_write on public.service_media
   for all to authenticated
-  using (provider_id = public.current_provider() or public.can_write())
-  with check (provider_id = public.current_provider() or public.can_write());
+  using (provider_id = public.current_provider() or public.can_write_area('catalog'))
+  with check (provider_id = public.current_provider() or public.can_write_area('catalog'));
 
 -- ----------------------------------------------------------------------------
 -- ٤. السلّة
@@ -203,7 +203,7 @@ create policy "provider or admin deletes media" on storage.objects
     bucket_id = 'service-media'
     and (
       (storage.foldername(name))[1] = public.current_provider()::text
-      or public.can_write()
+      or public.can_write_area('catalog')
     )
   );
 

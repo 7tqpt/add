@@ -54,6 +54,20 @@ returns boolean language sql stable security definer set search_path = public as
   select coalesce(public.admin_role() = 'owner', false);
 $$;
 
+-- قبل تركيب roles.sql تبقى الأدوار القديمة محصورة في owner/admin.
+-- roles.sql يستبدلها بمصفوفة المجالات؛ لا تستخدم can_write() في RPC جديد.
+do $bootstrap$
+begin
+  if to_regprocedure('public.can_write_area(text)') is null then
+    execute $definition$
+      create function public.can_write_area(p_area text)
+      returns boolean language sql stable security definer set search_path = public as
+      'select public.can_write();'
+    $definition$;
+  end if;
+end;
+$bootstrap$;
+
 -- ============================================================================
 --  2. المرجعيات: المحافظات وأقسام الخدمات
 -- ============================================================================
@@ -394,6 +408,10 @@ create index if not exists bookings_user_idx       on public.bookings (user_id, 
 create index if not exists bookings_provider_idx   on public.bookings (provider_id, created_at desc);
 create index if not exists bookings_plan_idx       on public.bookings (plan_id);
 create index if not exists bookings_event_date_idx on public.bookings (event_date);
+-- حجز مؤكد واحد للمزوّد في اليوم؛ الفهرس يحسم الطلبات المتزامنة أيضاً.
+create unique index if not exists bookings_confirmed_provider_day_key
+  on public.bookings (provider_id, event_date)
+  where status = 'confirmed' and provider_id is not null;
 
 -- ============================================================================
 --  5. المالية: المدفوعات والتسويات
@@ -829,6 +847,11 @@ end $$;
 --  10. دوال مساعدة
 -- ============================================================================
 
+alter table public.app_users
+  add column if not exists phone_verified_at timestamptz;
+alter table public.app_settings
+  add column if not exists require_phone_verification boolean not null default false;
+
 -- ----------------------------------------------------------------------------
 -- هوية المتصل الحالي
 --
@@ -838,7 +861,11 @@ end $$;
 -- ----------------------------------------------------------------------------
 create or replace function public.current_app_user()
 returns uuid language sql stable security definer set search_path = public as $$
-  select u.id from public.app_users u where u.auth_user_id = auth.uid();
+  select u.id from public.app_users u
+   where u.auth_user_id = auth.uid()
+     and (not coalesce((select s.require_phone_verification
+                         from public.app_settings s where s.id = 1), false)
+          or u.phone_verified_at is not null);
 $$;
 
 create or replace function public.current_provider()

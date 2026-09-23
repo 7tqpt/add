@@ -40,6 +40,7 @@ for (const f of ['install.sql', 'seed.sql', 'apply.sql', 'support.sql', 'roles.s
 const file = read('broadcast.sql')
 await db.exec(file)
 await db.exec(file) // إعادة التشغيل لا تكسر شيئاً
+await db.exec(read('security_notification_rpcs.sql'))
 
 let fail = 0
 const ok = (label, cond) => {
@@ -91,6 +92,20 @@ ok('إيقافُ حسابٍ ينقص الجمهور واحداً', Number(counts
 ok('والمزوّدون والعملاء يقتسمون الجمهور بلا تداخل',
    Number(counts.مزوّدون) + Number(counts.عملاء) === Number(counts.الكل))
 ok('وفي القاعدة مزوّدون فعلاً — وإلّا لم يقس الاختبار شيئاً', Number(counts.مزوّدون) > 0)
+
+// This helper returns complete app_users rows, not just a recipient count.
+// Internal SECURITY DEFINER callers may use it; API roles may not.
+for (const role of ['anon', 'authenticated']) {
+  await db.exec(`set role ${role}`)
+  let denied = false
+  try {
+    await db.query("select * from public.broadcast_audience('all') limit 1")
+  } catch (error) {
+    denied = /permission denied/i.test(error.message)
+  }
+  ok(`${role} لا يستطيع قراءة جمهور الحملات مباشرة`, denied)
+  await db.exec('reset role')
+}
 
 // ── ١. حملةٌ للمزوّدين: تصل صناديقهم وحدهم ───────────────────────────────────
 const campaign = await one(`

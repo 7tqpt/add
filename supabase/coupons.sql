@@ -484,7 +484,7 @@ begin
   end if;
   -- is distinct from, لأن as_prov تكون NULL لمن ليس مقدّم خدمة، و`<>` مع NULL
   -- تعطي NULL فيمرّ الفحص ويقبل العميل حجزه بنفسه.
-  if booking.provider_id is distinct from as_prov and not public.can_write() then
+  if booking.provider_id is distinct from as_prov and not public.can_write_area('bookings') then
     raise exception 'لا تملك صلاحية الرد على هذا الحجز';
   end if;
   if booking.status <> 'pending_provider' then
@@ -492,6 +492,12 @@ begin
   end if;
 
   if p_accept then
+    if exists (select 1 from public.bookings b
+                where b.provider_id = booking.provider_id
+                  and b.event_date = booking.event_date
+                  and b.status = 'confirmed' and b.id <> booking.id) then
+      raise exception 'هذا اليوم محجوز بالفعل لدى مقدّم الخدمة';
+    end if;
     update public.bookings set
       status = 'confirmed',
       confirmed_at = now(),

@@ -307,7 +307,7 @@ begin
   if not found then
     raise exception 'الحجز غير موجود';
   end if;
-  if booking.user_id is distinct from me and not public.can_write() then
+  if booking.user_id is distinct from me and not public.can_write_area('bookings') then
     raise exception 'لا تملك صلاحية إلغاء هذا الحجز';
   end if;
   if booking.status in ('completed', 'cancelled', 'rejected') then
@@ -546,7 +546,7 @@ begin
   end if;
   -- is distinct from, لأن as_prov تكون NULL لمن ليس مقدّم خدمة، و`<>` مع NULL
   -- تعطي NULL فيمرّ الفحص ويقبل العميل حجزه بنفسه.
-  if booking.provider_id is distinct from as_prov and not public.can_write() then
+  if booking.provider_id is distinct from as_prov and not public.can_write_area('bookings') then
     raise exception 'لا تملك صلاحية الرد على هذا الحجز';
   end if;
   if booking.status <> 'pending_provider' then
@@ -554,6 +554,12 @@ begin
   end if;
 
   if p_accept then
+    if exists (select 1 from public.bookings b
+                where b.provider_id = booking.provider_id
+                  and b.event_date = booking.event_date
+                  and b.status = 'confirmed' and b.id <> booking.id) then
+      raise exception 'هذا اليوم محجوز بالفعل لدى مقدّم الخدمة';
+    end if;
     update public.bookings set
       status = 'confirmed',
       confirmed_at = now(),
@@ -626,7 +632,7 @@ begin
   if not found then
     raise exception 'الحجز غير موجود';
   end if;
-  if booking.provider_id is distinct from as_prov and not public.can_write() then
+  if booking.provider_id is distinct from as_prov and not public.can_write_area('bookings') then
     raise exception 'لا تملك صلاحية إنهاء هذا الحجز';
   end if;
   if booking.status <> 'confirmed' then
@@ -671,6 +677,13 @@ create or replace function public.notify_provider(
   insert into public.notifications (provider_id, kind, title, body, data)
   select p_provider_id, p_kind, p_title, p_body, p_data where p_provider_id is not null;
 $$;
+
+-- Internal helpers run inside trusted SECURITY DEFINER functions. Keep them
+-- unavailable as direct Data API RPCs, including on existing installations.
+revoke all on function public.notify_user(uuid, text, text, text, jsonb)
+  from public, anon, authenticated;
+revoke all on function public.notify_provider(uuid, text, text, text, jsonb)
+  from public, anon, authenticated;
 
 -- متوسط التقييم يُعاد حسابه من التقييمات المنشورة وحدها
 create or replace function public.recalc_provider_rating(p_provider_id uuid)

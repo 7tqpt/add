@@ -86,8 +86,12 @@ await db.query(`
 
 // ولا تدخل حجوزاتُ البذرة الأخرى في الحساب: تُخرَج من الفترة.
 await db.query(`
-  update public.bookings set event_date = date '2020-01-01'
-   where id <> $1 and id <> $2`, [two[0].id, two[1].id])
+  with outside_period as (
+    select id, row_number() over(order by id)::integer as day_offset
+    from public.bookings where id <> $1 and id <> $2
+  )
+  update public.bookings b set event_date = date '2020-01-01' + x.day_offset
+  from outside_period x where b.id = x.id`, [two[0].id, two[1].id])
 
 const asAdmin = async () => {
   await db.exec(`select set_config('test.uid', '${auid}', false)`)

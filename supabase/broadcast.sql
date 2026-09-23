@@ -139,7 +139,10 @@ comment on function public.send_due_broadcasts() is
 
 revoke execute on function public.send_due_broadcasts() from public, authenticated;
 grant execute on function public.api_admin_broadcast(uuid) to authenticated;
-grant execute on function public.broadcast_audience(text) to authenticated;
+-- This helper returns full app_users rows. Only the owner of the trusted
+-- broadcast functions should be able to execute it, never an API role.
+revoke all on function public.broadcast_audience(text)
+  from public, anon, authenticated;
 
 -- ----------------------------------------------------------------------------
 -- تفريغ سجل الحملات
