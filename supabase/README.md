@@ -92,6 +92,7 @@
 | 35 | `review_avatars.sql` | صورةُ العميل في «آراء العملاء»: صفحةُ المزوّد يفتحها غيرُ صاحب الرأي، وسياسةُ `app_users` تمنعه من صفّه — **بعد `profile.sql`** |
 | 36 | `phone_verify.sql` | تأكيدُ رقم الجوال برمز واتساب: حدُّ الإرسال وحدُّ محاولات التحقّق — **بعد `install.sql`** |
 | 37 | `provider_columns.sql` | **حجبُ بريد مقدّم الخدمة وجوّاله وأرباحه عن حاملِ المفتاح العامّ** — وبابُه `api_my_provider()` لصاحبه و`v_admin_providers` للمسؤول. **بعد `apply.sql` وبعد ملفّات الأعمدة (`provider_logo` و`profile_cover` و`nearby`)** |
+| 36ب | `phone_verify_attempts.sql` | حدُّ محاولات التحقّق وحدَه — قطعةٌ من `phone_verify.sql` لمن انقطع عليه لصقُ الملفّ الطويل. ويقابلهما `tests/phone_verify_attempts.test.mjs` فلا يفترقان |
 | — | `verify_provider_columns.sql` | فحصُ حجب الأعمدة: هل حُجب البريدُ والجوّالُ والأرباح فعلاً، وهل بقي البابان مفتوحَين لأهلهما |
 | — | `verify_coupons.sql` | فحص الكوبونات: هل وصل `coupons.sql` كاملاً، وما حصادُ أكوادك |
 | — | `verify_push.sql` | فحص الإشعارات: ما يعمل وما ينقص، وما تفعله لكلٍّ |
