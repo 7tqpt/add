@@ -19,13 +19,26 @@
 --  ⚠️ وإن خرج «تخالف» فالعلاجُ سطرٌ: الصق `supabase/broadcast.sql` كاملاً
 --     في المحرّر وشغّله. وهو آمنٌ عند التكرار.
 -- ============================================================================
+--  ⚠️⚠️ **وهذا الفحصُ يُنذر كاذباً، وقد فعل.** أنذر بأنّ الدوالَّ الثلاثَ
+--     تخالف المستودع، وكانت الزيادةُ ٣١ و١٨ و٣٠ حرفاً — **وهي عددُ أسطر
+--     كلِّ دالّةٍ بالضبط**: نصُّها في القاعدة بنهايات أسطر CRLF لا LF،
+--     فيزيد حرفٌ في كلّ سطر. والمنطقُ هو هو حرفاً بحرف.
+--
+--     فصارت المقابلةُ تُجرى على النصّ بعد توحيد نهايات الأسطر، وتُعرض
+--     البصمتان معاً كي لا يُقرأ فرقُ الشكل فرقاً في المعنى.
+-- ============================================================================
 
 with expected(name, h) as (
   values ('api_admin_broadcast', 'cc2c139e3d4e81e9e634469b47bfd0c1'),
          ('broadcast_audience',  'b48e337497426096089063cc32920fda'),
          ('send_due_broadcasts', 'be97965fac4dd0772beed8f82396d2f7')
 ), live as (
-  select p.proname as name, md5(p.prosrc) as h, length(p.prosrc) as len
+  -- **ونهاياتُ الأسطر تُوحَّد قبل البصمة**: نصٌّ لُصق بـCRLF يزيد حرفاً في
+  -- كلّ سطر، فتختلف البصمةُ والمنطقُ واحد. وهذا أنذر كاذباً مرّةً.
+  select p.proname as name,
+         md5(replace(p.prosrc, chr(13), '')) as h,
+         length(p.prosrc) as len,
+         md5(p.prosrc) as h_raw
     from pg_proc p join pg_namespace n on n.oid = p.pronamespace
    where n.nspname = 'public'
      and p.proname in ('api_admin_broadcast', 'broadcast_audience', 'send_due_broadcasts')
@@ -34,8 +47,8 @@ select 1 as ت,
        e.name as الدالّة,
        case when l.name is null then '❌ لا وجودَ لها في قاعدتك'
             when l.h = e.h     then '✅ هي هي — نصّاً بنصّ'
-            else '❌ **تخالف المستودع** — طولُها ' || l.len
-                 || ' حرفاً، وبصمتُها ' || left(l.h, 8)
+            else '❌ **تخالف المستودع في منطقها** — طولُها ' || l.len
+                 || ' حرفاً، وبصمتُها بعد توحيد الأسطر ' || left(l.h, 8)
                  || ' والمنتظَر ' || left(e.h, 8)
        end as الحكم
   from expected e left join live l on l.name = e.name
