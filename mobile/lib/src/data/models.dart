@@ -210,6 +210,7 @@ class Booking {
     this.createdAt = '',
     this.completionRequestedAt = '',
     this.completionRejectReason = '',
+    this.planId,
   });
 
   final String id;
@@ -217,6 +218,13 @@ class Booking {
   final String userName;
   final String providerName;
   final String serviceTitle;
+
+  /// خطّةُ العرس التي يُحسب هذا الحجزُ ضمنها، أو `null`.
+  ///
+  /// **ويُقرأ من صفّ القاعدة لا يُستنتج**: توزيعُ مصروف الخطّة على الأقسام
+  /// يحتاج معرفةَ أيُّ حجزٍ لأيّ خطّة، وبلا هذا لا سبيل إليه في وضع العرض.
+  final String? planId;
+
   final String eventDate;
   final String? eventTime;
   final String address;
@@ -269,6 +277,7 @@ class Booking {
     userName: (m['user_name'] ?? '') as String,
     providerName: (m['provider_name'] ?? '') as String,
     serviceTitle: (m['service_title'] ?? '') as String,
+    planId: m['plan_id'] as String?,
     eventDate: (m['event_date'] ?? '') as String,
     eventTime: m['event_time'] as String?,
     address: (m['address'] ?? '') as String,
@@ -1294,6 +1303,35 @@ class PlanTask {
 }
 
 /// تقدّمُ خطّةٍ — يُحسب في القاعدة لا في الجوال.
+/// مصروفُ خطّةٍ في قسمٍ واحد — صفٌّ من `api_plan_spend_by_category`.
+///
+/// **ورقمان لا واحد**: `spent` ما دُفع فعلاً، و`booked` ثمنُ ما حُجز. ويفترقان
+/// ما دام عربونٌ لم يُكمَّل — فمن عرض أحدَهما مكان الآخر أخفى الالتزامَ
+/// القادم أو أرى مصروفاً لم يخرج من جيب صاحبه.
+class PlanCategorySpend {
+  const PlanCategorySpend({
+    required this.categoryId,
+    required this.categoryName,
+    required this.spent,
+    required this.booked,
+    required this.bookings,
+  });
+
+  final String categoryId;
+  final String categoryName;
+  final num spent;
+  final num booked;
+  final int bookings;
+
+  factory PlanCategorySpend.fromMap(Map<String, dynamic> m) => PlanCategorySpend(
+    categoryId: (m['category_id'] ?? '') as String,
+    categoryName: (m['category_name'] ?? '') as String,
+    spent: (m['spent'] ?? 0) as num,
+    booked: (m['booked'] ?? 0) as num,
+    bookings: ((m['bookings'] ?? 0) as num).toInt(),
+  );
+}
+
 class PlanProgress {
   const PlanProgress({
     required this.tasksTotal,

@@ -110,7 +110,7 @@ class _PlanBlock extends StatefulWidget {
 }
 
 class _PlanBlockState extends State<_PlanBlock> {
-  late Future<(PlanProgress, List<PlanTask>)> _future;
+  late Future<(PlanProgress, List<PlanTask>, List<PlanCategorySpend>)> _future;
   final _newTask = TextEditingController();
 
   /// المهامّ المشطوبة مطويّة أوّلاً.
@@ -131,10 +131,13 @@ class _PlanBlockState extends State<_PlanBlock> {
     super.dispose();
   }
 
-  Future<(PlanProgress, List<PlanTask>)> _load() async {
+  Future<(PlanProgress, List<PlanTask>, List<PlanCategorySpend>)> _load() async {
     final progress = await Api.planProgress(widget.plan.id);
     final tasks = await Api.planTasks(widget.plan.id);
-    return (progress, tasks);
+    // **وتعود فارغةً إن لم تُشغَّل `plan_spend.sql` بعد** — تنقص بطاقةٌ ولا
+    // تسقط شاشة. والنداءُ يحرس نفسَه في `Api.planSpendByCategory`.
+    final spend = await Api.planSpendByCategory(widget.plan.id);
+    return (progress, tasks, spend);
   }
 
   void _reload() => setState(() {
@@ -168,7 +171,7 @@ class _PlanBlockState extends State<_PlanBlock> {
       children: [
         _CountdownCard(plan: p, days: days),
         const SizedBox(height: Space.md),
-        FutureBuilder<(PlanProgress, List<PlanTask>)>(
+        FutureBuilder<(PlanProgress, List<PlanTask>, List<PlanCategorySpend>)>(
           future: _future,
           builder: (context, snap) {
             if (snap.connectionState != ConnectionState.done) {
@@ -180,7 +183,7 @@ class _PlanBlockState extends State<_PlanBlock> {
             if (snap.hasError) {
               return ErrorBlock(message: messageOf(snap.error!), onRetry: _reload);
             }
-            final (progress, tasks) = snap.data!;
+            final (progress, tasks, spend) = snap.data!;
             final left = tasks.where((t) => !t.done).toList();
             final done = tasks.where((t) => t.done).toList();
 
@@ -264,13 +267,20 @@ class _PlanBlockState extends State<_PlanBlock> {
                   ],
                   ),
                 ),
+                // **الأرقامُ آخرَ الشاشة لا أوّلها**: تُقرأ حين تُطلب. وهي
+                // داخلَ البنّاء الآن لا خارجه، لأنّ بطاقةَ التوزيع تحتاج ما
+                // يُقرأ معه — وبطاقتان تقرآن من مصدرين تتفرّقان في الانتظار.
+                const SizedBox(height: Space.md),
+                _MoneyCard(plan: p, onEdit: widget.onEdit),
+                // **وحارسُ الفراغ في البطاقة لا هنا.** حارسان يفعلان شيئاً
+                // واحداً لا يُقاس أيُّهما يحرس: كسرُ أحدِهما يبقي الآخرَ
+                // قائماً فتخضرّ الحزمةُ والضمانةُ مكسورة. فواحدٌ يُكسَر
+                // فيسقط.
+                _SpendByCategory(rows: spend),
               ],
             );
           },
         ),
-
-        const SizedBox(height: Space.md),
-        _MoneyCard(plan: p, onEdit: widget.onEdit),
       ],
     );
   }
@@ -371,39 +381,31 @@ class _ProgressCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return AppCard(
       children: [
-        Row(
-          children: [
-            Expanded(child: SectionTitle(tr('التقدّم الكلّي'))),
-            Text(
-              trf('{0}٪', ['${progress.percent}']),
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: AppColors.accent,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: Space.sm),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(999),
-          child: LinearProgressIndicator(
+        SectionTitle(tr('التقدّم الكلّي')),
+        const SizedBox(height: Space.md),
+        // **حلقةٌ لا شريط.** الشريطُ يقول «كم أُنجز» ولا يُقرأ إلّا بمقارنةِ
+        // طولين، والحلقةُ تحمل الرقمَ في وسطها فتُقرأ بنظرةٍ واحدة.
+        Center(
+          child: ProgressRing(
             value: progress.percent / 100,
-            minHeight: 10,
-            backgroundColor: AppColors.surface2,
-            valueColor: const AlwaysStoppedAnimation(AppColors.accent),
+            big: trf('{0}٪', ['${progress.percent}']),
+            small: progress.tasksTotal == 0
+                ? tr('لا مهامّ بعد')
+                : trf('{0} من {1}', ['${progress.tasksDone}', '${progress.tasksTotal}']),
           ),
         ),
         const SizedBox(height: Space.sm),
-        Muted(
-          progress.tasksTotal == 0
-              ? tr('لا مهامّ بعد')
-              : progress.tasksLeft == 0
-                  ? tr('لم يبقَ شيء')
-                  : trf('بقيت {0} من {1}', [
-                      formatCount(progress.tasksLeft, taskForms),
-                      '${progress.tasksTotal}',
-                    ]),
+        Center(
+          child: Muted(
+            progress.tasksTotal == 0
+                ? tr('لا مهامّ بعد')
+                : progress.tasksLeft == 0
+                    ? tr('لم يبقَ شيء')
+                    : trf('بقيت {0} من {1}', [
+                        formatCount(progress.tasksLeft, taskForms),
+                        '${progress.tasksTotal}',
+                      ]),
+          ),
         ),
       ],
     );
@@ -535,6 +537,21 @@ class _TaskRow extends StatelessWidget {
 }
 
 /// الأرقام — آخرَ الشاشة لا أوّلها: تُقرأ حين تُطلب.
+///
+/// ── وثلاثةٌ في الصدارة، والرابعُ تحتها ──────────────────────────────────
+///
+/// اختار صاحبُ المنصّة أن تُصدَّر ثلاثةُ أرقامٍ لا أربعة: **الميزانيةُ
+/// والمصروفُ والمتبقّي منها** — والمتبقّي هنا `budget − paid`، أي ما بقي في
+/// جيبه من المرصود.
+///
+/// **و«عليك لمقدّمي الخدمة» شيءٌ آخرُ لا يُدمج معه**: ما بقي من ثمن
+/// حجوزاته لم يُدفع بعد. والرقمان يفترقان دائماً، وكلاهما يُسأل عنه —
+/// «كم بقي لي؟» و«كم عليّ؟». فبقي معروضاً سطراً تحت البطاقة لا بين
+/// الثلاثة: حذفُه يُخفي التزاماً قائماً، ودمجُه يُقرأ رقماً واحداً وهما
+/// اثنان.
+///
+/// **والمصروفُ هو المدفوعُ لا المحجوز:** الميزانيةُ تُستهلك بالدفع لا
+/// بالحجز، ومن عدّ المحجوزَ مصروفاً أرى صاحبَه مالاً خرج ولم يخرج.
 class _MoneyCard extends StatelessWidget {
   const _MoneyCard({required this.plan, required this.onEdit});
   final WeddingPlan plan;
@@ -543,27 +560,37 @@ class _MoneyCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = plan;
-    final ratio = p.budget > 0 ? (p.totalCost / p.budget).clamp(0.0, 1.0) : 0.0;
+    final spent = p.paidAmount;
+    final left = p.budget - spent;
+    final ratio = p.budget > 0 ? (spent / p.budget).clamp(0.0, 1.0) : 0.0;
     final over = p.budget > 0 && p.totalCost > p.budget;
 
     return AppCard(
       children: [
         SectionTitle(tr('الميزانية')),
-        const SizedBox(height: Space.sm),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(999),
-          child: LinearProgressIndicator(
-            value: ratio.toDouble(),
-            minHeight: 8,
-            backgroundColor: AppColors.surface2,
-            valueColor: AlwaysStoppedAnimation(over ? AppColors.critical : AppColors.gold),
-          ),
+        const SizedBox(height: Space.md),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            ProgressRing(
+              value: ratio.toDouble(),
+              big: trf('{0}٪', ['${(ratio * 100).round()}']),
+              small: tr('من الميزانية صُرف'),
+              size: 104,
+              colour: over ? AppColors.critical : AppColors.gold,
+            ),
+            const SizedBox(width: Space.md),
+            Expanded(
+              child: Column(
+                children: [
+                  KeyValue(tr('الميزانية'), formatMoney(p.budget)),
+                  KeyValue(tr('المصروف'), formatMoney(spent)),
+                  KeyValue(tr('المتبقّي'), formatMoney(left < 0 ? 0 : left)),
+                ],
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: Space.sm),
-        KeyValue(tr('الميزانية'), formatMoney(p.budget)),
-        KeyValue(tr('إجمالي الحجوزات'), formatMoney(p.totalCost)),
-        KeyValue(tr('المدفوع'), formatMoney(p.paidAmount)),
-        KeyValue(tr('المتبقّي عليك'), formatMoney(p.remainingAmount)),
         if (over) ...[
           const SizedBox(height: Space.sm),
           Text(
@@ -571,9 +598,124 @@ class _MoneyCard extends StatelessWidget {
             style: const TextStyle(color: AppColors.critical, fontSize: 13),
           ),
         ],
+        const SizedBox(height: Space.sm),
+        // **الرقمُ الرابع، ولا يُدمج بالثلاثة.**
+        Align(
+          alignment: AlignmentDirectional.centerStart,
+          child: Muted(
+            trf('وعليك لمقدّمي الخدمة {0} من ثمن حجوزاتك.',
+                [formatMoney(p.remainingAmount)]),
+            size: 11,
+          ),
+        ),
         const SizedBox(height: Space.md),
         OutlinedButton(onPressed: onEdit, child: Text(tr('تعديل الخطة'))),
       ],
     );
   }
+}
+
+/// أين ذهب المال — سطرٌ لكلّ قسمٍ بشريطه ونسبته.
+///
+/// **ولا تظهر البطاقةُ فارغةً:** من لم يحجز شيئاً بعد لا يُعرض عليه عنوانٌ
+/// تحته بياض، ومن لم تُشغَّل قاعدتُه `plan_spend.sql` كذلك — تنقص بطاقةٌ ولا
+/// تسقط شاشة.
+class _SpendByCategory extends StatelessWidget {
+  const _SpendByCategory({required this.rows});
+  final List<PlanCategorySpend> rows;
+
+  @override
+  Widget build(BuildContext context) {
+    final booked = rows.fold<num>(0, (a, c) => a + c.booked);
+    // ولا فراغَ يُقسم عليه: `booked` مقامُ كلّ نسبةٍ أدناه.
+    if (rows.isEmpty || booked <= 0) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.only(top: Space.md),
+      child: AppCard(
+        children: [
+          SectionTitle(tr('تفاصيل المصروفات')),
+          const SizedBox(height: Space.xs),
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: Muted(tr('توزيعُ حجوزاتك حسب القسم'), size: 11.5),
+          ),
+          const SizedBox(height: Space.sm),
+          for (final row in rows) _CategoryBar(row: row, share: row.booked / booked),
+        ],
+      ),
+    );
+  }
+}
+
+class _CategoryBar extends StatelessWidget {
+  const _CategoryBar({required this.row, required this.share});
+  final PlanCategorySpend row;
+  final double share;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 7),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          row.categoryName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.ink,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: Space.sm),
+                      Text(
+                        formatMoney(row.booked),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.ink2,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 5),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(999),
+                    child: LinearProgressIndicator(
+                      value: share.clamp(0.0, 1.0),
+                      minHeight: 6,
+                      backgroundColor: AppColors.surface2,
+                      valueColor: const AlwaysStoppedAnimation(AppColors.accent),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: Space.sm),
+            SizedBox(
+              width: 36,
+              child: Text(
+                trf('{0}٪', ['${(share * 100).round()}']),
+                textAlign: TextAlign.left,
+                style: const TextStyle(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.muted,
+                  fontFamilyFallback: arabicFallback,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
 }
