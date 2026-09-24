@@ -26,7 +26,7 @@ import { execFileSync } from 'node:child_process'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-const repo = (f) => readFileSync(new URL(`../../${f}`, import.meta.url), 'utf8')
+const repo = (f) => readFileSync(new URL(`../../${f}`, import.meta.url), 'utf8').replace(/\r\n/g, '\n')
 
 let fail = 0
 const ok = (label, cond, extra = '') => {
@@ -63,7 +63,7 @@ const run = (env) => {
   const dir = mkdtempSync(join(tmpdir(), 'shareurl-'))
   const file = join(dir, 'step.sh')
   // `$GITHUB_STEP_SUMMARY` يُكتب إليه في الخطوة، فيُوجَّه إلى ملفٍّ مؤقّت.
-  writeFileSync(file, `set -eu\ncd "${dir}"\n${script}\n`)
+  writeFileSync(file, `set -eu\ncd "${dir.replaceAll('\\', '/')}"\n${script}\n`)
   execFileSync('bash', [file], {
     env: {
       ...process.env,

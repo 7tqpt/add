@@ -58,7 +58,10 @@ String _read(String path) {
 Set<String> _dependencies(String pubspec) {
   final out = <String>{};
   var inside = false;
-  for (final line in pubspec.split('\n')) {
+  // Windows keeps `\r` after splitting CRLF; an otherwise blank line must
+  // not terminate the dependencies section.
+  for (final rawLine in pubspec.split('\n')) {
+    final line = rawLine.trimRight();
     if (line.startsWith('dependencies:')) {
       inside = true;
       continue;

@@ -55,17 +55,20 @@ create policy plan_tasks_owner on public.plan_tasks
       select 1 from public.wedding_plans w
        where w.id = plan_tasks.plan_id and w.user_id = public.current_app_user()
     )
-    or public.is_admin()
+    or public.can_write_area('bookings')
   )
   with check (
     exists (
       select 1 from public.wedding_plans w
        where w.id = plan_tasks.plan_id and w.user_id = public.current_app_user()
     )
-    or public.can_write()
+    or public.can_write_area('bookings')
   );
 
 grant select, insert, update, delete on public.plan_tasks to authenticated;
+drop policy if exists plan_tasks_admin_read on public.plan_tasks;
+create policy plan_tasks_admin_read on public.plan_tasks
+  for select to authenticated using (public.is_admin());
 
 -- ----------------------------------------------------------------------------
 -- القائمة الافتراضية
@@ -241,7 +244,7 @@ select w.id                                       as plan_id,
 
 grant select on public.v_plan_progress to authenticated;
 
-revoke all on function public.seed_plan_tasks(uuid) from anon, authenticated;
+revoke all on function public.seed_plan_tasks(uuid) from public, anon, authenticated;
 grant execute on function public.api_toggle_plan_task(uuid) to authenticated;
 grant execute on function public.api_add_plan_task(uuid, text, date) to authenticated;
 grant execute on function public.api_delete_plan_task(uuid) to authenticated;

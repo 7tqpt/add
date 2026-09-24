@@ -168,7 +168,7 @@ create policy "chat media parties write" on storage.objects
 drop policy if exists "chat media admin deletes" on storage.objects;
 create policy "chat media admin deletes" on storage.objects
   for delete to authenticated
-  using (bucket_id = 'chat-media' and public.can_write());
+  using (bucket_id = 'chat-media' and public.can_write_area('trust'));
 
 commit;
 

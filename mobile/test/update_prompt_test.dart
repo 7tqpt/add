@@ -31,14 +31,6 @@ void _phone(WidgetTester tester) {
   addTearDown(tester.view.reset);
 }
 
-/// نسخةٌ **أحدثُ من المثبَّتة دائماً**.
-///
-/// **ولا رقمٌ مكتوبٌ بيد.** كان الحارسُ يقول `_r(_newer)` ويعني «أحدث»، فلمّا
-/// بلغت النسخةُ المثبَّتةُ تسعةً وتسعين صار يعني «هي هي» — فسقط الشريطُ
-/// والمنعُ معاً وحمّرت أربعةُ اختباراتٍ على رفعةِ رقمٍ لا على عطبٍ في الشيفرة.
-/// وحارسٌ يسقط عند كلّ إصدارٍ يُعلَّم أن يُشتقّ لا أن يُكتب.
-final int _newer = appBuild + 1;
-
 AppRelease _r(
   int build, {
   bool force = false,
@@ -54,6 +46,8 @@ AppRelease _r(
       forceUpdate: force,
       rolloutPercent: rollout,
     );
+
+const _nextBuild = appBuild + 1;
 
 void main() {
   tearDown(() {
@@ -86,26 +80,26 @@ void main() {
     });
 
     test('والعاديُّ يذهب إلى الشريط لا إلى المنع', () async {
-      releasesOverride = () async => [_r(_newer)];
+      releasesOverride = () async => [_r(_nextBuild)];
       updateBucketOverride = 0;
       final gate = UpdateGate();
       await gate.check();
-      expect(gate.banner?.build, _newer);
+      expect(gate.banner?.build, _nextBuild);
       expect(gate.forced, isNull);
     });
 
     test('والإجباريُّ يذهب إلى المنع لا إلى الشريط', () async {
-      releasesOverride = () async => [_r(_newer, force: true)];
+      releasesOverride = () async => [_r(_nextBuild, force: true)];
       updateBucketOverride = 0;
       final gate = UpdateGate();
       await gate.check();
-      expect(gate.forced?.build, _newer);
+      expect(gate.forced?.build, _nextBuild);
       expect(gate.banner, isNull);
     });
 
     test('**ولا يُمنع أحدٌ خلف شاشةٍ زرُّها لا يفتح شيئاً**', () async {
       // نسخةٌ إجباريّةٌ بلا رابط: لو مُنع بها لَحُبس صاحبُ الجهاز بلا مخرج.
-      releasesOverride = () async => [_r(_newer, force: true, url: '')];
+      releasesOverride = () async => [_r(_nextBuild, force: true, url: '')];
       updateBucketOverride = 0;
       final gate = UpdateGate();
       await gate.check();
@@ -114,7 +108,7 @@ void main() {
     });
 
     test('و«لاحقاً» تُخفي الشريط', () async {
-      releasesOverride = () async => [_r(_newer)];
+      releasesOverride = () async => [_r(_nextBuild)];
       updateBucketOverride = 0;
       final gate = UpdateGate();
       await gate.check();
@@ -124,12 +118,12 @@ void main() {
     });
 
     test('**ولا تُخفي «لاحقاً» المنعَ**', () async {
-      releasesOverride = () async => [_r(_newer, force: true)];
+      releasesOverride = () async => [_r(_nextBuild, force: true)];
       updateBucketOverride = 0;
       final gate = UpdateGate();
       await gate.check();
       gate.dismiss();
-      expect(gate.forced?.build, _newer, reason: 'أُغلق البابُ المقفل بزرّ');
+      expect(gate.forced?.build, _nextBuild, reason: 'أُغلق البابُ المقفل بزرّ');
     });
   });
 
@@ -141,7 +135,7 @@ void main() {
     testWidgets('**يُركَّب بلا استثناء**', (tester) async {
       _phone(tester);
       await tester.pumpWidget(_wrap(Scaffold(
-        body: UpdateBanner(release: _r(_newer, notes: 'إصلاحات'), onDismiss: () {}),
+        body: UpdateBanner(release: _r(99, notes: 'إصلاحات'), onDismiss: () {}),
       )));
       await tester.pump();
       expect(tester.takeException(), isNull);
@@ -151,7 +145,7 @@ void main() {
       _phone(tester);
       await tester.pumpWidget(_wrap(Scaffold(
         body: UpdateBanner(
-          release: _r(_newer, notes: 'تسريعُ البحث'),
+          release: _r(99, notes: 'تسريعُ البحث'),
           onDismiss: () {},
         ),
       )));
@@ -164,7 +158,7 @@ void main() {
       _phone(tester);
       var dismissed = 0;
       await tester.pumpWidget(_wrap(Scaffold(
-        body: UpdateBanner(release: _r(_newer), onDismiss: () => dismissed++),
+        body: UpdateBanner(release: _r(99), onDismiss: () => dismissed++),
       )));
       await tester.tap(find.byKey(const ValueKey('update-dismiss')));
       await tester.pump();
@@ -174,7 +168,7 @@ void main() {
     testWidgets('وملاحظاتٌ فارغةٌ لا تترك سطراً خالياً', (tester) async {
       _phone(tester);
       await tester.pumpWidget(_wrap(Scaffold(
-        body: UpdateBanner(release: _r(_newer, notes: '   '), onDismiss: () {}),
+        body: UpdateBanner(release: _r(99, notes: '   '), onDismiss: () {}),
       )));
       await tester.pump();
       expect(find.byType(Muted), findsNothing);
@@ -188,7 +182,7 @@ void main() {
   group('شاشةُ المنع', () {
     testWidgets('**تُركَّب بلا استثناء**', (tester) async {
       _phone(tester);
-      await tester.pumpWidget(_wrap(ForcedUpdateScreen(release: _r(_newer))));
+      await tester.pumpWidget(_wrap(ForcedUpdateScreen(release: _r(99))));
       await tester.pump();
       expect(tester.takeException(), isNull);
       expect(find.byKey(const ValueKey('forced-download')), findsOneWidget);
@@ -197,7 +191,7 @@ void main() {
     testWidgets('**ولا زرَّ «لاحقاً» فيها**', (tester) async {
       // ومن أوهمناه أنّ له خياراً وليس له أسوأُ حالاً ممّن قيل له الحقّ.
       _phone(tester);
-      await tester.pumpWidget(_wrap(ForcedUpdateScreen(release: _r(_newer))));
+      await tester.pumpWidget(_wrap(ForcedUpdateScreen(release: _r(99))));
       await tester.pump();
       expect(find.byKey(const ValueKey('update-dismiss')), findsNothing);
       expect(find.text('لاحقاً'), findsNothing);

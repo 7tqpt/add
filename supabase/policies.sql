@@ -80,15 +80,9 @@ create policy users_self_read on public.app_users
   using (auth_user_id = auth.uid() or public.is_admin());
 
 drop policy if exists users_self_update on public.app_users;
-create policy users_self_update on public.app_users
-  for update to authenticated
-  using (auth_user_id = auth.uid())
-  -- الحالة والصلاحيات ليست للمستخدم؛ تُغيَّر من اللوحة أو من دوال الـ API
-  with check (auth_user_id = auth.uid());
-
 drop policy if exists users_self_insert on public.app_users;
-create policy users_self_insert on public.app_users
-  for insert to authenticated with check (auth_user_id = auth.uid());
+-- التسجيل وتعديل الملف يمران عبر api_register_profile / api_update_profile.
+-- ملكية الصف لا تمنح حق كتابة status أو phone_verified_at أو بقية أعمدته.
 
 drop policy if exists users_admin_write on public.app_users;
 create policy users_admin_write on public.app_users
@@ -107,8 +101,11 @@ create policy sessions_owner_insert on public.user_sessions
 drop policy if exists devices_owner on public.user_devices;
 create policy devices_owner on public.user_devices
   for all to authenticated
-  using (user_id = public.current_app_user() or public.is_admin())
-  with check (user_id = public.current_app_user() or public.can_write());
+  using (user_id = public.current_app_user() or public.can_write_area('directory'))
+  with check (user_id = public.current_app_user() or public.can_write_area('directory'));
+drop policy if exists devices_admin_read on public.user_devices;
+create policy devices_admin_read on public.user_devices
+  for select to authenticated using (public.is_admin());
 
 -- ============================================================================
 --  3. مقدّمو الخدمة
@@ -142,7 +139,7 @@ returns trigger language plpgsql security definer set search_path = public as $$
 begin
   -- المسؤول، أو دالة API داخلية رفعت العلم أدناه (تحديث العدّادات والتقييم بعد
   -- إتمام حجز). العلم محلّي المعاملة، فلا يتسرّب إلى طلب آخر.
-  if public.is_admin()
+  if public.can_write_area('directory')
      or coalesce(current_setting('app.internal', true), '') = 'on' then
     return new;
   end if;
@@ -153,6 +150,7 @@ begin
      or new.commission_percent is distinct from old.commission_percent
      or new.rating is distinct from old.rating
      or new.reviews_count is distinct from old.reviews_count
+     or new.completed_bookings is distinct from old.completed_bookings
      or new.total_earnings is distinct from old.total_earnings then
     raise exception 'هذه الحقول تُعدَّل من إدارة المنصة فقط';
   end if;
@@ -174,8 +172,8 @@ create policy provider_categories_read on public.provider_categories
 drop policy if exists provider_categories_owner on public.provider_categories;
 create policy provider_categories_owner on public.provider_categories
   for all to authenticated
-  using (provider_id = public.current_provider() or public.can_write())
-  with check (provider_id = public.current_provider() or public.can_write());
+  using (provider_id = public.current_provider() or public.can_write_area('catalog'))
+  with check (provider_id = public.current_provider() or public.can_write_area('catalog'));
 
 -- المستندات: خاصة تماماً — صاحبها والإدارة فقط. لا تُعرض للعامة أبداً.
 drop policy if exists documents_owner_read on public.provider_documents;
@@ -208,8 +206,8 @@ create policy services_public_read on public.provider_services
 drop policy if exists services_owner_write on public.provider_services;
 create policy services_owner_write on public.provider_services
   for all to authenticated
-  using (provider_id = public.current_provider() or public.can_write())
-  with check (provider_id = public.current_provider() or public.can_write());
+  using (provider_id = public.current_provider() or public.can_write_area('catalog'))
+  with check (provider_id = public.current_provider() or public.can_write_area('catalog'));
 
 -- التقويم: يقرؤه الجميع (العميل يحتاج معرفة الأيام المشغولة)، ويديره صاحبه.
 drop policy if exists availability_public_read on public.provider_availability;
@@ -217,10 +215,8 @@ create policy availability_public_read on public.provider_availability
   for select to anon, authenticated using (true);
 
 drop policy if exists availability_owner_write on public.provider_availability;
-create policy availability_owner_write on public.provider_availability
-  for all to authenticated
-  using (provider_id = public.current_provider() or public.can_write())
-  with check (provider_id = public.current_provider() or public.can_write());
+-- تعديل التقويم يمر عبر api_set_availability؛ الكتابة المباشرة كانت تتجاوز
+-- منع فتح يوم محجوز. مزامنة الحجوزات تعمل داخل دوال ومشغلات موثوقة.
 
 -- ============================================================================
 --  4. خطط الأعراس والحجوزات
@@ -230,8 +226,11 @@ create policy availability_owner_write on public.provider_availability
 drop policy if exists plans_owner on public.wedding_plans;
 create policy plans_owner on public.wedding_plans
   for all to authenticated
-  using (user_id = public.current_app_user() or public.is_admin())
-  with check (user_id = public.current_app_user() or public.can_write());
+  using (user_id = public.current_app_user() or public.can_write_area('bookings'))
+  with check (user_id = public.current_app_user() or public.can_write_area('bookings'));
+drop policy if exists plans_admin_read on public.wedding_plans;
+create policy plans_admin_read on public.wedding_plans
+  for select to authenticated using (public.is_admin());
 
 -- الحجز يراه طرفاه فقط: العميل صاحبه، ومقدّم الخدمة المعني.
 drop policy if exists bookings_parties_read on public.bookings;
@@ -252,7 +251,7 @@ create policy bookings_admin_write on public.bookings
 drop policy if exists favourites_owner on public.favourites;
 create policy favourites_owner on public.favourites
   for all to authenticated
-  using (user_id = public.current_app_user() or public.is_admin())
+  using (user_id = public.current_app_user())
   with check (user_id = public.current_app_user());
 
 -- ============================================================================
@@ -363,7 +362,7 @@ drop policy if exists dispute_messages_write on public.dispute_messages;
 create policy dispute_messages_write on public.dispute_messages
   for insert to authenticated
   with check (
-    public.can_write()
+    public.can_write_area('trust')
     or exists (
       select 1 from public.disputes d
       where d.id = dispute_id
@@ -466,11 +465,19 @@ create policy notifications_admin_write on public.notifications
 -- حملات الإشعارات، المقاييس، وسجل المسؤولين: لا يراها مستخدم ولا مقدّم خدمة.
 drop policy if exists push_admin_only on public.push_notifications;
 create policy push_admin_only on public.push_notifications
-  for all to authenticated using (public.is_admin()) with check (public.can_write());
+  for all to authenticated
+  using (public.can_write_area('ops')) with check (public.can_write_area('ops'));
+drop policy if exists push_admin_read on public.push_notifications;
+create policy push_admin_read on public.push_notifications
+  for select to authenticated using (public.is_admin());
 
 drop policy if exists metrics_admin_only on public.daily_metrics;
 create policy metrics_admin_only on public.daily_metrics
-  for all to authenticated using (public.is_admin()) with check (public.can_write());
+  for all to authenticated
+  using (public.can_write_area('ops')) with check (public.can_write_area('ops'));
+drop policy if exists metrics_admin_read on public.daily_metrics;
+create policy metrics_admin_read on public.daily_metrics
+  for select to authenticated using (public.is_admin());
 
 -- جدول المسؤولين: يقرأه كل مسؤول، ولا يعدّله إلا المالك.
 drop policy if exists admins_read on public.admins;
