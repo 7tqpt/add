@@ -382,7 +382,6 @@ const Map<String, String> englishStrings = {
   'بياناتي': 'My details',
   'بيت العرس، القاعة، بيت العروس…': 'Wedding house, the hall, the bride’s house…',
   'تأكيد التنفيذ': 'Confirm completion',
-  'تأكيد الحجز': 'Confirm the booking',
   'تأكيد الرقم': 'Verify number',
   'تأكيد الموقع': 'Confirm the location',
   'تأكيد رقمك': 'Verify your number',
@@ -866,4 +865,25 @@ const Map<String, String> englishStrings = {
   'حُجز في': 'Booked on',
   'افتح الموقع على الخريطة': 'Open location on the map',
   'المطلوب الآن': 'Due now',
+  'مراجعة الحجز': 'Review your booking',
+  'متابعة الدفع': 'Continue to payment',
+  'التالي': 'Next',
+  'عن مناسبتك': 'About your event',
+  'متى وأين': 'When and where',
+  'كود الخصم': 'Discount code',
+  'مزوّد موثّق': 'Verified provider',
+  'لم يُختَر تاريخ': 'No date chosen',
+  'قيمة الحجز': 'Booking total',
+  'العربون الآن': 'Deposit now',
+  'المتبقّي': 'Remaining',
+  'تقديرٌ — والمبلغ النهائي يحسبه النظام عند تأكيد الحجز.':
+      'An estimate — the final amount is calculated by the system when the booking is confirmed.',
+  'الخدمة': 'Service',
+  'الموعد': 'Date',
+  'التأكيد': 'Confirm',
+  'راجع الشروط قبل تأكيد الطلب': 'Read the terms before confirming your request',
+  'ثلاث خطوات: تفاصيل مناسبتك، ثم الموعد والعنوان، ثم مراجعةٌ قبل الإرسال.':
+      'Three steps: your event details, then the date and address, then a review before you send.',
+  'ابدأ الحجز': 'Start booking',
+
 };

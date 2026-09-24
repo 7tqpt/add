@@ -1,4 +1,4 @@
-// كودُ الخصم في شاشة الحجز.
+// كودُ الخصم في مسار الحجز — الخطوةُ الثانية من ثلاث.
 //
 // وثلاثةٌ ممّا هنا أرقامٌ ماليّة تُعرض للعميل قبل أن يدفع، فتُقاس بالحساب لا
 // بوجود النصّ على الشاشة:
@@ -85,6 +85,25 @@ Future<void> _pickDate(WidgetTester tester) async {
 Finder _appliedRow() =>
     find.byKey(const ValueKey('coupon-applied'), skipOffstage: false);
 
+/// يفتح مسارَ الحجز من صفحة الخدمة ويقف على خطوة «الموعد».
+///
+/// **والحقلُ لم يعُد في صفحة الخدمة.** كان النموذجُ في ذيلها، فصار مساراً من
+/// ثلاث خطوات: الخدمة ← الموعد ← التأكيد. وكودُ الخصم في الثانية مع التاريخ
+/// والعنوان، لأنّ الثلاثةَ ممّا يُسأل عنه في مجلسٍ واحد.
+Future<void> _openBooking(WidgetTester tester) async {
+  await _tapText(tester, 'ابدأ الحجز');
+  await _tapText(tester, 'التالي');
+}
+
+/// يتقدّم من «الموعد» إلى «التأكيد» ثمّ يُرسل.
+///
+/// **وهذا هو ما لم يكن**: شاشةُ مراجعةٍ بين ملء النموذج وإرساله. وكان
+/// «تأكيد الحجز» يُرسل من النموذج مباشرةً.
+Future<void> _confirm(WidgetTester tester) async {
+  await _tapText(tester, 'التالي');
+  await _tapText(tester, 'متابعة الدفع');
+}
+
 Future<void> _tapText(WidgetTester tester, String text) async {
   final f = find.text(text, skipOffstage: false);
   await tester.scrollUntilVisible(f, 200,
@@ -108,6 +127,7 @@ void main() {
     _phone(tester);
     await tester.pumpWidget(_wrap(const ServiceDetailScreen(serviceId: 's1')));
     await _settle(tester);
+    await _openBooking(tester);
 
     await _reach(tester, find.text('كود الخصم (اختياري)'));
     expect(find.text('كود الخصم (اختياري)'), findsOneWidget);
@@ -121,6 +141,7 @@ void main() {
     _phone(tester);
     await tester.pumpWidget(_wrap(const ServiceDetailScreen(serviceId: 's1')));
     await _settle(tester);
+    await _openBooking(tester);
 
     await _fill(tester, 'كود الخصم (اختياري)', 'EID25');
     await _tapText(tester, 'تحقّق');
@@ -140,6 +161,7 @@ void main() {
     _phone(tester);
     await tester.pumpWidget(_wrap(const ServiceDetailScreen(serviceId: 's1')));
     await _settle(tester);
+    await _openBooking(tester);
 
     await _fill(tester, 'كود الخصم (اختياري)', ' eid25 ');
     await _tapText(tester, 'تحقّق');
@@ -153,6 +175,7 @@ void main() {
     _phone(tester);
     await tester.pumpWidget(_wrap(const ServiceDetailScreen(serviceId: 's1')));
     await _settle(tester);
+    await _openBooking(tester);
 
     await _fill(tester, 'كود الخصم (اختياري)', 'ZZZZ');
     await _tapText(tester, 'تحقّق');
@@ -167,6 +190,7 @@ void main() {
     _phone(tester);
     await tester.pumpWidget(_wrap(const ServiceDetailScreen(serviceId: 's1')));
     await _settle(tester);
+    await _openBooking(tester);
 
     await _fill(tester, 'كود الخصم (اختياري)', 'EID25');
     await _tapText(tester, 'تحقّق');
@@ -203,12 +227,13 @@ void main() {
     _phone(tester);
     await tester.pumpWidget(_wrap(const ServiceDetailScreen(serviceId: 's1')));
     await _settle(tester);
+    await _openBooking(tester);
 
     await _pickDate(tester);
     await _fill(tester, 'عنوان المناسبة', 'حي السنينة — صنعاء');
     await _fill(tester, 'كود الخصم (اختياري)', 'SDD5000');
     await _tapText(tester, 'تحقّق');
-    await _tapText(tester, 'تأكيد الحجز');
+    await _confirm(tester);
 
     final booking = demoBookings.first;
     expect(booking.couponCode, 'SDD5000');
@@ -246,6 +271,7 @@ void main() {
     _phone(tester);
     await tester.pumpWidget(_wrap(const ServiceDetailScreen(serviceId: 's1')));
     await _settle(tester);
+    await _openBooking(tester);
 
     await _pickDate(tester);
     await _fill(tester, 'عنوان المناسبة', 'حي السنينة — صنعاء');
@@ -255,7 +281,7 @@ void main() {
 
     // يبدّله بكودٍ صحيحٍ آخر ولا يضغط «تحقّق».
     await _fill(tester, 'كود الخصم (اختياري)', 'EID25');
-    await _tapText(tester, 'تأكيد الحجز');
+    await _confirm(tester);
 
     final booking = demoBookings.first;
     expect(booking.couponCode, '',
@@ -267,10 +293,11 @@ void main() {
     _phone(tester);
     await tester.pumpWidget(_wrap(const ServiceDetailScreen(serviceId: 's1')));
     await _settle(tester);
+    await _openBooking(tester);
 
     await _pickDate(tester);
     await _fill(tester, 'عنوان المناسبة', 'حي السنينة — صنعاء');
-    await _tapText(tester, 'تأكيد الحجز');
+    await _confirm(tester);
 
     final booking = demoBookings.first;
     expect(booking.couponCode, '');

@@ -47,7 +47,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:aras/src/core/session.dart';
 import 'package:aras/src/core/theme.dart';
 import 'package:aras/src/screens/service_detail.dart';
 import 'package:aras/src/ui/kit.dart';
@@ -85,12 +84,6 @@ const _label = TextStyle(fontFamily: brandFont, fontFamilyFallback: arabicFallba
 
 const _pw = 330.0;
 const _ph = 660.0;
-
-Session _customer() => Session()
-  ..userId = 'u1'
-  ..email = 'bride@sdd.company'
-  ..appUserId = 'a1'
-  ..loading = false;
 
 // ── غلافُ القاعة: يُركَّب هنا، ولا شبكةَ في `flutter test` ─────────────────
 Widget _hallImage(double w, double h) => CustomPaint(
