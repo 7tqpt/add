@@ -10,6 +10,17 @@
 //      لا يُنفق عليه أحد، وعدُّه يُري صاحبَه مصروفاً لم يخرج من جيبه.
 //   ٤. **وأنّ «المدفوع» غيرُ «المحجوز»** — ويفترقان ما دام عربونٌ لم
 //      يُكمَّل. ودالّةٌ تردّ الرقمَ نفسَه في العمودين تُخفي الالتزامَ القادم.
+//
+// ── وتُشغَّل بـ`npm test` لا بالملفّ وحدَه ──────────────────────────────────
+//
+// **وهذا مكتوبٌ لأنّه وقع**: قستُ بـ`node plan_spend.test.mjs` فخضرّت،
+// ودفعتُ، فحمرّت الحزمةُ على الخادم. والعلّةُ أنّ تجهيزَ الاختبار كان
+// يختار خدمةً بـ`limit 1` **بلا `order by`** — فيقع حجزان مؤكَّدان على
+// مزوّدٍ واحدٍ في يومٍ واحد أحياناً، ويردُّهما
+// `bookings_confirmed_provider_day_key`.
+//
+// فالأمرُ الذي يقيس هو `npm test` في هذا المجلّد، وتشغيلةٌ واحدةٌ خضراءُ
+// لا تُثبت شيئاً في تجهيزٍ غيرِ معيَّن.
 import { PGlite } from '@electric-sql/pglite'
 import { readFileSync } from 'node:fs'
 
@@ -70,12 +81,22 @@ const plan = async (owner, title) => (await one(`
 const myPlan = await plan(myId, 'عرس مريم')
 const herPlan = await plan(herId, 'عرس سارة')
 
+/// يومٌ خاصٌّ لكلّ حجز.
+///
+/// **و`bookings_confirmed_provider_day_key` قيدٌ قائمٌ لا يُلتفّ عليه**: حجزٌ
+/// مؤكَّدٌ واحدٌ للمزوّد في اليوم. وحجزان مؤكَّدان في قسمٍ واحدٍ قد يقعان على
+/// مزوّدٍ واحد، فيُردّ الثاني — **وقد وقع**: كانت `limit 1` بلا ترتيب تختار
+/// خدمةً عشوائيّةً، فتمرّ الحزمةُ مرّةً وتحمرّ أخرى.
+let _day = 0
+
 /// حجزٌ في خطّةٍ على خدمةٍ من قسمٍ بعينه.
 const book = async (planId, userId, categorySlug, total, paid, status = 'confirmed') => {
+  // **والترتيبُ شرطُ الإعادة**: `limit 1` بلا `order by` تُخرج صفّاً غيرَ
+  // معيَّن، فتختلف الحزمةُ من تشغيلٍ إلى تشغيل بلا أن يتغيّر حرفٌ.
   const svc = await one(`
     select s.id from public.provider_services s
       join public.service_categories c on c.id = s.category_id
-     where c.slug = $1 limit 1`, [categorySlug])
+     where c.slug = $1 order by s.id limit 1`, [categorySlug])
   if (!svc) throw new Error(`لا خدمةَ في قسم ${categorySlug} — البياناتُ التجريبيّة تبدّلت`)
   // **وكلُّ حالةٍ تحمل وقتَها**: `confirmed_needs_timestamp` و`closed_needs_timestamp`
   // قيدان في الجدول، وحجزٌ يُكتب بحالةٍ بلا وقتها يُردّ. وهذا حرزٌ قائمٌ لا
@@ -86,11 +107,11 @@ const book = async (planId, userId, categorySlug, total, paid, status = 'confirm
        guests_count, address, status, total_price, deposit_amount, paid_amount,
        confirmed_at, cancelled_at)
     select 'BK-T-' || substr(md5(random()::text), 1, 6), $1, $2, $3, s.provider_id,
-           current_date + 60, 300, 'حي السنينة', $4, $5, $5 * 0.3, $6,
+           current_date + $7::integer, 300, 'حي السنينة', $4, $5, $5 * 0.3, $6,
            case when $4 in ('confirmed', 'completed') then now() end,
            case when $4 in ('cancelled', 'rejected', 'expired') then now() end
       from public.provider_services s where s.id = $3`,
-    [userId, planId, svc.id, status, total, paid])
+    [userId, planId, svc.id, status, total, paid, 60 + ++_day])
 }
 
 const halls = await one(`select slug from public.service_categories order by sort_order limit 1`)
