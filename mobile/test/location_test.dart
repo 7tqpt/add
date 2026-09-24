@@ -117,10 +117,18 @@ void main() {
   //  نموذجُ الحجز
   // ==========================================================================
 
-  testWidgets('وصفُّ الموقع في نموذج الحجز', (tester) async {
+  testWidgets('وصفُّ الموقع في خطوة «الموعد»', (tester) async {
+    // **ونموذجُ الحجز خرج من صفحة الخدمة.** صار مساراً من ثلاث خطوات،
+    // وصفُّ الموقع في الثانية مع التاريخ والعنوان — فالثلاثةُ «متى وأين».
     _phone(tester);
     await tester.pumpWidget(_wrap(const ServiceDetailScreen(serviceId: 's1')));
     await _settle(tester);
+
+    await _reach(tester, find.text('ابدأ الحجز'));
+    await tester.tap(find.text('ابدأ الحجز'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('التالي'));
+    await tester.pumpAndSettle();
 
     await _reach(tester, find.byType(LocationRow));
     expect(find.byType(LocationRow), findsOneWidget);

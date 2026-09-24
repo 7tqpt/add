@@ -1308,6 +1308,106 @@ class ProviderAvatar extends StatelessWidget {
 }
 
 /// سطر «اسم: قيمة» بمحاذاة طرفَي البطاقة.
+/// حلقةُ تقدّمٍ — نسبةٌ في وسطها وسطرٌ تحتها.
+///
+/// **ولماذا حلقةٌ بعد أن كان شريطاً:** الشريطُ يقول «كم أُنجز» ولا يُقرأ إلّا
+/// بمقارنةِ طولين. والحلقةُ تحمل الرقمَ في وسطها، فتُقرأ بنظرةٍ واحدة —
+/// وهي الشكلُ الذي أقرّه صاحبُ المنصّة.
+///
+/// و[value] بين ‎٠‎ و‎١‎، وما خرج عنهما يُقصّ: نسبةٌ فوق المئة ترسم قوساً
+/// يلتفّ على نفسه فيُقرأ أقلَّ ممّا هو.
+class ProgressRing extends StatelessWidget {
+  const ProgressRing({
+    super.key,
+    required this.value,
+    required this.big,
+    required this.small,
+    this.size = 116,
+    this.colour = AppColors.accent,
+  });
+
+  final double value;
+
+  /// ما يُكتب في الوسط — النسبةُ في العادة.
+  final String big;
+
+  /// سطرٌ تحته يقول ممّ هي النسبة.
+  final String small;
+
+  final double size;
+  final Color colour;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+        width: size,
+        height: size,
+        child: CustomPaint(
+          painter: _RingPainter(value.clamp(0.0, 1.0), colour),
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  big,
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.ink,
+                    fontFamilyFallback: arabicFallback,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                SizedBox(
+                  width: size - 34,
+                  child: Text(
+                    small,
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 10,
+                      height: 1.35,
+                      color: AppColors.muted,
+                      fontFamilyFallback: arabicFallback,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+}
+
+class _RingPainter extends CustomPainter {
+  _RingPainter(this.value, this.colour);
+  final double value;
+  final Color colour;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    const stroke = 11.0;
+    final rect = Rect.fromLTWH(
+        stroke / 2 + 1, stroke / 2 + 1, size.width - stroke - 2, size.height - stroke - 2);
+    canvas.drawArc(rect, 0, math.pi * 2, false,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = stroke
+          ..color = AppColors.surface2);
+    if (value <= 0) return;
+    canvas.drawArc(rect, -math.pi / 2, math.pi * 2 * value, false,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = stroke
+          ..strokeCap = StrokeCap.round
+          ..color = colour);
+  }
+
+  @override
+  bool shouldRepaint(covariant _RingPainter old) =>
+      old.value != value || old.colour != colour;
+}
+
 class KeyValue extends StatelessWidget {
   const KeyValue(this.label, this.value, {super.key});
   final String label;

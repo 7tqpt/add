@@ -625,7 +625,7 @@ class Api {
   }) async {
     if (!isSupabaseConfigured) {
       return demoDelay(demoCreateBooking(
-          serviceId, eventDate, eventTime, guests, address, couponCode, point));
+          serviceId, eventDate, eventTime, guests, address, couponCode, point, planId));
     }
     final result = await db.rpc(
       'api_create_booking',
@@ -819,6 +819,31 @@ class Api {
     // **وقاعدةٌ أقدمُ من التطبيق لا تُسقط الشاشة:** من لم يشغّل
     // `plan_tasks.sql` بعدُ يرى الخطّة بلا قائمةٍ لا شاشةَ خطأ.
     return row == null ? PlanProgress.empty : PlanProgress.fromMap(row);
+  }
+
+  /// توزيعُ مصروف الخطّة على الأقسام — لأشرطة «تفاصيل المصروفات».
+  ///
+  /// **والجمعُ في القاعدة لا هنا**: `Booking` لا تحمل قسمَ خدمتها،
+  /// و`v_plan_summary` تجمع ولا تفصّل. فالدالّةُ في `supabase/plan_spend.sql`
+  /// تجمع عبر `bookings → provider_services → service_categories`، وحرزُها
+  /// سطرٌ واحد: خطّةُ صاحب الجلسة أو لا شيء.
+  ///
+  /// **وتعود فارغةً إن لم تُشغَّل الدالّةُ بعد**: القاعدةُ تُحدَّث بيد صاحبها،
+  /// فبينها وبين التطبيق نافذةٌ تنقص فيها بطاقةٌ ولا تسقط شاشة.
+  static Future<List<PlanCategorySpend>> planSpendByCategory(String planId) async {
+    if (!isSupabaseConfigured) return demoDelay(demoPlanSpend(planId));
+    try {
+      final rows = await db.rpc(
+        'api_plan_spend_by_category',
+        params: {'p_plan_id': planId},
+      );
+      return ((rows as List?) ?? const [])
+          .map((r) => PlanCategorySpend.fromMap(Map<String, dynamic>.from(r as Map)))
+          .toList();
+    } on PostgrestException catch (e) {
+      if (e.code != undefinedFunction) rethrow;
+      return const [];
+    }
   }
 
   static Future<List<PlanTask>> planTasks(String planId) async {

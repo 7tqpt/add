@@ -96,7 +96,6 @@ const Map<String, String> englishStrings = {
   'إب': 'Ibb',
   'إجمالي الأرباح': 'Total earnings',
   'إجمالي الحجز': 'Booking total',
-  'إجمالي الحجوزات': 'Total bookings',
   'إخفاء المنجَز': 'Hide completed',
   'إخفاء': 'Hide',
   'إرسال': 'Send',
@@ -320,7 +319,7 @@ const Map<String, String> englishStrings = {
   'المبلغ {0}.': 'Amount {0}.',
   'المبلغ المُعاد: {0}': 'Amount refunded: {0}',
   'المبلغ النهائي يحسبه النظام عند تأكيد الحجز.': 'The final amount is worked out by the system when the booking is confirmed.',
-  'المتبقّي عليك': 'Left to pay',
+  'المصروف': 'Spent',
   'المحادثات': 'Chats',
   // بندُ الشريط السفليّ — أقصرُ من «المحادثات» لأنّ الخانة ضيّقة.
   'الرسائل': 'Messages',
@@ -382,7 +381,6 @@ const Map<String, String> englishStrings = {
   'بياناتي': 'My details',
   'بيت العرس، القاعة، بيت العروس…': 'Wedding house, the hall, the bride’s house…',
   'تأكيد التنفيذ': 'Confirm completion',
-  'تأكيد الحجز': 'Confirm the booking',
   'تأكيد الرقم': 'Verify number',
   'تأكيد الموقع': 'Confirm the location',
   'تأكيد رقمك': 'Verify your number',
@@ -433,7 +431,10 @@ const Map<String, String> englishStrings = {
   'تغيير': 'Change',
   'تفاصيل الخدمة': 'Service details',
   'تفاصيل الطلب': 'Request details',
+  'تفاصيل المصروفات': 'Where the money went',
   'تفاصيل تقنية': 'Technical details',
+  // شرحُ البطاقة — والحجوزاتُ لا المصروفُ، فالشريطُ يقيس المحجوز.
+  'توزيعُ حجوزاتك حسب القسم': 'Your bookings by category',
   'تفعيل الحساب': 'Activate the account',
   'تقديم خدمة': 'Offer a service',
   'تقويمي': 'My calendar',
@@ -772,6 +773,8 @@ const Map<String, String> englishStrings = {
   'من {0}': 'of {0}',
   'من أين؟': 'From where?',
   'من المعرض': 'From the gallery',
+  // تحت نسبةِ الحلقة — والفاعلُ محذوفٌ في العربيّة، وفي الإنجليزيّة يُذكر.
+  'من الميزانية صُرف': 'of the budget spent',
   'من عناويني': 'From my addresses',
   'من محافظي': 'From my governorate',
   'منتهٍ': 'Expired',
@@ -811,6 +814,9 @@ const Map<String, String> englishStrings = {
       'Delete “{0}”? There is no going back — its photos and clips go with it.',
   'هنا يصلك ما يخصّ حجوزاتك ومدفوعاتك ورسائلك.': 'Everything about your bookings, payments, and messages arrives here.',
   'وافق على حجزك': 'They approved your booking',
+  // **رقمٌ غيرُ «المتبقّي»**: ما بقي من ثمن الحجوزات لا من الميزانية.
+  'وعليك لمقدّمي الخدمة {0} من ثمن حجوزاتك.':
+      'You still owe providers {0} of your bookings.',
   'وسيلة جديدة': 'New method',
   'وصل العربون وثبت الحجز': 'The deposit arrived and the booking is secured',
   'وصلت حوالتك ولم تُؤكَّد بعد. يُفعَّل اشتراكك فور مراجعتها.': 'Your transfer arrived and is not yet confirmed. Your subscription starts as soon as it is reviewed.',
@@ -866,16 +872,25 @@ const Map<String, String> englishStrings = {
   'حُجز في': 'Booked on',
   'افتح الموقع على الخريطة': 'Open location on the map',
   'المطلوب الآن': 'Due now',
-
-  // ── مراجعة الحجز ───────────────────────────────────────────────────────
-  'مراجعة الحجز': 'Review booking',
-  'الخدمة  ←  الموعد  ←  التأكيد': 'Service  →  Date  →  Confirm',
+  'مراجعة الحجز': 'Review your booking',
+  'متابعة الدفع': 'Continue to payment',
+  'التالي': 'Next',
+  'عن مناسبتك': 'About your event',
+  'متى وأين': 'When and where',
+  'كود الخصم': 'Discount code',
+  'مزوّد موثّق': 'Verified provider',
+  'لم يُختَر تاريخ': 'No date chosen',
+  'قيمة الحجز': 'Booking total',
+  'العربون الآن': 'Deposit now',
+  'المتبقّي': 'Remaining',
+  'تقديرٌ — والمبلغ النهائي يحسبه النظام عند تأكيد الحجز.':
+      'An estimate — the final amount is calculated by the system when the booking is confirmed.',
+  'الخدمة': 'Service',
   'الموعد': 'Date',
-  'الوقت': 'Time',
-  'ملخّص المبلغ': 'Payment summary',
-  'السعر المبدئي': 'Estimated price',
-  'العربون المتوقع': 'Estimated deposit',
-  'المتبقي المتوقع': 'Estimated balance',
-  'كود الخصم المتحقق منه': 'Verified discount code',
-  'العودة للتعديل': 'Back to edit',
+  'التأكيد': 'Confirm',
+  'راجع الشروط قبل تأكيد الطلب': 'Read the terms before confirming your request',
+  'ثلاث خطوات: تفاصيل مناسبتك، ثم الموعد والعنوان، ثم مراجعةٌ قبل الإرسال.':
+      'Three steps: your event details, then the date and address, then a review before you send.',
+  'ابدأ الحجز': 'Start booking',
+
 };

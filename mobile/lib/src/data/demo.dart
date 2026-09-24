@@ -355,6 +355,7 @@ List<Review> demoReviewsOf(String providerId) => _demoReviews[providerId] ?? con
 List<Booking> demoBookings = [
   Booking(
     id: 'b1',
+    planId: 'pl1',
     reference: 'BK-2026-000318',
     createdAt: _at(200),
     userName: 'أحمد الشرعبي',
@@ -371,6 +372,7 @@ List<Booking> demoBookings = [
   ),
   Booking(
     id: 'b2',
+    planId: 'pl1',
     reference: 'BK-2026-000402',
     createdAt: _at(48),
     userName: 'أحمد الشرعبي',
@@ -479,6 +481,42 @@ List<PlanTask> demoPlanTasks = [
 ];
 
 int _taskSeq = 0;
+
+/// توزيعُ مصروف الخطّة في وضع العرض — **مشتقٌّ من حجوزاتها لا مكتوبٌ بيد**.
+///
+/// وكلُّ حجزٍ يحمل قسمَ خدمته عبر `demoServices`، فتُجمع كما تجمعها الدالّةُ
+/// في القاعدة: الملغى خارجَ الحساب، والمدفوعُ غيرُ المحجوز.
+///
+/// **وأرقامٌ مكتوبةٌ بيدٍ هنا تُخفي عطباً في الجمع**: شاشةٌ تُجرَّب على أرقامٍ
+/// مخترعةٍ تبدو صحيحةً وإن كان الجمعُ مكسوراً.
+List<PlanCategorySpend> demoPlanSpend(String planId) {
+  final byCategory = <String, ({String name, num spent, num booked, int count})>{};
+  for (final b in demoBookings) {
+    if (b.planId != planId) continue;
+    if (b.status == BookingStatus.cancelled || b.status == BookingStatus.rejected) continue;
+    final service = demoServices.where((s) => s.title == b.serviceTitle).firstOrNull;
+    if (service == null) continue;
+    final was = byCategory[service.categoryId];
+    byCategory[service.categoryId] = (
+      name: service.categoryName,
+      spent: (was?.spent ?? 0) + b.paidAmount,
+      booked: (was?.booked ?? 0) + b.totalPrice,
+      count: (was?.count ?? 0) + 1,
+    );
+  }
+  final rows = byCategory.entries
+      .map((e) => PlanCategorySpend(
+            categoryId: e.key,
+            categoryName: e.value.name,
+            spent: e.value.spent,
+            booked: e.value.booked,
+            bookings: e.value.count,
+          ))
+      .where((r) => r.booked > 0)
+      .toList()
+    ..sort((a, b) => b.booked.compareTo(a.booked));
+  return rows;
+}
 
 PlanProgress demoPlanProgress(String planId) {
   final done = demoPlanTasks.where((t) => t.done).length;
@@ -788,6 +826,7 @@ Booking demoCreateBooking(
   String address, [
   String couponCode = '',
   GeoPoint? point,
+  String? planId,
 ]) {
   final service = demoServices.firstWhere((s) => s.id == serviceId);
   final key = couponCode.trim().toUpperCase();
@@ -817,6 +856,7 @@ Booking demoCreateBooking(
     couponCode: key.isEmpty ? '' : key,
     discountAmount: discount,
     point: point,
+    planId: planId,
   );
   demoBookings = [booking, ...demoBookings];
   return booking;
