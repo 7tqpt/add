@@ -9,6 +9,7 @@ import '../data/models.dart';
 import '../data/supabase.dart';
 import '../ui/booking_stages.dart';
 import '../ui/kit.dart';
+import '../ui/media.dart';
 import '../ui/motion.dart';
 import 'booking_detail.dart';
 import 'labels.dart';
@@ -148,76 +149,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
               // صاحب المنصّة، فبقي هنا ما يُقرأ بالعين: أين وصل، وكم، ومتى.
               return FadeSlideIn(
                 index: i,
-                child: AppCard(
-                  key: ValueKey('booking-card-${b.id}'),
-                  onTap: () => _open(b),
-                  children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Text(
-                            b.serviceTitle,
-                            style: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.ink,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: Space.sm),
-                        StatusBadge(
-                          bookingStatusLabel(b.status),
-                          color: bookingStatusColor(b.status),
-                        ),
-                        // **وسهمٌ يقول إنّها تُفتح** — اختاره صاحبُ المنصّة:
-                        // الانخفاضُ تحت الإصبع لا يُعلم إلّا بعد أن يُجرَّب.
-                        const SizedBox(width: Space.xs),
-                        const Icon(Icons.chevron_right, size: 20, color: AppColors.muted),
-                      ],
-                    ),
-                    const SizedBox(height: Space.xs),
-                    Muted(b.providerName),
-                    const SizedBox(height: Space.sm),
-                    Text(
-                      b.eventTime == null
-                          ? formatDate(b.eventDate)
-                          : '${formatDate(b.eventDate)} · ${formatTime(b.eventTime)}',
-                      style: const TextStyle(fontSize: 14, color: AppColors.ink2),
-                    ),
-                    const SizedBox(height: Space.sm),
-                    // لفٌّ لا صفّ: مبلغان بالريال اليمني — سبعةُ أرقامٍ لكلٍّ —
-                    // تجاوزا عرض الجوال بخمسين بكسلاً. والقصُّ بالنقاط هنا
-                    // **أسوأ من النزول سطراً**: «الإجمالي ١٢٠٠…» رقمٌ مبتور
-                    // يُقرأ على أنه المبلغ. فينزل الثاني سطراً حين لا يتّسعان،
-                    // ويبقيان في سطرٍ واحدٍ متباعدين حين يتّسعان.
-                    Wrap(
-                      alignment: WrapAlignment.spaceBetween,
-                      spacing: Space.md,
-                      runSpacing: Space.xs,
-                      children: [
-                        Text(
-                          trf('الإجمالي {0}', [formatMoney(b.totalPrice)]),
-                          style: const TextStyle(fontSize: 13, color: AppColors.ink),
-                        ),
-                        Muted(
-                          b.paidAmount > 0 ? trf('مدفوع {0}', [formatMoney(b.paidAmount)]) : tr('لم يُدفع بعد'),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: Space.xs),
-                    Align(
-                      alignment: AlignmentDirectional.centerEnd,
-                      child: Text(
-                        b.reference,
-                        textDirection: TextDirection.ltr,
-                        style: const TextStyle(fontSize: 11, color: AppColors.muted),
-                      ),
-                    ),
-                    const SizedBox(height: Space.md),
-                    BookingStages(stages: bookingStages(b)),
-                  ],
-                ),
+                child: BookingCard(booking: b, onTap: () => _open(b)),
               );
             },
           ),
@@ -225,4 +157,307 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
       },
     );
   }
+}
+
+/// بطاقةُ الحجز في «حجوزاتي» — على هيئة بطاقة رأس الخطّة.
+///
+/// ── لماذا تشبه بطاقةَ الخطّة ───────────────────────────────────────────────
+///
+/// اختار صاحبُ المنصّة أن تُصنع لها «نفسُ الشيء الذي صُنع في خطة العرس»:
+/// صورةٌ إلى جانب لوح نصٍّ فاتح، والتاريخُ في قرص، وعدٌّ تنازليٌّ ذهبيٌّ
+/// **داخلَ جملته**، ثمّ شريطُ تقدّمٍ بحلقته. **والشريطُ هنا شريطُ الدفع**:
+/// كم دُفع من ثمن الحجز — وهو ما يُسأل عنه في هذه الشاشة.
+///
+/// ── وما بقي كما كان ────────────────────────────────────────────────────────
+///
+/// **مراحلُ الحجز باقيةٌ تحت الشريط** باختياره: «أين وصل حجزي؟» يُقرأ بلا
+/// فتح. وبقيت البطاقةُ تُفتح بالضغط، وبقي رقمُ الحجز في ذيلها — فهو الذي
+/// يُقال للمزوّد في الهاتف.
+class BookingCard extends StatelessWidget {
+  const BookingCard({super.key, required this.booking, this.onTap});
+
+  final Booking booking;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final b = booking;
+    final ratio = b.totalPrice > 0
+        ? (b.paidAmount / b.totalPrice).clamp(0.0, 1.0).toDouble()
+        : 0.0;
+    final left = b.totalPrice - b.paidAmount;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: Ink(
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            border: Border.all(color: AppColors.hairline),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: Column(
+              key: ValueKey('booking-card-${b.id}'),
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // **ولا ارتفاعَ ثابتٌ للرأس.** خطُّ الجهاز الكبيرُ يُطيل
+                // العنوانَ والقرصَ والعدَّ، فارتفاعٌ مكتوبٌ يفيض بسبعةٍ
+                // وعشرين بكسلاً — وقد فاض. فيُؤخذ الارتفاعُ من النصّ، ويُحدّ
+                // من أسفلَ وحدَه لئلّا تقصر الصورةُ حين يقصر العنوان.
+                IntrinsicHeight(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Expanded(
+                        flex: 58,
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(minHeight: 150),
+                          child: _Head(booking: b),
+                        ),
+                      ),
+                      Expanded(
+                        flex: 42,
+                        child: Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            // **وموضعُ الصورة محجوزٌ من أوّل رسمة** — ومن لم
+                            // تُشغَّل قاعدتُه، أو حجز خدمةً بلا صور، يرى
+                            // موضعاً هادئاً ولا تسقط بطاقةٌ لنقص صورة.
+                            Container(
+                              color: AppColors.surface2,
+                              child: MediaThumb(
+                                url: Api.mediaUrl(b.coverPath),
+                                icon: Icons.photo_camera_back_outlined,
+                              ),
+                            ),
+                            Positioned(
+                              top: 10,
+                              right: 8,
+                              left: 8,
+                              child: Align(
+                                alignment: AlignmentDirectional.centerStart,
+                                child: _Ribbon(
+                                  bookingStatusLabel(b.status),
+                                  colour: bookingStatusColor(b.status),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(height: 1, color: AppColors.hairline),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.payments_outlined,
+                              size: 15, color: AppColors.muted),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              trf('{0} من {1}', [
+                                formatMoney(b.paidAmount),
+                                formatMoney(b.totalPrice),
+                              ]),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.ink,
+                                fontFamilyFallback: arabicFallback,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 9),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(999),
+                              child: LinearProgressIndicator(
+                                key: ValueKey('paid-bar-${b.id}'),
+                                value: ratio,
+                                minHeight: 8,
+                                backgroundColor: AppColors.surface2,
+                                valueColor:
+                                    const AlwaysStoppedAnimation(AppColors.accent),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: Space.sm),
+                          PercentRing(
+                            key: ValueKey('paid-ring-${b.id}'),
+                            value: ratio,
+                            label: trf('{0}٪', ['${(ratio * 100).round()}']),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      // **وكلاهما يَضيق ولا يفيض.** بخطّ الجهاز الكبير طال
+                      // السطرُ أربعةً وأربعين بكسلاً خارجَ البطاقة — وقد فاض.
+                      // فلكلٍّ نصيبُه من العرض، ويُقصّ ما زاد.
+                      Row(
+                        children: [
+                          Expanded(
+                            flex: 3,
+                            child: Muted(
+                              left <= 0
+                                  ? tr('سُدّد كاملاً')
+                                  : trf('بقي {0}', [formatMoney(left)]),
+                              size: 11,
+                              maxLines: 1,
+                            ),
+                          ),
+                          const SizedBox(width: Space.sm),
+                          // رقمُ الحجز — وهو الذي يُقال للمزوّد في الهاتف.
+                          Flexible(
+                            flex: 2,
+                            child: Text(
+                              b.reference,
+                              textDirection: TextDirection.ltr,
+                              textAlign: TextAlign.end,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                  fontSize: 11, color: AppColors.muted),
+                            ),
+                          ),
+                          // **وسهمٌ يقول إنّها تُفتح** — اختاره صاحبُ المنصّة:
+                          // الانخفاضُ تحت الإصبع لا يُعلم إلّا بعد أن يُجرَّب.
+                          const SizedBox(width: Space.xs),
+                          const Icon(Icons.chevron_right,
+                              size: 18, color: AppColors.muted),
+                        ],
+                      ),
+                      const SizedBox(height: Space.md),
+                      BookingStages(stages: bookingStages(b)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// لوحُ نصّ البطاقة: الخدمةُ والمزوّدُ والموعدُ والعدُّ التنازلي.
+class _Head extends StatelessWidget {
+  const _Head({required this.booking});
+  final Booking booking;
+
+  @override
+  Widget build(BuildContext context) {
+    final b = booking;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(14, 14, 12, 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            b.serviceTitle,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 14.5,
+              height: 1.25,
+              fontWeight: FontWeight.w700,
+              color: AppColors.ink,
+              fontFamilyFallback: arabicFallback,
+            ),
+          ),
+          const SizedBox(height: 3),
+          Muted(b.providerName, size: 11.5, maxLines: 1),
+          const SizedBox(height: 7),
+          _Pill(
+            b.eventTime == null
+                ? formatDate(b.eventDate)
+                : '${formatDate(b.eventDate)} · ${formatTime(b.eventTime)}',
+          ),
+          const SizedBox(height: 8),
+          // **والجملةُ من `countdownLabel`** — بصيغة العدد العربيّة، ويُكبَّر
+          // ما كان رقماً فيها. ولا يُركَّب نصٌّ ثانٍ في الشاشة.
+          BigNumberIn(countdownLabel(daysUntil(b.eventDate))),
+        ],
+      ),
+    );
+  }
+}
+
+class _Pill extends StatelessWidget {
+  const _Pill(this.text);
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+        decoration: BoxDecoration(
+          color: AppColors.surface2,
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.calendar_today_rounded,
+                size: 12, color: AppColors.muted),
+            const SizedBox(width: 5),
+            Flexible(
+              child: Text(
+                text,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.muted,
+                  fontFamilyFallback: arabicFallback,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+}
+
+/// شريطٌ فوق الصورة — أبيضُ نصفُ شفّافٍ ليُقرأ على أيّ صورةٍ كانت.
+class _Ribbon extends StatelessWidget {
+  const _Ribbon(this.label, {required this.colour});
+  final String label;
+  final Color colour;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.88),
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w700,
+            color: colour,
+            fontFamilyFallback: arabicFallback,
+          ),
+        ),
+      );
 }

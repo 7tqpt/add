@@ -1379,6 +1379,54 @@ class ProgressRing extends StatelessWidget {
       );
 }
 
+/// جملةٌ يكبُر فيها ما كان رقماً — للعدّ التنازليّ في الخطّة وفي الحجز.
+///
+/// **ولا يُعاد حسابُ الرقم هنا**: تُؤخذ الجملةُ كما صاغتها `countdownLabel`
+/// — بصيغة العدد العربيّة الصحيحة — ويُكبَّر ما كان أرقاماً فيها. فحسابٌ
+/// ثانٍ في الشاشة يفترق عن الأوّل يوماً ولا يُنتبه.
+class BigNumberIn extends StatelessWidget {
+  const BigNumberIn(this.text, {super.key});
+  final String text;
+
+  static final _digits = RegExp(r'\d+');
+
+  @override
+  Widget build(BuildContext context) {
+    // **ولا `fontFamilyFallback` في أسلوب القِطعة.**
+    //
+    // قِطعةٌ تُعلن احتياطيّاً بلا `fontFamily` تُلغي عائلةَ الخطّ الموروثةَ
+    // من الثيمة وتضع محلَّها قائمةَ الاحتياطيّ وحدَها — فلا يُرسم الرقمُ
+    // ويخرج **مربّعاً مصمتاً**. وقد خرج كذلك في لقطةٍ حقيقيّة.
+    //
+    // وموضعُ الأسلوب — على `Text` أو على `TextSpan` — لا أثرَ له: جُرّب
+    // الاثنان فخرجت الصورتان متطابقتين إلى البايت. فالعلّةُ الاحتياطيُّ
+    // وحدَه، وعليه الضابطُ السالب.
+    const small = TextStyle(
+      fontSize: 15,
+      fontWeight: FontWeight.w600,
+      color: AppColors.gold,
+    );
+    const big = TextStyle(fontSize: 26, height: 1.1, fontWeight: FontWeight.w700);
+
+    final spans = <TextSpan>[];
+    var at = 0;
+    for (final m in _digits.allMatches(text)) {
+      if (m.start > at) spans.add(TextSpan(text: text.substring(at, m.start)));
+      spans.add(TextSpan(text: m[0], style: big));
+      at = m.end;
+    }
+    if (at < text.length) spans.add(TextSpan(text: text.substring(at)));
+
+    return Text.rich(
+      TextSpan(children: spans),
+      style: small,
+      key: const ValueKey('countdown'),
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+    );
+  }
+}
+
 /// حلقةٌ صغيرةٌ فيها النسبةُ وحدَها — لسطر المهامّ في رأس الخطّة.
 ///
 /// **وغيرُ `ProgressRing`**: تلك كبيرةٌ تحمل سطرين وخيطُها أحدَ عشرَ، وهذه

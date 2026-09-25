@@ -24,6 +24,13 @@ const undefinedColumn = '42703';
 /// لا أن تسقط شاشة.
 const undefinedFunction = 'PGRST202';
 
+/// ورمزُه لطريقةٍ أو جدولٍ لا يعرفه المخزَّن — أي لم يُلصق ملفُّه بعد.
+///
+/// **وهو الرمزُ نفسُه لدالّةٍ مفقودة**: PostgREST يردّ `PGRST205` لما لا
+/// يجده في المخطّط من علاقات. ويُبتلَع كما يُبتلَع أخوه: تنقص صورةٌ ولا
+/// تسقط شاشة.
+const undefinedTable = 'PGRST205';
+
 /// ينفّذ القراءةَ الكاملة، فإن أنكرت القاعدةُ عموداً أعاد الأضيق منها.
 ///
 /// **ولماذا هذا موجود:** التطبيق يُحدَّث من متجرٍ أو رابط، والقاعدة تُحدَّث
@@ -572,11 +579,30 @@ class Api {
   /// وصله بوصفه مقدّم خدمة* — «الحجز يراه طرفاه». ومن يجمع الصفتين — وهو ما
   /// يقصده التطبيق أصلاً — كان يرى مبيعاته مختلطةً بمشترياته في الشاشتين معاً.
   static Future<List<Booking>> myBookings(String appUserId) async {
-    if (!isSupabaseConfigured) return demoDelay(_newestFirst(demoBookings));
+    if (!isSupabaseConfigured) {
+      return demoDelay(_newestFirst(demoBookingsWithCovers()));
+    }
     // **بوقت الحجز لا بتاريخ العرس.** كان الترتيبُ بـ`event_date`، فحجزٌ
     // أُنشئ قبل دقيقةٍ لعرسٍ بعد سنةٍ يقع تحت عشرةٍ قديمة — ومن حجز للتوّ
     // يفتح الشاشةَ فلا يجد حجزَه. و«الأقربُ موعداً» باقٍ في بطاقة الملخّص
     // أعلى الشاشة، وهي تُرتِّب بنفسها.
+    //
+    // **ومن الطريقة لا من الجدول**: `v_my_bookings` تضمّ غلافَ الخدمة إلى
+    // صفّ الحجز، فتأتي الصورةُ مع البطاقة في نداءٍ واحد. وحرزُها حرزُ
+    // `bookings` نفسِه (`security_invoker`)، فلا سياسةَ تُلتفّ.
+    //
+    // **وتعود إلى الجدول إن لم تُشغَّل الطريقةُ بعد**: القاعدةُ تُحدَّث بيد
+    // صاحبها، فبينها وبين التطبيق نافذةٌ تنقص فيها صورةٌ ولا تسقط شاشة.
+    try {
+      final rows = await db
+          .from('v_my_bookings')
+          .select()
+          .eq('user_id', appUserId)
+          .order('created_at', ascending: false);
+      return rows.map(Booking.fromMap).toList();
+    } on PostgrestException catch (e) {
+      if (e.code != undefinedTable) rethrow;
+    }
     final rows = await db
         .from('bookings')
         .select()

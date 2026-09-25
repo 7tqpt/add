@@ -71,7 +71,7 @@ Future<void> _openDetail(WidgetTester tester) async {
   await _settle(tester);
 
   final card = find.byWidgetPredicate(
-    (w) => w is AppCard && '${w.key}'.contains('booking-card-'),
+    (w) => w is Column && '${w.key}'.contains('booking-card-'),
   );
   expect(card, findsWidgets, reason: 'لا بطاقةَ حجزٍ في القائمة');
   await tester.tap(card.first);
@@ -195,9 +195,18 @@ void main() {
     await tester.pumpWidget(_wrap(Scaffold(body: MyBookingsScreen(session: _session()))));
     await _settle(tester);
 
-    expect(find.byType(AppCard), findsWidgets);
+    expect(find.byType(BookingCard), findsWidgets);
     // ولا بطاقةَ نبيذيّةٍ في القائمة — تلك لِـ«خطة العرس».
     expect(find.byType(HeroCard), findsNothing);
+
+    // **ويُسأل عن لون البطاقة نفسِه** لا عن نوعها: البطاقةُ لم تعد
+    // `AppCard`، ونوعٌ جديدٌ قد يُصبغ بأيّ لون. والضمانةُ لونٌ لا صنف.
+    final ink = tester.widget<Ink>(find.descendant(
+      of: find.byType(BookingCard).first,
+      matching: find.byType(Ink),
+    ));
+    expect((ink.decoration! as BoxDecoration).color, AppColors.surface,
+        reason: 'بطاقةُ الحجز ليست بيضاء');
   });
 
   testWidgets('وزرُّ الدفع نبيذيٌّ على الأبيض كما كان', (tester) async {

@@ -24,7 +24,6 @@ import 'package:aras/src/data/models.dart';
 import 'package:aras/src/screens/booking_detail.dart';
 import 'package:aras/src/screens/my_bookings.dart';
 import 'package:aras/src/ui/booking_stages.dart';
-import 'package:aras/src/ui/kit.dart';
 
 Widget _wrap(Widget child) => MaterialApp(
   theme: buildTheme(),
@@ -205,7 +204,7 @@ void main() {
       await tester.pumpWidget(_wrap(MyBookingsScreen(session: _customer())));
       await _settle(tester);
 
-      expect(find.byType(AppCard), findsWidgets, reason: 'لا حجوزات');
+      expect(find.byType(BookingCard), findsWidgets, reason: 'لا حجوزات');
       expect(find.text('إلغاء الحجز'), findsNothing,
           reason: 'أزرارُ الأفعال باقيةٌ في البطاقة');
       expect(find.text('عندي مشكلة في هذا الحجز'), findsNothing);
@@ -224,8 +223,10 @@ void main() {
       await tester.pumpWidget(_wrap(MyBookingsScreen(session: _customer())));
       await _settle(tester);
 
+      // **وبمفتاحها** لا بنصٍّ فيها: نصُّ العنوان يأتي من بيانات العرض وقد
+      // يتبدّل، والمفتاحُ يقول أيَّ ودجةٍ قُصدت.
       final card = find.byWidgetPredicate(
-        (w) => w is AppCard && '${w.key}'.contains('booking-card-'),
+        (w) => w is Column && '${w.key}'.contains('booking-card-'),
       );
       await tester.tap(card.first);
       await _settle(tester);
@@ -257,8 +258,10 @@ void main() {
 
       // **وتُضغط البطاقةُ نفسُها بمفتاحها** لا نصٌّ فيها: نصُّ العنوان يأتي
       // من بيانات العرض وقد يتبدّل، والمفتاحُ يقول أيَّ ودجةٍ قُصدت.
+      // **وبمفتاحها** لا بنصٍّ فيها: نصُّ العنوان يأتي من بيانات العرض وقد
+      // يتبدّل، والمفتاحُ يقول أيَّ ودجةٍ قُصدت.
       final card = find.byWidgetPredicate(
-        (w) => w is AppCard && '${w.key}'.contains('booking-card-'),
+        (w) => w is Column && '${w.key}'.contains('booking-card-'),
       );
       expect(card, findsWidgets, reason: 'لا بطاقةَ حجزٍ في القائمة');
       await tester.tap(card.first);

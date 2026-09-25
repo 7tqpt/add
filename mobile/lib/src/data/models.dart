@@ -211,6 +211,7 @@ class Booking {
     this.completionRequestedAt = '',
     this.completionRejectReason = '',
     this.planId,
+    this.coverPath,
   });
 
   final String id;
@@ -224,6 +225,38 @@ class Booking {
   /// **ويُقرأ من صفّ القاعدة لا يُستنتج**: توزيعُ مصروف الخطّة على الأقسام
   /// يحتاج معرفةَ أيُّ حجزٍ لأيّ خطّة، وبلا هذا لا سبيل إليه في وضع العرض.
   final String? planId;
+
+  /// غلافُ الخدمة المحجوزة — مسارٌ داخل سلّة `service-media`، أو `null`.
+  ///
+  /// **ويأتي مع صفّ الحجز لا في نداءٍ ثانٍ**: قائمةُ «حجوزاتي» بطاقاتٌ
+  /// متعدّدة، ونداءٌ لكلّ غلافٍ نداءاتٌ على شبكة جوالٍ يمنية. فتضمّه
+  /// `v_my_bookings` في `supabase/booking_cover.sql`.
+  final String? coverPath;
+
+  /// نسخةٌ بغلافٍ — لوضع العرض وحدَه، إذ تضمّه القاعدةُ في الطريقة.
+  Booking withCover(String? path) => Booking(
+        id: id,
+        reference: reference,
+        userName: userName,
+        providerName: providerName,
+        serviceTitle: serviceTitle,
+        planId: planId,
+        coverPath: path,
+        eventDate: eventDate,
+        eventTime: eventTime,
+        address: address,
+        guestsCount: guestsCount,
+        status: status,
+        totalPrice: totalPrice,
+        depositAmount: depositAmount,
+        paidAmount: paidAmount,
+        couponCode: couponCode,
+        discountAmount: discountAmount,
+        point: point,
+        createdAt: createdAt,
+        completionRequestedAt: completionRequestedAt,
+        completionRejectReason: completionRejectReason,
+      );
 
   final String eventDate;
   final String? eventTime;
@@ -278,6 +311,7 @@ class Booking {
     providerName: (m['provider_name'] ?? '') as String,
     serviceTitle: (m['service_title'] ?? '') as String,
     planId: m['plan_id'] as String?,
+    coverPath: m['cover_path'] as String?,
     eventDate: (m['event_date'] ?? '') as String,
     eventTime: m['event_time'] as String?,
     address: (m['address'] ?? '') as String,

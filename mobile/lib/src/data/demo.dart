@@ -528,6 +528,21 @@ List<PlanCategorySpend> demoPlanSpend(String planId) {
 /// **ويُشتقّ من الحجوزات لا يُكتب بيد**: الأقدمُ إنشاءً (`createdAt`) لا
 /// أوّلُ ما في القائمة، والملغى والمرفوضُ خارجَ الحساب. ومسارٌ مكتوبٌ هنا
 /// يُخفي عطباً في الاختيار.
+/// غلافُ خدمةٍ باسمها — **الوصلةُ الوحيدةُ بين الحجز وصورته في وضع العرض**،
+/// إذ لا `service_id` في `Booking`.
+String? demoServiceCover(String serviceTitle) {
+  final service = demoServices.where((s) => s.title == serviceTitle).firstOrNull;
+  final cover = service?.coverPath;
+  return (cover == null || cover.isEmpty) ? null : cover;
+}
+
+/// الحجوزاتُ ومعها أغلفتُها — كما تضمّها `v_my_bookings` في القاعدة.
+///
+/// **ولا تُكتب المساراتُ في صفوف الحجز**: مسارٌ مكتوبٌ بيدٍ يبقى صحيحاً وإن
+/// انقطعت الوصلةُ بين الحجز وخدمته.
+List<Booking> demoBookingsWithCovers() =>
+    [for (final b in demoBookings) b.withCover(demoServiceCover(b.serviceTitle))];
+
 String? demoPlanCover(String planId) {
   final mine = demoBookings
       .where((b) =>
@@ -539,9 +554,8 @@ String? demoPlanCover(String planId) {
     ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
 
   for (final b in mine) {
-    final service = demoServices.where((s) => s.title == b.serviceTitle).firstOrNull;
-    final cover = service?.coverPath;
-    if (cover != null && cover.isNotEmpty) return cover;
+    final cover = demoServiceCover(b.serviceTitle);
+    if (cover != null) return cover;
   }
   return null;
 }
