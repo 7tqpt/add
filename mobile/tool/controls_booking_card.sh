@@ -114,6 +114,40 @@ run "(و) غلافُ خدمةٍ غيرِ المحجوزة" \
 "    [for (final b in demoBookings) b.withCover(demoServiceCover(b.serviceTitle))];" \
 "    [for (final b in demoBookings) b.withCover(demoServices.first.coverPath)];"
 
+echo; echo "== والتخطيط =="
+
+# ── و٢) ويُؤخذ ارتفاعُ الرأس من النصّ ─────────────────────────────────────
+#
+# **وهذا هو العطبُ الذي اختفت به البطاقاتُ كلُّها على جهازٍ حقيقيّ، والحزمةُ
+# خضراء.** `IntrinsicHeight` تسأل أبناءَها عن ارتفاعهم الطبيعيّ، و`Image`
+# المرسومةُ بـ`height: double.infinity` تُجيب **بلا نهاية** — فينهار
+# التخطيط: «BoxConstraints forces an infinite height».
+#
+# ولم يقع في الاختبار لأنّ `Api.mediaUrl` كانت تردّ `null` فلا تُبنى
+# `Image` أصلاً. فصار كلُّ اختبارٍ يمرّر رابطاً كما يقع على الجهاز — وهذا
+# الكسرُ يُعيد الصياغةَ الساقطةَ حرفاً.
+run "(و٢) ارتفاعُ الرأس مأخوذٌ من النصّ" \
+  sub "$F" \
+"                SizedBox(
+                  height: 160 *
+                      MediaQuery.textScalerOf(context)
+                          .scale(1)
+                          .clamp(1.0, 1.6),
+                  child: Row(
+                    children: [
+                      Expanded(flex: 58, child: _Head(booking: b))," \
+"                IntrinsicHeight(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Expanded(
+                        flex: 58,
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(minHeight: 150),
+                          child: _Head(booking: b),
+                        ),
+                      ),"
+
 echo; echo "== وما بقي كما كان =="
 
 # ── ز) ويُشال السهمُ الذي يقول إنّها تُفتح ───────────────────────────────

@@ -69,11 +69,16 @@ void _resetTasks() {
 ///
 /// لا شبكةَ في الاختبار، فلا صورةَ تُحمَّل. والسؤالُ ليس «أظهرت صورة؟» بل
 /// «أيَّ مسارٍ طلبت الشاشةُ؟» — وهو الذي يفرّق غلافَ الحجز الأقدم من غيره.
+///
+/// **ويُردّ رابطٌ لا `null`**: `Api.mediaUrl` تردّ `null` حين لا تُضبط
+/// أسرارُ القاعدة، فلا تُبنى `Image` أصلاً — واختبارٌ يقبل ذلك يقيس شاشةً
+/// غيرَ التي على الجهاز. وقد اختفت بطاقاتُ الحجز على جهازٍ حقيقيٍّ والحزمةُ
+/// خضراء، لهذا السبب بعينه.
 List<String> requestedPaths() {
   final seen = <String>[];
   Api.mediaUrlOverride = (path) {
     seen.add(path);
-    return null;
+    return 'https://example.invalid/$path';
   };
   return seen;
 }
@@ -108,7 +113,7 @@ void main() {
     _resetTasks();
     demoBookings = List.of(_bookings);
     demoPlans = List.of(_plans);
-    Api.mediaUrlOverride = null;
+    requestedPaths();
   });
   tearDown(() => Api.mediaUrlOverride = null);
 
@@ -331,5 +336,36 @@ void main() {
     expect(find.text('الميزانية'), findsWidgets);
     expect(find.textContaining('لم تُفتح قائمة التجهيز'), findsWidgets);
     expect(find.text('0٪'), findsOneWidget);
+  });
+
+  testWidgets('ويبقى الرأسُ مرسوماً بخطّ الجهاز الكبير وللصورة رابط',
+      (tester) async {
+    // **وهذه صنوُ ما سقط في «حجوزاتي»**: ارتفاعٌ مأخوذٌ من النصّ يسأل
+    // الصورةَ عن ارتفاعها الطبيعيّ فتُجيب بلا نهاية.
+    tester.view.physicalSize = const Size(360, 1400);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(MaterialApp(
+      theme: buildTheme(),
+      locale: const Locale('ar'),
+      supportedLocales: const [Locale('ar')],
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      home: MediaQuery(
+        data: const MediaQueryData(textScaler: TextScaler.linear(1.5)),
+        child: Directionality(
+          textDirection: TextDirection.rtl,
+          child: Scaffold(body: PlanScreen(session: _session())),
+        ),
+      ),
+    ));
+    await _settle(tester);
+
+    expect(find.text('قائمة التجهيز'), findsOneWidget, reason: 'اختفت الشاشة');
+    expect(tester.takeException(), isNull, reason: 'انهار تخطيطُ الرأس');
   });
 }
