@@ -1379,6 +1379,89 @@ class ProgressRing extends StatelessWidget {
       );
 }
 
+/// حلقةٌ صغيرةٌ فيها النسبةُ وحدَها — لسطر المهامّ في رأس الخطّة.
+///
+/// **وغيرُ `ProgressRing`**: تلك كبيرةٌ تحمل سطرين وخيطُها أحدَ عشرَ، وهذه
+/// قرصٌ صغيرٌ في آخر شريط. ولو رُسمت بها لَابتلع الخيطُ جوفَها فلم يبقَ
+/// للرقم موضع.
+class PercentRing extends StatelessWidget {
+  const PercentRing({
+    super.key,
+    required this.value,
+    required this.label,
+    this.size = 42,
+    this.stroke = 5,
+    this.colour = AppColors.accent,
+  });
+
+  final double value;
+
+  /// ما يُكتب في الوسط — يُمرَّر مصوغاً، فلا تصوغ الحلقةُ رقماً ولا تترجمه.
+  final String label;
+
+  final double size;
+  final double stroke;
+  final Color colour;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+        width: size,
+        height: size,
+        child: CustomPaint(
+          painter: _ThinRingPainter(value.clamp(0.0, 1.0), colour, stroke),
+          child: Center(
+            child: Text(
+              label,
+              maxLines: 1,
+              style: TextStyle(
+                fontSize: size * 0.27,
+                fontWeight: FontWeight.w700,
+                color: colour,
+              ),
+            ),
+          ),
+        ),
+      );
+}
+
+class _ThinRingPainter extends CustomPainter {
+  _ThinRingPainter(this.value, this.colour, this.stroke);
+  final double value;
+  final Color colour;
+  final double stroke;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = (Offset.zero & size).deflate(stroke / 2);
+    canvas.drawArc(
+      rect,
+      0,
+      math.pi * 2,
+      false,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = stroke
+        ..color = AppColors.surface2,
+    );
+    canvas.drawArc(
+      rect,
+      // من أعلى الحلقة لا من يمينها — وإلّا بدأ الامتلاءُ من غير حيث يُتوقَّع.
+      -math.pi / 2,
+      math.pi * 2 * value,
+      false,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = stroke
+        ..strokeCap = StrokeCap.round
+        ..color = colour,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _ThinRingPainter old) =>
+      old.value != value || old.colour != colour || old.stroke != stroke;
+}
+
 class _RingPainter extends CustomPainter {
   _RingPainter(this.value, this.colour);
   final double value;

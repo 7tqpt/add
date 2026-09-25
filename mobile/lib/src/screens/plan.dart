@@ -616,35 +616,32 @@ class _HeroProgress extends StatelessWidget {
                   ),
                 ),
               ),
-              Container(
-                key: const ValueKey('plan-percent'),
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: AppColors.accent,
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Text(
-                  trf('{0}٪', ['${progress.percent}']),
-                  style: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                    fontFamilyFallback: arabicFallback,
-                  ),
-                ),
-              ),
             ],
           ),
           const SizedBox(height: 9),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(999),
-            child: LinearProgressIndicator(
-              key: const ValueKey('plan-bar'),
-              value: progress.percent / 100,
-              minHeight: 8,
-              backgroundColor: AppColors.surface2,
-              valueColor: const AlwaysStoppedAnimation(AppColors.accent),
-            ),
+          // **والنسبةُ حلقةٌ في آخر الشريط لا قرصٌ في أوّل السطر** — كما في
+          // تصوّر صاحب المنصّة. والحلقةُ تقول الرقمَ وتُريه في آنٍ واحد.
+          Row(
+            children: [
+              Expanded(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(999),
+                  child: LinearProgressIndicator(
+                    key: const ValueKey('plan-bar'),
+                    value: progress.percent / 100,
+                    minHeight: 8,
+                    backgroundColor: AppColors.surface2,
+                    valueColor: const AlwaysStoppedAnimation(AppColors.accent),
+                  ),
+                ),
+              ),
+              const SizedBox(width: Space.sm),
+              PercentRing(
+                key: const ValueKey('plan-percent'),
+                value: progress.percent / 100,
+                label: trf('{0}٪', ['${progress.percent}']),
+              ),
+            ],
           ),
           const SizedBox(height: 8),
           Muted(_note, size: 11),
