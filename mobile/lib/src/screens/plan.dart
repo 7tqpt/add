@@ -355,8 +355,13 @@ class _HeroCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            // **وارتفاعٌ يتبع خطَّ الجهاز** — كما في بطاقة الحجز: ثابتٌ
+            // مكتوبٌ يفيض بخطٍّ كبير، ولا يُؤخذ من النصّ لأنّ `Image`
+            // المرسومةَ بـ`height: double.infinity` تُجيب عن ارتفاعها
+            // الطبيعيّ **بلا نهاية** فينهار التخطيط.
             SizedBox(
-              height: 168,
+              height: 168 *
+                  MediaQuery.textScalerOf(context).scale(1).clamp(1.0, 1.6),
               child: Row(
                 children: [
                   Expanded(flex: 58, child: _HeroText(plan: plan, days: days)),

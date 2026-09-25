@@ -204,21 +204,25 @@ class BookingCard extends StatelessWidget {
               key: ValueKey('booking-card-${b.id}'),
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // **ولا ارتفاعَ ثابتٌ للرأس.** خطُّ الجهاز الكبيرُ يُطيل
-                // العنوانَ والقرصَ والعدَّ، فارتفاعٌ مكتوبٌ يفيض بسبعةٍ
-                // وعشرين بكسلاً — وقد فاض. فيُؤخذ الارتفاعُ من النصّ، ويُحدّ
-                // من أسفلَ وحدَه لئلّا تقصر الصورةُ حين يقصر العنوان.
-                IntrinsicHeight(
+                // **ارتفاعٌ يتبع خطَّ الجهاز، لا ثابتٌ ولا مأخوذٌ من النصّ.**
+                //
+                // ثابتٌ مكتوبٌ يفيض بسبعةٍ وعشرين بكسلاً بخطّ الجهاز الكبير،
+                // وقد فاض. و`IntrinsicHeight` تسأل الصورةَ عن ارتفاعها
+                // الطبيعيّ — و`Image` المرسومةُ بـ`height: double.infinity`
+                // تُجيب **بلا نهاية**، فينهار التخطيط وتختفي البطاقةُ كلُّها.
+                //
+                // **وهذا وقع على جهاز صاحب المنصّة ولم يقع في الاختبار**:
+                // `Api.mediaUrl` تردّ `null` حين لا تُضبط أسرارُ القاعدة،
+                // فلا تُبنى `Image` أصلاً ولا يُسأل أحدٌ عن لا نهاية. فصار
+                // الاختبارُ يمرّر رابطاً كما يقع على الجهاز.
+                SizedBox(
+                  height: 160 *
+                      MediaQuery.textScalerOf(context)
+                          .scale(1)
+                          .clamp(1.0, 1.6),
                   child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Expanded(
-                        flex: 58,
-                        child: ConstrainedBox(
-                          constraints: const BoxConstraints(minHeight: 150),
-                          child: _Head(booking: b),
-                        ),
-                      ),
+                      Expanded(flex: 58, child: _Head(booking: b)),
                       Expanded(
                         flex: 42,
                         child: Stack(

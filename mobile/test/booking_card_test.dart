@@ -51,13 +51,21 @@ Future<void> _settle(WidgetTester tester) async {
 }
 
 /// المسارات التي طُلب لها رابط — **وهذا ما يُقاس لا ما رُسم على الزجاج**.
-List<String> requestedPaths() {
-  final seen = <String>[];
+final List<String> seenPaths = [];
+
+/// **ويُردّ رابطٌ لا `null`.**
+///
+/// `Api.mediaUrl` تردّ `null` حين لا تُضبط أسرارُ القاعدة، فلا تُبنى `Image`
+/// أصلاً. فاختبارٌ يقبل ذلك يقيس شاشةً غيرَ التي على الجهاز — **وقد اختفت
+/// بطاقاتُ الحجز كلُّها على جهاز صاحب المنصّة والحزمةُ خضراء**: الصورةُ
+/// المرسومةُ بارتفاعٍ لا نهائيٍّ سُئلت عن ارتفاعها الطبيعيّ فأجابت بلا
+/// نهاية، فانهار التخطيط. فصار كلُّ اختبارٍ هنا يمرّر رابطاً كما يقع.
+void stubMedia() {
+  seenPaths.clear();
   Api.mediaUrlOverride = (path) {
-    seen.add(path);
-    return null;
+    seenPaths.add(path);
+    return 'https://example.invalid/$path';
   };
-  return seen;
 }
 
 /// بطاقةُ حجزٍ بمرجعه.
@@ -71,7 +79,7 @@ final List<Booking> _bookings = List.of(demoBookings);
 void main() {
   setUp(() {
     demoBookings = List.of(_bookings);
-    Api.mediaUrlOverride = null;
+    stubMedia();
   });
   tearDown(() => Api.mediaUrlOverride = null);
 
@@ -117,13 +125,12 @@ void main() {
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
 
-    final seen = requestedPaths();
     await tester.pumpWidget(_wrap(MyBookingsScreen(session: _session())));
     await _settle(tester);
 
     // **ولكلتا الخدمتين غلافٌ**، فطلبُ الآخر خطأٌ لا نقص.
-    expect(seen, contains('p1/s1/hall.jpg'));
-    expect(seen, contains('p2/s2/mandi.jpg'));
+    expect(seenPaths, contains('p1/s1/hall.jpg'));
+    expect(seenPaths, contains('p2/s2/mandi.jpg'));
   });
 
   testWidgets('والعدُّ التنازليُّ بصيغته العربيّة ورقمُه مكبَّر',
@@ -247,5 +254,37 @@ void main() {
     expect(find.descendant(of: card, matching: find.byType(BookingStages)),
         findsOneWidget,
         reason: 'ذهبت مراحلُ الحجز من البطاقة');
+  });
+
+  testWidgets('وتبقى البطاقةُ مرسومةً بخطّ الجهاز الكبير وللصورة رابط',
+      (tester) async {
+    // **وهذه هي التي سقطت على الجهاز**: ارتفاعٌ مأخوذٌ من النصّ يسأل
+    // الصورةَ عن ارتفاعها الطبيعيّ، فتُجيب بلا نهايةٍ وتختفي البطاقة.
+    tester.view.physicalSize = const Size(360, 1200);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(MaterialApp(
+      theme: buildTheme(),
+      locale: const Locale('ar'),
+      supportedLocales: const [Locale('ar')],
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      home: MediaQuery(
+        data: const MediaQueryData(textScaler: TextScaler.linear(1.5)),
+        child: Directionality(
+          textDirection: TextDirection.rtl,
+          child: Scaffold(body: MyBookingsScreen(session: _session())),
+        ),
+      ),
+    ));
+    await _settle(tester);
+
+    expect(find.byType(BookingCard), findsWidgets,
+        reason: 'اختفت بطاقاتُ الحجز');
+    expect(tester.takeException(), isNull, reason: 'انهار تخطيطُ البطاقة');
   });
 }
