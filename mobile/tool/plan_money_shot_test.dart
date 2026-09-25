@@ -115,7 +115,7 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
     await tester.pumpAndSettle();
 
-    await _shoot(tester, '$out/plan-1-top.png', 'التقدّم الكلّي');
+    await _shoot(tester, '$out/plan-1-top.png', 'قائمة التجهيز');
 
     await _scrollTo(tester, 'من الميزانية صُرف');
     await _shoot(tester, '$out/plan-2-money.png', 'من الميزانية صُرف');
