@@ -8,6 +8,7 @@ import '../data/api.dart';
 import '../data/models.dart';
 import '../data/supabase.dart';
 import '../ui/kit.dart';
+import '../ui/media.dart';
 import '../ui/motion.dart';
 import 'labels.dart';
 import 'plan_editor.dart';
@@ -131,12 +132,28 @@ class _PlanBlockState extends State<_PlanBlock> {
     super.dispose();
   }
 
+  /// آخرُ ما وصل — يبقى معروضاً في الرأس أثناء إعادة التحميل.
+  ///
+  /// **ولولاه لانطفأ الرأسُ عند كلّ شطبِ مهمّة**: `_reload` يبدّل الـ`Future`
+  /// فيعود `FutureBuilder` إلى الانتظار، ولو كان الرأسُ داخلَه لومض العدُّ
+  /// التنازليُّ والصورةُ ثلثَ ثانيةٍ في كلّ نقرة.
+  PlanProgress? _head;
+  String? _cover;
+
   Future<(PlanProgress, List<PlanTask>, List<PlanCategorySpend>)> _load() async {
     final progress = await Api.planProgress(widget.plan.id);
     final tasks = await Api.planTasks(widget.plan.id);
     // **وتعود فارغةً إن لم تُشغَّل `plan_spend.sql` بعد** — تنقص بطاقةٌ ولا
     // تسقط شاشة. والنداءُ يحرس نفسَه في `Api.planSpendByCategory`.
     final spend = await Api.planSpendByCategory(widget.plan.id);
+    // والغلافُ يُقرأ مرّةً: لا يتغيّر بشطبِ مهمّة.
+    final cover = _cover ?? await Api.planCover(widget.plan.id);
+    if (mounted) {
+      setState(() {
+        _head = progress;
+        _cover = cover;
+      });
+    }
     return (progress, tasks, spend);
   }
 
@@ -169,7 +186,7 @@ class _PlanBlockState extends State<_PlanBlock> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _CountdownCard(plan: p, days: days),
+        _HeroCard(plan: p, days: days, progress: _head, coverPath: _cover),
         const SizedBox(height: Space.md),
         FutureBuilder<(PlanProgress, List<PlanTask>, List<PlanCategorySpend>)>(
           future: _future,
@@ -190,9 +207,9 @@ class _PlanBlockState extends State<_PlanBlock> {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // **وأقسامُها تتتابع لا تقع دفعةً واحدة.**
-                FadeSlideIn(index: 0, child: _ProgressCard(progress: progress)),
-                const SizedBox(height: Space.md),
+                // **وأقسامُها تتتابع لا تقع دفعةً واحدة.** وبطاقةُ «التقدّم
+                // الكلّي» حُذفت: شريطُها صار في الرأس، ورقمٌ يُعرض مرّتين
+                // يُقرأ رقمين.
                 FadeSlideIn(index: 1, child: _Tiles(plan: p, progress: progress)),
                 const SizedBox(height: Space.md),
 
@@ -271,7 +288,8 @@ class _PlanBlockState extends State<_PlanBlock> {
                 // داخلَ البنّاء الآن لا خارجه، لأنّ بطاقةَ التوزيع تحتاج ما
                 // يُقرأ معه — وبطاقتان تقرآن من مصدرين تتفرّقان في الانتظار.
                 const SizedBox(height: Space.md),
-                _MoneyCard(plan: p, onEdit: widget.onEdit),
+                // وهي قسمٌ ثالثٌ يتتابع كأخويه — لا تقع مع القائمة دفعةً.
+                FadeSlideIn(index: 3, child: _MoneyCard(plan: p, onEdit: widget.onEdit)),
                 // **وحارسُ الفراغ في البطاقة لا هنا.** حارسان يفعلان شيئاً
                 // واحداً لا يُقاس أيُّهما يحرس: كسرُ أحدِهما يبقي الآخرَ
                 // قائماً فتخضرّ الحزمةُ والضمانةُ مكسورة. فواحدٌ يُكسَر
@@ -286,130 +304,352 @@ class _PlanBlockState extends State<_PlanBlock> {
   }
 }
 
-/// العدُّ التنازلي — أكبرُ رقمٍ في الشاشة لأنه أوّلُ ما يُسأل عنه.
-class _CountdownCard extends StatelessWidget {
-  const _CountdownCard({required this.plan, required this.days});
+/// رأسُ الخطّة — صورةٌ وعدٌّ تنازليٌّ وشريطُ تقدّمٍ في بطاقةٍ واحدة.
+///
+/// ── لماذا صارت بطاقةً واحدةً فاتحة ─────────────────────────────────────────
+///
+/// اختار صاحبُ المنصّة الشكلَ من صورةٍ أرسلها: لوحُ نصٍّ فاتحٌ إلى جانب
+/// صورة، والتاريخُ في قرص، والعدُّ التنازليُّ ذهبيٌّ داخلَ جملته، وشريطُ
+/// التقدّم في البطاقة نفسِها — **فحُذفت بطاقةُ «التقدّم الكلّي» وحلقتُها**،
+/// إذ صار الرقمُ يُعرض مرّةً واحدةً لا مرّتين.
+///
+/// ── والصورةُ من حجزه هو ─────────────────────────────────────────────────────
+///
+/// `coverPath` غلافُ أوّل خدمةٍ حُجزت في هذه الخطّة — قاعتُه أو مصوّرُه —
+/// تأتي من `api_plan_cover`. **ومن لم يحجز بعدُ يرى موضعاً بلونٍ هادئ**، لا
+/// شاشةً تسقط ولا صورةً لعرسٍ غيرِ عرسه.
+///
+/// ── وما في الصورة من التصوّر وما استُبدل ──────────────────────────────────
+///
+/// في تصوّره شريطٌ فوق الصورة مكتوبٌ فيه «معاً لجميع الذكريات». وموضعُه
+/// باقٍ، **وفيه حالةُ الخطّة** (`قيد التجهيز`) بدلَ العبارة: الموضعُ واحدٌ
+/// والشكلُ واحد، والمكتوبُ فيه خبرٌ يُفيد لا زينةٌ تُترجم.
+class _HeroCard extends StatelessWidget {
+  const _HeroCard({
+    required this.plan,
+    required this.days,
+    required this.progress,
+    required this.coverPath,
+  });
+
+  final WeddingPlan plan;
+  final int? days;
+
+  /// يكون `null` قبل أن يصل نداءُ التقدّم — **فيُحجز موضعُ الشريط ولا يُملأ**
+  /// برقمٍ لم يُقرأ بعد. وصفرٌ يُعرض ثمّ يقفز إلى ستّين يُقرأ عطباً.
+  final PlanProgress? progress;
+
+  final String? coverPath;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = progress;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          border: Border.all(color: AppColors.hairline),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SizedBox(
+              height: 168,
+              child: Row(
+                children: [
+                  Expanded(flex: 58, child: _HeroText(plan: plan, days: days)),
+                  Expanded(
+                    flex: 42,
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        // **وموضعُ الصورة محجوزٌ من أوّل رسمة**: لو بُني
+                        // الصندوقُ عند وصول المسار لتزحزحت البطاقةُ تحت
+                        // إصبعِ قارئها.
+                        Container(
+                          color: AppColors.surface2,
+                          child: MediaThumb(
+                            url: Api.mediaUrl(coverPath),
+                            icon: Icons.photo_camera_back_outlined,
+                          ),
+                        ),
+                        Positioned(
+                          top: 10,
+                          right: 8,
+                          left: 8,
+                          child: Align(
+                            alignment: AlignmentDirectional.centerStart,
+                            child: _Ribbon(planStatusLabel(plan.status)),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1, color: AppColors.hairline),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+              child: p == null
+                  // موضعٌ محجوزٌ بارتفاع الشريط نفسِه — ولا رقمَ يُدَّعى.
+                  // **ولا «٠٪» ولا شريطٌ فارغ**: رقمٌ يُعرض ثمّ يقفز إلى
+                  // ستّين يُقرأ عطباً، وهذا يقول «لم يصل بعد» بلا أن يقول
+                  // عدداً.
+                  ? const SizedBox(
+                      height: 52,
+                      child: Center(
+                        child: SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      ),
+                    )
+                  : _HeroProgress(progress: p),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// لوحُ النصّ: العنوانُ والتاريخُ والعدُّ التنازلي.
+class _HeroText extends StatelessWidget {
+  const _HeroText({required this.plan, required this.days});
   final WeddingPlan plan;
   final int? days;
 
   @override
-  Widget build(BuildContext context) {
-    final passed = days != null && days! < 0;
-    // الشكلُ من `HeroCard` — وهي نفسها التي تحمل بطاقةَ الحجز في «حجوزاتي».
-    return HeroCard(
-      children: [
-        Row(
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.fromLTRB(14, 14, 12, 14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        plan.title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white,
-                          fontFamilyFallback: arabicFallback,
-                        ),
-                      ),
-                    ),
-                    StatusBadge(planStatusLabel(plan.status), color: Colors.white),
-                  ],
+            Text(
+              plan.title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: AppColors.ink,
+                fontFamilyFallback: arabicFallback,
+              ),
+            ),
+            const SizedBox(height: 8),
+            _DatePill(
+              [
+                formatDate(plan.weddingDate),
+                if (plan.governorate.isNotEmpty) plan.governorate,
+              ].join(' · '),
+            ),
+            const SizedBox(height: 10),
+            // **الرقمُ داخلَ جملته لا فوقها** — والجملةُ من `countdownLabel`
+            // كما كانت، فلا نصَّ ثانٍ يُترجم ولا حسابَ ثانٍ يُخطئ.
+            _BigNumberIn(countdownLabel(days)),
+            const SizedBox(height: 6),
+            Text(
+              tr('مستقبلٌ أجملُ يبدأ من هنا'),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 11,
+                color: AppColors.muted,
+                fontFamilyFallback: arabicFallback,
+              ),
+            ),
+          ],
+        ),
+      );
+}
+
+/// جملةٌ يكبُر فيها ما كان رقماً.
+///
+/// **ولا يُعاد حسابُ الرقم هنا**: تُؤخذ الجملةُ كما صاغتها `countdownLabel`
+/// — بصيغة العدد العربيّة الصحيحة — ويُكبَّر ما كان أرقاماً فيها. فحسابٌ
+/// ثانٍ في الشاشة يفترق عن الأوّل يوماً ولا يُنتبه.
+class _BigNumberIn extends StatelessWidget {
+  const _BigNumberIn(this.text);
+  final String text;
+
+  static final _digits = RegExp(r'\d+');
+
+  @override
+  Widget build(BuildContext context) {
+    // **ولا `fontFamilyFallback` في أسلوب القِطعة.**
+    //
+    // قِطعةٌ تُعلن احتياطيّاً بلا `fontFamily` تُلغي عائلةَ الخطّ الموروثةَ
+    // من الثيمة وتضع محلَّها قائمةَ الاحتياطيّ وحدَها — فلا يُرسم الرقمُ
+    // ويخرج **مربّعاً مصمتاً**. وقد خرج كذلك في لقطةٍ حقيقيّة.
+    //
+    // وموضعُ الأسلوب — على `Text` أو على `TextSpan` — لا أثرَ له: جُرّب
+    // الاثنان فخرجت الصورتان متطابقتين إلى البايت. فالعلّةُ الاحتياطيُّ
+    // وحدَه، وعليه الضابطُ السالب.
+    const small = TextStyle(
+      fontSize: 15,
+      fontWeight: FontWeight.w600,
+      color: AppColors.gold,
+    );
+    const big = TextStyle(fontSize: 26, height: 1.1, fontWeight: FontWeight.w700);
+
+    final spans = <TextSpan>[];
+    var at = 0;
+    for (final m in _digits.allMatches(text)) {
+      if (m.start > at) spans.add(TextSpan(text: text.substring(at, m.start)));
+      spans.add(TextSpan(text: m[0], style: big));
+      at = m.end;
+    }
+    if (at < text.length) spans.add(TextSpan(text: text.substring(at)));
+
+    return Text.rich(
+      TextSpan(children: spans),
+      style: small,
+      key: const ValueKey('countdown'),
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+    );
+  }
+}
+
+class _DatePill extends StatelessWidget {
+  const _DatePill(this.text);
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+        decoration: BoxDecoration(
+          color: AppColors.surface2,
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.calendar_today_rounded, size: 12, color: AppColors.muted),
+            const SizedBox(width: 5),
+            Flexible(
+              child: Text(
+                text,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.muted,
+                  fontFamilyFallback: arabicFallback,
                 ),
-                const SizedBox(height: Space.md),
-                // الرقمُ وحدَه ثمّ وحدتُه: «٤٥» ثم «يوماً على العرس» — عينٌ
-                // تمرّ على الشاشة تلتقط الرقم قبل أن تقرأ سطراً.
-                Text(
-                  passed ? '—' : '${days ?? 0}',
+              ),
+            ),
+          ],
+        ),
+      );
+}
+
+/// الشريطُ فوق الصورة — أبيضُ نصفُ شفّافٍ ليُقرأ على أيّ صورةٍ كانت.
+class _Ribbon extends StatelessWidget {
+  const _Ribbon(this.label);
+  final String label;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.88),
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w700,
+            color: AppColors.ink,
+            fontFamilyFallback: arabicFallback,
+          ),
+        ),
+      );
+}
+
+/// شريطُ التقدّم داخلَ الرأس — **محسوبٌ من المشطوب لا مكتوب**.
+class _HeroProgress extends StatelessWidget {
+  const _HeroProgress({required this.progress});
+  final PlanProgress progress;
+
+  /// سطرُ تشجيعٍ يتبع الرقم — **ولا يقول «أنت على الطريق الصحيح» لمن لم
+  /// يبدأ بعد**: عبارةٌ ثابتةٌ تُقال في كلّ حالٍ تُقرأ كلاماً لا خبراً.
+  String get _note {
+    if (progress.tasksTotal == 0) return tr('لم تُفتح قائمة التجهيز بعد');
+    if (progress.tasksDone == 0) return tr('ابدأ بأوّل مهمّة');
+    if (progress.tasksLeft == 0) return tr('تمّ كلُّ شيء — مبارك!');
+    return tr('أنت على الطريق الصحيح');
+  }
+
+  @override
+  Widget build(BuildContext context) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.checklist_rounded, size: 15, color: AppColors.muted),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  progress.tasksTotal == 0
+                      ? tr('لا مهامّ بعد')
+                      : trf('{0} من {1} مهامّ مكتملة', [
+                          '${progress.tasksDone}',
+                          '${progress.tasksTotal}',
+                        ]),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    fontSize: 44,
-                    height: 1.1,
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.ink,
+                    fontFamilyFallback: arabicFallback,
+                  ),
+                ),
+              ),
+              Container(
+                key: const ValueKey('plan-percent'),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: AppColors.accent,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  trf('{0}٪', ['${progress.percent}']),
+                  style: const TextStyle(
+                    fontSize: 11,
                     fontWeight: FontWeight.w700,
                     color: Colors.white,
                     fontFamilyFallback: arabicFallback,
                   ),
                 ),
-                Text(
-                  countdownLabel(days),
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.goldOnAccent,
-                    fontFamilyFallback: arabicFallback,
-                  ),
-                ),
-                const SizedBox(height: Space.sm),
-                Text(
-                  [
-                    formatDate(plan.weddingDate),
-                    if (plan.governorate.isNotEmpty) plan.governorate,
-                  ].join(' · '),
-                  style: TextStyle(
-                    fontSize: 12.5,
-                    color: Colors.white.withValues(alpha: 0.85),
-                    fontFamilyFallback: arabicFallback,
-                  ),
-                ),
-              ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 9),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(999),
+            child: LinearProgressIndicator(
+              key: const ValueKey('plan-bar'),
+              value: progress.percent / 100,
+              minHeight: 8,
+              backgroundColor: AppColors.surface2,
+              valueColor: const AlwaysStoppedAnimation(AppColors.accent),
             ),
           ),
-            const SizedBox(width: Space.md),
-            Icon(
-              Icons.favorite_rounded,
-              size: 56,
-              color: AppColors.goldOnAccent.withValues(alpha: 0.65),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-}
-
-/// التقدّمُ الكلّي — نسبةٌ **محسوبةٌ من المشطوب** لا مكتوبة.
-class _ProgressCard extends StatelessWidget {
-  const _ProgressCard({required this.progress});
-  final PlanProgress progress;
-
-  @override
-  Widget build(BuildContext context) {
-    return AppCard(
-      children: [
-        SectionTitle(tr('التقدّم الكلّي')),
-        const SizedBox(height: Space.md),
-        // **حلقةٌ لا شريط.** الشريطُ يقول «كم أُنجز» ولا يُقرأ إلّا بمقارنةِ
-        // طولين، والحلقةُ تحمل الرقمَ في وسطها فتُقرأ بنظرةٍ واحدة.
-        Center(
-          child: ProgressRing(
-            value: progress.percent / 100,
-            big: trf('{0}٪', ['${progress.percent}']),
-            small: progress.tasksTotal == 0
-                ? tr('لا مهامّ بعد')
-                : trf('{0} من {1}', ['${progress.tasksDone}', '${progress.tasksTotal}']),
-          ),
-        ),
-        const SizedBox(height: Space.sm),
-        Center(
-          child: Muted(
-            progress.tasksTotal == 0
-                ? tr('لا مهامّ بعد')
-                : progress.tasksLeft == 0
-                    ? tr('لم يبقَ شيء')
-                    : trf('بقيت {0} من {1}', [
-                        formatCount(progress.tasksLeft, taskForms),
-                        '${progress.tasksTotal}',
-                      ]),
-          ),
-        ),
-      ],
-    );
-  }
+          const SizedBox(height: 8),
+          Muted(_note, size: 11),
+        ],
+      );
 }
 
 /// أربعُ مربّعاتٍ: ما يُسأل عنه بلمحة.

@@ -846,6 +846,26 @@ class Api {
     }
   }
 
+  /// غلافُ الخطّة — مسارُ صورةِ أوّل خدمةٍ حُجزت فيها، أو `null`.
+  ///
+  /// **ولا عمودَ لها في `wedding_plans`**: الصورةُ تُستخرج من
+  /// `bookings → service_media` في `supabase/plan_cover.sql`، وحرزُها سطرٌ
+  /// واحد كأختها: خطّةُ صاحب الجلسة أو لا شيء.
+  ///
+  /// **وتعود `null` إن لم تُشغَّل الدالّةُ بعد** — كما تعود `null` لمن لم
+  /// يحجز شيئاً. والرأسُ يُبنى بلا صورةٍ في الحالين، ولا تسقط شاشة.
+  static Future<String?> planCover(String planId) async {
+    if (!isSupabaseConfigured) return demoDelay(demoPlanCover(planId));
+    try {
+      final path = await db.rpc('api_plan_cover', params: {'p_plan_id': planId});
+      final text = path as String?;
+      return (text == null || text.isEmpty) ? null : text;
+    } on PostgrestException catch (e) {
+      if (e.code != undefinedFunction) rethrow;
+      return null;
+    }
+  }
+
   static Future<List<PlanTask>> planTasks(String planId) async {
     if (!isSupabaseConfigured) return demoDelay(demoPlanTasks);
     final rows = await db

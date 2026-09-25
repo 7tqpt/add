@@ -9,6 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:aras/src/core/session.dart';
 import 'package:aras/src/core/theme.dart';
+import 'package:aras/src/data/api.dart';
 import 'package:aras/src/data/demo.dart';
 import 'package:aras/src/data/models.dart';
 import 'package:aras/src/screens/plan.dart';
@@ -63,20 +64,157 @@ void _resetTasks() {
   ];
 }
 
+/// المسارات التي طُلب لها رابطٌ — **وهذا ما يُقاس، لا ما رُسم على الزجاج**.
+///
+/// لا شبكةَ في الاختبار، فلا صورةَ تُحمَّل. والسؤالُ ليس «أظهرت صورة؟» بل
+/// «أيَّ مسارٍ طلبت الشاشةُ؟» — وهو الذي يفرّق غلافَ الحجز الأقدم من غيره.
+List<String> requestedPaths() {
+  final seen = <String>[];
+  Api.mediaUrlOverride = (path) {
+    seen.add(path);
+    return null;
+  };
+  return seen;
+}
+
+/// نصُّ العدّ التنازلي كما يُقرأ — و**قِطَعُه**.
+///
+/// صار الرقمُ جزءاً من الجملة (`Text.rich`) لا سطراً فوقها، فلا يجده
+/// `find.text`. ويُقرأ من شجرة العناصر: الجملةُ كلُّها، وحجمُ ما كان رقماً.
+({String all, double? digitSize, TextStyle? digitStyle}) countdownOf(
+    WidgetTester tester) {
+  final widget = tester.widget<Text>(find.byKey(const ValueKey('countdown')));
+  final root = widget.textSpan! as TextSpan;
+  final buffer = StringBuffer();
+  TextStyle? digitStyle;
+  for (final part in root.children!.cast<TextSpan>()) {
+    buffer.write(part.text);
+    if (RegExp(r'^\d+$').hasMatch(part.text ?? '')) digitStyle = part.style;
+  }
+  return (
+    all: buffer.toString(),
+    digitSize: digitStyle?.fontSize,
+    digitStyle: digitStyle,
+  );
+}
+
+
+final List<Booking> _bookings = List.of(demoBookings);
+final List<WeddingPlan> _plans = List.of(demoPlans);
+
 void main() {
-  setUp(_resetTasks);
+  setUp(() {
+    _resetTasks();
+    demoBookings = List.of(_bookings);
+    demoPlans = List.of(_plans);
+    Api.mediaUrlOverride = null;
+  });
+  tearDown(() => Api.mediaUrlOverride = null);
+
+  testWidgets('وغلافُ الرأس من أقدم حجزٍ في الخطّة', (tester) async {
+    final seen = requestedPaths();
+    await tester.pumpWidget(_wrap(PlanScreen(session: _session())));
+    await _settle(tester);
+
+    // `b1` أقدمُ من `b2` بمئةٍ واثنتين وخمسين ساعة، وخدمتُه `s1`.
+    // **ويُقاس أنّه وحدَه**: لكلتا الخدمتين غلافٌ، فطلبُ الآخر خطأٌ لا نقص.
+    expect(seen, ['p1/s1/hall.jpg'],
+        reason: 'الغلافُ ليس غلافَ الحجز الأقدم');
+  });
+
+  testWidgets('وحجزٌ ملغىً لا يُعطي الخطّةَ غلافَها', (tester) async {
+    // **أقدمُ من الاثنين** — فلو عُدّ لأخذ الرأسَ.
+    demoBookings = [
+      Booking(
+        id: 'b-old-cancelled',
+        planId: 'pl1',
+        reference: 'BK-2026-000001',
+        createdAt: DateTime.now()
+            .subtract(const Duration(hours: 900))
+            .toIso8601String(),
+        userName: 'أحمد الشرعبي',
+        providerName: 'مطبخ الأصالة',
+        serviceTitle: 'مندي وحنيذ لـ300 شخص',
+        eventDate: demoBookings.first.eventDate,
+        eventTime: '19:00',
+        address: 'حي السنينة — صنعاء',
+        guestsCount: 300,
+        status: BookingStatus.cancelled,
+        totalPrice: 420000,
+        depositAmount: 126000,
+        paidAmount: 0,
+      ),
+      ...demoBookings,
+    ];
+
+    final seen = requestedPaths();
+    await tester.pumpWidget(_wrap(PlanScreen(session: _session())));
+    await _settle(tester);
+
+    expect(seen, ['p1/s1/hall.jpg'],
+        reason: 'غلافُ حجزٍ ملغىً صار رأسَ الخطّة');
+  });
+
+  testWidgets('وخطّةٌ بلا حجوزاتٍ لا تطلب غلافاً ولا تسقط', (tester) async {
+    demoBookings = [];
+    final seen = requestedPaths();
+
+    await tester.pumpWidget(_wrap(PlanScreen(session: _session())));
+    await _settle(tester);
+
+    expect(seen, isEmpty, reason: 'طُلب غلافٌ ولا حجزَ في الخطّة');
+    // والرأسُ قائمٌ كما هو.
+    expect(countdownOf(tester).all, 'بقي 28 يوماً');
+  });
 
   testWidgets('العدُّ التنازلي رقمٌ كبيرٌ لا سطرٌ في زحام', (tester) async {
     await tester.pumpWidget(_wrap(PlanScreen(session: _session())));
     await _settle(tester);
 
     // خطّةُ العرض بعد ٢٨ يوماً.
-    expect(find.text('28'), findsOneWidget);
-    expect(find.text('بقي 28 يوماً'), findsOneWidget);
+    final line = countdownOf(tester);
+    expect(line.all, 'بقي 28 يوماً');
 
-    final number = tester.widget<Text>(find.text('28'));
-    // **الحجم جزءٌ من المعنى:** رقمٌ بحجم السطر المجاور ليس عدّاً تنازليّاً.
-    expect(number.style?.fontSize, greaterThanOrEqualTo(32));
+    // **الحجم جزءٌ من المعنى:** رقمٌ بحجم الكلمة المجاورة ليس عدّاً تنازليّاً.
+    expect(line.digitSize, isNotNull, reason: 'الرقمُ لم يُفرَد بحجمٍ خاصّ');
+    expect(line.digitSize, greaterThanOrEqualTo(22));
+
+    // **وللرقم خطٌّ يرسمه.**
+    //
+    // قِطعةٌ تُعلن `fontFamilyFallback` بلا `fontFamily` تُلغي عائلةَ الخطّ
+    // الموروثةَ من الثيمة وتضع محلَّها قائمةَ الاحتياطيّ وحدَها — فيخرج
+    // الرقمُ **مربّعاً مصمتاً**. وقد خرج كذلك في لقطةٍ حقيقيّة، ولم يسقط
+    // له اختبار: النصُّ والحجمُ كلاهما سليمٌ في الشجرة.
+    expect(line.digitStyle?.fontFamilyFallback, isNull,
+        reason: 'أسلوبُ الرقم يُعلن احتياطيّاً بلا عائلة — تُرسم أرقامُه مربّعات');
+  });
+
+  testWidgets('وصيغةُ العدد عربيّةٌ لا «2 يوماً»', (tester) async {
+    // **وهذا ما يسقط بالتركيب اليدويّ.** العربيّةُ مثنّىً وجمعُ قلّةٍ
+    // وتمييز، و`countdownLabel` تعرفها. ومن كتب `'بقي $days يوماً'` أخرج
+    // «بقي 2 يوماً» — وهي عجمة.
+    final soon = DateTime.now().add(const Duration(days: 2));
+    final p = demoPlans.first;
+    demoPlans = [
+      WeddingPlan(
+        id: p.id,
+        title: p.title,
+        weddingDate: soon.toIso8601String().substring(0, 10),
+        governorate: p.governorate,
+        guestsCount: p.guestsCount,
+        budget: p.budget,
+        status: p.status,
+        servicesCount: p.servicesCount,
+        totalCost: p.totalCost,
+        paidAmount: p.paidAmount,
+        remainingAmount: p.remainingAmount,
+      ),
+    ];
+
+    await tester.pumpWidget(_wrap(PlanScreen(session: _session())));
+    await _settle(tester);
+
+    expect(countdownOf(tester).all, 'بقي يومين');
   });
 
   testWidgets('والتقدّم محسوبٌ من المشطوب لا مكتوب', (tester) async {
@@ -84,7 +222,47 @@ void main() {
     await _settle(tester);
 
     expect(find.text('38٪'), findsOneWidget);
-    expect(find.textContaining('بقيت 5 مهامّ'), findsOneWidget);
+    expect(find.text('3 من 8 مهامّ مكتملة'), findsOneWidget);
+
+    // **والشريطُ يتبع الرقمَ لا يُرسم بقيمةٍ ثابتة**: رقمٌ يقول ‎٣٨‎ وشريطٌ
+    // يملأ ستّين يقرؤهما صاحبُهما رقمين.
+    // **وبالمفتاح لا بالنوع**: أشرطةُ الأقسام في «تفاصيل المصروفات» من
+    // النوع نفسِه، فبحثٌ بالنوع يقع على أوّلِ ما يجد.
+    final bar = tester.widget<LinearProgressIndicator>(
+        find.byKey(const ValueKey('plan-bar')));
+    expect(bar.value, closeTo(0.38, 0.001));
+
+    // وسطرُ التشجيع يتبع الحال.
+    expect(find.text('أنت على الطريق الصحيح'), findsOneWidget);
+  });
+
+  testWidgets('وسطرُ التشجيع يتبدّل بالحال لا يثبت', (tester) async {
+    // لا مهامَّ أصلاً.
+    demoPlanTasks = [];
+    await tester.pumpWidget(_wrap(PlanScreen(session: _session())));
+    await _settle(tester);
+    expect(find.text('لم تُفتح قائمة التجهيز بعد'), findsOneWidget);
+    expect(find.text('أنت على الطريق الصحيح'), findsNothing);
+
+  });
+
+  testWidgets('ومن لم يشطب شيئاً يُدعى إلى الأولى لا يُهنَّأ', (tester) async {
+    demoPlanTasks = [
+      for (final t in demoPlanTasks)
+        PlanTask(
+          id: t.id,
+          title: t.title,
+          done: false,
+          dueDate: t.dueDate,
+          sortOrder: t.sortOrder,
+        ),
+    ];
+
+    await tester.pumpWidget(_wrap(PlanScreen(session: _session())));
+    await _settle(tester);
+
+    expect(find.text('ابدأ بأوّل مهمّة'), findsOneWidget);
+    expect(find.text('أنت على الطريق الصحيح'), findsNothing);
   });
 
   testWidgets('والشطبُ يحرّك النسبة في الحال', (tester) async {
@@ -142,9 +320,9 @@ void main() {
     await _settle(tester);
 
     // العدُّ والميزانية يعملان كما كانا.
-    expect(find.text('28'), findsOneWidget);
+    expect(countdownOf(tester).all, 'بقي 28 يوماً');
     expect(find.text('الميزانية'), findsWidgets);
-    expect(find.textContaining('لم تُفتح قائمة التجهيز'), findsOneWidget);
+    expect(find.textContaining('لم تُفتح قائمة التجهيز'), findsWidgets);
     expect(find.text('0٪'), findsOneWidget);
   });
 }

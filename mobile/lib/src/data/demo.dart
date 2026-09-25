@@ -94,6 +94,11 @@ const demoServices = [
     providerIsFeatured: false,
     providerVerified: true,
     cancellationPolicyName: 'مرنة',
+    // **وغلافٌ ثانٍ في البيانات التجريبيّة مقصود**: بغلافٍ واحدٍ فيها لا
+    // يمكن أن يُقاس **أيُّ** حجزٍ أعطى غلافَ الخطّة — فيخضرّ اختبارُ
+    // الاختيار مهما كُسر الترتيب.
+    coverPath: 'p2/s2/mandi.jpg',
+    imagesCount: 1,
   ),
   ServiceItem(
     id: 's3',
@@ -516,6 +521,29 @@ List<PlanCategorySpend> demoPlanSpend(String planId) {
       .toList()
     ..sort((a, b) => b.booked.compareTo(a.booked));
   return rows;
+}
+
+/// غلافُ الخطّة في وضع العرض — كما تستخرجه `api_plan_cover` من القاعدة.
+///
+/// **ويُشتقّ من الحجوزات لا يُكتب بيد**: الأقدمُ إنشاءً (`createdAt`) لا
+/// أوّلُ ما في القائمة، والملغى والمرفوضُ خارجَ الحساب. ومسارٌ مكتوبٌ هنا
+/// يُخفي عطباً في الاختيار.
+String? demoPlanCover(String planId) {
+  final mine = demoBookings
+      .where((b) =>
+          b.planId == planId &&
+          b.status != BookingStatus.cancelled &&
+          b.status != BookingStatus.rejected)
+      .toList()
+    // والأقدمُ أوّلاً — و`createdAt` نصٌّ ISO فترتيبُه بالحروف ترتيبُ الزمن.
+    ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
+
+  for (final b in mine) {
+    final service = demoServices.where((s) => s.title == b.serviceTitle).firstOrNull;
+    final cover = service?.coverPath;
+    if (cover != null && cover.isNotEmpty) return cover;
+  }
+  return null;
 }
 
 PlanProgress demoPlanProgress(String planId) {
