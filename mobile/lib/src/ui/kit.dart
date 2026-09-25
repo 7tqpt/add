@@ -1379,6 +1379,137 @@ class ProgressRing extends StatelessWidget {
       );
 }
 
+/// جملةٌ يكبُر فيها ما كان رقماً — للعدّ التنازليّ في الخطّة وفي الحجز.
+///
+/// **ولا يُعاد حسابُ الرقم هنا**: تُؤخذ الجملةُ كما صاغتها `countdownLabel`
+/// — بصيغة العدد العربيّة الصحيحة — ويُكبَّر ما كان أرقاماً فيها. فحسابٌ
+/// ثانٍ في الشاشة يفترق عن الأوّل يوماً ولا يُنتبه.
+class BigNumberIn extends StatelessWidget {
+  const BigNumberIn(this.text, {super.key});
+  final String text;
+
+  static final _digits = RegExp(r'\d+');
+
+  @override
+  Widget build(BuildContext context) {
+    // **ولا `fontFamilyFallback` في أسلوب القِطعة.**
+    //
+    // قِطعةٌ تُعلن احتياطيّاً بلا `fontFamily` تُلغي عائلةَ الخطّ الموروثةَ
+    // من الثيمة وتضع محلَّها قائمةَ الاحتياطيّ وحدَها — فلا يُرسم الرقمُ
+    // ويخرج **مربّعاً مصمتاً**. وقد خرج كذلك في لقطةٍ حقيقيّة.
+    //
+    // وموضعُ الأسلوب — على `Text` أو على `TextSpan` — لا أثرَ له: جُرّب
+    // الاثنان فخرجت الصورتان متطابقتين إلى البايت. فالعلّةُ الاحتياطيُّ
+    // وحدَه، وعليه الضابطُ السالب.
+    const small = TextStyle(
+      fontSize: 15,
+      fontWeight: FontWeight.w600,
+      color: AppColors.gold,
+    );
+    const big = TextStyle(fontSize: 26, height: 1.1, fontWeight: FontWeight.w700);
+
+    final spans = <TextSpan>[];
+    var at = 0;
+    for (final m in _digits.allMatches(text)) {
+      if (m.start > at) spans.add(TextSpan(text: text.substring(at, m.start)));
+      spans.add(TextSpan(text: m[0], style: big));
+      at = m.end;
+    }
+    if (at < text.length) spans.add(TextSpan(text: text.substring(at)));
+
+    return Text.rich(
+      TextSpan(children: spans),
+      style: small,
+      key: const ValueKey('countdown'),
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+    );
+  }
+}
+
+/// حلقةٌ صغيرةٌ فيها النسبةُ وحدَها — لسطر المهامّ في رأس الخطّة.
+///
+/// **وغيرُ `ProgressRing`**: تلك كبيرةٌ تحمل سطرين وخيطُها أحدَ عشرَ، وهذه
+/// قرصٌ صغيرٌ في آخر شريط. ولو رُسمت بها لَابتلع الخيطُ جوفَها فلم يبقَ
+/// للرقم موضع.
+class PercentRing extends StatelessWidget {
+  const PercentRing({
+    super.key,
+    required this.value,
+    required this.label,
+    this.size = 42,
+    this.stroke = 5,
+    this.colour = AppColors.accent,
+  });
+
+  final double value;
+
+  /// ما يُكتب في الوسط — يُمرَّر مصوغاً، فلا تصوغ الحلقةُ رقماً ولا تترجمه.
+  final String label;
+
+  final double size;
+  final double stroke;
+  final Color colour;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+        width: size,
+        height: size,
+        child: CustomPaint(
+          painter: _ThinRingPainter(value.clamp(0.0, 1.0), colour, stroke),
+          child: Center(
+            child: Text(
+              label,
+              maxLines: 1,
+              style: TextStyle(
+                fontSize: size * 0.27,
+                fontWeight: FontWeight.w700,
+                color: colour,
+              ),
+            ),
+          ),
+        ),
+      );
+}
+
+class _ThinRingPainter extends CustomPainter {
+  _ThinRingPainter(this.value, this.colour, this.stroke);
+  final double value;
+  final Color colour;
+  final double stroke;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = (Offset.zero & size).deflate(stroke / 2);
+    canvas.drawArc(
+      rect,
+      0,
+      math.pi * 2,
+      false,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = stroke
+        ..color = AppColors.surface2,
+    );
+    canvas.drawArc(
+      rect,
+      // من أعلى الحلقة لا من يمينها — وإلّا بدأ الامتلاءُ من غير حيث يُتوقَّع.
+      -math.pi / 2,
+      math.pi * 2 * value,
+      false,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = stroke
+        ..strokeCap = StrokeCap.round
+        ..color = colour,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _ThinRingPainter old) =>
+      old.value != value || old.colour != colour || old.stroke != stroke;
+}
+
 class _RingPainter extends CustomPainter {
   _RingPainter(this.value, this.colour);
   final double value;

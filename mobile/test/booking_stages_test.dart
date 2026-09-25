@@ -13,7 +13,6 @@ import 'package:aras/src/data/demo.dart';
 import 'package:aras/src/data/models.dart';
 import 'package:aras/src/screens/my_bookings.dart';
 import 'package:aras/src/ui/booking_stages.dart';
-import 'package:aras/src/ui/kit.dart';
 
 Session _session() => Session()
   ..userId = 'u1'
@@ -196,13 +195,13 @@ void main() {
 
       // بطاقةُ المنتظِر تُوجد بمرجعه — وهو فريد.
       //
-      // **والجدُّ `AppCard` لا `BookingStages`:** المرجعُ صفٌّ في البطاقة
+      // **والجدُّ `BookingCard` لا `BookingStages`:** المرجعُ صفٌّ في البطاقة
       // **إلى جانب** السكّة لا داخلَها. وأوّلُ صياغةٍ سألت عن السكّة جدّاً
       // له فلم تجد شيئاً، ثمّ سألت عن زرٍّ داخل لا شيء — **فمرّت فارغةً**
       // وهي تظنّ نفسَها تقيس.
       final card = find.ancestor(
         of: find.text(pending.first.reference),
-        matching: find.byType(AppCard),
+        matching: find.byType(BookingCard),
       );
       expect(card, findsOneWidget, reason: 'لم تُوجد بطاقةُ المنتظِر أصلاً');
       expect(

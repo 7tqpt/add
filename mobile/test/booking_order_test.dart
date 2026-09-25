@@ -14,7 +14,6 @@ import 'package:aras/src/data/api.dart';
 import 'package:aras/src/data/demo.dart';
 import 'package:aras/src/data/models.dart';
 import 'package:aras/src/screens/my_bookings.dart';
-import 'package:aras/src/ui/kit.dart';
 
 Session _session() => Session()
   ..userId = 'u1'
@@ -108,9 +107,9 @@ void main() {
             ..sort((a, b) => b.createdAt.compareTo(a.createdAt)))
           .first;
 
-      // **وأوّلُ `AppCard` لا أوّلُ نصّ:** الملخّصُ في الصدر `BigHeroCard`
-      // فلا يُحسب، والبطاقاتُ بعده بترتيبها.
-      final cards = find.byType(AppCard);
+      // **وأوّلُ `BookingCard` لا أوّلُ نصّ:** الملخّصُ في الصدر
+      // `BigHeroCard` فلا يُحسب، والبطاقاتُ بعده بترتيبها.
+      final cards = find.byType(BookingCard);
       expect(cards, findsWidgets);
       expect(
         find.descendant(of: cards.first, matching: find.text(newest.reference)),

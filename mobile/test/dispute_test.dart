@@ -13,7 +13,6 @@ import 'package:aras/src/data/demo.dart';
 import 'package:aras/src/data/models.dart';
 import 'package:aras/src/screens/disputes.dart';
 import 'package:aras/src/screens/my_bookings.dart';
-import 'package:aras/src/ui/kit.dart';
 
 Session _session() => Session()
   ..userId = 'u1'
@@ -57,7 +56,7 @@ Future<void> _openDetail(WidgetTester tester) async {
   await _settle(tester);
 
   final card = find.byWidgetPredicate(
-    (w) => w is AppCard && '${w.key}'.contains('booking-card-'),
+    (w) => w is Column && '${w.key}'.contains('booking-card-'),
   );
   expect(card, findsWidgets, reason: 'لا بطاقةَ حجزٍ في القائمة');
   await tester.tap(card.first);

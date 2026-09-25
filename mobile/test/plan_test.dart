@@ -13,6 +13,7 @@ import 'package:aras/src/data/api.dart';
 import 'package:aras/src/data/demo.dart';
 import 'package:aras/src/data/models.dart';
 import 'package:aras/src/screens/plan.dart';
+import 'package:aras/src/ui/kit.dart';
 
 Session _session() => Session()
   ..userId = 'u1'
@@ -231,6 +232,12 @@ void main() {
     final bar = tester.widget<LinearProgressIndicator>(
         find.byKey(const ValueKey('plan-bar')));
     expect(bar.value, closeTo(0.38, 0.001));
+
+    // **والحلقةُ كذلك**: رقمٌ مكتوبٌ في جوفِ حلقةٍ ممتلئةٍ بغيره أسوأُ من
+    // رقمٍ وحدَه — العينُ تصدّق القوسَ قبل أن تقرأ.
+    final ring = tester.widget<PercentRing>(
+        find.byKey(const ValueKey('plan-percent')));
+    expect(ring.value, closeTo(0.38, 0.001));
 
     // وسطرُ التشجيع يتبع الحال.
     expect(find.text('أنت على الطريق الصحيح'), findsOneWidget);
