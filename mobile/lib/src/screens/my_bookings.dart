@@ -484,10 +484,25 @@ class BookingsSummaryCard extends StatelessWidget {
         child: SizedBox(
           height: 164 *
               MediaQuery.textScalerOf(context).scale(1).clamp(1.0, 1.5),
-          child: Row(
+          // **والغلافُ يُطبَّق لا يُجاور.** لو كان عمودَ `Row` لوقع بينه وبين
+          // النصّ حدٌّ مستقيمٌ يُرى — وقد رآه صاحبُ المنصّة في اللقطة. فهو
+          // الآن طبقةٌ تحت النصّ تمتدّ إلى ما بعد منتصف البطاقة وتتلاشى
+          // بشفافيّتها، فيظهر تدرّجُ البطاقة من تحتها ولا خيطَ.
+          child: Stack(
             children: [
-              Expanded(flex: 63, child: _SummaryText(summary: summary)),
-              Expanded(flex: 37, child: _FadedCover(path: next?.coverPath)),
+              Positioned.fill(
+                child: FractionallySizedBox(
+                  alignment: AlignmentDirectional.centerEnd,
+                  widthFactor: 0.52,
+                  child: _FadedCover(path: next?.coverPath),
+                ),
+              ),
+              Row(
+                children: [
+                  Expanded(flex: 63, child: _SummaryText(summary: summary)),
+                  const Spacer(flex: 37),
+                ],
+              ),
             ],
           ),
         ),
@@ -694,7 +709,19 @@ class _DotPill extends StatelessWidget {
       );
 }
 
-/// الصورةُ تتلاشى في لون البطاقة بدل أن تُقطع بخطٍّ حادّ.
+/// الصورةُ تتلاشى **بشفافيّتها هي** لا بلوحِ لونٍ فوقها.
+///
+/// **والفرقُ ليس ذوقاً.** لوحُ التلاشي القديم كان يبدأ بلونٍ **صلب**
+/// (`_brand.first`)، ولونُ البطاقة تحتَه **متدرّجٌ قُطريّاً** — فلا يطابقه
+/// إلّا في ركنٍ واحد، فيقع عند حدّ اللوح **خيطٌ رأسيٌّ يُرى**. وقد رآه صاحبُ
+/// المنصّة في اللقطة واختار (ب).
+///
+/// فالآن `ShaderMask` بـ`BlendMode.dstIn`: يُضرب في الصورة تدرّجُ شفافيّةٍ
+/// فتذوب هي، ويظهر ما تحتها — تدرّجُ البطاقة نفسُه أيّاً كان لونُه عند تلك
+/// النقطة. فلا لونَ يُطابَق ولا خيطَ يقع.
+///
+/// **ومن لا غلافَ لحجزه لا يُرسم له شيء**: تدرّجُ البطاقة وحدَه. وقد كان له
+/// لوحٌ أسودُ خفيف، وهو خيطٌ باهتٌ آخر بلا فائدة.
 class _FadedCover extends StatelessWidget {
   const _FadedCover({required this.path});
   final String? path;
@@ -702,39 +729,16 @@ class _FadedCover extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final url = Api.mediaUrl(path);
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        if (url == null)
-          // **ولا مربّعَ مكسورٌ لمن لا غلافَ لحجزه**: تدرّجٌ هادئٌ من لون
-          // البطاقة نفسِه.
-          const DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.centerRight,
-                end: Alignment.centerLeft,
-                colors: [Color(0x00000000), Color(0x22000000)],
-              ),
-            ),
-          )
-        else
-          MediaThumb(url: url, icon: Icons.photo_camera_back_outlined),
-        // والتلاشي: من لون البطاقة إلى الشفافيّة على الصورة.
-        DecoratedBox(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: AlignmentDirectional.centerStart,
-              end: AlignmentDirectional.centerEnd,
-              colors: [
-                BookingsSummaryCard._brand.first,
-                BookingsSummaryCard._brand.first.withValues(alpha: 0.55),
-                Colors.transparent,
-              ],
-              stops: const [0.0, 0.35, 0.85],
-            ),
-          ),
-        ),
-      ],
+    if (url == null) return const SizedBox.shrink();
+    return ShaderMask(
+      blendMode: BlendMode.dstIn,
+      shaderCallback: (rect) => const LinearGradient(
+        begin: AlignmentDirectional.centerStart,
+        end: AlignmentDirectional.centerEnd,
+        colors: [Color(0x00FFFFFF), Color(0xCCFFFFFF)],
+        stops: [0.0, 0.72],
+      ).createShader(rect, textDirection: Directionality.of(context)),
+      child: MediaThumb(url: url, icon: Icons.photo_camera_back_outlined),
     );
   }
 }

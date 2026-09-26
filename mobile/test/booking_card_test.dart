@@ -11,6 +11,8 @@
 //   ٤. **وأنّ «سُدّد كاملاً» لا تُقال لمن بقي عليه شيء** — ولا عكسُها.
 //   ٥. **وأنّ البطاقةَ تبقى تُفتح** — وسهمُها باقٍ كما اختاره صاحبُ المنصّة.
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -22,6 +24,7 @@ import 'package:aras/src/data/models.dart';
 import 'package:aras/src/screens/my_bookings.dart';
 import 'package:aras/src/ui/booking_stages.dart';
 import 'package:aras/src/ui/kit.dart';
+import 'package:aras/src/ui/media.dart';
 
 Session _session() => Session()
   ..userId = 'u1'
@@ -375,6 +378,101 @@ void main() {
             of: card, matching: find.text('حجوزاتك السابقة محفوظة أدناه')),
         findsOneWidget,
       );
+    });
+
+    // ── خيطُ اللُّحمة ────────────────────────────────────────────────────────
+    //
+    // **ولا يُسأل الشجرةُ هنا، بل تُقرأ البكسلات.** كان لوحُ التلاشي يبدأ
+    // بلونٍ صلبٍ فوق تدرّجٍ قُطريّ، فيقع عند حدّه **خيطٌ رأسيٌّ** رآه صاحبُ
+    // المنصّة في اللقطة. وسؤالُ الشجرة «أفيك لوحٌ؟» لا يكشف خيطاً، فتُصوَّر
+    // البطاقةُ ويُمسح صفٌّ من بكسلاتها: تدرّجٌ صحيحٌ لا يقفز بين بكسلٍ وجاره.
+    //
+    // **وحالُ «بلا غلاف» هي المقيسة** لأنّها لا تحتاج شبكةً أصلاً: لا صورةَ
+    // فيها تُحمَّل، فالبطاقةُ كلُّها تدرّجٌ واحدٌ يجب ألّا ينكسر.
+    testWidgets('ولا خيطَ رأسيّاً في تدرّج البطاقة', (tester) async {
+      tester.view.physicalSize = const Size(360, 400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      // بلا غلافٍ لأقرب حجز — فلا `Image` تُبنى ولا شبكةَ تُنتظر.
+      final bare = BookingsSummary.of(
+        [for (final b in demoBookings) b.withCover(null)],
+      );
+      expect(bare.next, isNotNull, reason: 'لا حجزَ قادمٌ فلا بطاقةَ تُصوَّر');
+
+      await tester.pumpWidget(_wrap(Center(
+        child: RepaintBoundary(
+          key: const ValueKey('summary-paint'),
+          child: SizedBox(width: 340, child: BookingsSummaryCard(summary: bare)),
+        ),
+      )));
+      await _settle(tester);
+
+      final boundary = tester.renderObject<RenderRepaintBoundary>(
+          find.byKey(const ValueKey('summary-paint')));
+      late ByteData pixels;
+      late int width;
+      await tester.runAsync(() async {
+        final image = await boundary.toImage();
+        width = image.width;
+        pixels = (await image.toByteData())!;
+        image.dispose();
+      });
+
+      // صفٌّ قريبٌ من أعلى البطاقة — فوق النصّ كلِّه، فلا حرفَ يقطعه.
+      const y = 4;
+      int channel(int x, int c) => pixels.getUint8(((y * width) + x) * 4 + c);
+
+      var worst = 0;
+      var worstAt = 0;
+      // وتُترك الأركانُ المدوّرةُ خارج المسح — تنعيمُها قفزةٌ مشروعة.
+      for (var x = 31; x < width - 30; x++) {
+        for (var c = 0; c < 3; c++) {
+          final jump = (channel(x, c) - channel(x - 1, c)).abs();
+          if (jump > worst) {
+            worst = jump;
+            worstAt = x;
+          }
+        }
+      }
+
+      expect(
+        worst,
+        lessThan(8),
+        reason: 'قفزةُ لونٍ قدرُها $worst عند البكسل $worstAt — خيطٌ رأسيّ',
+      );
+    });
+
+    // **وحين يكون للغلاف صورة**: تذوب هي بشفافيّتها (`BlendMode.dstIn`) ولا
+    // يُوضع فوقها لوحُ لونٍ صلب — وذلك اللوحُ كان منبعَ الخيط.
+    testWidgets('والغلافُ يذوب بشفافيّته لا بلوحٍ فوقه', (tester) async {
+      tester.view.physicalSize = const Size(400, 1400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      // في بيانات العرض أقربُ حجزٍ لخدمةٍ بلا صور، فيُعطى غلافاً هنا صراحةً
+      // — وإلّا قِيست حالُ «بلا غلاف» مرّتين ولم يُقَس الذوبان.
+      final bare = BookingsSummary.of(demoBookings);
+      expect(bare.next, isNotNull, reason: 'لا حجزَ قادمٌ في العرض');
+      final covered = BookingsSummary.of([
+        for (final b in demoBookings)
+          b.id == bare.next!.id ? b.withCover('p2/s2/mandi.jpg') : b,
+      ]);
+
+      await tester.pumpWidget(
+          _wrap(Center(child: BookingsSummaryCard(summary: covered))));
+      await _settle(tester);
+
+      final card = find.byType(BookingsSummaryCard);
+      final cover = find.descendant(of: card, matching: find.byType(MediaThumb));
+      expect(cover, findsOneWidget,
+          reason: 'لا غلافَ في الملخّص — فالمقيسُ غيرُ موجود');
+
+      final mask = tester.widget<ShaderMask>(
+        find.ancestor(of: cover, matching: find.byType(ShaderMask)).first,
+      );
+      expect(mask.blendMode, BlendMode.dstIn,
+          reason: 'الصورةُ لا تذوب بشفافيّتها');
     });
   });
 }

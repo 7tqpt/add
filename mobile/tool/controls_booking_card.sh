@@ -204,7 +204,57 @@ run "(ك) عددُ الملخّص مكتوبٌ لا محسوب" \
 run "(ل) لا يُقال أين ذهب ما مضى" \
   sub "$F" \
 "              tr('حجوزاتك السابقة محفوظة أدناه')," \
-"              ''," 
+"              '',"
+
+# ── م) ويعود لوحُ التلاشي ذو اللون الصلب ─────────────────────────────────
+#
+# **وهذا هو الخيطُ الذي رآه صاحبُ المنصّة** — الصياغةُ الساقطةُ حرفاً: لوحٌ
+# يبدأ بـ`_brand.first` صلباً فوق تدرّجٍ قُطريّ، فلا يطابق ما تحته إلّا في
+# ركنٍ واحد. والمقياسُ بكسلات: صفٌّ من صورة البطاقة لا يقفز بين بكسلٍ وجاره.
+run "(م) لوحُ تلاشٍ بلونٍ صلبٍ فوق التدرّج" \
+  sub "$F" \
+"    if (url == null) return const SizedBox.shrink();
+    return ShaderMask(
+      blendMode: BlendMode.dstIn,
+      shaderCallback: (rect) => const LinearGradient(
+        begin: AlignmentDirectional.centerStart,
+        end: AlignmentDirectional.centerEnd,
+        colors: [Color(0x00FFFFFF), Color(0xCCFFFFFF)],
+        stops: [0.0, 0.72],
+      ).createShader(rect, textDirection: Directionality.of(context)),
+      child: MediaThumb(url: url, icon: Icons.photo_camera_back_outlined),
+    );" \
+"    return Stack(
+      fit: StackFit.expand,
+      children: [
+        if (url != null)
+          MediaThumb(url: url, icon: Icons.photo_camera_back_outlined),
+        DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: AlignmentDirectional.centerStart,
+              end: AlignmentDirectional.centerEnd,
+              colors: [
+                BookingsSummaryCard._brand.first,
+                BookingsSummaryCard._brand.first.withValues(alpha: 0.55),
+                Colors.transparent,
+              ],
+              stops: const [0.0, 0.35, 0.85],
+            ),
+          ),
+        ),
+      ],
+    );"
+
+# ── ن) والصورةُ تُغطّى بالتدرّج بدل أن تذوب فيه ──────────────────────────
+#
+# `BlendMode.srcOver` يرسم التدرّجَ **فوق** الصورة، و`dstIn` يضربه في
+# شفافيّتها. والأوّلُ يعيد اللوحَ من بابٍ آخر.
+run "(ن) التدرّجُ يُرسم فوق الصورة لا في شفافيّتها" \
+  sub "$F" \
+"      blendMode: BlendMode.dstIn," \
+"      blendMode: BlendMode.srcOver,"
+
 echo
 echo "الساقط: $PASS — الباقي: $FAIL"
 [ "$FAIL" = 0 ]
