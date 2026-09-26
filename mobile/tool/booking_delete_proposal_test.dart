@@ -289,7 +289,7 @@ void main() {
 
   // **وحالُ الحجز تُرى في الشاشة الحقيقيّة**: أيُّ الأزرار يظهر اليوم
   // لحجزٍ أُلغي — فموضعُ زرّ الحذف بينها لا في فراغ.
-  testWidgets('لقطةُ ذيل الشاشة الحقيقيّة لحجزٍ ملغى', (tester) async {
+  testWidgets('لقطةُ الشاشة الحقيقيّة بعد التنفيذ', (tester) async {
     tester.view.physicalSize = const Size(392, 1600);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
@@ -298,7 +298,7 @@ void main() {
     Directory(out).createSync(recursive: true);
 
     final rejected =
-        demoBookings.firstWhere((b) => b.status == BookingStatus.rejected);
+        demoBookings.firstWhere((b) => b.status == BookingStatus.pendingProvider);
 
     await tester.pumpWidget(MaterialApp(
       debugShowCheckedModeBanner: false,
@@ -327,7 +327,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // يُنزل إلى الذيل حيث الأفعال.
-    await tester.drag(find.byType(Scrollable).first, const Offset(0, -900));
+    await tester.drag(find.byType(Scrollable).first, const Offset(0, -260));
     await tester.pumpAndSettle();
 
     final boundary = tester.renderObject<RenderRepaintBoundary>(

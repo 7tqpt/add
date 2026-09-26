@@ -725,6 +725,22 @@ class Api {
     await db.rpc('api_cancel_booking', params: {'p_booking_id': id, 'p_reason': reason});
   }
 
+  /// يمحو الحجزَ من القاعدة نهائيّاً.
+  ///
+  /// **واختاره صاحبُ المنصّة من بين ثلاثة معانٍ للحذف**: «يُمحى من القاعدة
+  /// نهائيّاً» — فيذهب من سجلّ مقدّم الخدمة ومن لوحة التحكّم كذلك.
+  ///
+  /// **والشروطُ في الخادم لا هنا** (`supabase/booking_delete.sql`): لا يُمحى
+  /// حجزٌ دخله مال، ولا دخل تسويةً، ولا عليه نزاعٌ مفتوح. والشاشةُ تُخفي
+  /// الزرَّ عمّا دُفع فيه شيءٌ **موافقةً لما سيقوله الخادم**، لا نيابةً عنه.
+  static Future<void> deleteBooking(String id) async {
+    if (!isSupabaseConfigured) {
+      demoDeleteBooking(id);
+      return;
+    }
+    await db.rpc('api_delete_booking', params: {'p_booking_id': id});
+  }
+
   // ----- التقييمات -----
 
   static Future<void> submitReview(String bookingId, int rating, String comment) async {

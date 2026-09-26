@@ -12,6 +12,7 @@
 // تبدو أنظفَ، والشاشةُ تبدو كاملة، ولا يكتشف أحدٌ أنّ «الإلغاء» ذهب إلّا من
 // أراد أن يُلغي. **فتُعدّ الأفعالُ الأربعةُ في وجوهها**.
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -19,6 +20,7 @@ import 'package:aras/src/core/format.dart';
 import 'package:aras/src/core/geo.dart';
 import 'package:aras/src/core/session.dart';
 import 'package:aras/src/core/theme.dart';
+import 'package:aras/src/data/api.dart';
 import 'package:aras/src/data/demo.dart';
 import 'package:aras/src/data/models.dart';
 import 'package:aras/src/screens/booking_detail.dart';
@@ -97,6 +99,8 @@ Widget _detail(Booking b, {bool reviewed = false, Dispute? dispute}) => _wrap(
         dispute: dispute,
       ),
     );
+
+final List<Booking> _demoBackup = List.of(demoBookings);
 
 void main() {
   setUpAll(initFormatting);
@@ -194,6 +198,125 @@ void main() {
       );
       await _toEnd(tester);
       expect(find.byKey(const ValueKey('booking-review')), findsNothing);
+    });
+  });
+
+  // ── حذفُ الحجز ──────────────────────────────────────────────────────────
+  //
+  // **محوٌ نهائيٌّ اختاره صاحبُ المنصّة** من بين ثلاثة معانٍ للحذف، بعد أن
+  // قيل له إنّ الصفَّ واحدٌ فيذهب من سجلّ مقدّم الخدمة كذلك.
+  group('حذفُ الحجز', () {
+    setUp(() => demoBookings = List.of(_demoBackup));
+    tearDown(() => demoBookings = List.of(_demoBackup));
+
+    testWidgets('يُمحى الحجزُ حقّاً — ولا يُسأل الزرُّ ما فعل', (tester) async {
+      _phone(tester);
+      final target = _demoBackup.firstWhere((b) => b.paidAmount == 0);
+
+      await tester.pumpWidget(_detail(target));
+      await _toEnd(tester);
+
+      await tester.tap(find.byKey(const ValueKey('booking-delete')));
+      await _settle(tester);
+
+      // **وحوارٌ يقول ما يقع بلا تلطيف**، وفيه أنّه يذهب من سجلّ المزوّد.
+      expect(find.textContaining('سجلّ مقدّم الخدمة'), findsOneWidget);
+
+      await tester.tap(find.widgetWithText(TextButton, 'حذف'));
+      await _settle(tester);
+
+      // **والمقيسُ ما وصل المخزنَ لا ما اختفى من الشاشة**: شاشةٌ تُغلق
+      // وحجزٌ باقٍ تُقرأ نجاحاً وهي فشل.
+      expect(
+        demoBookings.where((b) => b.id == target.id),
+        isEmpty,
+        reason: 'أُغلقت الشاشةُ والحجزُ باقٍ',
+      );
+    });
+
+    testWidgets('و«تراجع» لا تمحو شيئاً', (tester) async {
+      _phone(tester);
+      final target = _demoBackup.firstWhere((b) => b.paidAmount == 0);
+
+      await tester.pumpWidget(_detail(target));
+      await _toEnd(tester);
+      await tester.tap(find.byKey(const ValueKey('booking-delete')));
+      await _settle(tester);
+      await tester.tap(find.widgetWithText(TextButton, 'تراجع'));
+      await _settle(tester);
+
+      expect(demoBookings.where((b) => b.id == target.id), hasLength(1),
+          reason: 'مُحي الحجزُ بعد تراجع');
+    });
+
+    // **ووضعُ العرض يرفض ما يرفضه الخادم.** الشاشةُ تُخفي الزرَّ عمّا دُفع
+    // فيه شيء، فلا يمرّ هذا الطريقُ من الشاشة أصلاً — ومن ناداه من غيرها
+    // (أو من بدّل الشرطَ يوماً) يجب أن يصطدم بما سيصطدم به على القاعدة.
+    // وبلا هذا يُجرَّب التطبيقُ في وضع العرض فيقبل ما يردّه الخادم.
+    test('ووضعُ العرض يرفض حذفَ حجزٍ دخله مال', () async {
+      final paid = demoBookings.firstWhere((b) => b.paidAmount > 0);
+      await expectLater(
+        Api.deleteBooking(paid.id),
+        throwsA(isA<StateError>()),
+      );
+      expect(demoBookings.where((b) => b.id == paid.id), hasLength(1),
+          reason: 'مُحي حجزٌ دخله مال في وضع العرض');
+    });
+
+    testWidgets('ولا زرَّ حذفٍ لحجزٍ دخله مال', (tester) async {
+      // **موافقةً لما سيقوله الخادم**: `api_delete_booking` ترفض ما دُفع
+      // فيه شيء، وزرٌّ يَعِد بما سيُرفض ضغطةٌ في وجه صاحبه.
+      _phone(tester);
+      await tester.pumpWidget(_detail(_booking(paid: 255000)));
+      await _toEnd(tester);
+      expect(find.byKey(const ValueKey('booking-delete')), findsNothing);
+
+      await tester.pumpWidget(_detail(_booking(paid: 0)));
+      await _toEnd(tester);
+      expect(find.byKey(const ValueKey('booking-delete')), findsOneWidget,
+          reason: 'لا زرَّ حذفٍ لحجزٍ لم يدخله مال');
+    });
+  });
+
+  group('رأسُ الصفحة', () {
+    testWidgets('ورقمُ الحجز يُنسخ إلى الحافظة', (tester) async {
+      // **والمقيسُ ما وصل الحافظةَ لا أنّ الزرَّ ضُغط.**
+      _phone(tester);
+      String? copied;
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        (call) async {
+          if (call.method == 'Clipboard.setData') {
+            copied = (call.arguments as Map)['text'] as String?;
+          }
+          return null;
+        },
+      );
+      addTearDown(() => tester.binding.defaultBinaryMessenger
+          .setMockMethodCallHandler(SystemChannels.platform, null));
+
+      final b = _booking();
+      await tester.pumpWidget(_detail(b));
+      await _settle(tester);
+
+      await tester.tap(find.byIcon(Icons.copy_rounded));
+      await _settle(tester);
+
+      expect(copied, b.reference, reason: 'نُسخ غيرُ رقم الحجز');
+      expect(find.text('نُسخ رقم الحجز'), findsOneWidget);
+    });
+
+    testWidgets('وفيه اسمُ الخدمة ومقدّمُها وحالُه وموعدُه', (tester) async {
+      _phone(tester);
+      final b = _booking();
+      await tester.pumpWidget(_detail(b));
+      await _settle(tester);
+
+      expect(find.text(b.serviceTitle), findsOneWidget);
+      expect(find.text(b.providerName), findsOneWidget);
+      expect(find.text('مؤكد'), findsWidgets);
+      expect(find.text(formatDate(b.eventDate)), findsWidgets);
+      expect(find.text(b.reference), findsOneWidget);
     });
   });
 

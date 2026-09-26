@@ -153,11 +153,19 @@ void main() {
     await _settle(tester);
 
     expect(find.byType(BookingDetailScreen), findsOneWidget);
-    final shown = tester.widget<Text>(find.descendant(
+    final shown = find.descendant(
       of: find.byType(BookingDetailScreen),
       matching: find.text(b.reference),
-    ).first);
-    expect(shown.data, b.reference, reason: 'الرقمُ ناقصٌ في الصفحة كذلك');
+    ).first;
+    expect(tester.widget<Text>(shown).data, b.reference);
+
+    // **ولا يُسأل النصُّ عمّا فيه، بل يُقاس ما رُسم.** نصٌّ مقصوصٌ بـ«…»
+    // يحتفظ بحروفه كلِّها في `data` فيمرّ السؤالُ الساذج — وقد مرّ:
+    // كُتب هذا الاختبارُ أوّلاً على `data` وحدَها، والرقمُ في الصفحة
+    // مقصوصٌ على الشاشة.
+    final para = tester.renderObject<RenderParagraph>(shown);
+    expect(para.didExceedMaxLines, isFalse,
+        reason: 'رقمُ الحجز مقصوصٌ في صفحة الحجز — ولا موضعَ آخرَ يُقرأ فيه');
   });
 
   testWidgets('وشارةُ الحالة بلون الحالة، ولا علامةَ صحٍّ للمرفوض',

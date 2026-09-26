@@ -1124,6 +1124,19 @@ void demoSavePlan({String? id, required Map<String, dynamic> values}) {
 
 void demoCancel(String id) => _replace(id, BookingStatus.cancelled);
 
+/// يمحو الحجزَ من قائمة العرض — كما تمحوه `api_delete_booking` من القاعدة.
+///
+/// **ويرفض ما دخله مال** كما يرفضه الخادم: وضعُ عرضٍ يحذف ما لا يُحذف على
+/// الجهاز يُري صاحبَه شاشةً غيرَ التي سيراه.
+void demoDeleteBooking(String id) {
+  final b = demoBookings.where((x) => x.id == id).firstOrNull;
+  if (b == null) throw StateError('الحجز غير موجود');
+  if (b.paidAmount > 0) {
+    throw StateError('لا يُحذف حجزٌ دخله مال. ألغِ الحجز ليُحسب ما يُستردّ لك.');
+  }
+  demoBookings = [for (final x in demoBookings) if (x.id != id) x];
+}
+
 /// الحجوزات المقيَّمة. القاعدة تمنع تقييم الحجز مرّتين بقيد فريد، والوضع
 /// التجريبي يحاكي المنع نفسه كي يختفي الزرّ بعد الضغط كما سيختفي فعلاً.
 Set<String> demoReviewedBookings = {};

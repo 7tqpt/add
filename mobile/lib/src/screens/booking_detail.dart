@@ -23,6 +23,7 @@
 // القائمةُ قراءتَها. **ولا تُعاد القراءةُ لمجرّد الفتح**: من فتح ورجع لم
 // يغيّر شيئاً، وقراءةٌ بلا سببٍ ومضةٌ في الشاشة وطلبٌ على الشبكة.
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../core/format.dart';
 import '../core/i18n.dart';
@@ -171,6 +172,51 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
     }
   }
 
+  /// يمحو الحجزَ نهائيّاً — بعد حوارٍ يقول ما يقع بلا تلطيف.
+  ///
+  /// **ولا يُقال «يُخفى من قائمتك»**: الصفُّ واحدٌ، فمحوُه يُذهبه من سجلّ
+  /// مقدّم الخدمة ومن لوحة التحكّم كذلك — وقد قيل ذلك لصاحب المنصّة قبل أن
+  /// يختار المحوَ النهائيّ.
+  Future<void> _delete() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(tr('حذف الحجز')),
+        content: Text(
+          tr('يُحذف هذا الحجز من المنصّة نهائيّاً، ويذهب من سجلّ مقدّم '
+              'الخدمة كذلك. لا رجعة فيه.'),
+          style: const TextStyle(height: 1.7),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(tr('تراجع')),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            style: TextButton.styleFrom(foregroundColor: AppColors.critical),
+            child: Text(tr('حذف')),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    setState(() => _busy = true);
+    try {
+      await Api.deleteBooking(_b.id);
+      if (!mounted) return;
+      showMessage(context, tr('حُذف الحجز.'));
+      // **وتُغلق الشاشة بعده**: صفحةُ حجزٍ لم يعد له وجودٌ تعرض أزراراً
+      // سيردّها الخادمُ كلَّها.
+      Navigator.of(context).pop(true);
+    } catch (e) {
+      if (mounted) showMessage(context, messageOf(e));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   Future<void> _review() async {
     final result = await showModalBottomSheet<({int rating, String comment})>(
       context: context,
@@ -261,73 +307,128 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
   }
 
   // ── الرأس ───────────────────────────────────────────────────────────────
-  Widget _head() => HeroCard(
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  _b.serviceTitle,
-                  style: const TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.accentInk,
-                  ),
-                ),
-              ),
-              const SizedBox(width: Space.sm),
-              StatusBadge(
-                bookingStatusLabel(_b.status),
-                color: bookingStatusColor(_b.status),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(
-            _b.providerName,
-            style: TextStyle(
-              fontSize: 13,
-              color: AppColors.accentInk.withValues(alpha: 0.82),
+  // ── الرأس ───────────────────────────────────────────────────────────────
+  //
+  // **على تصميمٍ أرسله صاحبُ المنصّة** («سوي لي كذا»): أرضيّةٌ طَفليّةٌ
+  // كبطاقة ملخّص «حجوزاتي» لا نبيذيّةٌ كسائر الرؤوس — فالشاشتان تُقرآن
+  // كشيءٍ واحد. وفيه اسمُ الخدمة بأيقونة قاعة، ومقدّمُها بأيقونة شخص،
+  // وشارةُ الحالة مطوّقةٌ بالذهب، ثمّ خيطٌ، ثمّ التاريخُ والوقتُ ورقمُ
+  // الحجز — **وله زرُّ نسخٍ** لأنّه الذي يُقال للمزوّد في الهاتف.
+  static const _brand = [Color(0xFFA3521A), Color(0xFF6B3208)];
+
+  Widget _head() => ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          padding: const EdgeInsets.all(Space.lg),
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topRight,
+              end: Alignment.bottomLeft,
+              colors: _brand,
             ),
           ),
-          const SizedBox(height: Space.md),
-          Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Expanded(
-                child: Text(
-                  _b.eventTime == null
-                      ? formatDate(_b.eventDate)
-                      : '${formatDate(_b.eventDate)} · ${formatTime(_b.eventTime)}',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.accentInk,
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.apartment_rounded,
+                      size: 20, color: AppColors.goldOnAccent),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _b.serviceTitle,
+                      style: const TextStyle(
+                        fontSize: 17,
+                        height: 1.3,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.accentInk,
+                      ),
+                    ),
                   ),
-                ),
+                  const SizedBox(width: Space.sm),
+                  _HeadChip(
+                    bookingStatusLabel(_b.status),
+                    icon: bookingStatusIcon(_b.status),
+                  ),
+                ],
               ),
-              const SizedBox(width: Space.sm),
-              // **ورقمُ الحجز من اليسار إلى اليمين**: «BK-2026-000318» تقذف
-              // خوارزميةُ البيدي شَرطتَه إلى الطرف الخطأ في سياقٍ عربيّ.
-              //
-              // **ويَضيق ولا يفيض**: بخطّ الجهاز المضاعَف طال هذا الصفُّ
-              // أربعةً وعشرين بكسلاً خارجَ الشاشة — وهو عطبٌ قديمٌ لم يظهر
-              // لأنّ الشاشةَ لم تُقَس بخطٍّ كبيرٍ قطّ.
-              Flexible(
-                child: Text(
-                  _b.reference,
-                  textDirection: TextDirection.ltr,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: AppColors.accentInk.withValues(alpha: 0.7),
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  const Icon(Icons.person_outline_rounded,
+                      size: 17, color: AppColors.goldOnAccent),
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Text(
+                      _b.providerName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: AppColors.accentInk.withValues(alpha: 0.86),
+                      ),
+                    ),
                   ),
+                ],
+              ),
+              const SizedBox(height: Space.md),
+              Divider(
+                height: 1,
+                color: AppColors.accentInk.withValues(alpha: 0.22),
+              ),
+              const SizedBox(height: Space.md),
+              Row(
+                children: [
+                  Flexible(
+                    child: _HeadFact(
+                      icon: Icons.calendar_today_rounded,
+                      value: formatDate(_b.eventDate),
+                    ),
+                  ),
+                  if (_b.eventTime != null) ...[
+                    const _HeadSep(),
+                    Flexible(
+                      child: _HeadFact(
+                        icon: Icons.schedule_rounded,
+                        value: formatTime(_b.eventTime),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+              const SizedBox(height: 8),
+              // ── ورقمُ الحجز في سطره ──────────────────────────────────────
+              //
+              // **وفي تصميم صاحب المنصّة هو والتاريخُ والوقتُ في صفٍّ واحد،
+              // وقد جُرّب فخرج مقصوصاً**: «BK-2026-00…». ورقمُ الحجز هو الذي
+              // يُقال للمزوّد في الهاتف، وصفحةُ الحجز آخرُ موضعٍ يُقرأ فيه
+              // كاملاً — **وفي تصميمه هو نفسُه مقروءٌ كاملاً**، فصفٌّ يقصّه
+              // ليس تصميمَه. فنزل سطراً.
+              //
+              // **ومن اليسار إلى اليمين**: خوارزميةُ البيدي تقذف شَرطتَه إلى
+              // الطرف الخطأ في سياقٍ عربيّ.
+              Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: _HeadFact(
+                  icon: Icons.copy_rounded,
+                  value: _b.reference,
+                  ltr: true,
+                  onTap: _copyReference,
                 ),
               ),
             ],
           ),
-        ],
+        ),
       );
+
+  /// **ورقمُ الحجز يُنسخ ولا يُكتب بالإصبع**: تسعةَ عشرَ حرفاً بشَرَطات،
+  /// ومن كتبه في رسالةٍ أخطأ حرفاً فبحث المزوّدُ عن حجزٍ لا وجود له.
+  Future<void> _copyReference() async {
+    await Clipboard.setData(ClipboardData(text: _b.reference));
+    if (mounted) showMessage(context, tr('نُسخ رقم الحجز'));
+  }
 
   // ── المراحل ─────────────────────────────────────────────────────────────
   //
@@ -335,7 +436,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
   // لفعلٍ واحدٍ في صفحةٍ واحدةٍ يجعل أحدَهما يبدو غيرَ الآخر.
   Widget _stages() => AppCard(
         children: [
-          SectionTitle(tr('أين وصل حجزك')),
+          _Section(Icons.map_outlined, tr('أين وصل حجزك')),
           const SizedBox(height: Space.md),
           BookingStages(stages: bookingStages(_b)),
         ],
@@ -368,7 +469,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
 
   Widget _amounts() => AppCard(
         children: [
-          SectionTitle(tr('المبالغ')),
+          _Section(Icons.account_balance_wallet_outlined, tr('المبالغ')),
           const SizedBox(height: Space.md),
           _money(tr('إجمالي الخدمة'), formatMoney(_b.totalPrice)),
           // **والخصمُ لا يُذكر إن لم يكن.** سطرٌ بصفرٍ يُقرأ خصماً لم يصل.
@@ -413,7 +514,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
     final point = _b.point;
     return AppCard(
       children: [
-        SectionTitle(tr('تفاصيل المناسبة')),
+        _Section(Icons.event_note_outlined, tr('تفاصيل المناسبة')),
         const SizedBox(height: Space.md),
         _row(
           Icons.event_outlined,
@@ -458,6 +559,24 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
           key: const ValueKey('booking-cancel'),
           onPressed: can ? _cancel : null,
           child: Text(tr('إلغاء الحجز')),
+        ),
+        const SizedBox(height: Space.sm),
+      ],
+      // **وزرُّ الحذف — محوٌ نهائيٌّ اختاره صاحبُ المنصّة.**
+      //
+      // ويظهر لمن لم يدخل حجزَه مالٌ وحدَه، **موافقةً لما سيقوله الخادم**:
+      // `api_delete_booking` ترفض ما دُفع فيه شيء، وزرٌّ يَعِد بما سيُرفض
+      // ضغطةٌ في وجه صاحبه.
+      if (_b.paidAmount <= 0) ...[
+        FilledButton.icon(
+          key: const ValueKey('booking-delete'),
+          onPressed: can ? _delete : null,
+          style: FilledButton.styleFrom(
+            backgroundColor: AppColors.critical,
+            foregroundColor: Colors.white,
+          ),
+          icon: const Icon(Icons.delete_outline_rounded, size: 19),
+          label: Text(tr('حذف الحجز')),
         ),
         const SizedBox(height: Space.sm),
       ],
@@ -620,4 +739,121 @@ class _ReviewSheetState extends State<ReviewSheet> {
       ),
     );
   }
+}
+
+/// شارةُ الحالة في رأس الصفحة — مطوّقةٌ بالذهب على الأرضيّة الطَّفليّة.
+///
+/// **ولا تُستعمل `StatusBadge`**: ألوانُها مقيسةٌ على الفاتح، والأخضرُ منها
+/// على هذه الأرضيّة يُقرأ بصعوبة. وحالُ الحجز مكتوبةٌ بحروفها إلى جانب
+/// أيقونتها، فلا يُحتاج إلى لونٍ يفرّق.
+class _HeadChip extends StatelessWidget {
+  const _HeadChip(this.label, {required this.icon});
+  final String label;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: AppColors.goldOnAccent, width: 1.2),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 13, color: AppColors.goldOnAccent),
+            const SizedBox(width: 5),
+            Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: AppColors.goldOnAccent,
+                fontFamilyFallback: arabicFallback,
+              ),
+            ),
+          ],
+        ),
+      );
+}
+
+/// حقيقةٌ في صفّ الرأس: أيقونةٌ ذهبيّةٌ وقيمةٌ بيضاء، وقد تُضغط.
+class _HeadFact extends StatelessWidget {
+  const _HeadFact({
+    required this.icon,
+    required this.value,
+    this.ltr = false,
+    this.onTap,
+  });
+
+  final IconData icon;
+  final String value;
+  final bool ltr;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final row = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 14, color: AppColors.goldOnAccent),
+        const SizedBox(width: 5),
+        Flexible(
+          child: Text(
+            value,
+            textDirection: ltr ? TextDirection.ltr : null,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 11.5,
+              fontWeight: FontWeight.w700,
+              color: AppColors.accentInk,
+              fontFamilyFallback: arabicFallback,
+            ),
+          ),
+        ),
+      ],
+    );
+    if (onTap == null) return row;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(padding: const EdgeInsets.all(2), child: row),
+    );
+  }
+}
+
+class _HeadSep extends StatelessWidget {
+  const _HeadSep();
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 5),
+        child: SizedBox(
+          height: 16,
+          child: VerticalDivider(
+            width: 1,
+            thickness: 1,
+            color: AppColors.accentInk.withValues(alpha: 0.26),
+          ),
+        ),
+      );
+}
+
+/// عنوانُ قسمٍ بأيقونةٍ ذهبيّة — كما في تصميم صاحب المنصّة.
+class _Section extends StatelessWidget {
+  const _Section(this.icon, this.text);
+  final IconData icon;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => Row(
+        children: [
+          Icon(icon, size: 19, color: AppColors.gold),
+          const SizedBox(width: 8),
+          Flexible(child: SectionTitle(text)),
+        ],
+      );
 }
