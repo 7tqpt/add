@@ -1,7 +1,7 @@
 // التقويم: ما يُفتح وما لا يُفتح.
 //
 // **وأهمّ ما هنا أن اليومين ليسا سواء.** يومٌ أغلقته القاعدة بحجزٍ مؤكّد لا
-// يفتحه صاحبه — ولو فُتح لأمكن أن يقع عرسان في ليلة. وشاشةٌ تعرض له زرّ «افتحه»
+// يفتحه صاحبه — ولو فُتح لأمكن أن يقع عرسان في ليلة. وشاشةٌ تعرض له زرّ «إعادة فتح»
 // ثم يردّه الخادم أسوأ من شاشةٍ لا تعرضه.
 import 'dart:math' as math;
 
@@ -113,7 +113,48 @@ void main() {
         reason: 'سقط آخرُ يومٍ في الشهر من التقويم');
   });
 
-  testWidgets('ويومُ الحجز بلا زرّ «افتحه»', (tester) async {
+  testWidgets('**وسهما الشهر يفترقان ويعملان**', (tester) async {
+    // **وكانا واحداً**: `Icons.chevron_right` في الزرّين معاً، فيُرى سهمان
+    // متطابقان — أحدُهما يرجع والآخرُ يتقدّم ولا شيءَ يقول أيُّهما. وهو
+    // ظاهرٌ في لقطة الشاشة قبل التعديل.
+    _phone(tester);
+    demoDays = [];
+    await tester.pumpWidget(_wrap(AvailabilityScreen(session: _session())));
+    await _settle(tester);
+
+    final icons = tester
+        .widgetList<Icon>(find.descendant(
+          of: find.byTooltip('الشهر السابق'),
+          matching: find.byType(Icon),
+        ))
+        .followedBy(tester.widgetList<Icon>(find.descendant(
+          of: find.byTooltip('الشهر التالي'),
+          matching: find.byType(Icon),
+        )))
+        .map((i) => i.icon)
+        .toList();
+    expect(icons, hasLength(2));
+    expect(icons.first, isNot(icons.last),
+        reason: 'سهمُ السابق وسهمُ التالي صورةٌ واحدة');
+
+    // **ولا يُسأل الشكلُ وحدَه، بل ما يقع بالضغط.**
+    final now = DateTime.now();
+    final thisMonth = formatMonth(DateTime(now.year, now.month));
+    final prevMonth = formatMonth(DateTime(now.year, now.month - 1));
+    expect(find.text(thisMonth), findsOneWidget);
+
+    await tester.tap(find.byTooltip('الشهر السابق'));
+    await _settle(tester);
+    expect(find.text(prevMonth), findsOneWidget,
+        reason: 'سهمُ السابق لا يرجع شهراً');
+
+    await tester.tap(find.byTooltip('الشهر التالي'));
+    await _settle(tester);
+    expect(find.text(thisMonth), findsOneWidget,
+        reason: 'سهمُ التالي لا يتقدّم شهراً');
+  });
+
+  testWidgets('ويومُ الحجز بلا زرّ «إعادة فتح»', (tester) async {
     // **وهذا ما ينكسر بصمت:** زرٌّ يَعِد بفتح يومٍ لا يُفتح — يضغطه صاحبه فيظنّ
     // أنه فُتح، أو يردّه الخادم برسالةٍ لا يفهمها.
     _phone(tester);
@@ -129,8 +170,66 @@ void main() {
     await _revealSeeded(tester);
 
     expect(find.textContaining('محجوز — BK-1'), findsOneWidget);
-    expect(find.text('افتحه'), findsNothing);
-    expect(find.text('حجز'), findsOneWidget);
+    expect(find.text('إعادة فتح'), findsNothing);
+    // **والكلمةُ تبقى مكانَ الزرّ** — بلا شيءٍ يُقرأ الصفُّ ناقصاً، ويُظنّ
+    // أنّ الزرَّ سقط. وهي «محجوز» بلونها منذ أن بُدّل الشكلُ بتصميمٍ أرسله
+    // صاحبُ المنصّة، وكانت «حجز» باهتة.
+    expect(find.text('محجوز'), findsWidgets);
+  });
+
+  testWidgets('**ولونُ صفّ اليوم المغلق يفرّق الحالَين**', (tester) async {
+    // **والزرُّ وحدَه لا يكفي**: من رأى صفّاً أحمرَ بلا زرٍّ ظنّ أنّ الزرَّ
+    // سقط، ومن رآه بلون ما أغلقه بيده طلب فتحَه. واللونُ هو ما يُلمح قبل
+    // أن تُقرأ الكلمة. وكشف هذا ضابطٌ لم يسقط.
+    _phone(tester);
+    demoDays = [
+      DayMark(day: _seedDay(), blocked: true, note: 'محجوز — BK-1'),
+    ];
+    await tester.pumpWidget(_wrap(AvailabilityScreen(session: _session())));
+    await _settle(tester);
+    await _revealSeeded(tester);
+
+    Color rowIcon(IconData icon) => tester
+        .widgetList<Icon>(find.byIcon(icon))
+        .map((i) => i.color!)
+        .first;
+
+    expect(rowIcon(Icons.event_available_rounded), AppColors.booked,
+        reason: 'صفُّ المحجوز ليس بلون المحجوز');
+
+    // ويومٌ أغلقه صاحبُه — ولولاه لصحّ لونٌ واحدٌ للحالين.
+    demoDays = [DayMark(day: _seedDay(), blocked: true, note: 'سفر')];
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pumpWidget(_wrap(AvailabilityScreen(session: _session())));
+    await _settle(tester);
+    await _revealSeeded(tester);
+
+    expect(rowIcon(Icons.event_busy_rounded), AppColors.critical,
+        reason: 'صفُّ ما أغلقه صاحبُه ليس بلونه');
+  });
+
+  testWidgets('**وزرُّ «إعادة فتح» بخطّ التطبيق لا بمربّعات**',
+      (tester) async {
+    // **وهذا وقع فعلاً وخرج في اللقطة**: `textStyle` عارٍ في `styleFrom`
+    // يحلّ محلَّ أسلوب الثيمة كلِّه — ومعه عائلةُ الخطّ — فتُرسم الحروفُ
+    // العربيّةُ مربّعاتٍ بيضاء (`.notdef`).
+    //
+    // **والمقيسُ ألّا يُستبدل أسلوبُ الثيمة**: الحجمُ والوزنُ على `Text`
+    // يُمزجان بالموروث، فتبقى العائلة.
+    _phone(tester);
+    demoDays = [DayMark(day: _seedDay(), blocked: true, note: 'سفر')];
+    await tester.pumpWidget(_wrap(AvailabilityScreen(session: _session())));
+    await _settle(tester);
+    await _revealSeeded(tester);
+
+    final button = tester.widget<OutlinedButton>(
+        find.widgetWithText(OutlinedButton, 'إعادة فتح'));
+    expect(button.style?.textStyle, isNull,
+        reason: 'أسلوبٌ عارٍ يحلّ محلَّ أسلوب الثيمة — فتذهب عائلةُ الخطّ');
+
+    final label = tester.widget<Text>(find.text('إعادة فتح'));
+    expect(label.style?.fontFamily, isNull,
+        reason: 'عائلةٌ مكتوبةٌ باليد في الزرّ');
   });
 
   testWidgets('ويومُ العذر له زرّ يفتحه فعلاً', (tester) async {
@@ -141,8 +240,8 @@ void main() {
     await _settle(tester);
     await _revealSeeded(tester);
 
-    expect(find.text('افتحه'), findsOneWidget);
-    await tester.tap(find.text('افتحه'));
+    expect(find.text('إعادة فتح'), findsOneWidget);
+    await tester.tap(find.text('إعادة فتح'));
     await _settle(tester);
 
     // لا يكفي أن يختفي الزرّ: الحالة نفسها في «القاعدة» يجب أن تتغيّر.

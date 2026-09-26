@@ -134,8 +134,6 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
         // آخرُ ما في القائمة خلفه.
         padding: const EdgeInsets.fromLTRB(16, 96, 16, glassNavSpace),
         children: [
-          _MonthBar(month: _month, onShift: _shift),
-          const SizedBox(height: 12),
           if (_error != null) ...[
             ErrorBlock(message: _error!, onRetry: _load),
             const SizedBox(height: 12),
@@ -153,9 +151,12 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  _Grid(month: _month, marks: marks, onTap: _toggle),
-                  const SizedBox(height: 16),
-                  const _Legend(),
+                  _Grid(
+                    month: _month,
+                    marks: marks,
+                    onTap: _toggle,
+                    onShift: _shift,
+                  ),
                   const SizedBox(height: 16),
                   _Closed(marks: marks, onTap: _toggle),
                 ],
@@ -178,34 +179,86 @@ class _MonthBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        IconButton(
-          onPressed: () => onShift(-1),
-          icon: const Icon(Icons.chevron_right),
+        // **والسهمان يفترقان.** كانا `chevron_right` كلاهما — فكان سهمُ
+        // «السابق» وسهمُ «التالي» يشيران إلى جهةٍ واحدة، وهو ما يُرى في
+        // لقطة الشاشة قبل التعديل.
+        //
+        // **وأيقونتان بمعناهما لا بصورتهما.** `arrow_back_ios_new` و
+        // `arrow_forward_ios` تنقلبان مع اللغة بنفسيهما
+        // (`matchTextDirection`)، فتشير «السابق» يميناً في العربيّة
+        // و«التالي» يساراً بلا أن يُسأل الاتّجاه.
+        //
+        // **ولا `chevron_left` هنا**: في الشجرة قاعدةٌ تمنعها — صورةٌ
+        // مقلوبةٌ بيدٍ تقع عليها اللغةُ فتنقلب ثانيةً، فتشير إلى الخلف.
+        _RoundArrow(
+          icon: Icons.arrow_back_ios_new,
           tooltip: tr('الشهر السابق'),
+          onTap: () => onShift(-1),
         ),
         Expanded(
           child: Text(
             formatMonth(month),
             textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: AppColors.ink,
+            ),
           ),
         ),
-        IconButton(
-          onPressed: () => onShift(1),
-          icon: const Icon(Icons.chevron_right),
+        _RoundArrow(
+          icon: Icons.arrow_forward_ios,
           tooltip: tr('الشهر التالي'),
+          onTap: () => onShift(1),
         ),
       ],
     );
   }
 }
 
+/// سهمُ الشهر — قرصٌ باهتٌ كما في تصميم صاحب المنصّة.
+class _RoundArrow extends StatelessWidget {
+  const _RoundArrow({
+    required this.icon,
+    required this.tooltip,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Tooltip(
+        message: tooltip,
+        child: Material(
+          color: AppColors.surface2,
+          shape: const CircleBorder(),
+          child: InkWell(
+            onTap: onTap,
+            customBorder: const CircleBorder(),
+            child: SizedBox(
+              width: 38,
+              height: 38,
+              child: Icon(icon, size: 16, color: AppColors.ink2),
+            ),
+          ),
+        ),
+      );
+}
+
 class _Grid extends StatelessWidget {
-  const _Grid({required this.month, required this.marks, required this.onTap});
+  const _Grid({
+    required this.month,
+    required this.marks,
+    required this.onTap,
+    required this.onShift,
+  });
 
   final DateTime month;
   final List<DayMark> marks;
   final void Function(DateTime day, DayMark? mark) onTap;
+  final void Function(int months) onShift;
 
   @override
   Widget build(BuildContext context) {
@@ -234,8 +287,12 @@ class _Grid extends StatelessWidget {
       ));
     }
 
+    // **والشهرُ والدليلُ داخلَ البطاقة** — كما في تصميم صاحب المنصّة:
+    // ثلاثتُها شيءٌ واحدٌ يُقرأ معاً، وكانت ثلاثَ كتلٍ متفرّقةٍ على الصفحة.
     return AppCard(
       children: [
+        _MonthBar(month: month, onShift: onShift),
+        const SizedBox(height: 8),
         Row(
           children: [
             _Head(tr('سبت')), _Head(tr('أحد')), _Head(tr('اثنين')), _Head(tr('ثلاثاء')),
@@ -251,6 +308,10 @@ class _Grid extends StatelessWidget {
           crossAxisSpacing: 4,
           children: cells,
         ),
+        const SizedBox(height: 12),
+        const Divider(height: 1, color: AppColors.hairline),
+        const SizedBox(height: 10),
+        const _Legend(),
       ],
     );
   }
@@ -334,11 +395,12 @@ class _Legend extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
       children: [
         _Dot(color: AppColors.good, label: tr('متاح')),
-        const SizedBox(width: 16),
+        const SizedBox(width: 18),
         _Dot(color: AppColors.booked, label: tr('محجوز')),
-        const SizedBox(width: 16),
+        const SizedBox(width: 18),
         _Dot(color: AppColors.critical, label: tr('أغلقتَه')),
       ],
     );
@@ -384,24 +446,107 @@ class _Closed extends StatelessWidget {
     return AppCard(
       children: [
         SectionTitle(tr('الأيام المغلقة')),
-        const SizedBox(height: 8),
-        for (final mark in marks)
-          ListTile(
-            contentPadding: EdgeInsets.zero,
-            leading: Icon(
-              mark.byBooking ? Icons.event_available_rounded : Icons.event_busy_rounded,
-              color: mark.byBooking ? AppColors.booked : AppColors.critical,
-            ),
-            title: Text(formatDay(mark.day), style: const TextStyle(fontSize: 13)),
-            subtitle: Text(mark.note, style: const TextStyle(fontSize: 12)),
-            trailing: mark.byBooking
-                ? Text(tr('حجز'), style: TextStyle(fontSize: 11, color: AppColors.muted))
-                : TextButton(
-                    onPressed: () => onTap(mark.day, mark),
-                    child: Text(tr('افتحه')),
-                  ),
-          ),
+        const SizedBox(height: 4),
+        for (final mark in marks) _ClosedRow(mark: mark, onTap: onTap),
       ],
+    );
+  }
+}
+
+
+/// صفُّ يومٍ مغلق — أيقونةٌ في مربّعٍ مصبوغ، ثمّ اليومُ وسببُه، ثمّ الفعل.
+///
+/// **وعلى تصميمٍ أرسله صاحبُ المنصّة.** وكان `ListTile` بأيقونةٍ عاريةٍ
+/// وفعلٍ نصّيّ.
+///
+/// **والمحجوزُ لا زرَّ له**: أغلقته القاعدةُ بحجزٍ مؤكّد، ولا يُفتح إلّا
+/// بإلغاء الحجز — فزرٌّ هنا يَعِد بما سيردّه الخادم. وتبقى كلمةُ «محجوز»
+/// بلونها لتُقال الحالُ بلا وعد.
+class _ClosedRow extends StatelessWidget {
+  const _ClosedRow({required this.mark, required this.onTap});
+
+  final DayMark mark;
+  final void Function(DateTime day, DayMark? mark) onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final booked = mark.byBooking;
+    final tone = booked ? AppColors.booked : AppColors.critical;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: tone.withValues(alpha: 0.10),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(
+              booked ? Icons.event_available_rounded : Icons.event_busy_rounded,
+              size: 20,
+              color: tone,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  formatDay(mark.day),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.ink,
+                    fontFamilyFallback: arabicFallback,
+                  ),
+                ),
+                if (mark.note.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Muted(mark.note, size: 11.5, maxLines: 1),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(width: Space.sm),
+          if (booked)
+            Text(
+              tr('محجوز'),
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: AppColors.booked,
+                fontFamilyFallback: arabicFallback,
+              ),
+            )
+          else
+            OutlinedButton(
+              key: ValueKey('reopen-${mark.day.toIso8601String().substring(0, 10)}'),
+              onPressed: () => onTap(mark.day, mark),
+              // **ولا `textStyle` في `styleFrom`.** أسلوبٌ عارٍ فيها يحلّ
+              // محلَّ أسلوب الثيمة كلِّه — **ومعه عائلةُ الخطّ**، فتُرسم
+              // الحروفُ العربيّةُ مربّعاتٍ بيضاء. وقد خرجت كذلك في اللقطة.
+              // والحجمُ والوزنُ على `Text` يُمزجان بالموروث فتبقى العائلة.
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.critical,
+                side: BorderSide(color: AppColors.critical.withValues(alpha: 0.55)),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              child: Text(
+                tr('إعادة فتح'),
+                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }

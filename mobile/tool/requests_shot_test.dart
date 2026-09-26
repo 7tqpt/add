@@ -18,6 +18,7 @@ import 'package:aras/src/core/theme.dart';
 import 'package:aras/src/data/demo.dart';
 import 'package:aras/src/data/models.dart';
 import 'package:aras/src/screens/requests.dart';
+import 'package:aras/src/screens/availability.dart';
 import 'package:aras/src/screens/services.dart';
 
 Future<void> _load(String family, List<String> paths) async {
@@ -99,6 +100,74 @@ void main() {
       final png = await image.toByteData(format: ui.ImageByteFormat.png);
       image.dispose();
       File('$out/requests.png').writeAsBytesSync(png!.buffer.asUint8List());
+    });
+
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull, reason: 'فاضت الشاشة');
+  });
+
+  testWidgets('ولقطةُ «تقويمي»', (tester) async {
+    tester.view.physicalSize = const Size(392, 1700);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    final out = Platform.environment['SHOTS'] ?? '/tmp/shots';
+    Directory(out).createSync(recursive: true);
+
+    demoBecomeProvider(
+      businessName: 'قاعة التاج',
+      governorate: 'أمانة العاصمة',
+      bio: 'قاعةُ أفراحٍ في صنعاء',
+    );
+    demoApproveProvider();
+    // يومان مغلقان: واحدٌ بحجزٍ وآخرُ أغلقه صاحبُه — ليُرى الصفّان.
+    final now = DateTime.now();
+    demoDays = [
+      DayMark(
+        day: DateTime(now.year, now.month, 10),
+        blocked: true,
+        note: 'غير متاح',
+      ),
+      DayMark(
+        day: DateTime(now.year, now.month, 20),
+        blocked: true,
+        // و`byBooking` تُقرأ من النصّ نفسِه: «محجوز» في أوّله.
+        note: 'محجوز — BK-2026-FB8D3DF2',
+      ),
+    ];
+
+    await tester.pumpWidget(MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: buildTheme(),
+      locale: const Locale('ar'),
+      supportedLocales: const [Locale('ar')],
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      home: Directionality(
+        textDirection: TextDirection.rtl,
+        child: RepaintBoundary(
+          key: const ValueKey('cal'),
+          child: Scaffold(
+            appBar: AppBar(title: const Text('تقويمي')),
+            body: AvailabilityScreen(session: _provider()),
+          ),
+        ),
+      ),
+    ));
+    await tester.pumpAndSettle();
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pumpAndSettle();
+
+    final boundary =
+        tester.renderObject<RenderRepaintBoundary>(find.byKey(const ValueKey('cal')));
+    await tester.runAsync(() async {
+      final image = await boundary.toImage(pixelRatio: 2.0);
+      final png = await image.toByteData(format: ui.ImageByteFormat.png);
+      image.dispose();
+      File('$out/calendar.png').writeAsBytesSync(png!.buffer.asUint8List());
     });
 
     await tester.pumpAndSettle();
