@@ -321,7 +321,9 @@ class _StatusChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
       decoration: BoxDecoration(
-        color: c.withValues(alpha: 0.12),
+        // صبغةُ ‎١٠٪‎: على ‎١٢٪‎ يعطي كهرمانيُّ الانتظار ‎٤٫٤٤:١‎ — تحت
+        // العتبة، وهو أكثرُ الحالات وقوعاً.
+        color: c.withValues(alpha: 0.10),
         borderRadius: BorderRadius.circular(999),
       ),
       child: Row(
@@ -586,7 +588,7 @@ class BookingsSummaryCard extends StatelessWidget {
   const BookingsSummaryCard({super.key, required this.summary});
   final BookingsSummary summary;
 
-  static const _brand = [Color(0xFFA3521A), Color(0xFF6B3208)];
+  static const _brand = [AppColors.brandLift, AppColors.brand];
 
   @override
   Widget build(BuildContext context) {
