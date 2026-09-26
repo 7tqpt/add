@@ -287,4 +287,94 @@ void main() {
         reason: 'اختفت بطاقاتُ الحجز');
     expect(tester.takeException(), isNull, reason: 'انهار تخطيطُ البطاقة');
   });
+
+  group('ملخّصُ الصدر', () {
+    testWidgets('عددٌ واحدٌ في الصدارة، وعددان فوق كلمتيهما، ولا سهمَ يكذب',
+        (tester) async {
+      tester.view.physicalSize = const Size(400, 1400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      await tester.pumpWidget(_wrap(MyBookingsScreen(session: _session())));
+      await _settle(tester);
+
+      final card = find.byType(BookingsSummaryCard);
+      expect(card, findsOneWidget);
+
+      final summary = BookingsSummary.of(demoBookings);
+      expect(summary.count, greaterThan(0), reason: 'لا حجزَ قادمٌ في العرض');
+
+      // العددُ في قرصٍ لا في جملة.
+      expect(find.descendant(of: card, matching: find.text('${summary.count}')),
+          findsOneWidget);
+      expect(find.descendant(of: card, matching: find.text('أقرب حجز')),
+          findsOneWidget);
+
+      // وقرصان ملوّنان لحالتي الحجز.
+      expect(
+        find.descendant(of: card, matching: find.text('${summary.confirmed} مؤكّد')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+            of: card,
+            matching: find.text('${summary.pending} بانتظار الموافقة')),
+        findsOneWidget,
+      );
+
+      // **ولا سهمَ يُضغط فلا يقع شيء**: البطاقةُ في الشاشة التي تشير إليها.
+      expect(
+        find.descendant(
+            of: card, matching: find.byIcon(Icons.arrow_forward_ios_rounded)),
+        findsNothing,
+        reason: 'سهمٌ في الملخّص لا يفتح شيئاً',
+      );
+    });
+
+    testWidgets('ومن لا قادمَ له يُقال له أين ذهب ما مضى', (tester) async {
+      // حجوزٌ كلُّها مضت.
+      demoBookings = [
+        for (final b in demoBookings)
+          Booking(
+            id: b.id,
+            reference: b.reference,
+            userName: b.userName,
+            providerName: b.providerName,
+            serviceTitle: b.serviceTitle,
+            planId: b.planId,
+            eventDate: DateTime.now()
+                .subtract(const Duration(days: 30))
+                .toIso8601String()
+                .substring(0, 10),
+            eventTime: b.eventTime,
+            address: b.address,
+            guestsCount: b.guestsCount,
+            status: b.status,
+            totalPrice: b.totalPrice,
+            depositAmount: b.depositAmount,
+            paidAmount: b.paidAmount,
+            createdAt: b.createdAt,
+          ),
+      ];
+
+      tester.view.physicalSize = const Size(400, 1400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      await tester.pumpWidget(_wrap(MyBookingsScreen(session: _session())));
+      await _settle(tester);
+
+      final card = find.byType(BookingsSummaryCard);
+      // العددُ صفرٌ في القرص — ولا «أقرب حجز».
+      expect(find.descendant(of: card, matching: find.text('0')), findsOneWidget);
+      expect(find.descendant(of: card, matching: find.text('أقرب حجز')),
+          findsNothing);
+      // **ولا يُترك فوق قائمةٍ مملوءةٍ بلا تفسير.**
+      expect(
+        find.descendant(
+            of: card, matching: find.text('حجوزاتك السابقة محفوظة أدناه')),
+        findsOneWidget,
+      );
+    });
+  });
 }

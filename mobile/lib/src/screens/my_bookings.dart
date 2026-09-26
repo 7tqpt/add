@@ -116,31 +116,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
             separatorBuilder: (_, _) => const SizedBox(height: Space.md),
             itemBuilder: (context, i) {
               if (i == 0) {
-                return BigHeroCard(
-                  // طَفليٌّ محروق — لونُ «حجوزاتي» في الرئيسية نفسه.
-                  colors: const [Color(0xFFA3521A), Color(0xFF6B3208)],
-                  icon: Icons.event_available_rounded,
-                  title: tr('حجوزاتي'),
-                  headline: summary.count == 0
-                      ? tr('لا حجوزات قادمة')
-                      : formatCount(summary.count, bookingForms),
-                  subtitle: summary.next == null
-                      ? tr('حجوزاتك السابقة محفوظة أدناه')
-                      : trf('أقربها {0} · {1}', [
-                          formatDate(summary.next!.eventDate),
-                          summary.next!.providerName,
-                        ]),
-                  footer: summary.count == 0
-                      ? tr('ابدأ من «استكشف» واحجز خدمتك القادمة')
-                      : [
-                          if (summary.confirmed > 0) trf('مؤكّد {0}', ['${summary.confirmed}']),
-                          if (summary.pending > 0) trf('بانتظار المزوّد {0}', ['${summary.pending}']),
-                        ].join(' · '),
-                  // **ولا ضغطةَ لها هنا:** هي في الشاشة التي تشير إليها،
-                  // وبطاقةٌ تفتح ما هو مفتوحٌ أصلاً تُعلّم المستخدم أنّ ضغطها
-                  // لا يفعل شيئاً.
-                  onTap: null,
-                );
+                return BookingsSummaryCard(summary: summary);
               }
               final b = rows[i - 1];
               // **وبطاقةٌ تُفتح لا استمارةٌ في قائمة.** كانت تحمل أفعالَها
@@ -464,4 +440,301 @@ class _Ribbon extends StatelessWidget {
           ),
         ),
       );
+}
+
+/// ملخّصُ «حجوزاتي» في صدر الشاشة.
+///
+/// ── الشكلُ من تصميمٍ أرسله صاحبُ المنصّة ───────────────────────────────────
+///
+/// قال عن القديمة «ذي صورة مو مناسبة»، ثمّ أرسل تصميماً وقال «تقدر نفس ذي».
+/// وفيه: صورةٌ تملأ نصفَ البطاقة وتتلاشى في لونها، وعنوانٌ إلى جانبه قرصٌ
+/// فيه العدد، وخيطٌ فاصل، ثمّ «أقرب حجز» بتاريخه، ثمّ قرصان ملوّنان لحالتي
+/// الحجز.
+///
+/// ── والصورةُ من حجزه هو ────────────────────────────────────────────────────
+///
+/// في تصميمه باقةُ وردٍ — **ولا ملفَّ لها في الشجرة**. فتُملأ بغلاف **أقرب
+/// حجزٍ قادم** (`next.coverPath`)، وهو بيانٌ حقيقيٌّ يخصّه ويأتي مع الصفّ
+/// بلا نداءٍ ثانٍ. ومن لا غلافَ لحجزه يرى تدرّجاً هادئاً لا مربّعاً مكسوراً.
+///
+/// ── ولا سهمَ في الزاوية ────────────────────────────────────────────────────
+///
+/// في تصميمه سهم، **وهو في القديمة كان يُضغط فلا يقع شيء**: البطاقةُ في
+/// الشاشة التي تشير إليها، فليس لها ما تفتحه. فتُرك حتى يكون لها وجهةٌ
+/// تذهب إليها.
+class BookingsSummaryCard extends StatelessWidget {
+  const BookingsSummaryCard({super.key, required this.summary});
+  final BookingsSummary summary;
+
+  static const _brand = [Color(0xFFA3521A), Color(0xFF6B3208)];
+
+  @override
+  Widget build(BuildContext context) {
+    final next = summary.next;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(22),
+      child: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topRight,
+            end: Alignment.bottomLeft,
+            colors: _brand,
+          ),
+        ),
+        child: SizedBox(
+          height: 164 *
+              MediaQuery.textScalerOf(context).scale(1).clamp(1.0, 1.5),
+          child: Row(
+            children: [
+              Expanded(flex: 63, child: _SummaryText(summary: summary)),
+              Expanded(flex: 37, child: _FadedCover(path: next?.coverPath)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// لوحُ نصّ الملخّص.
+class _SummaryText extends StatelessWidget {
+  const _SummaryText({required this.summary});
+  final BookingsSummary summary;
+
+  @override
+  Widget build(BuildContext context) {
+    final next = summary.next;
+    final soft = Colors.white.withValues(alpha: 0.82);
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 14, 10, 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.event_available_rounded,
+                  size: 20, color: Colors.white),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  tr('حجوزاتي'),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 19,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                    fontFamilyFallback: arabicFallback,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              // **والعددُ في قرصٍ لا في الجملة**: يُلتقط بلمحةٍ ولا يُقرأ.
+              _CountBadge(count: summary.count),
+            ],
+          ),
+          const SizedBox(height: 9),
+          Container(height: 1, color: Colors.white.withValues(alpha: 0.28)),
+          const SizedBox(height: 9),
+          if (next == null)
+            Text(
+              tr('حجوزاتك السابقة محفوظة أدناه'),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 12,
+                color: soft,
+                fontFamilyFallback: arabicFallback,
+              ),
+            )
+          else
+            Row(
+              children: [
+                Text(
+                  tr('أقرب حجز'),
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.goldOnAccent,
+                    fontFamilyFallback: arabicFallback,
+                  ),
+                ),
+                const SizedBox(width: 7),
+                Container(
+                    width: 1,
+                    height: 13,
+                    color: Colors.white.withValues(alpha: 0.35)),
+                const SizedBox(width: 7),
+                Flexible(
+                  child: Text(
+                    formatDate(next.eventDate),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                      fontFamilyFallback: arabicFallback,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          const SizedBox(height: 10),
+          if (summary.count == 0)
+            Text(
+              tr('ابدأ من «استكشف» واحجز خدمتك القادمة'),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 11,
+                height: 1.35,
+                color: soft,
+                fontFamilyFallback: arabicFallback,
+              ),
+            )
+          else
+            // **والحالتان قرصان بنقطتين** — واللونُ يفرّقهما قبل النصّ.
+            // **وصفٌّ يَضيق لا `Wrap` يفيض**: قرصٌ أعرضُ من البطاقة بخطّ
+            // الجهاز الكبير يخرج منها، و`Wrap` لا تُضيّق ابناً واحداً.
+            Row(
+              children: [
+                // **والنصيبُ بقدر الكلمة**: «مؤكّد» كلمةٌ و«بانتظار
+                // الموافقة» كلمتان، فقسمةٌ بالسويّة تقصّ الثانية.
+                Flexible(
+                  flex: 3,
+                  child: _DotPill(
+                    key: const ValueKey('pill-confirmed'),
+                    dot: AppColors.good,
+                    text: trf('{0} مؤكّد', ['${summary.confirmed}']),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Flexible(
+                  flex: 5,
+                  child: _DotPill(
+                    key: const ValueKey('pill-pending'),
+                    dot: AppColors.warning,
+                    text: trf('{0} بانتظار الموافقة', ['${summary.pending}']),
+                  ),
+                ),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// قرصٌ فيه العدد، بإطارٍ ذهبيّ.
+class _CountBadge extends StatelessWidget {
+  const _CountBadge({required this.count});
+  final int count;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        width: 30,
+        height: 30,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.black.withValues(alpha: 0.12),
+          border: Border.all(color: AppColors.goldOnAccent, width: 1.4),
+        ),
+        child: Text(
+          '$count',
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+            color: Colors.white,
+          ),
+        ),
+      );
+}
+
+/// قرصُ حالةٍ بنقطةٍ ملوّنة.
+class _DotPill extends StatelessWidget {
+  const _DotPill({super.key, required this.dot, required this.text});
+  final Color dot;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.13),
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 7,
+              height: 7,
+              decoration: BoxDecoration(shape: BoxShape.circle, color: dot),
+            ),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+              text,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 10.5,
+                fontWeight: FontWeight.w600,
+                color: Colors.white,
+                fontFamilyFallback: arabicFallback,
+              ),
+            ),
+            ),
+          ],
+        ),
+      );
+}
+
+/// الصورةُ تتلاشى في لون البطاقة بدل أن تُقطع بخطٍّ حادّ.
+class _FadedCover extends StatelessWidget {
+  const _FadedCover({required this.path});
+  final String? path;
+
+  @override
+  Widget build(BuildContext context) {
+    final url = Api.mediaUrl(path);
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        if (url == null)
+          // **ولا مربّعَ مكسورٌ لمن لا غلافَ لحجزه**: تدرّجٌ هادئٌ من لون
+          // البطاقة نفسِه.
+          const DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.centerRight,
+                end: Alignment.centerLeft,
+                colors: [Color(0x00000000), Color(0x22000000)],
+              ),
+            ),
+          )
+        else
+          MediaThumb(url: url, icon: Icons.photo_camera_back_outlined),
+        // والتلاشي: من لون البطاقة إلى الشفافيّة على الصورة.
+        DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: AlignmentDirectional.centerStart,
+              end: AlignmentDirectional.centerEnd,
+              colors: [
+                BookingsSummaryCard._brand.first,
+                BookingsSummaryCard._brand.first.withValues(alpha: 0.55),
+                Colors.transparent,
+              ],
+              stops: const [0.0, 0.35, 0.85],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 }

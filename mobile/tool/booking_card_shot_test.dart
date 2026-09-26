@@ -83,7 +83,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // تُمرَّر فوق بطاقة الملخّص إلى أوّل بطاقة حجز.
-    await tester.drag(find.byType(Scrollable).first, const Offset(0, -150));
+    await tester.drag(find.byType(Scrollable).first, const Offset(0, -30));
     await tester.pumpAndSettle();
     // ولا مؤقّتَ معلّقٌ عند انتهاء الاختبار: `demoDelay` ثلثُ ثانية.
     await tester.pump(const Duration(seconds: 1));
