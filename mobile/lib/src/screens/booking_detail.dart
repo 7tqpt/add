@@ -109,6 +109,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
         builder: (_) => PaymentScreen(
           booking: _b,
           kind: _b.paidAmount < _b.depositAmount ? 'deposit' : 'balance',
+          session: widget.session,
         ),
       ),
     );
