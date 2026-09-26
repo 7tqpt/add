@@ -19,6 +19,7 @@ import 'package:aras/src/data/demo.dart';
 import 'package:aras/src/data/models.dart';
 import 'package:aras/src/screens/requests.dart';
 import 'package:aras/src/screens/availability.dart';
+import 'package:aras/src/screens/plan.dart';
 import 'package:aras/src/screens/services.dart';
 
 Future<void> _load(String family, List<String> paths) async {
@@ -40,6 +41,12 @@ Future<void> _loadFonts() async {
   if (icons.existsSync()) await _load('MaterialIcons', [icons.path]);
   await initializeDateFormatting('ar');
 }
+
+Session _customer() => Session()
+  ..userId = 'u2'
+  ..email = 'c@sdd.company'
+  ..appUserId = 'demo-user'
+  ..loading = false;
 
 Session _provider() => Session()
   ..userId = 'u1'
@@ -100,6 +107,111 @@ void main() {
       final png = await image.toByteData(format: ui.ImageByteFormat.png);
       image.dispose();
       File('$out/requests.png').writeAsBytesSync(png!.buffer.asUint8List());
+    });
+
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull, reason: 'فاضت الشاشة');
+  });
+
+  testWidgets('ولقطةُ «خطة العرس»', (tester) async {
+    tester.view.physicalSize = const Size(392, 2000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    final out = Platform.environment['SHOTS'] ?? '/tmp/shots';
+    Directory(out).createSync(recursive: true);
+
+    await tester.pumpWidget(MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: buildTheme(),
+      locale: const Locale('ar'),
+      supportedLocales: const [Locale('ar')],
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      home: Directionality(
+        textDirection: TextDirection.rtl,
+        child: RepaintBoundary(
+          key: const ValueKey('plan'),
+          child: Scaffold(
+            appBar: AppBar(title: const Text('خطة العرس')),
+            body: PlanScreen(session: _customer()),
+          ),
+        ),
+      ),
+    ));
+    await tester.pumpAndSettle();
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pumpAndSettle();
+
+    final boundary =
+        tester.renderObject<RenderRepaintBoundary>(find.byKey(const ValueKey('plan')));
+    await tester.runAsync(() async {
+      final image = await boundary.toImage(pixelRatio: 2.0);
+      final png = await image.toByteData(format: ui.ImageByteFormat.png);
+      image.dispose();
+      File('$out/plan.png').writeAsBytesSync(png!.buffer.asUint8List());
+    });
+
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull, reason: 'فاضت الشاشة');
+  });
+
+  // **وحالُ الختام**: مهامُّ الخطّة كلُّها منجَزة — وهي الحالُ التي في
+  // تصميم صاحب المنصّة.
+  testWidgets('ولقطةُ الخطّة وقد تمّ كلُّ شيء', (tester) async {
+    tester.view.physicalSize = const Size(392, 1700);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    final out = Platform.environment['SHOTS'] ?? '/tmp/shots';
+    Directory(out).createSync(recursive: true);
+
+    demoPlanTasks = [
+      for (final t in demoPlanTasks)
+        PlanTask(
+          id: t.id,
+          title: t.title,
+          done: true,
+          dueDate: t.dueDate,
+          sortOrder: t.sortOrder,
+        ),
+    ];
+
+    await tester.pumpWidget(MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: buildTheme(),
+      locale: const Locale('ar'),
+      supportedLocales: const [Locale('ar')],
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      home: Directionality(
+        textDirection: TextDirection.rtl,
+        child: RepaintBoundary(
+          key: const ValueKey('plan-done'),
+          child: Scaffold(
+            appBar: AppBar(title: const Text('خطة العرس')),
+            body: PlanScreen(session: _customer()),
+          ),
+        ),
+      ),
+    ));
+    await tester.pumpAndSettle();
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pumpAndSettle();
+
+    final boundary = tester.renderObject<RenderRepaintBoundary>(
+        find.byKey(const ValueKey('plan-done')));
+    await tester.runAsync(() async {
+      final image = await boundary.toImage(pixelRatio: 2.0);
+      final png = await image.toByteData(format: ui.ImageByteFormat.png);
+      image.dispose();
+      File('$out/plan-done.png').writeAsBytesSync(png!.buffer.asUint8List());
     });
 
     await tester.pumpAndSettle();

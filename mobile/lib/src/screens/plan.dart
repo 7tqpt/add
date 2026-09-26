@@ -241,17 +241,7 @@ class _PlanBlockState extends State<_PlanBlock> {
                       onToggle: () => _run(() => Api.togglePlanTask(t.id)),
                       onDelete: () => _run(() => Api.deletePlanTask(t.id)),
                     ),
-                    if (left.isEmpty && tasks.isNotEmpty) ...[
-                      const SizedBox(height: Space.sm),
-                      Text(
-                        tr('انتهى كل شيء — مبارك!'),
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.good,
-                        ),
-                      ),
-                    ],
+                    if (left.isEmpty && tasks.isNotEmpty) const _AllDone(),
                     if (_showDone)
                       for (final t in done) _TaskRow(
                         task: t,
@@ -360,7 +350,9 @@ class _HeroCard extends StatelessWidget {
             // المرسومةَ بـ`height: double.infinity` تُجيب عن ارتفاعها
             // الطبيعيّ **بلا نهاية** فينهار التخطيط.
             SizedBox(
-              height: 168 *
+              // **وارتفاعُه يسع قرصين لا قرصاً.** صار التاريخُ والمحافظةُ
+          // قرصين في سطرين — ولولا هذه الزيادةِ فاض الرأسُ بعشرة بكسلات.
+          height: 194 *
                   MediaQuery.textScalerOf(context).scale(1).clamp(1.0, 1.6),
               child: Row(
                 children: [
@@ -448,10 +440,8 @@ class _HeroText extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             _DatePill(
-              [
-                formatDate(plan.weddingDate),
-                if (plan.governorate.isNotEmpty) plan.governorate,
-              ].join(' · '),
+              date: formatDate(plan.weddingDate),
+              place: plan.governorate,
             ),
             const SizedBox(height: 10),
             // **الرقمُ داخلَ جملته لا فوقها** — والجملةُ من `countdownLabel`
@@ -473,13 +463,42 @@ class _HeroText extends StatelessWidget {
       );
 }
 
+/// قرصُ الموعد: تاريخٌ بأيقونته، ومحافظةٌ بأيقونتها، بينهما خيط.
+///
+/// **وأيقونةٌ لكلٍّ لا نقطةٌ تفصلهما** — كما في تصميم صاحب المنصّة: كانا
+/// «٢٤ أكتوبر ٢٠٢٦ · أمانة العاصمة» في سطرٍ واحدٍ تحت أيقونة تقويم، فيُقرأ
+/// اسمُ المحافظة جزءاً من التاريخ.
 class _DatePill extends StatelessWidget {
-  const _DatePill(this.text);
+  const _DatePill({required this.date, required this.place});
+  final String date;
+  final String place;
+
+  /// **وقرصان لا قرصٌ واحد.** في تصميمه هما في قرصٍ واحدٍ يمتدّ عرضَ
+  /// السطر، ونُفّذ كذلك فخرج الاثنان مقصوصين: «24 أكتوبر …» و«أمانة
+  /// العا…». ولوحُ نصّ الرأس ثمانيةٌ وخمسون بالمئة من ثلاثمئةٍ وستّين،
+  /// فلا يسعهما بخطٍّ يُقرأ.
+  ///
+  /// **والتاريخُ والمحافظةُ خبران لا زينة**: مقصوصان لا يُفيدان.
+  @override
+  Widget build(BuildContext context) => Wrap(
+        spacing: 6,
+        runSpacing: 6,
+        children: [
+          _Pill(icon: Icons.calendar_today_rounded, text: date),
+          if (place.isNotEmpty)
+            _Pill(icon: Icons.place_outlined, text: place),
+        ],
+      );
+}
+
+class _Pill extends StatelessWidget {
+  const _Pill({required this.icon, required this.text});
+  final IconData icon;
   final String text;
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
         decoration: BoxDecoration(
           color: AppColors.surface2,
           borderRadius: BorderRadius.circular(999),
@@ -487,22 +506,28 @@ class _DatePill extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.calendar_today_rounded, size: 12, color: AppColors.muted),
+            Icon(icon, size: 12, color: AppColors.muted),
             const SizedBox(width: 5),
-            Flexible(
-              child: Text(
-                text,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 11.5,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.muted,
-                  fontFamilyFallback: arabicFallback,
-                ),
-              ),
-            ),
+            Flexible(child: _PillText(text)),
           ],
+        ),
+      );
+}
+
+class _PillText extends StatelessWidget {
+  const _PillText(this.text);
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => Text(
+        text,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(
+          fontSize: 11.5,
+          fontWeight: FontWeight.w600,
+          color: AppColors.muted,
+          fontFamilyFallback: arabicFallback,
         ),
       );
 }
@@ -586,7 +611,7 @@ class _HeroProgress extends StatelessWidget {
                   child: LinearProgressIndicator(
                     key: const ValueKey('plan-bar'),
                     value: progress.percent / 100,
-                    minHeight: 8,
+                    minHeight: 10,
                     backgroundColor: AppColors.surface2,
                     valueColor: const AlwaysStoppedAnimation(AppColors.accent),
                   ),
@@ -907,6 +932,78 @@ class _CategoryBar extends StatelessWidget {
                   color: AppColors.muted,
                   fontFamilyFallback: arabicFallback,
                 ),
+              ),
+            ),
+          ],
+        ),
+      );
+}
+
+
+/// خَتمُ القائمة حين لا يبقى فيها ما يُعمل.
+///
+/// **وكان سطراً أخضرَ وحدَه**، ثمّ أرسل صاحبُ المنصّة تصميماً فيه قرصٌ
+/// وعلامةُ صحٍّ وشرارات. **وموضعُه موضعُ المهامّ الذاهبة**: قائمةٌ خلت
+/// فجأةً تُقرأ عطباً — «أين مهامّي؟» — لا إنجازاً.
+class _AllDone extends StatelessWidget {
+  const _AllDone();
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: Space.lg),
+        child: Column(
+          children: [
+            // **والشراراتُ تُحدَّد بصندوقها.** بلا حدٍّ يملأ `Stack` عرضَ
+            // البطاقة، فتطير النجماتُ إلى حافّتيها بعيداً عن القرص.
+            SizedBox(
+              width: 132,
+              height: 92,
+              child: Stack(
+              alignment: Alignment.center,
+              children: [
+                // الشرارات: أربعُ نجماتٍ صغيرةٍ حول القرص.
+                for (final spark in const [
+                  (Alignment(-1.0, -0.8), 13.0),
+                  (Alignment(1.0, -0.7), 10.0),
+                  (Alignment(-0.9, 0.9), 9.0),
+                  (Alignment(1.1, 0.8), 12.0),
+                ])
+                  Align(
+                    alignment: spark.$1,
+                    child: Icon(Icons.auto_awesome,
+                        size: spark.$2, color: AppColors.gold),
+                  ),
+                Container(
+                  width: 62,
+                  height: 62,
+                  decoration: BoxDecoration(
+                    color: AppColors.accent.withValues(alpha: 0.10),
+                    shape: BoxShape.circle,
+                  ),
+                  alignment: Alignment.center,
+                  child: Container(
+                    width: 42,
+                    height: 42,
+                    decoration: const BoxDecoration(
+                      color: AppColors.accent,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.check_rounded,
+                        size: 24, color: AppColors.accentInk),
+                  ),
+                ),
+              ],
+              ),
+            ),
+            const SizedBox(height: Space.md),
+            Text(
+              tr('أنهيت كلَّ شيء — مبارك!'),
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                color: AppColors.good,
+                fontFamilyFallback: arabicFallback,
               ),
             ),
           ],
