@@ -153,18 +153,28 @@ class _RequestsScreenState extends State<RequestsScreen> {
                   CardTitleBar(
                     b.serviceTitle,
                     badge: bookingStatusLabel(b.status),
+                    badgeColor: bookingStatusColor(b.status),
+                    badgeIcon: bookingStatusIcon(b.status),
+                    icon: Icons.apartment_rounded,
                   ),
                   const SizedBox(height: Space.sm),
-                  Muted('${b.userName} · ${formatCount(b.guestsCount, guestForms)}'),
+                  const Divider(height: 1, color: AppColors.hairline),
                   const SizedBox(height: Space.sm),
-                  Text(
+                  // **وكلُّ سطرٍ بأيقونته** — كما في تصميم صاحب المنصّة:
+                  // البطاقةُ تُمسح بالعين مسحاً، والأيقونةُ تقول ما نوعُ
+                  // السطر قبل أن يُقرأ.
+                  _Fact(
+                    Icons.person_outline_rounded,
+                    '${b.userName} · ${formatCount(b.guestsCount, guestForms)}',
+                  ),
+                  _Fact(
+                    Icons.calendar_today_rounded,
                     b.eventTime == null
                         ? formatDate(b.eventDate)
                         : '${formatDate(b.eventDate)} · ${formatTime(b.eventTime)}',
-                    style: const TextStyle(fontSize: 14, color: AppColors.ink2),
                   ),
-                  const SizedBox(height: Space.xs),
-                  Muted(b.address),
+                  if (b.address.isNotEmpty)
+                    _Fact(Icons.place_outlined, b.address),
                   // ── الموقع ────────────────────────────────────────────
                   //
                   // **وهذا هو سببُ الميزة كلِّها.** العنوانُ نصٌّ يكفي من
@@ -174,7 +184,6 @@ class _RequestsScreenState extends State<RequestsScreen> {
                   // ولا يُعرض إن لم يحدّد العميلُ موقعاً: زرٌّ يفتح خريطةً
                   // على نقطةٍ لا وجود لها أسوأُ من غيابه.
                   if (b.point != null) ...[
-                    const SizedBox(height: Space.xs),
                     Align(
                       alignment: AlignmentDirectional.centerStart,
                       child: TextButton.icon(
@@ -191,21 +200,41 @@ class _RequestsScreenState extends State<RequestsScreen> {
                     ),
                   ],
                   const SizedBox(height: Space.sm),
-                  Text(
-                    formatMoney(b.totalPrice),
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.accent,
-                    ),
+                  const Divider(height: 1, color: AppColors.hairline),
+                  const SizedBox(height: Space.sm),
+                  // **والمبلغُ يُقال ما هو** — رقمٌ عارٍ في بطاقةٍ فيها عددُ
+                  // ضيوفٍ وتاريخٌ يُقرأ على غير وجهه.
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Muted(tr('المبلغ الإجمالي')),
+                      Flexible(
+                        child: Text(
+                          formatMoney(b.totalPrice),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.accent,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                   if (b.status == BookingStatus.pendingProvider) ...[
                     const SizedBox(height: Space.md),
                     Row(
                       children: [
                         Expanded(
+                          // **طَفليٌّ لا نبيذيّ** — كما في تصميم صاحب
+                          // المنصّة، وقد عُرض عليه أنّه يفترق عن كلّ زرٍّ
+                          // مملوءٍ في التطبيق فاختار تصميمَه كما أرسله.
                           child: FilledButton(
                             onPressed: busy ? null : () => _respond(b.id, true),
+                            style: FilledButton.styleFrom(
+                              backgroundColor: AppColors.brand,
+                            ),
                             child: Text(tr('قبول')),
                           ),
                         ),
@@ -433,4 +462,35 @@ class _RejectNote extends StatelessWidget {
       ],
     ),
   );
+}
+
+
+/// سطرُ حقيقةٍ في بطاقة الطلب: أيقونةٌ باهتةٌ ونصُّها.
+class _Fact extends StatelessWidget {
+  const _Fact(this.icon, this.text);
+  final IconData icon;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.only(bottom: 6),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, size: 17, color: AppColors.gold),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                text,
+                style: const TextStyle(
+                  fontSize: 13.5,
+                  height: 1.5,
+                  color: AppColors.ink2,
+                  fontFamilyFallback: arabicFallback,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
 }

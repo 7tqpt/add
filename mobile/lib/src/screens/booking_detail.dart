@@ -315,7 +315,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
   // كشيءٍ واحد. وفيه اسمُ الخدمة بأيقونة قاعة، ومقدّمُها بأيقونة شخص،
   // وشارةُ الحالة مطوّقةٌ بالذهب، ثمّ خيطٌ، ثمّ التاريخُ والوقتُ ورقمُ
   // الحجز — **وله زرُّ نسخٍ** لأنّه الذي يُقال للمزوّد في الهاتف.
-  static const _brand = [Color(0xFFA3521A), Color(0xFF6B3208)];
+  static const _brand = [AppColors.brandLift, AppColors.brand];
 
   Widget _head() => ClipRRect(
         borderRadius: BorderRadius.circular(20),

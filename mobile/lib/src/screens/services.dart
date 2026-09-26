@@ -128,27 +128,6 @@ class _ServicesScreenState extends State<ServicesScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // **والزرُّ يُرفع فوق الشريط الزجاجيّ.** هذه الشاشةُ سقّالةٌ داخل
-      // سقّالة القشرة، وزرُّها يقف على قاعها — ولمّا صار شريطُ المزوّد
-      // زجاجيّاً دخلت معه `extendBody` فامتدّ الجسمُ تحته، فصار قاعُ هذه
-      // السقّالة قاعَ الجوال ونزل الزرُّ خلفَ الزجاج فلم يُضغط. شُكي منه.
-      //
-      // **ويُرفع بما تقوله السقّالةُ لا بثوابتَ تُجمع باليد.** السقّالةُ ذاتُ
-      // `extendBody` تضع ارتفاعَ شريطها كلَّه — الشريطَ وقرصَه وخطَّ النظام
-      // تحته — في `padding.bottom` لجسمها. فهذا الرقمُ هو الحاجةُ بعينها،
-      // ويتبع الشريطَ إن تغيّر ولا يبقى على قدره القديم.
-      //
-      // **وقد جُمعت الثوابتُ هنا أوّلَ مرّةٍ فوقها** فطار الزرُّ ارتفاعَ
-      // الشريط مرّتين — ولم يكشفه اختبارٌ يسأل «أهو فوق الشريط؟» لأنّه فوقه
-      // في الحالين. كشفه ضابطٌ سالبٌ لم يسقط.
-      floatingActionButton: Padding(
-        padding: EdgeInsets.only(bottom: MediaQuery.paddingOf(context).bottom),
-        child: FloatingActionButton.extended(
-          onPressed: () => _edit(),
-          icon: const Icon(Icons.add),
-          label: Text(tr('خدمة جديدة')),
-        ),
-      ),
       body: FutureBuilder<List<MyService>>(
         future: _future,
         builder: (context, snap) {
@@ -159,23 +138,61 @@ class _ServicesScreenState extends State<ServicesScreen> {
             return ErrorBlock(message: messageOf(snap.error!), onRetry: _reload);
           }
           final rows = snap.data ?? const <MyService>[];
+          // ── «خدمة جديدة» — شريطٌ في صدر الشاشة ────────────────────────
+          //
+          // **وكان زرّاً عائماً في القاع**، ثمّ أرسل صاحبُ المنصّة تصميماً
+          // فيه شريطٌ في الصدر، فبُدّل. وذهب معه عطبٌ كان يلازمه: الزرُّ
+          // العائمُ يقف على قاع سقّالةٍ ذاتِ `extendBody`، فينزل خلفَ
+          // الشريط الزجاجيّ فلا يُضغط — وقد شُكي منه.
+          //
+          // **وهو خارج القائمة لا أوّلَ صفوفها.** جُعل أوّلَ صفٍّ فيها أوّلَ
+          // مرّة، فاختفى مع القائمة حين لا خدمةَ أصلاً — **فبقي من لا
+          // خدمةَ له بلا بابٍ يُضيف منه**، وهي أوّلُ حالٍ يقع فيها كلُّ
+          // مزوّدٍ جديد. كشفه اختبارٌ يفتح الورقةَ على قائمةٍ فارغة.
+          final addBar = Padding(
+            padding: EdgeInsets.fromLTRB(
+              Space.lg, glassHeaderTop(context), Space.lg, Space.md),
+            child: FilledButton.icon(
+              key: const ValueKey('new-service'),
+              onPressed: _busyId == null ? () => _edit() : null,
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.brand,
+                minimumSize: const Size.fromHeight(50),
+              ),
+              icon: const Icon(Icons.add, size: 20),
+              label: Text(tr('خدمة جديدة')),
+            ),
+          );
+
           if (rows.isEmpty) {
-            return EmptyBlock(
-              title: tr('لا خدمات بعد'),
-              description: tr('أضف ما تقدّمه بسعره وعربونه، ليظهر للعملاء في الاستكشاف.'),
+            return Column(
+              children: [
+                addBar,
+                Expanded(
+                  child: EmptyBlock(
+                    title: tr('لا خدمات بعد'),
+                    description: tr(
+                        'أضف ما تقدّمه بسعره وعربونه، ليظهر للعملاء في الاستكشاف.'),
+                  ),
+                ),
+              ],
             );
           }
           // **وتُسحب للتحديث كأخواتها.** كانت هذه و«استكشف» وحدَهما بلا
           // سحب، فمن غيّر شيئاً من شاشةٍ أخرى — أو شكّ أنّ قائمتَه قديمة —
           // لم يكن له إلّا أن يخرج ويعود.
-          return RefreshIndicator(
+          return Column(
+            children: [
+              addBar,
+              Expanded(
+                child: RefreshIndicator(
             onRefresh: () async => _reload(),
             child: ListView.separated(
             // **والمسافةُ ثابتُ الشريط لا رقمٌ مكتوبٌ بيده**: زاد الشريطُ
             // بالقرص المرتفع، ورقمٌ منسوخٌ هنا يبقى على قدره القديم فيحجب
             // آخرَ خدمة.
             padding: EdgeInsets.fromLTRB(
-              Space.lg, glassHeaderTop(context), Space.lg, glassNavSpace),
+              Space.lg, 0, Space.lg, glassNavSpace),
             itemCount: rows.length,
             separatorBuilder: (_, _) => const SizedBox(height: Space.md),
             itemBuilder: (context, i) {
@@ -198,40 +215,70 @@ class _ServicesScreenState extends State<ServicesScreen> {
                   // يُعلم قبله.
                   CardTitleBar(
                     s.title,
+                    subtitle: s.description,
                     badge: s.isActive ? tr('معروضة') : tr('موقوفة'),
+                    // **ولونُ الشارة يفرّق الحالَين بلمحة**: المعروضةُ
+                    // خضراء والموقوفةُ باهتة — وعلى الشريط النبيذيّ القديم
+                    // كانتا بيضاوين تُقرآن حرفاً حرفاً.
+                    badgeColor: s.isActive ? AppColors.good : AppColors.muted,
                     opens: true,
                   ),
-                  if (s.description.isNotEmpty) ...[
-                    const SizedBox(height: Space.sm),
-                    Muted(s.description),
-                  ],
                   const SizedBox(height: Space.sm),
-                  Text(
-                    s.priceTo == null
-                        ? '${formatMoney(s.price)} · ${s.unit}'
-                        : '${formatMoney(s.price)} – ${formatMoney(s.priceTo!)} · ${s.unit}',
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.accent,
-                    ),
+                  // **والوحدةُ تفترق عن المبلغ** — كما في تصميم صاحب
+                  // المنصّة: «١٠٬٠٠٠ – ١٠٠٬٠٠٠ ر.ي» بارزاً، و«لليوم»
+                  // باهتاً إلى جانبه، فلا يُقرأ الاثنان رقماً واحداً.
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.baseline,
+                    textBaseline: TextBaseline.alphabetic,
+                    children: [
+                      Flexible(
+                        child: Text(
+                          s.priceTo == null
+                              ? formatMoney(s.price)
+                              : '${formatMoney(s.price)} – '
+                                  '${formatMoney(s.priceTo!)}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.accent,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Muted(s.unit, size: 12, maxLines: 1),
+                    ],
                   ),
                   const SizedBox(height: Space.xs),
                   Muted(trf('العربون {0}٪', ['${s.depositPercent}']), size: 11),
-                  const SizedBox(height: Space.md),
+                  const SizedBox(height: Space.sm),
+                  const Divider(height: 1, color: AppColors.hairline),
+                  const SizedBox(height: Space.sm),
                   Row(
                     children: [
                       Expanded(
-                        child: OutlinedButton(
+                        child: OutlinedButton.icon(
                           onPressed: _busyId == null ? () => _edit(s) : null,
-                          child: Text(tr('تعديل')),
+                          icon: const Icon(Icons.edit_outlined, size: 18),
+                          label: Text(tr('تعديل')),
                         ),
                       ),
                       const SizedBox(width: Space.sm),
                       Expanded(
-                        child: OutlinedButton(
+                        child: OutlinedButton.icon(
                           onPressed: _busyId == null ? () => _toggle(s) : null,
-                          child: Text(s.isActive ? tr('إيقاف') : tr('عرض')),
+                          icon: Icon(
+                            s.isActive
+                                ? Icons.pause_rounded
+                                : Icons.play_arrow_rounded,
+                            size: 18,
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.ink2,
+                            side: const BorderSide(color: AppColors.hairline),
+                          ),
+                          label: Text(s.isActive ? tr('إيقاف') : tr('عرض')),
                         ),
                       ),
                     ],
@@ -242,18 +289,29 @@ class _ServicesScreenState extends State<ServicesScreen> {
                   // خدمةً للتوّ — فيُعطى مساحته لا يُدسّ.
                   FilledButton.tonalIcon(
                     onPressed: _busyId == null ? () => _media(s) : null,
+                    // **رماديٌّ لا ورديّ** — كما في تصميم صاحب المنصّة.
+                    // وصبغةُ الثيمة النبيذيّةُ تجعله يُزاحم «حذف الخدمة»
+                    // تحته في اللون، وهما فعلان لا يجتمعان.
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.surface2,
+                      foregroundColor: AppColors.ink2,
+                    ),
                     icon: const Icon(Icons.perm_media_outlined, size: 19),
                     label: Text(tr('الصور والمقاطع')),
                   ),
                   const SizedBox(height: Space.sm),
-                  // **ممتلئٌ أحمر** — اختارها صاحبُ المنصّة من ثلاثٍ عُرضت
-                  // عليه. وهو يُزاحم «الصور والمقاطع» فوقه، لكنّ الحذفَ لا
-                  // يقع بضغطةٍ واحدة: بينه وبين الزوال سؤالٌ يُجاب.
+                  // **مصبوغٌ بحدٍّ أحمر لا مصمتاً** — وكان مصمتاً باختياره
+                  // من ثلاثٍ عُرضت عليه، ثمّ أرسل تصميماً فيه مصبوغ.
+                  // **والأحمرُ باقٍ حرفاً وحدّاً**، فلا يُقرأ فعلاً عاديّاً.
                   FilledButton.icon(
                     key: ValueKey('service-delete-${s.id}'),
                     onPressed: _busyId == null ? () => _delete(s) : null,
                     style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.critical,
+                      backgroundColor: AppColors.critical.withValues(alpha: 0.07),
+                      foregroundColor: AppColors.critical,
+                      side: BorderSide(
+                        color: AppColors.critical.withValues(alpha: 0.55),
+                      ),
                     ),
                     icon: const Icon(Icons.delete_outline, size: 19),
                     label: Text(tr('حذف الخدمة')),
@@ -262,6 +320,9 @@ class _ServicesScreenState extends State<ServicesScreen> {
               ));
             },
             ),
+                ),
+              ),
+            ],
           );
         },
       ),

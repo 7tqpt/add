@@ -64,21 +64,20 @@ double _ratio(Color a, Color b) {
   return (hi + 0.05) / (lo + 0.05);
 }
 
-/// أرضيّةُ الشريط كما رُسمت — من `BoxDecoration` لا من الشيفرة.
-Color _barColour(WidgetTester tester) {
-  final box = tester.widget<Container>(
-    find.descendant(
-      of: find.byType(CardTitleBar).first,
-      matching: find.byType(Container),
-    ).first,
-  );
-  return ((box.decoration! as BoxDecoration).color)!;
-}
+/// لونُ شارة الحالة كما رُسمت — حبرُها لا أرضيّتُها.
+///
+/// **وفي أيّ بطاقةٍ كانت**: الشاشةُ فيها طلبان بحالين، فتقييدُ البحث
+/// بالأولى يقيس واحدةً ويُسمّيها الحالَين.
+Color _badgeColour(WidgetTester tester, String label) =>
+    tester.widget<Text>(find.descendant(
+      of: find.byType(CardTitleBar),
+      matching: find.text(label),
+    )).style!.color!;
 
 /// لونُ العنوان كما رُسم.
 Color _titleColour(WidgetTester tester, String title) =>
     tester.widget<Text>(find.descendant(
-      of: find.byType(CardTitleBar).first,
+      of: find.byType(CardTitleBar),
       matching: find.text(title),
     )).style!.color!;
 
@@ -98,6 +97,24 @@ void main() {
       ),
     ];
     demoProviderRequests = [
+      // **وطلبان بحالين** — ولولا الثاني لصحّ لونٌ مكتوبٌ في الشيفرة:
+      // حالُ الأوّل «بانتظار مقدّم الخدمة» ولونُها الكهرمانيّ، فمن كتبه
+      // ثابتاً أصاب فيه وأخطأ في كلّ حالٍ سواه. وضابطٌ كشف ذلك.
+      Booking(
+        id: 'r0',
+        reference: 'BK-0',
+        userName: 'نورة الحضرمي',
+        providerName: 'قاعة التاج',
+        serviceTitle: 'حجز قاعة التاج — منفَّذ',
+        eventDate: '2026-01-10',
+        eventTime: '18:00',
+        address: 'المنصورة — عدن',
+        guestsCount: 180,
+        status: BookingStatus.completed,
+        totalPrice: 300000,
+        depositAmount: 90000,
+        paidAmount: 300000,
+      ),
       Booking(
         id: 'r1',
         reference: 'BK-1',
@@ -120,25 +137,24 @@ void main() {
   });
 
   group('**في «خدماتي»**', () {
-    testWidgets('العنوانُ في شريطٍ نبيذيٍّ بحبرٍ أبيض', (tester) async {
+    testWidgets('العنوانُ حبرٌ على أبيض لا على شريطٍ نبيذيّ', (tester) async {
+      // **والشكلُ بُدّل بأمر صاحب المنصّة**: أرسل تصميمين وقال إنّ
+      // الشاشتين معاً تتبعانه — رأسٌ أبيضُ وشارةٌ ملوّنة.
       _phone(tester);
       await tester.pumpWidget(_wrap(ServicesScreen(session: _provider())));
       await _settle(tester);
 
       expect(find.byType(CardTitleBar), findsOneWidget);
-      expect(_barColour(tester), AppColors.accent,
-          reason: 'الشريطُ ليس نبيذيّاً');
-      expect(_titleColour(tester, 'قاعة التاج'), AppColors.accentInk,
-          reason: 'العنوانُ ليس أبيض');
+      expect(_titleColour(tester, 'قاعة التاج'), AppColors.ink,
+          reason: 'العنوانُ ليس بحبر الصفحة');
     });
 
-    testWidgets('**والشارةُ باقيةٌ تُقرأ بكلمتها**', (tester) async {
+    testWidgets('**والشارةُ استردّت لونَها ولم تفقد كلمتَها**', (tester) async {
       _phone(tester);
       await tester.pumpWidget(_wrap(ServicesScreen(session: _provider())));
       await _settle(tester);
 
-      // الخدمةُ موقوفةٌ في التهيئة — وبلا الكلمة لا يبقى ما يقولها، فاللونُ
-      // ذهب في هذا الشكل.
+      // الخدمةُ موقوفةٌ في التهيئة: الكلمةُ لمن يقرأ، واللونُ لمن يلمح.
       expect(
         find.descendant(
           of: find.byType(CardTitleBar),
@@ -146,18 +162,69 @@ void main() {
         ),
         findsOneWidget,
       );
+      expect(_badgeColour(tester, 'موقوفة'), AppColors.muted,
+          reason: 'الموقوفةُ بلون المعروضة — واللونُ هو ما يُلمح');
+
+      // وأخرى معروضة: لولاها لصحّ لونٌ واحدٌ للحالين.
+      //
+      // **وتُفرَّغ الشاشةُ أوّلاً**: `pumpWidget` بودجةٍ من النوع نفسِه
+      // يعيد استعمال حالتَها، فلا تُنادى `initState` ولا تُقرأ القائمةُ
+      // من جديد — فيُقاس الصفُّ القديمُ ويُظنّ أنّه الجديد.
+      demoMyServices = [
+        MyService(
+          id: 's2',
+          title: 'قاعة اللؤلؤة',
+          description: '',
+          price: 10000,
+          priceTo: null,
+          unit: 'يوم',
+          depositPercent: 30,
+          categoryId: 'c1',
+          isActive: true,
+        ),
+      ];
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pumpWidget(_wrap(ServicesScreen(session: _provider())));
+      await _settle(tester);
+      expect(_badgeColour(tester, 'معروضة'), AppColors.good);
     });
   });
 
   group('**وفي «الطلبات»** — طلبهما معاً', () {
-    testWidgets('العنوانُ في شريطٍ نبيذيٍّ بحبرٍ أبيض', (tester) async {
+    testWidgets('العنوانُ حبرٌ على أبيض، وحالُه بلونها', (tester) async {
       _phone(tester);
       await tester.pumpWidget(_wrap(RequestsScreen(session: _provider())));
       await _settle(tester);
 
-      expect(find.byType(CardTitleBar), findsOneWidget);
-      expect(_barColour(tester), AppColors.accent);
-      expect(_titleColour(tester, 'حجز قاعة التاج'), AppColors.accentInk);
+      expect(find.byType(CardTitleBar), findsNWidgets(2));
+      expect(_titleColour(tester, 'حجز قاعة التاج'), AppColors.ink);
+      expect(
+        _badgeColour(tester, bookingStatusLabel(BookingStatus.pendingProvider)),
+        bookingStatusColor(BookingStatus.pendingProvider),
+        reason: 'لونُ الشارة ليس لونَ الحالة',
+      );
+      // والمنفَّذُ بلونه هو — ولولاه لصحّ لونٌ واحدٌ مكتوبٌ للحالات كلِّها.
+      expect(
+        _badgeColour(tester, bookingStatusLabel(BookingStatus.completed)),
+        bookingStatusColor(BookingStatus.completed),
+        reason: 'حالان بلونٍ واحد',
+      );
+    });
+
+    testWidgets('**وزرُّ «قبول» طَفليٌّ كما اختار**', (tester) async {
+      // عُرض عليه أنّه يفترق عن كلّ زرٍّ مملوءٍ في التطبيق — وكلُّها
+      // نبيذيّة — فاختار تصميمَه كما أرسله. وهذا يمنع رجوعَه بلا أن يُسأل.
+      _phone(tester);
+      await tester.pumpWidget(_wrap(RequestsScreen(session: _provider())));
+      await _settle(tester);
+
+      final accept = find.widgetWithText(FilledButton, 'قبول');
+      expect(accept, findsOneWidget, reason: 'لا زرَّ قبولٍ على طلبٍ منتظِر');
+
+      // **ولا يُسأل النمطُ أهو موجود، بل ما اللونُ الذي يُرسم به.**
+      final style = tester.widget<FilledButton>(accept).style!;
+      final colour = style.backgroundColor!.resolve(<WidgetState>{});
+      expect(colour, AppColors.brand, reason: 'لونُ «قبول» ليس الطَّفليّ');
     });
 
     testWidgets('وحالُ الحجز في الشريط', (tester) async {
@@ -175,16 +242,43 @@ void main() {
     });
   });
 
-  group('والأبيضُ يُقرأ على النبيذيّ', () {
-    test('**فوق العتبة**', () {
-      final r = _ratio(AppColors.accentInk, AppColors.accent);
+  group('وألوانُ الرأس تُقرأ', () {
+    test('**حبرُ العنوان على أرضيّة البطاقة فوق العتبة**', () {
+      final r = _ratio(AppColors.ink, AppColors.surface);
       expect(r, greaterThanOrEqualTo(4.5),
-          reason: 'حبرُ الشريط يعطي ${r.toStringAsFixed(2)}:1');
+          reason: 'حبرُ العنوان يعطي ${r.toStringAsFixed(2)}:1');
     });
 
-    test('**وأخضرُ الشارة لا يُقرأ عليه** — وهو سببُ تبييضها', () {
-      // لو عاد أحدٌ يوماً فأدخل `StatusBadge` بلونه في الشريط، هذا الرقمُ
-      // هو الذي يقول لماذا لا يصحّ.
+    testWidgets('**ولونُ الشارة على صبغتها كما رُسمت فوق العتبة**',
+        (tester) async {
+      // **وهذا هو ما ربحه الشكلُ الجديد**: على الشريط النبيذيّ كان أخضرُ
+      // «معروضة» يعطي ‎١٫٧:١‎ فبُيّضت الشاراتُ كلُّها. وعلى الصبغة الفاتحة
+      // يُقرأ لونُها — فتُلتقط الحالُ بلمحةٍ قبل أن تُتهجّى.
+      //
+      // **والصبغةُ تُقرأ من الشجرة لا تُحسب هنا.** كُتب هذا أوّلاً بنسبةٍ
+      // مكتوبةٍ في الاختبار، **فكان يقيس حسابَه هو لا ما رُسم** — وضابطٌ
+      // أعاد الصبغةَ إلى اثنتَي عشرةَ بالمئة لم يُسقطه.
+      _phone(tester);
+      await tester.pumpWidget(_wrap(RequestsScreen(session: _provider())));
+      await _settle(tester);
+
+      final label = bookingStatusLabel(BookingStatus.pendingProvider);
+      final ink = _badgeColour(tester, label);
+      final pill = tester.widget<Container>(find.ancestor(
+        of: find.text(label),
+        matching: find.byType(Container),
+      ).first);
+      final tintOnCard = Color.alphaBlend(
+        ((pill.decoration! as BoxDecoration).color)!,
+        AppColors.surface,
+      );
+
+      final r = _ratio(ink, tintOnCard);
+      expect(r, greaterThanOrEqualTo(4.5),
+          reason: 'لونُ الشارة على صبغتها ${r.toStringAsFixed(2)}:1');
+    });
+
+    test('**وأخضرُ الشارة لا يُقرأ على النبيذيّ** — وهو سببُ تركه', () {
       final r = _ratio(AppColors.good, AppColors.accent);
       expect(r, lessThan(4.5),
           reason: 'أخضرُ «معروضة» على النبيذيّ ${r.toStringAsFixed(2)}:1');

@@ -1022,26 +1022,49 @@ class Rating extends StatelessWidget {
   }
 }
 
-/// عنوانُ البطاقة — شريطٌ نبيذيٌّ وحبرٌ أبيض، والشارةُ في طرفه.
+/// عنوانُ البطاقة — أيقونةٌ وعنوانٌ وشارةُ حالةٍ ملوّنة.
 ///
-/// اختاره صاحبُ المنصّة من ثلاثةِ أشكالٍ عُرضت عليه: **(ج) شريطٌ داخلَ
-/// الحشوة** — بعرض السطر لا بعرض البطاقة، فتبقى للبطاقة حافّتُها البيضاء.
+/// **وكان شريطاً نبيذيّاً مصمتاً**، اختاره صاحبُ المنصّة من ثلاثةِ أشكال.
+/// ثمّ أرسل تصميمين — لـ«الطلبات» و«خدماتي» — فيهما رأسٌ أبيضُ وشارةٌ
+/// ملوّنة، واختار أن تُبدَّل **الشاشتان معاً**. وهذا هو.
 ///
 /// **وواحدٌ في موضعين لا نسختان.** «خدماتي» و«الطلبات» يعرضان العنوانَ
 /// نفسَه، ونسختان متطابقتان تفترقان بمرور الوقت: يُعدَّل اللونُ في إحداهما
 /// فتبقى الأخرى، فيظنّ المزوّدُ أنّهما شيئان.
 ///
-/// ── والشارةُ تفقد لونَها هنا، وقد قيل له ذلك ────────────────────────────
+/// ── والشارةُ استردّت لونَها ────────────────────────────────────────────
 ///
-/// `StatusBadge` يرسم «معروضة» بأخضرَ على شفّاف، **وأخضرُ على النبيذيّ لا
-/// يُقرأ — ‎١٫٧:١‎**. فشارةُ هذا الشريط بيضاءُ كلُّها: تُقرأ الحالُ من
-/// الكلمة لا من اللمحة. وهو ثمنُ الشكل الذي اختاره بعد أن عُرض عليه.
+/// على الشريط النبيذيّ كانت الشارةُ بيضاءَ كلُّها: **أخضرُ على النبيذيّ لا
+/// يُقرأ — ‎١٫٧:١‎** — فكانت الحالُ تُقرأ من الكلمة وحدَها. وعلى الأبيض
+/// يُقرأ لونُها، فعادت تُلتقط بلمحةٍ قبل أن تُتهجّى.
 class CardTitleBar extends StatelessWidget {
-  const CardTitleBar(this.title, {super.key, this.badge, this.opens = false});
+  const CardTitleBar(
+    this.title, {
+    super.key,
+    this.subtitle,
+    this.badge,
+    this.badgeColor,
+    this.badgeIcon,
+    this.icon,
+    this.opens = false,
+  });
+
   final String title;
+
+  /// سطرٌ تحت العنوان — وصفُ الخدمة مثلاً، أو `null`.
+  final String? subtitle;
 
   /// نصُّ الحالة — أو `null` فلا شارة.
   final String? badge;
+
+  /// لونُ الشارة — و`null` فبلون العلامة.
+  final Color? badgeColor;
+
+  /// أيقونةُ الشارة — و`null` فنقطةٌ ملوّنة.
+  final IconData? badgeIcon;
+
+  /// أيقونةُ العنوان في قرصٍ باهت — و`null` فلا قرص.
+  final IconData? icon;
 
   /// هل تُفتح البطاقةُ بالضغط؟ فيُرسم سهمٌ يقول ذلك.
   ///
@@ -1055,72 +1078,99 @@ class CardTitleBar extends StatelessWidget {
   final bool opens;
 
   @override
-  Widget build(BuildContext context) => Container(
-    width: double.infinity,
-    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-    decoration: BoxDecoration(
-      color: AppColors.accent,
-      borderRadius: BorderRadius.circular(12),
-    ),
-    child: Row(
+  Widget build(BuildContext context) {
+    final colour = badgeColor ?? AppColors.accent;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Expanded(
-          // سطرٌ واحدٌ وقصٌّ عند الضيق: عنوانٌ يلتفّ سطرين داخل شريطٍ ملوَّن
-          // يجعل الشريطَ كتلةً، واسمُ الخدمة يكتبه صاحبُها فلا حدَّ لطوله.
-          child: Text(
-            title,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-              color: AppColors.accentInk,
+        if (icon != null) ...[
+          Container(
+            width: 38,
+            height: 38,
+            decoration: const BoxDecoration(
+              color: AppColors.surface2,
+              shape: BoxShape.circle,
             ),
+            child: Icon(icon, size: 20, color: AppColors.gold),
+          ),
+          const SizedBox(width: Space.sm),
+        ],
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // سطرٌ واحدٌ وقصٌّ عند الضيق: اسمُ الخدمة يكتبه صاحبُها فلا
+              // حدَّ لطوله، وعنوانٌ يلتفّ سطرين يدفع الشارةَ خارج الصفّ.
+              Text(
+                title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.ink,
+                  fontFamilyFallback: arabicFallback,
+                ),
+              ),
+              if (subtitle != null && subtitle!.isNotEmpty) ...[
+                const SizedBox(height: 2),
+                Muted(subtitle!, size: 12, maxLines: 1),
+              ],
+            ],
           ),
         ),
         if (badge != null) ...[
           const SizedBox(width: Space.sm),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
             decoration: BoxDecoration(
-              border: Border.all(color: AppColors.accentInk),
+              // **وصبغةُ ‎١٠٪‎ لا ‎١٢٪‎**: على اثنتَي عشرةَ يعطي كهرمانيُّ
+              // «بانتظار مقدّم الخدمة» **‎٤٫٤٤:١‎** — تحت العتبة. وكشفه
+              // اختبارٌ يقيس الألوانَ الأربعةَ على صبغتها، لا العينُ.
+              color: colour.withValues(alpha: 0.10),
               borderRadius: BorderRadius.circular(999),
             ),
-            child: Text(
-              badge!,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontSize: 11,
-                color: AppColors.accentInk,
-                fontWeight: FontWeight.w600,
-              ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (badgeIcon != null)
+                  Icon(badgeIcon, size: 14, color: colour)
+                else
+                  Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(color: colour, shape: BoxShape.circle),
+                  ),
+                const SizedBox(width: 6),
+                Flexible(
+                  child: Text(
+                    badge!,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      color: colour,
+                      fontWeight: FontWeight.w700,
+                      fontFamilyFallback: arabicFallback,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
         if (opens) ...[
           const SizedBox(width: Space.xs),
-          // **والجهةُ تتبع اتّجاهَ اللغة**: في العربيّة يُتقدَّم إلى اليسار.
-          //
-          // **ولا تُسأل الجهةُ هنا، فالأيقونةُ تنقلب بنفسها.** كنتُ كتبتُ
-          // `rtl ? chevron_left : chevron_right` وفي رأسي أنّ الأيقونةَ
-          // ثابتة — وليست كذلك: `chevron_left` و`chevron_right` كلتاهما
-          // `matchTextDirection: true` في Flutter، أي تنعكسان مع اللغة.
-          // فكان سؤالُ الجهة انعكاساً ثانياً يُلغي الأوّل، **والسهمُ يشير
-          // إلى الخلف في العربيّة كلِّها**. ولم يظهر ذلك إلّا في لقطةٍ
-          // للشاشة الحقيقيّة.
-          //
-          // فتُكتب الصورةُ اللاتينيّةُ وحدَها (تشير إلى الأمام في الإنجليزيّة)
-          // ويتكفّل الإطارُ بقلبها في العربيّة.
-          const Icon(
-            Icons.chevron_right,
-            size: 20,
-            color: AppColors.accentInk,
-          ),
+          // **والجهةُ تتبع اتّجاهَ اللغة**، والأيقونةُ تنقلب بنفسها:
+          // `chevron_right` في Flutter `matchTextDirection`، فسؤالُ الجهة
+          // هنا انعكاسٌ ثانٍ يُلغي الأوّل.
+          const Icon(Icons.chevron_right, size: 20, color: AppColors.muted),
         ],
       ],
-    ),
-  );
+    );
+  }
+
 }
 
 /// شارة حالة — لون وحدّ، مع نصّ يُقرأ بلا الاعتماد على اللون.

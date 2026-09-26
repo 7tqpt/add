@@ -71,7 +71,9 @@ MyService _service({String categoryId = 'c1'}) => MyService(
 Future<void> _openNew(WidgetTester tester) async {
   await tester.pumpWidget(_wrap(ServicesScreen(session: _provider())));
   await _settle(tester);
-  await tester.tap(find.widgetWithText(FloatingActionButton, 'خدمة جديدة'));
+  // **وصار شريطاً في صدر القائمة لا زرّاً عائماً** — بتصميمٍ أرسله صاحبُ
+  // المنصّة. والمفتاحُ يبقى ولو تبدّل شكلُه، فلا يُبحث عنه بنوع الودجة.
+  await tester.tap(find.byKey(const ValueKey('new-service')));
   await _settle(tester);
 }
 
