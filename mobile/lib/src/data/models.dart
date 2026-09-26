@@ -212,6 +212,7 @@ class Booking {
     this.completionRejectReason = '',
     this.planId,
     this.coverPath,
+    this.providerId = '',
   });
 
   final String id;
@@ -219,6 +220,15 @@ class Booking {
   final String userName;
   final String providerName;
   final String serviceTitle;
+
+  /// معرّفُ مقدّم الخدمة — **وبه وحدَه تُفتح المحادثة من بطاقة الحجز**.
+  ///
+  /// والعمودُ في `bookings` منذ أوّل يوم (عليه قيدُ اليوم الواحد للمزوّد)،
+  /// ويصل مع الصفّ لأنّ الطريقةَ تختار `b.*` — والناقصُ كان قراءتَه هنا.
+  ///
+  /// **وفراغٌ لا `null`**: صفٌّ قديمٌ أو مصدرٌ لا يحمله لا يُسقط الطراز، ويُخفى
+  /// زرُّ المحادثة لمن لا معرّفَ لحجزه بدل أن يَعِد بما يسقط.
+  final String providerId;
 
   /// خطّةُ العرس التي يُحسب هذا الحجزُ ضمنها، أو `null`.
   ///
@@ -237,6 +247,7 @@ class Booking {
   Booking withCover(String? path) => Booking(
         id: id,
         reference: reference,
+        providerId: providerId,
         userName: userName,
         providerName: providerName,
         serviceTitle: serviceTitle,
@@ -310,6 +321,7 @@ class Booking {
     userName: (m['user_name'] ?? '') as String,
     providerName: (m['provider_name'] ?? '') as String,
     serviceTitle: (m['service_title'] ?? '') as String,
+    providerId: (m['provider_id'] ?? '').toString(),
     planId: m['plan_id'] as String?,
     coverPath: m['cover_path'] as String?,
     eventDate: (m['event_date'] ?? '') as String,

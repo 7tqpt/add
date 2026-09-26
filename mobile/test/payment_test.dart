@@ -185,8 +185,18 @@ void main() {
     await tester.pumpWidget(_wrap(Scaffold(body: MyBookingsScreen(session: _session()))));
     await _settle(tester);
 
-    expect(find.byType(BigHeroCard), findsOneWidget);
-    expect(find.text('حجوزاتي'), findsOneWidget);
+    expect(find.byType(BookingsSummaryCard), findsOneWidget);
+
+    // **والملخّصُ قبل التفاصيل لا بعدها** — وهذا هو المقصود: من عنده ستّةُ
+    // حجوزاتٍ يقرأ رقماً واحداً قبل أن يقرأ بطاقةً بطاقة.
+    final summaryY = tester.getTopLeft(find.byType(BookingsSummaryCard)).dy;
+    final firstCardY = tester.getTopLeft(find.byType(BookingCard).first).dy;
+    expect(summaryY, lessThan(firstCardY));
+
+    // وفيه الأقربُ موعداً، وعددان: المؤكّدُ والمنتظِر.
+    expect(find.text('أقرب حجز'), findsOneWidget);
+    expect(find.textContaining('مؤكّد'), findsWidgets);
+    expect(find.textContaining('بانتظار الموافقة'), findsOneWidget);
   });
 
   testWidgets('وبطاقاتُ الحجز بيضاءُ كما كانت لا نبيذيّة', (tester) async {

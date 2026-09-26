@@ -360,6 +360,7 @@ List<Review> demoReviewsOf(String providerId) => _demoReviews[providerId] ?? con
 List<Booking> demoBookings = [
   Booking(
     id: 'b1',
+    providerId: 'p1',
     planId: 'pl1',
     reference: 'BK-2026-000318',
     createdAt: _at(200),
@@ -377,6 +378,7 @@ List<Booking> demoBookings = [
   ),
   Booking(
     id: 'b2',
+    providerId: 'p2',
     planId: 'pl1',
     reference: 'BK-2026-000402',
     createdAt: _at(48),
@@ -394,6 +396,7 @@ List<Booking> demoBookings = [
   ),
   Booking(
     id: 'b3',
+    providerId: 'p3',
     reference: 'BK-2026-000155',
     createdAt: _at(900),
     userName: 'أحمد الشرعبي',
@@ -414,6 +417,7 @@ List<Booking> demoBookings = [
   // إلى الدفع.
   Booking(
     id: 'b4',
+    providerId: 'p4',
     reference: 'BK-2026-000517',
     createdAt: _at(2),
     userName: 'أحمد الشرعبي',
@@ -432,6 +436,7 @@ List<Booking> demoBookings = [
   // يقع.
   Booking(
     id: 'b5',
+    providerId: 'p1',
     reference: 'BK-2026-000088',
     createdAt: _at(400),
     userName: 'أحمد الشرعبي',

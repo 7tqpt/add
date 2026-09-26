@@ -308,12 +308,20 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
               const SizedBox(width: Space.sm),
               // **ورقمُ الحجز من اليسار إلى اليمين**: «BK-2026-000318» تقذف
               // خوارزميةُ البيدي شَرطتَه إلى الطرف الخطأ في سياقٍ عربيّ.
-              Text(
-                _b.reference,
-                textDirection: TextDirection.ltr,
-                style: TextStyle(
-                  fontSize: 11,
-                  color: AppColors.accentInk.withValues(alpha: 0.7),
+              //
+              // **ويَضيق ولا يفيض**: بخطّ الجهاز المضاعَف طال هذا الصفُّ
+              // أربعةً وعشرين بكسلاً خارجَ الشاشة — وهو عطبٌ قديمٌ لم يظهر
+              // لأنّ الشاشةَ لم تُقَس بخطٍّ كبيرٍ قطّ.
+              Flexible(
+                child: Text(
+                  _b.reference,
+                  textDirection: TextDirection.ltr,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: AppColors.accentInk.withValues(alpha: 0.7),
+                  ),
                 ),
               ),
             ],
@@ -339,12 +347,19 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
         child: Row(
           children: [
             Expanded(child: Muted(label, size: 12.5)),
-            Text(
-              value,
-              style: TextStyle(
-                fontSize: strong ? 15 : 13.5,
-                fontWeight: strong ? FontWeight.w800 : FontWeight.w600,
-                color: strong ? AppColors.accent : AppColors.ink,
+            const SizedBox(width: Space.sm),
+            // وكذلك المبلغُ يَضيق: «850,000 ر.ي» بخطٍّ مضاعَفٍ يفيض بخمسةٍ.
+            Flexible(
+              child: Text(
+                value,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.end,
+                style: TextStyle(
+                  fontSize: strong ? 15 : 13.5,
+                  fontWeight: strong ? FontWeight.w800 : FontWeight.w600,
+                  color: strong ? AppColors.accent : AppColors.ink,
+                ),
               ),
             ),
           ],
