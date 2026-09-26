@@ -7,11 +7,11 @@ import '../core/session.dart';
 import '../data/api.dart';
 import '../data/models.dart';
 import '../data/supabase.dart';
-import '../ui/booking_stages.dart';
 import '../ui/kit.dart';
 import '../ui/media.dart';
 import '../ui/motion.dart';
 import 'booking_detail.dart';
+import 'chat.dart';
 import 'labels.dart';
 
 class MyBookingsScreen extends StatefulWidget {
@@ -82,6 +82,31 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
     if (changed == true && mounted) _reload();
   }
 
+  /// يفتح المحادثةَ مع مقدّم خدمةِ هذا الحجز ثمّ يدخلها.
+  ///
+  /// **والفتحُ من القاعدة لا من التطبيق**: الضغطُ مرّتين بسرعةٍ كان سينتج
+  /// خيطين لو بحث التطبيقُ ثمّ أنشأ بنفسه، فتنقسم الرسائل بينهما ولا يرى
+  /// أحدٌ نصفها. و`api_open_conversation` تأخذ معرّفَ الحجز كذلك، فيُعرف
+  /// الخيطُ عن أيّ حجزٍ فُتح.
+  Future<void> _message(Booking b) async {
+    try {
+      final id = await Api.openConversation(b.providerId, bookingId: b.id);
+      if (!mounted) return;
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => ChatScreen(
+            conversationId: id,
+            otherName: b.providerName,
+            providerId: b.providerId,
+            mySide: ChatSide.customer,
+          ),
+        ),
+      );
+    } catch (e) {
+      if (mounted) showMessage(context, messageOf(e));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<List<Booking>>(
@@ -125,7 +150,11 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
               // صاحب المنصّة، فبقي هنا ما يُقرأ بالعين: أين وصل، وكم، ومتى.
               return FadeSlideIn(
                 index: i,
-                child: BookingCard(booking: b, onTap: () => _open(b)),
+                child: BookingCard(
+                  booking: b,
+                  onTap: () => _open(b),
+                  onMessage: () => _message(b),
+                ),
               );
             },
           ),
@@ -135,34 +164,44 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
   }
 }
 
-/// بطاقةُ الحجز في «حجوزاتي» — على هيئة بطاقة رأس الخطّة.
+/// بطاقةُ الحجز في «حجوزاتي» — على تصميمٍ أرسله صاحبُ المنصّة.
 ///
-/// ── لماذا تشبه بطاقةَ الخطّة ───────────────────────────────────────────────
+/// ── ما فيها ────────────────────────────────────────────────────────────────
 ///
-/// اختار صاحبُ المنصّة أن تُصنع لها «نفسُ الشيء الذي صُنع في خطة العرس»:
-/// صورةٌ إلى جانب لوح نصٍّ فاتح، والتاريخُ في قرص، وعدٌّ تنازليٌّ ذهبيٌّ
-/// **داخلَ جملته**، ثمّ شريطُ تقدّمٍ بحلقته. **والشريطُ هنا شريطُ الدفع**:
-/// كم دُفع من ثمن الحجز — وهو ما يُسأل عنه في هذه الشاشة.
+/// غلافٌ صغيرٌ في الصدر، وإلى جانبه اسمُ الخدمة ومقدّمُها وشارةُ الحالة، ثمّ
+/// خيطٌ فاصل، ثمّ **صفُّ حقائقَ من أربعة**: التاريخُ والوقتُ ورقمُ الحجز
+/// والسعر، ثمّ زرّان: «عرض الحجز» و«تواصل مع المزوّد».
 ///
-/// ── وما بقي كما كان ────────────────────────────────────────────────────────
+/// ── وما شيل منها، وبأمرِه ──────────────────────────────────────────────────
 ///
-/// **مراحلُ الحجز باقيةٌ تحت الشريط** باختياره: «أين وصل حجزي؟» يُقرأ بلا
-/// فتح. وبقيت البطاقةُ تُفتح بالضغط، وبقي رقمُ الحجز في ذيلها — فهو الذي
-/// يُقال للمزوّد في الهاتف.
+/// كان فيها **شريطُ الدفع وحلقتُه**، و**العدُّ التنازليُّ** «بقي ٢٨ يوماً»،
+/// و**مراحلُ الحجز**. وعُرضت عليه ثلاثُ خلايا: تصميمُه حرفاً، وتصميمُه
+/// بالشريط، وتصميمُه بالشريط والمراحل — فاختار «**تُشال كلُّها كما في
+/// صورتك**». وكلُّها باقيةٌ في **صفحة الحجز** التي تفتحها البطاقة.
+///
+/// ── وصفُّ الحقائق أربعةٌ في صفٍّ واحدٍ باختياره ────────────────────────────
+///
+/// وعُرض عليه أنّ العمودَ على جوالٍ عرضُه ٣٦٠ يصير نحوَ ثمانين بكسلاً، فاختار
+/// الصفَّ الواحد. **فتُصغَّر القيمةُ لتُقرأ كاملةً ولا تُقصّ**
+/// (`BoxFit.scaleDown`): رقمُ الحجز يُقال للمزوّد في الهاتف، و«BK-2026-0…»
+/// لا يُقال.
 class BookingCard extends StatelessWidget {
-  const BookingCard({super.key, required this.booking, this.onTap});
+  const BookingCard({
+    super.key,
+    required this.booking,
+    this.onTap,
+    this.onMessage,
+  });
 
   final Booking booking;
   final VoidCallback? onTap;
 
+  /// يفتح المحادثةَ مع مقدّم الخدمة — و`null` فلا زرَّ محادثة.
+  final VoidCallback? onMessage;
+
   @override
   Widget build(BuildContext context) {
     final b = booking;
-    final ratio = b.totalPrice > 0
-        ? (b.paidAmount / b.totalPrice).clamp(0.0, 1.0).toDouble()
-        : 0.0;
-    final left = b.totalPrice - b.paidAmount;
-
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -174,161 +213,19 @@ class BookingCard extends StatelessWidget {
             border: Border.all(color: AppColors.hairline),
             borderRadius: BorderRadius.circular(20),
           ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(20),
-            child: Column(
-              key: ValueKey('booking-card-${b.id}'),
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // **ارتفاعٌ يتبع خطَّ الجهاز، لا ثابتٌ ولا مأخوذٌ من النصّ.**
-                //
-                // ثابتٌ مكتوبٌ يفيض بسبعةٍ وعشرين بكسلاً بخطّ الجهاز الكبير،
-                // وقد فاض. و`IntrinsicHeight` تسأل الصورةَ عن ارتفاعها
-                // الطبيعيّ — و`Image` المرسومةُ بـ`height: double.infinity`
-                // تُجيب **بلا نهاية**، فينهار التخطيط وتختفي البطاقةُ كلُّها.
-                //
-                // **وهذا وقع على جهاز صاحب المنصّة ولم يقع في الاختبار**:
-                // `Api.mediaUrl` تردّ `null` حين لا تُضبط أسرارُ القاعدة،
-                // فلا تُبنى `Image` أصلاً ولا يُسأل أحدٌ عن لا نهاية. فصار
-                // الاختبارُ يمرّر رابطاً كما يقع على الجهاز.
-                SizedBox(
-                  height: 160 *
-                      MediaQuery.textScalerOf(context)
-                          .scale(1)
-                          .clamp(1.0, 1.6),
-                  child: Row(
-                    children: [
-                      Expanded(flex: 58, child: _Head(booking: b)),
-                      Expanded(
-                        flex: 42,
-                        child: Stack(
-                          fit: StackFit.expand,
-                          children: [
-                            // **وموضعُ الصورة محجوزٌ من أوّل رسمة** — ومن لم
-                            // تُشغَّل قاعدتُه، أو حجز خدمةً بلا صور، يرى
-                            // موضعاً هادئاً ولا تسقط بطاقةٌ لنقص صورة.
-                            Container(
-                              color: AppColors.surface2,
-                              child: MediaThumb(
-                                url: Api.mediaUrl(b.coverPath),
-                                icon: Icons.photo_camera_back_outlined,
-                              ),
-                            ),
-                            Positioned(
-                              top: 10,
-                              right: 8,
-                              left: 8,
-                              child: Align(
-                                alignment: AlignmentDirectional.centerStart,
-                                child: _Ribbon(
-                                  bookingStatusLabel(b.status),
-                                  colour: bookingStatusColor(b.status),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const Divider(height: 1, color: AppColors.hairline),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          const Icon(Icons.payments_outlined,
-                              size: 15, color: AppColors.muted),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: Text(
-                              trf('{0} من {1}', [
-                                formatMoney(b.paidAmount),
-                                formatMoney(b.totalPrice),
-                              ]),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontSize: 12.5,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.ink,
-                                fontFamilyFallback: arabicFallback,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 9),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(999),
-                              child: LinearProgressIndicator(
-                                key: ValueKey('paid-bar-${b.id}'),
-                                value: ratio,
-                                minHeight: 8,
-                                backgroundColor: AppColors.surface2,
-                                valueColor:
-                                    const AlwaysStoppedAnimation(AppColors.accent),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: Space.sm),
-                          PercentRing(
-                            key: ValueKey('paid-ring-${b.id}'),
-                            value: ratio,
-                            label: trf('{0}٪', ['${(ratio * 100).round()}']),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      // **وكلاهما يَضيق ولا يفيض.** بخطّ الجهاز الكبير طال
-                      // السطرُ أربعةً وأربعين بكسلاً خارجَ البطاقة — وقد فاض.
-                      // فلكلٍّ نصيبُه من العرض، ويُقصّ ما زاد.
-                      Row(
-                        children: [
-                          Expanded(
-                            flex: 3,
-                            child: Muted(
-                              left <= 0
-                                  ? tr('سُدّد كاملاً')
-                                  : trf('بقي {0}', [formatMoney(left)]),
-                              size: 11,
-                              maxLines: 1,
-                            ),
-                          ),
-                          const SizedBox(width: Space.sm),
-                          // رقمُ الحجز — وهو الذي يُقال للمزوّد في الهاتف.
-                          Flexible(
-                            flex: 2,
-                            child: Text(
-                              b.reference,
-                              textDirection: TextDirection.ltr,
-                              textAlign: TextAlign.end,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                  fontSize: 11, color: AppColors.muted),
-                            ),
-                          ),
-                          // **وسهمٌ يقول إنّها تُفتح** — اختاره صاحبُ المنصّة:
-                          // الانخفاضُ تحت الإصبع لا يُعلم إلّا بعد أن يُجرَّب.
-                          const SizedBox(width: Space.xs),
-                          const Icon(Icons.chevron_right,
-                              size: 18, color: AppColors.muted),
-                        ],
-                      ),
-                      const SizedBox(height: Space.md),
-                      BookingStages(stages: bookingStages(b)),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+          padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+          child: Column(
+            key: ValueKey('booking-card-${b.id}'),
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _Head(booking: b),
+              const SizedBox(height: 12),
+              const Divider(height: 1, color: AppColors.hairline),
+              const SizedBox(height: 10),
+              _Facts(booking: b),
+              const SizedBox(height: 12),
+              _Actions(booking: b, onTap: onTap, onMessage: onMessage),
+            ],
           ),
         ),
       ),
@@ -336,7 +233,7 @@ class BookingCard extends StatelessWidget {
   }
 }
 
-/// لوحُ نصّ البطاقة: الخدمةُ والمزوّدُ والموعدُ والعدُّ التنازلي.
+/// صدرُ البطاقة: الغلافُ والعنوانُ والمزوّدُ وشارةُ الحالة.
 class _Head extends StatelessWidget {
   const _Head({required this.booking});
   final Booking booking;
@@ -344,102 +241,325 @@ class _Head extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final b = booking;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(14, 14, 12, 14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
+    // **وارتفاعُ الغلاف يتبع خطَّ الجهاز.** ثابتٌ مكتوبٌ يُقصّ العنوانَ
+    // بخطٍّ كبير، و`Image` بارتفاعٍ بلا نهايةٍ داخلَ `IntrinsicHeight` تُخفي
+    // البطاقةَ كلَّها — وقد وقع ذلك على جهازٍ حقيقيّ.
+    final scale = MediaQuery.textScalerOf(context).scale(1).clamp(1.0, 1.6);
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: SizedBox(
+            width: 74,
+            height: 58 * scale,
+            child: ColoredBox(
+              color: AppColors.surface2,
+              child: MediaThumb(
+                url: Api.mediaUrl(b.coverPath),
+                icon: Icons.photo_camera_back_outlined,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                b.serviceTitle,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 14,
+                  height: 1.25,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.accent,
+                  fontFamilyFallback: arabicFallback,
+                ),
+              ),
+              const SizedBox(height: 3),
+              Row(
+                children: [
+                  const Icon(Icons.storefront_outlined,
+                      size: 13, color: AppColors.gold),
+                  const SizedBox(width: 4),
+                  Flexible(
+                    child: Text(
+                      b.providerName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 11.5,
+                        color: AppColors.gold,
+                        fontFamilyFallback: arabicFallback,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 8),
+        _StatusChip(b.status),
+      ],
+    );
+  }
+}
+
+/// شارةُ الحالة — **ولونُها من `bookingStatusColor` لا لونٌ مكتوبٌ هنا**:
+/// الحالاتُ ستٌّ، ولونٌ ثانٍ لها يفترق عن لونها في صفحة الحجز.
+class _StatusChip extends StatelessWidget {
+  const _StatusChip(this.status);
+  final BookingStatus status;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = bookingStatusColor(status);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      decoration: BoxDecoration(
+        color: c.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
+          Icon(bookingStatusIcon(status), size: 14, color: c),
+          const SizedBox(width: 5),
           Text(
-            b.serviceTitle,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              fontSize: 14.5,
-              height: 1.25,
+            bookingStatusLabel(status),
+            style: TextStyle(
+              fontSize: 11.5,
               fontWeight: FontWeight.w700,
-              color: AppColors.ink,
+              color: c,
               fontFamilyFallback: arabicFallback,
             ),
           ),
-          const SizedBox(height: 3),
-          Muted(b.providerName, size: 11.5, maxLines: 1),
-          const SizedBox(height: 7),
-          _Pill(
-            b.eventTime == null
-                ? formatDate(b.eventDate)
-                : '${formatDate(b.eventDate)} · ${formatTime(b.eventTime)}',
-          ),
-          const SizedBox(height: 8),
-          // **والجملةُ من `countdownLabel`** — بصيغة العدد العربيّة، ويُكبَّر
-          // ما كان رقماً فيها. ولا يُركَّب نصٌّ ثانٍ في الشاشة.
-          BigNumberIn(countdownLabel(daysUntil(b.eventDate))),
         ],
       ),
     );
   }
 }
 
-class _Pill extends StatelessWidget {
-  const _Pill(this.text);
-  final String text;
+/// صفُّ الحقائق الأربع.
+class _Facts extends StatelessWidget {
+  const _Facts({required this.booking});
+  final Booking booking;
 
   @override
-  Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-        decoration: BoxDecoration(
-          color: AppColors.surface2,
-          borderRadius: BorderRadius.circular(999),
+  Widget build(BuildContext context) {
+    final b = booking;
+    return Row(
+      children: [
+        Expanded(
+          child: _Fact(
+            icon: Icons.calendar_today_rounded,
+            label: tr('التاريخ'),
+            value: formatDate(b.eventDate),
+          ),
         ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.calendar_today_rounded,
-                size: 12, color: AppColors.muted),
-            const SizedBox(width: 5),
-            Flexible(
-              child: Text(
-                text,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 11.5,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.muted,
-                  fontFamilyFallback: arabicFallback,
+        const _VLine(),
+        Expanded(
+          child: _Fact(
+            icon: Icons.schedule_rounded,
+            label: tr('الوقت'),
+            value: formatTime(b.eventTime),
+          ),
+        ),
+        const _VLine(),
+        Expanded(
+          child: _Fact(
+            icon: Icons.confirmation_number_outlined,
+            label: tr('رقم الحجز'),
+            value: b.reference,
+            ltr: true,
+          ),
+        ),
+        const _VLine(),
+        Expanded(
+          child: _Fact(
+            icon: Icons.payments_outlined,
+            label: tr('السعر'),
+            value: formatMoney(b.totalPrice),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// حقيقةٌ واحدة: أيقونةٌ ذهبيّةٌ وعنوانٌ باهتٌ فوق، والقيمةُ تحت.
+class _Fact extends StatelessWidget {
+  const _Fact({
+    required this.icon,
+    required this.label,
+    required this.value,
+    this.ltr = false,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+
+  /// رقمُ الحجز لاتينيٌّ يُقرأ من اليسار — وبدونها تُقلب شرطاتُه.
+  final bool ltr;
+
+  @override
+  Widget build(BuildContext context) => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 13, color: AppColors.gold),
+              const SizedBox(width: 4),
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 10.5,
+                    color: AppColors.muted,
+                    fontFamilyFallback: arabicFallback,
+                  ),
                 ),
               ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          // **وتُقصّ ولا تُصغَّر.** جُرّب `BoxFit.scaleDown` فخرج رقمُ الحجز
+          // بخُمس حجمه — يُقرأ كاملاً ولا يُقرأ. والقصُّ هو ما عُرض على صاحب
+          // المنصّة حين اختار الصفَّ الواحد، **والرقمُ كاملاً في صفحة الحجز**.
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textDirection: ltr ? TextDirection.ltr : null,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: AppColors.ink,
+              fontFamilyFallback: arabicFallback,
             ),
-          ],
-        ),
+          ),
+        ],
       );
 }
 
-/// شريطٌ فوق الصورة — أبيضُ نصفُ شفّافٍ ليُقرأ على أيّ صورةٍ كانت.
-class _Ribbon extends StatelessWidget {
-  const _Ribbon(this.label, {required this.colour});
-  final String label;
-  final Color colour;
+class _VLine extends StatelessWidget {
+  const _VLine();
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.88),
-          borderRadius: BorderRadius.circular(999),
-        ),
-        child: Text(
-          label,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            fontSize: 10,
-            fontWeight: FontWeight.w700,
-            color: colour,
-            fontFamilyFallback: arabicFallback,
+        width: 1,
+        height: 34 * MediaQuery.textScalerOf(context).scale(1).clamp(1.0, 1.6),
+        color: AppColors.hairline,
+      );
+}
+
+/// زرّا الذيل.
+///
+/// **وزرُّ المحادثة يُخفى لمن لا معرّفَ لمزوّده** بدل أن يَعِد بفتحٍ يسقط:
+/// صفٌّ من قاعدةٍ أقدمَ من هذه النسخة لا يحمل العمود.
+class _Actions extends StatelessWidget {
+  const _Actions({required this.booking, this.onTap, this.onMessage});
+  final Booking booking;
+  final VoidCallback? onTap;
+  final VoidCallback? onMessage;
+
+  @override
+  Widget build(BuildContext context) {
+    final chat = booking.providerId.isEmpty ? null : onMessage;
+    return Row(
+      children: [
+        Expanded(
+          child: _Button(
+            key: ValueKey('open-${booking.id}'),
+            label: tr('عرض الحجز'),
+            icon: Icons.chevron_right,
+            filled: true,
+            onTap: onTap,
           ),
         ),
-      );
+        if (chat != null) ...[
+          const SizedBox(width: 10),
+          Expanded(
+            child: _Button(
+              key: ValueKey('chat-${booking.id}'),
+              label: tr('تواصل مع المزوّد'),
+              icon: Icons.chat_bubble_outline_rounded,
+              filled: false,
+              onTap: chat,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _Button extends StatelessWidget {
+  const _Button({
+    super.key,
+    required this.label,
+    required this.icon,
+    required this.filled,
+    this.onTap,
+  });
+
+  final String label;
+  final IconData icon;
+  final bool filled;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final ink = filled ? AppColors.accentInk : AppColors.accent;
+    return Material(
+      color: filled ? AppColors.accent : Colors.transparent,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          height: 42 *
+              MediaQuery.textScalerOf(context).scale(1).clamp(1.0, 1.5),
+          alignment: Alignment.center,
+          decoration: filled
+              ? null
+              : BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.accent, width: 1.2),
+                ),
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 16, color: ink),
+              const SizedBox(width: 5),
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w700,
+                    color: ink,
+                    fontFamilyFallback: arabicFallback,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 /// ملخّصُ «حجوزاتي» في صدر الشاشة.

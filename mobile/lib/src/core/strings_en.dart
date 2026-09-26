@@ -526,6 +526,9 @@ const Map<String, String> englishStrings = {
   'رقم التواصل': 'Contact number',
   'رقم الجوال': 'Phone number',
   'رقم الجوال غير مكتمل. اكتبه مع مفتاح الدولة، مثل +967 7XX XXX XXX.': 'Incomplete phone number. Enter it with the country code, e.g. +967 7XX XXX XXX.',
+  'الوقت': 'Time',
+  'عرض الحجز': 'View booking',
+  'تواصل مع المزوّد': 'Message provider',
   'رقم الحجز': 'Booking number',
   'رقم المحفظة أو الحساب': 'Wallet or account number',
   'رقم المحوِّل (اختياري)': 'Sender number (optional)',
@@ -554,7 +557,6 @@ const Map<String, String> englishStrings = {
   'سجّل منشأتك': 'Register your business',
   'سفر، مناسبة عائلية، صيانة…': 'Travel, a family occasion, maintenance…',
   // ذيلُ بطاقة الحجز — كم بقي من ثمنه، أو أنّه سُدّد.
-  'سُدّد كاملاً': 'Paid in full',
   'سقطرى': 'Socotra',
   'سلوك غير لائق': 'Inappropriate behaviour',
   'سنرسل رمزاً على واتساب إلى {0} لتأكيد أنّه رقمك.': 'We\'ll send a code on WhatsApp to {0} to confirm it\'s your number.',

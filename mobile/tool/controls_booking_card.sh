@@ -19,10 +19,11 @@ SUITE="test/booking_card_test.dart test/booking_stages_test.dart \
        test/booking_order_test.dart test/payment_test.dart"
 F=lib/src/screens/my_bookings.dart
 D=lib/src/data/demo.dart
+L=lib/src/screens/labels.dart
 
 BACKUP=$(mktemp -d)
-cp "$F" "$BACKUP/f"; cp "$D" "$BACKUP/d"
-restore() { cp "$BACKUP/f" "$F"; cp "$BACKUP/d" "$D"; }
+cp "$F" "$BACKUP/f"; cp "$D" "$BACKUP/d"; cp "$L" "$BACKUP/l"
+restore() { cp "$BACKUP/f" "$F"; cp "$BACKUP/d" "$D"; cp "$BACKUP/l" "$L"; }
 trap 'restore; rm -rf "$BACKUP"' EXIT
 PASS=0; FAIL=0
 
@@ -58,50 +59,51 @@ echo "== الأساس =="
 if timeout 900 flutter test $SUITE >/dev/null 2>&1; then echo "أخضر."
 else echo "الأساسُ أحمر — لا معنى للضوابط."; exit 1; fi
 
-echo; echo "== شريطُ الدفع =="
+echo; echo "== حقائقُ البطاقة =="
 
-# ── أ) يُقاس الشريطُ بالعربون لا بالمدفوع ─────────────────────────────────
+# ── أ) السعرُ مكتوبٌ لا مأخوذٌ من الحجز ───────────────────────────────────
 #
-# **والفرقُ بينهما هو الالتزامُ القادم**: من دفع عربونَه يرى شريطَه ممتلئاً
-# فيظنّ أنّه سدّد.
-run "(أ) الشريطُ يقيس العربونَ لا المدفوع" \
+# **وثمنٌ مكتوبٌ يصيب في بطاقةٍ ويخطئ في كلّ بطاقةٍ سواها** — ومن قرأ ثمنَ
+# حجزٍ آخرَ على بطاقته ذهب يطالب بما لم يتّفق عليه.
+run "(أ) السعرُ رقمٌ مكتوب" \
   sub "$F" \
-"        ? (b.paidAmount / b.totalPrice).clamp(0.0, 1.0).toDouble()" \
-"        ? (b.depositAmount / b.totalPrice).clamp(0.0, 1.0).toDouble()"
+"            value: formatMoney(b.totalPrice)," \
+"            value: formatMoney(850000),"
 
-# ── ب) وتُكتب النسبةُ في الحلقة لا تُحسب ──────────────────────────────────
-run "(ب) نسبةُ الحلقة مكتوبةٌ لا محسوبة" \
+# ── ب) والوقتُ يعرض التاريخ ───────────────────────────────────────────────
+run "(ب) قيمةُ «الوقت» هي التاريخ" \
   sub "$F" \
-"                            label: trf('{0}٪', ['\${(ratio * 100).round()}'])," \
-"                            label: trf('{0}٪', ['30']),"
+"            label: tr('الوقت'),
+            value: formatTime(b.eventTime)," \
+"            label: tr('الوقت'),
+            value: formatDate(b.eventDate),"
 
-# ── ج) ولا تتبع الحلقةُ الشريط ────────────────────────────────────────────
+# ── ج) ورقمُ الحجز يعرض معرّفَ الصفّ ──────────────────────────────────────
 #
-# والعينُ تصدّق القوسَ قبل أن تقرأ الرقم.
-run "(ج) الحلقةُ لا تتبع النسبة" \
+# المرجعُ هو الذي يُقال للمزوّد في الهاتف، ومعرّفُ الصفّ لا يعرفه أحد.
+run "(ج) رقمُ الحجز معرّفُ الصفّ" \
   sub "$F" \
-"                            key: ValueKey('paid-ring-\${b.id}'),
-                            value: ratio," \
-"                            key: ValueKey('paid-ring-\${b.id}'),
-                            value: 0.6,"
+"            value: b.reference," \
+"            value: b.id,"
 
-# ── د) ويُقال «سُدّد كاملاً» لمن بقي عليه ────────────────────────────────
+echo; echo "== وشارةُ الحالة =="
+
+# ── د) ولونُها مكتوبٌ لا من الحالة ────────────────────────────────────────
 #
-# **وهذا يُسكت المطالبة**: من بقي عليه ٥٩٥ ألفاً يُقرأ عليه أنّه سدّد.
-run "(د) «سُدّد كاملاً» لمن بقي عليه" \
+# فيخرج «مرفوض» بشارةٍ خضراء.
+run "(د) لونُ الشارة ثابتٌ مكتوب" \
   sub "$F" \
-"                              left <= 0" \
-"                              left >= 0"
+"    final c = bookingStatusColor(status);" \
+"    final c = AppColors.good;"
 
-echo; echo "== والعدُّ التنازلي =="
-
-# ── هـ) وتُركَّب جملةُ العدّ في الشاشة ────────────────────────────────────
+# ── هـ) وعلامةُ صحٍّ لكلّ حال ─────────────────────────────────────────────
 #
-# فتخرج «بقي 2 يوماً» حين يبقى يومان — وصيغةُ العدد العربيّة أربع.
-run "(هـ) الجملةُ تُركَّب لا تُؤخذ" \
-  sub "$F" \
-"          BigNumberIn(countdownLabel(daysUntil(b.eventDate)))," \
-"          BigNumberIn('بقي \${daysUntil(b.eventDate) ?? 0} يوماً'),"
+# **وصحٌّ على حجزٍ اعتُذر عنه يُقرأ لمحةً على أنّه تمّ** — والشارةُ تُقرأ
+# لمحةً لا تُتهجّى.
+run "(هـ) علامةُ صحٍّ لكلّ حالة" \
+  sub "$L" \
+"  BookingStatus.rejected => Icons.cancel_rounded," \
+"  BookingStatus.rejected => Icons.check_circle_rounded,"
 
 echo; echo "== والغلاف =="
 
@@ -114,68 +116,68 @@ run "(و) غلافُ خدمةٍ غيرِ المحجوزة" \
 "    [for (final b in demoBookings) b.withCover(demoServiceCover(b.serviceTitle))];" \
 "    [for (final b in demoBookings) b.withCover(demoServices.first.coverPath)];"
 
-echo; echo "== والتخطيط =="
-
-# ── و٢) ويُؤخذ ارتفاعُ الرأس من النصّ ─────────────────────────────────────
+# ── و٢) وارتفاعُ الغلاف بلا نهاية ────────────────────────────────────────
 #
 # **وهذا هو العطبُ الذي اختفت به البطاقاتُ كلُّها على جهازٍ حقيقيّ، والحزمةُ
-# خضراء.** `IntrinsicHeight` تسأل أبناءَها عن ارتفاعهم الطبيعيّ، و`Image`
-# المرسومةُ بـ`height: double.infinity` تُجيب **بلا نهاية** — فينهار
-# التخطيط: «BoxConstraints forces an infinite height».
-#
-# ولم يقع في الاختبار لأنّ `Api.mediaUrl` كانت تردّ `null` فلا تُبنى
-# `Image` أصلاً. فصار كلُّ اختبارٍ يمرّر رابطاً كما يقع على الجهاز — وهذا
-# الكسرُ يُعيد الصياغةَ الساقطةَ حرفاً.
-run "(و٢) ارتفاعُ الرأس مأخوذٌ من النصّ" \
+# خضراء.** `Image` المرسومةُ بارتفاعٍ لا نهائيٍّ تُسأل عن ارتفاعها الطبيعيّ
+# فتُجيب **بلا نهاية**، فينهار التخطيط. ولم يقع في الاختبار لأنّ
+# `Api.mediaUrl` كانت تردّ `null` فلا تُبنى `Image` أصلاً — فصار كلُّ
+# اختبارٍ يمرّر رابطاً كما يقع على الجهاز.
+run "(و٢) ارتفاعُ الغلاف بلا نهاية" \
   sub "$F" \
-"                SizedBox(
-                  height: 160 *
-                      MediaQuery.textScalerOf(context)
-                          .scale(1)
-                          .clamp(1.0, 1.6),
-                  child: Row(
-                    children: [
-                      Expanded(flex: 58, child: _Head(booking: b))," \
-"                IntrinsicHeight(
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Expanded(
-                        flex: 58,
-                        child: ConstrainedBox(
-                          constraints: const BoxConstraints(minHeight: 150),
-                          child: _Head(booking: b),
-                        ),
-                      ),"
+"            height: 58 * scale," \
+"            height: double.infinity * scale,"
 
-echo; echo "== وما بقي كما كان =="
+echo; echo "== والزرّان =="
 
-# ── ز) ويُشال السهمُ الذي يقول إنّها تُفتح ───────────────────────────────
-#
-# اختاره صاحبُ المنصّة: الانخفاضُ تحت الإصبع لا يُعلم إلّا بعد أن يُجرَّب.
-run "(ز) لا سهمَ يقول إنّها تُفتح" \
+# ── ز) «عرض الحجز» لا يفتح شيئاً ─────────────────────────────────────────
+run "(ز) زرُّ العرض لا يفتح شيئاً" \
   sub "$F" \
-"                          const Icon(Icons.chevron_right,
-                              size: 18, color: AppColors.muted)," \
-"                          const SizedBox.shrink(),"
+"            filled: true,
+            onTap: onTap," \
+"            filled: true,
+            onTap: null,"
 
-# ── ح) وتُشال مراحلُ الحجز ────────────────────────────────────────────────
+# ── ح) والمحادثةُ تُفتح مع مزوّدٍ آخر ────────────────────────────────────
 #
-# اختار صاحبُ المنصّة بقاءَها: «أين وصل حجزي؟» يُقرأ بلا فتح.
-run "(ح) لا مراحلَ في البطاقة" \
+# **وسؤالٌ عن حجزٍ يصل إلى غريب.** ولولا حجزٌ مزوّدُه ليس الأوّلَ في بيانات
+# العرض لصحّ هذا ومرّ.
+run "(ح) محادثةُ مزوّدٍ غيرِ مزوّد الحجز" \
   sub "$F" \
-"                      BookingStages(stages: bookingStages(b))," \
-"                      const SizedBox.shrink(),"
+"      final id = await Api.openConversation(b.providerId, bookingId: b.id);" \
+"      final id = await Api.openConversation('p1', bookingId: b.id);"
 
-# ── ط) وتصير البطاقةُ نبيذيّةً ────────────────────────────────────────────
+# ── ط) وزرُّ محادثةٍ لمن لا معرّفَ لمزوّده ───────────────────────────────
 #
-# رجعت إلى البياض بطلبٍ صريحٍ من صاحب المنصّة، والملوَّنُ هو الملخّصُ وحدَه.
-run "(ط) بطاقةُ الحجز نبيذيّة" \
+# فيُضغط ويُردّ من الخادم بخطأٍ في وجهه.
+run "(ط) زرُّ محادثةٍ بلا مزوّد" \
   sub "$F" \
-"            color: AppColors.surface,
-            border: Border.all(color: AppColors.hairline)," \
-"            color: AppColors.accent,
-            border: Border.all(color: AppColors.hairline),"
+"    final chat = booking.providerId.isEmpty ? null : onMessage;" \
+"    final chat = onMessage;"
+
+echo; echo "== وما شيل يبقى مشيلاً =="
+
+# ── ط٢) ويعود شريطُ الدفع ────────────────────────────────────────────────
+#
+# **عُرضت عليه ثلاثُ خلايا فاختار «تُشال كلُّها كما في صورتك»** — وعودتُها
+# بلا أن يُسأل نقضٌ لاختياره. والمبالغُ كلُّها في صفحة الحجز.
+run "(ط٢) شريطُ الدفع يعود إلى البطاقة" \
+  sub "$F" \
+"              _Facts(booking: b),
+              const SizedBox(height: 12)," \
+"              _Facts(booking: b),
+              const SizedBox(height: 12),
+              LinearProgressIndicator(value: b.paidAmount / b.totalPrice),
+              const SizedBox(height: 12),"
+
+# ── ط٣) ويعود العدُّ التنازليُّ ──────────────────────────────────────────
+run "(ط٣) العدُّ التنازليُّ يعود إلى البطاقة" \
+  sub "$F" \
+"              _Head(booking: b),
+              const SizedBox(height: 12)," \
+"              _Head(booking: b),
+              BigNumberIn(countdownLabel(daysUntil(b.eventDate))),
+              const SizedBox(height: 12),"
 
 echo; echo "== وملخّصُ الصدر =="
 

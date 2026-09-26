@@ -5,6 +5,7 @@
 // لا شيءَ هنا مرسوم: `MyBookingsScreen` بعينها ببيانات وضع العرض. وموضعُ
 // الصورة فارغٌ لأنّ لا شبكةَ في `flutter test` — وهو ما يراه من فتحها بلا
 // اتّصال، لا نقصٌ في البطاقة.
+import 'dart:async';
 import 'dart:io';
 import 'dart:ui' as ui;
 
@@ -16,6 +17,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
 import 'package:aras/src/core/session.dart';
+import 'package:aras/src/data/api.dart';
 import 'package:aras/src/core/theme.dart';
 import 'package:aras/src/screens/my_bookings.dart';
 
@@ -39,6 +41,94 @@ Future<void> _loadFonts() async {
   await initializeDateFormatting('ar');
 }
 
+// ── شبكةٌ مركَّبة تردّ صورةً واحدة ───────────────────────────────────────────
+class _OneImageHttp extends HttpOverrides {
+  _OneImageHttp(this.bytes);
+  final Uint8List bytes;
+
+  @override
+  HttpClient createHttpClient(SecurityContext? context) => _Client(bytes);
+}
+
+class _Client implements HttpClient {
+  _Client(this.bytes);
+  final Uint8List bytes;
+
+  @override
+  bool autoUncompress = true;
+
+  @override
+  Future<HttpClientRequest> getUrl(Uri url) async => _Request(bytes);
+
+  @override
+  Future<HttpClientRequest> openUrl(String method, Uri url) async =>
+      _Request(bytes);
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => null;
+}
+
+class _Request implements HttpClientRequest {
+  _Request(this.bytes);
+  final Uint8List bytes;
+
+  @override
+  final HttpHeaders headers = _Headers();
+
+  @override
+  Future<HttpClientResponse> close() async => _Response(bytes);
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => null;
+}
+
+class _Headers implements HttpHeaders {
+  @override
+  dynamic noSuchMethod(Invocation invocation) => null;
+}
+
+class _Response implements HttpClientResponse {
+  _Response(this.bytes);
+  final Uint8List bytes;
+
+  @override
+  int get statusCode => 200;
+
+  @override
+  int get contentLength => bytes.length;
+
+  @override
+  HttpClientResponseCompressionState get compressionState =>
+      HttpClientResponseCompressionState.notCompressed;
+
+  @override
+  StreamSubscription<List<int>> listen(
+    void Function(List<int>)? onData, {
+    Function? onError,
+    void Function()? onDone,
+    bool? cancelOnError,
+  }) =>
+      Stream<List<int>>.value(bytes).listen(
+        onData,
+        onError: onError,
+        onDone: onDone,
+        cancelOnError: cancelOnError,
+      );
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => null;
+}
+
+/// **والصورةُ تُفكّ على خيطٍ آخر فتحتاج زمناً حقيقيّاً.**
+Future<void> _settleImages(WidgetTester tester) async {
+  for (var i = 0; i < 4; i++) {
+    await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 300)));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+  }
+}
+
 Session _session() => Session()
   ..userId = 'u1'
   ..email = 'c@sdd.company'
@@ -55,6 +145,18 @@ void main() {
 
     final out = Platform.environment['SHOTS'] ?? '/tmp/shots';
     Directory(out).createSync(recursive: true);
+
+    // **والشبكةُ وحدَها مركَّبة** — بدونها يخرج موضعُ الغلاف فارغاً، وهو حالُ
+    // من فتحها بلا اتّصالٍ لا نقصٌ في البطاقة.
+    final cover = Platform.environment['COVER'];
+    if (cover != null && File(cover).existsSync()) {
+      HttpOverrides.global = _OneImageHttp(File(cover).readAsBytesSync());
+      Api.mediaUrlOverride = (path) => 'https://example.invalid/$path';
+    }
+    addTearDown(() {
+      HttpOverrides.global = null;
+      Api.mediaUrlOverride = null;
+    });
 
     await tester.pumpWidget(MaterialApp(
       debugShowCheckedModeBanner: false,
@@ -83,8 +185,9 @@ void main() {
     await tester.pumpAndSettle();
 
     // تُمرَّر فوق بطاقة الملخّص إلى أوّل بطاقة حجز.
-    await tester.drag(find.byType(Scrollable).first, const Offset(0, -30));
+    await tester.drag(find.byType(Scrollable).first, const Offset(0, -150));
     await tester.pumpAndSettle();
+    await _settleImages(tester);
     // ولا مؤقّتَ معلّقٌ عند انتهاء الاختبار: `demoDelay` ثلثُ ثانية.
     await tester.pump(const Duration(seconds: 1));
     await tester.pumpAndSettle();

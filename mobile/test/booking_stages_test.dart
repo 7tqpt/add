@@ -11,6 +11,7 @@ import 'package:aras/src/core/session.dart';
 import 'package:aras/src/core/theme.dart';
 import 'package:aras/src/data/demo.dart';
 import 'package:aras/src/data/models.dart';
+import 'package:aras/src/screens/booking_detail.dart';
 import 'package:aras/src/screens/my_bookings.dart';
 import 'package:aras/src/ui/booking_stages.dart';
 
@@ -65,6 +66,13 @@ Booking _b({
 );
 
 List<StageMark> _marks(Booking b) => bookingStages(b).map((s) => s.mark).toList();
+
+/// صفحةُ الحجز — وهي موضعُ السكّة منذ أن شيلت من البطاقة.
+Widget _detail(Booking b) => BookingDetailScreen(
+      booking: b,
+      session: _session(),
+      reviewed: false,
+    );
 
 void main() {
   group('السكّة', () {
@@ -158,59 +166,49 @@ void main() {
   });
 
   group('في الشاشة', () {
-    testWidgets('**ولا زرَّ في سكّة البطاقة — انتقل إلى شريط الشاشة**',
+    // **والسكّةُ انتقلت من البطاقة إلى صفحة الحجز.** كانت في بطاقة
+    // «حجوزاتي»، ثمّ أرسل صاحبُ المنصّة تصميماً للبطاقة ليس فيه سكّةٌ ولا
+    // شريطُ دفعٍ ولا عدٌّ تنازليّ، وعُرضت عليه ثلاثُ خلايا فاختار «تُشال
+    // كلُّها كما في صورتك». فما كان يُقاس في البطاقة يُقاس هنا في الصفحة
+    // التي تفتحها — **ولم تُحذف ضمانةٌ منها، بل بُدّل موضعُها**.
+    testWidgets('**ولا سكّةَ في البطاقة، والسكّةُ في الصفحة بلا زرّ**',
         (tester) async {
-      // **وهذه ضمانةٌ بُدّلت بطلب صاحبها لا حُذفت.** كان الزرُّ داخلَ السكّة
-      // في البطاقة، تحت السطر الذي يقول لماذا يُدفع. ثمّ اختار أن تُنقل
-      // أفعالُ البطاقة كلُّها إلى شاشةٍ تُفتح بالضغط، وأن يكون الدفعُ في
-      // شريطٍ ثابتٍ لا ينزل مع الصفحة.
-      //
-      // فالمقيسُ الآن أنّ السكّةَ في البطاقة **تقول ولا تفعل**: زرٌّ فيها
-      // وآخرُ في الشريط يجعل أحدَهما يبدو غيرَ الآخر. وموضعُ الزرّ الجديدُ
-      // مقيسٌ في `booking_detail_test.dart`.
       _phone(tester);
       await tester.pumpWidget(
           _wrap(Scaffold(body: MyBookingsScreen(session: _session()))));
       await _settle(tester);
 
+      expect(find.byType(BookingCard), findsWidgets, reason: 'لا بطاقاتِ حجز');
+      expect(find.byType(BookingStages), findsNothing,
+          reason: 'سكّةٌ باقيةٌ في البطاقة — وقد اختار شيلَها');
+
+      // وفي الصفحة: سكّةٌ **تقول ولا تفعل** — وزرُّ الدفع في شريطها الثابت،
+      // وموضعُه مقيسٌ في `booking_detail_test.dart`.
+      await tester.pumpWidget(_wrap(_detail(demoBookings.first)));
+      await _settle(tester);
+
       final stages = find.byType(BookingStages);
-      expect(stages, findsWidgets, reason: 'لا سكّةَ في البطاقات');
+      expect(stages, findsOneWidget, reason: 'لا سكّةَ في صفحة الحجز');
       expect(
-        find.descendant(of: stages.first, matching: find.byType(FilledButton)),
+        find.descendant(of: stages, matching: find.byType(FilledButton)),
         findsNothing,
-        reason: 'زرٌّ باقٍ في سكّة البطاقة',
+        reason: 'زرٌّ باقٍ في السكّة',
       );
-      expect(find.textContaining('ادفع العربون'), findsNothing);
     });
 
     testWidgets('ولا زرَّ دفعٍ على حجزٍ لم يوافق عليه مزوّدُه', (tester) async {
       _phone(tester);
-      await tester.pumpWidget(
-          _wrap(Scaffold(body: MyBookingsScreen(session: _session()))));
-      await _settle(tester);
-
       final pending =
           demoBookings.where((b) => b.status == BookingStatus.pendingProvider);
       expect(pending, isNotEmpty, reason: 'لا حجزَ منتظرٌ في بيانات العرض');
 
-      // بطاقةُ المنتظِر تُوجد بمرجعه — وهو فريد.
-      //
-      // **والجدُّ `BookingCard` لا `BookingStages`:** المرجعُ صفٌّ في البطاقة
-      // **إلى جانب** السكّة لا داخلَها. وأوّلُ صياغةٍ سألت عن السكّة جدّاً
-      // له فلم تجد شيئاً، ثمّ سألت عن زرٍّ داخل لا شيء — **فمرّت فارغةً**
-      // وهي تظنّ نفسَها تقيس.
-      final card = find.ancestor(
-        of: find.text(pending.first.reference),
-        matching: find.byType(BookingCard),
-      );
-      expect(card, findsOneWidget, reason: 'لم تُوجد بطاقةُ المنتظِر أصلاً');
+      await tester.pumpWidget(_wrap(_detail(pending.first)));
+      await _settle(tester);
+
+      final stages = find.byType(BookingStages);
+      expect(stages, findsOneWidget, reason: 'لا سكّةَ في صفحة المنتظِر');
       expect(
-        find.descendant(of: card, matching: find.byType(BookingStages)),
-        findsOneWidget,
-        reason: 'لا سكّةَ في بطاقة المنتظِر',
-      );
-      expect(
-        find.descendant(of: card, matching: find.byType(FilledButton)),
+        find.descendant(of: stages, matching: find.byType(FilledButton)),
         findsNothing,
         reason: 'زرُّ دفعٍ قبل الموافقة',
       );
@@ -218,8 +216,11 @@ void main() {
 
     testWidgets('**والمعتذَرُ عنه أحمرُ مقطوع لا ماضٍ**', (tester) async {
       _phone(tester);
-      await tester.pumpWidget(
-          _wrap(Scaffold(body: MyBookingsScreen(session: _session()))));
+      final rejected =
+          demoBookings.where((b) => b.status == BookingStatus.rejected);
+      expect(rejected, isNotEmpty, reason: 'لا حجزَ معتذَرٌ عنه في العرض');
+
+      await tester.pumpWidget(_wrap(_detail(rejected.first)));
       await _settle(tester);
 
       expect(find.text('اعتذر مقدّم الخدمة'), findsWidgets);
@@ -289,7 +290,7 @@ void main() {
         _phone(tester, height: 9000);
         await tester.pumpWidget(_wrap(MediaQuery(
           data: MediaQueryData(textScaler: TextScaler.linear(scale)),
-          child: Scaffold(body: MyBookingsScreen(session: _session())),
+          child: _detail(demoBookings.first),
         )));
         await _settle(tester);
         expect(tester.takeException(), isNull, reason: 'فاضت عند $scale');

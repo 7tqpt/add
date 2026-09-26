@@ -22,6 +22,19 @@ Color bookingStatusColor(BookingStatus s) => switch (s) {
   BookingStatus.expired => AppColors.muted,
 };
 
+/// أيقونةُ الحالة — **ولا علامةَ صحٍّ لغير المؤكَّد**.
+///
+/// في تصميم صاحب المنصّة شارةُ «مؤكد» بعلامة صحّ. ولو رُسمت لكلّ حالةٍ لخرج
+/// «مرفوض» بعلامة صحٍّ حمراءَ تُقرأ لمحةً على أنّه تمّ.
+IconData bookingStatusIcon(BookingStatus s) => switch (s) {
+  BookingStatus.pendingProvider => Icons.hourglass_top_rounded,
+  BookingStatus.confirmed => Icons.check_circle_rounded,
+  BookingStatus.completed => Icons.verified_rounded,
+  BookingStatus.rejected => Icons.cancel_rounded,
+  BookingStatus.cancelled => Icons.do_not_disturb_on_rounded,
+  BookingStatus.expired => Icons.timer_off_rounded,
+};
+
 String ticketStatusLabel(String s) => switch (s) {
   'open' => tr('مفتوحة'),
   'in_progress' => tr('قيد المعالجة'),
