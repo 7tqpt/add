@@ -3,6 +3,7 @@
 // **وأهمّ ما هنا أن المبلغ لا يُكتب ولا يُرسَل.** يحسبه الخادم من الحجز نفسه،
 // وحقلٌ يكتب فيه العميل مبلغه يفتح باب حجز قاعةٍ بريالٍ واحد.
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -14,6 +15,7 @@ import 'package:aras/src/data/demo.dart';
 import 'package:aras/src/data/models.dart';
 import 'package:aras/src/screens/my_bookings.dart';
 import 'package:aras/src/screens/payment.dart';
+import 'package:aras/src/screens/support.dart';
 import 'package:aras/src/ui/kit.dart';
 
 Session _session() => Session()
@@ -230,6 +232,75 @@ void main() {
     expect(pay, findsWidgets);
     // نمطُ الثيمة لا نمطٌ ذهبيٌّ مكتوبٌ باليد.
     expect(tester.widgetList<FilledButton>(pay).first.style, isNull);
+  });
+
+  // ── ما لا أرقامَ فيه ────────────────────────────────────────────────────
+  //
+  // **وهذه هي الحالُ على قاعدة صاحب المنصّة اليوم**: لا أرقامَ تحويلٍ
+  // مضبوطة، فلا نموذجَ إبلاغٍ يُعرض — وإنّما يُقال الحالُ ويُفتح له بابُ
+  // الدعم من موضع الحاجة.
+  group('ولا وسيلةَ تحويلٍ مضبوطة', () {
+    final saved = demoPaymentSettings;
+    setUp(() => demoPaymentSettings = const PaymentSettings(
+          jawali: '', kuraimi: '', bank: '', note: ''));
+    tearDown(() => demoPaymentSettings = saved);
+
+    testWidgets('يُقال الحالُ ويُفتح الدعمُ من الشاشة', (tester) async {
+      _phone(tester);
+      await tester.pumpWidget(
+          _wrap(PaymentScreen(booking: _unpaid(), session: _session())));
+      await _settle(tester);
+
+      expect(find.text('لم تُضبط وسائل التحويل بعد'), findsOneWidget);
+      // ولا نموذجَ إبلاغٍ يُعرض لمن لا رقمَ له يحوّل إليه.
+      expect(find.textContaining('حوّلتُ المبلغ'), findsNothing);
+
+      // **والمقيسُ أنّ الزرَّ يفتح شاشةَ الدعم حقّاً** — لا أنّه مرسوم:
+      // نصٌّ يقول «راسل الدعم» بلا بابٍ يُفتح نصفُ رسالة.
+      await tester.tap(find.byKey(const ValueKey('payment-support')));
+      await _settle(tester);
+      expect(find.byType(SupportScreen), findsOneWidget,
+          reason: 'زرُّ الدعم لا يفتح شيئاً');
+    });
+
+    testWidgets('ولا زرَّ دعمٍ بلا جلسة', (tester) async {
+      // شاشةُ الدعم تحتاج جلسة، وزرٌّ يفتح شاشةً تسقط أسوأُ من غيابه.
+      _phone(tester);
+      await tester.pumpWidget(_wrap(PaymentScreen(booking: _unpaid())));
+      await _settle(tester);
+
+      expect(find.text('لم تُضبط وسائل التحويل بعد'), findsOneWidget);
+      expect(find.byKey(const ValueKey('payment-support')), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+  });
+
+  testWidgets('ورقمُ الحجز يُنسخ من شاشة الدفع', (tester) async {
+    // **وهو الذي يُكتب في خانة الملاحظة عند التحويل** — ومن أخطأ فيه حرفاً
+    // تأخّرت مطابقةُ حوالته أو ضاعت. والمقيسُ ما وصل الحافظةَ لا أنّ
+    // الزرَّ ضُغط.
+    _phone(tester);
+    String? copied;
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      SystemChannels.platform,
+      (call) async {
+        if (call.method == 'Clipboard.setData') {
+          copied = (call.arguments as Map)['text'] as String?;
+        }
+        return null;
+      },
+    );
+    addTearDown(() => tester.binding.defaultBinaryMessenger
+        .setMockMethodCallHandler(SystemChannels.platform, null));
+
+    final b = _unpaid();
+    await tester.pumpWidget(_wrap(PaymentScreen(booking: b)));
+    await _settle(tester);
+
+    await tester.tap(find.byKey(const ValueKey('copy-reference')));
+    await _settle(tester);
+
+    expect(copied, b.reference, reason: 'نُسخ غيرُ رقم الحجز');
   });
 
   // **`test` لا `testWidgets`:** الثانية تُزيّف المؤقّتات، و`demoDelay`

@@ -2,6 +2,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 
 import '../core/i18n.dart';
+import '../core/session.dart';
 import '../core/format.dart';
 import '../core/theme.dart';
 import '../data/api.dart';
@@ -9,6 +10,7 @@ import '../data/models.dart';
 import '../data/supabase.dart';
 import '../ui/kit.dart';
 import 'account_extras.dart';
+import 'support.dart';
 
 /// دفعُ عربون الحجز أو باقيه.
 ///
@@ -21,9 +23,20 @@ import 'account_extras.dart';
 /// من التطبيق لأمكن دفع عربون قاعةٍ بريالٍ واحد. وما يُرسَل: الحجزُ والوسيلة
 /// ورقمُ المحوِّل.
 class PaymentScreen extends StatefulWidget {
-  const PaymentScreen({super.key, required this.booking, this.kind = 'deposit'});
+  const PaymentScreen({
+    super.key,
+    required this.booking,
+    this.kind = 'deposit',
+    this.session,
+  });
 
   final Booking booking;
+
+  /// الجلسةُ — وبها وحدَها يُفتح الدعمُ من هذه الشاشة.
+  ///
+  /// **و`null` فلا زرَّ دعم**: شاشةُ الدعم تحتاج جلسةً، وزرٌّ يفتح شاشةً
+  /// تسقط أسوأُ من غيابه.
+  final Session? session;
 
   /// `deposit` عربوناً، أو `balance` لإكمال الباقي.
   final String kind;
@@ -141,12 +154,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
               // **ولا وسيلةَ مضبوطة يعني ألّا يُعرض نموذجٌ لا ينفع:** من حوّل
               // إلى رقمٍ لا وجود له فقَدَ ماله. فيُقال الحال ويُوجَّه إلى
               // الدعم.
-              if (s == null || !s.any) {
-                return EmptyBlock(
-                  title: tr('لم تُضبط وسائل التحويل بعد'),
-                  description: tr('راسل الدعم لإتمام الدفع — ولا تحوّل إلى رقمٍ غير معلن هنا.'),
-                );
-              }
+              if (s == null || !s.any) return _NoMethods(session: widget.session);
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -230,8 +238,17 @@ class _Due extends StatelessWidget {
   @override
   Widget build(BuildContext context) => AppCard(
     children: [
-      Muted(booking.serviceTitle),
-      const SizedBox(height: Space.xs),
+      // **واسمُ الخدمة بأيقونته** — كما في تصميم صاحب المنصّة: الشاشةُ تفتح
+      // على رقمٍ كبير، والأيقونةُ تقول على أيّ حجزٍ هو قبل أن يُقرأ السطر.
+      Row(
+        children: [
+          const Icon(Icons.account_balance_outlined,
+              size: 17, color: AppColors.gold),
+          const SizedBox(width: 6),
+          Expanded(child: Muted(booking.serviceTitle, maxLines: 1)),
+        ],
+      ),
+      const SizedBox(height: Space.sm),
       Text(
         formatMoney(due),
         style: const TextStyle(
@@ -242,12 +259,71 @@ class _Due extends StatelessWidget {
       ),
       const SizedBox(height: Space.xs),
       Muted(kind == 'deposit' ? tr('العربون المستحقّ') : tr('باقي المبلغ')),
-      const SizedBox(height: Space.md),
+      const SizedBox(height: Space.sm),
+      const Divider(height: 1, color: AppColors.hairline),
       KeyValue(tr('إجمالي الحجز'), formatMoney(booking.totalPrice)),
+      const Divider(height: 1, color: AppColors.hairline),
       KeyValue(tr('المدفوع'), formatMoney(booking.paidAmount)),
-      KeyValue(tr('رقم الحجز'), booking.reference),
+      const Divider(height: 1, color: AppColors.hairline),
+      // **ورقمُ الحجز يُنسخ ولا يُكتب بالإصبع**: هو الذي يُكتب في خانة
+      // الملاحظة عند التحويل، ومن أخطأ فيه حرفاً تأخّرت مطابقةُ حوالته.
+      _CopyRow(label: tr('رقم الحجز'), value: booking.reference),
     ],
   );
+}
+
+/// صفُّ رقم الحجز — قيمةٌ إلى جانبها زرُّ نسخ.
+class _CopyRow extends StatelessWidget {
+  const _CopyRow({required this.label, required this.value});
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: Space.sm),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Muted(label),
+            Flexible(
+              child: InkWell(
+                key: const ValueKey('copy-reference'),
+                onTap: () async {
+                  await Clipboard.setData(ClipboardData(text: value));
+                  if (context.mounted) {
+                    showMessage(context, tr('نُسخ رقم الحجز'));
+                  }
+                },
+                borderRadius: BorderRadius.circular(8),
+                child: Padding(
+                  padding: const EdgeInsets.all(2),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.copy_rounded,
+                          size: 16, color: AppColors.gold),
+                      const SizedBox(width: 6),
+                      Flexible(
+                        child: Text(
+                          value,
+                          textDirection: TextDirection.ltr,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.ink,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
 }
 
 /// إبلاغٌ سابقٌ قيد التأكيد — أو دفعةٌ تأكّدت.
@@ -270,28 +346,66 @@ class _Pending extends StatelessWidget {
               AppCard(
                 children: [
                   Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(child: Text(p.description, style: const TextStyle(fontSize: 14))),
-                      StatusBadge(paymentStatusLabel(p.status), color: paymentStatusColor(p.status)),
+                      Expanded(
+                        child: Text(
+                          p.description,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.ink,
+                            height: 1.35,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: Space.sm),
+                      StatusBadge(paymentStatusLabel(p.status),
+                          color: paymentStatusColor(p.status)),
                     ],
                   ),
                   const SizedBox(height: Space.xs),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
+                      // **والمبلغُ بلون المال في هذا التطبيق** — كما في
+                      // تصميم صاحب المنصّة، فيُلتقط قبل أن يُقرأ السطر.
                       Text(
                         formatMoney(p.amount),
-                        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 16,
+                          color: AppColors.accent,
+                        ),
                       ),
-                      Muted('${paymentMethodLabel(p.method)} · ${formatRelative(p.createdAt)}',
-                          size: 11),
+                      Flexible(
+                        child: Muted(
+                          '${paymentMethodLabel(p.method)} · '
+                          '${formatRelative(p.createdAt)}',
+                          size: 11,
+                          maxLines: 1,
+                        ),
+                      ),
                     ],
                   ),
                   if (p.isPending) ...[
                     const SizedBox(height: Space.sm),
-                    Muted(
-                      tr('بانتظار مطابقة الإدارة للحوالة. يصلك إشعارٌ حين تُؤكَّد.'),
-                      size: 11,
+                    // **وسطرُ الانتظار بأيقونته**: حالٌ لا تُقرأ إلّا إذا
+                    // فُرّقت عمّا فوقها.
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(Icons.schedule_rounded,
+                            size: 15, color: AppColors.gold),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Muted(
+                            tr('بانتظار مطابقة الإدارة للحوالة. يصلك إشعارٌ '
+                                'حين تُؤكَّد.'),
+                            size: 11,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ],
@@ -423,3 +537,73 @@ String paymentMethodLabel(String m) => switch (m) {
   'card' => tr('بطاقة'),
   _ => tr('محفظة'),
 };
+
+
+/// لا أرقامَ تحويلٍ في القاعدة بعد.
+///
+/// **ونصٌّ يقول «راسل الدعم» بلا زرٍّ يفتحه نصفُ رسالة** — وقد كان كذلك:
+/// كُتب الأمرُ ولم يُعطَ صاحبُه ما يُنفّذه به، فعليه أن يخرج ويبحث عن
+/// الدعم في «حسابي». فصار الزرُّ في موضع الحاجة.
+///
+/// **والزرُّ يُخفى إن لم تكن جلسة**: شاشةُ الدعم تحتاجها، وزرٌّ يفتح شاشةً
+/// تسقط أسوأُ من غيابه.
+class _NoMethods extends StatelessWidget {
+  const _NoMethods({required this.session});
+  final Session? session;
+
+  @override
+  Widget build(BuildContext context) {
+    final me = session;
+    return AppCard(
+      children: [
+        Center(
+          child: Container(
+            width: 56,
+            height: 56,
+            decoration: const BoxDecoration(
+              color: AppColors.surface2,
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.gpp_maybe_outlined,
+                size: 28, color: AppColors.gold),
+          ),
+        ),
+        const SizedBox(height: Space.md),
+        Center(
+          child: Text(
+            tr('لم تُضبط وسائل التحويل بعد'),
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: AppColors.ink,
+              fontFamilyFallback: arabicFallback,
+            ),
+          ),
+        ),
+        const SizedBox(height: Space.sm),
+        Text(
+          tr('راسل الدعم لإتمام الدفع — ولا تحوّل إلى رقمٍ غير معلن هنا.'),
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            fontSize: 13,
+            height: 1.7,
+            color: AppColors.muted,
+            fontFamilyFallback: arabicFallback,
+          ),
+        ),
+        if (me != null) ...[
+          const SizedBox(height: Space.lg),
+          OutlinedButton.icon(
+            key: const ValueKey('payment-support'),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => SupportScreen(session: me)),
+            ),
+            icon: const Icon(Icons.support_agent_rounded, size: 19),
+            label: Text(tr('تواصل مع الدعم')),
+          ),
+        ],
+      ],
+    );
+  }
+}
