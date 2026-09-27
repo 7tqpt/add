@@ -184,13 +184,12 @@ run "(م) لا خَتمَ لمن أتمّ كلَّ شيء" \
 # فيُقرأ اسمُ المحافظة جزءاً من التاريخ — وكانا كذلك قبل تصميمه.
 run "(ن) المحافظةُ ملصوقةٌ بالتاريخ" \
   sub "$F" \
-"          _Pill(icon: Icons.calendar_today_rounded, text: date),
-          if (place.isNotEmpty)
-            _Pill(icon: Icons.place_outlined, text: place)," \
-"          _Pill(
-            icon: Icons.calendar_today_rounded,
-            text: place.isEmpty ? date : '\$date · \$place',
-          ),"
+"            Flexible(child: _PillText(date)),
+            if (place.isNotEmpty) ...[" \
+"            Flexible(
+              child: _PillText(place.isEmpty ? date : '\$date · \$place'),
+            ),
+            if (place.isEmpty) ...["
 
 echo
 echo "الساقط: $PASS — الباقي: $FAIL"
