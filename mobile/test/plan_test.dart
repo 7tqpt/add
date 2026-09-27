@@ -4,9 +4,11 @@
 // من رآه ٨٠٪ قبل أسبوعٍ من العرس اطمأنّ. فإن كان محسوباً من عددٍ خاطئ —
 // أو مكتوباً لا محسوباً — طَمْأنَ في غير موضعه.
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:aras/src/core/format.dart';
 import 'package:aras/src/core/session.dart';
 import 'package:aras/src/core/theme.dart';
 import 'package:aras/src/data/api.dart';
@@ -256,6 +258,59 @@ void main() {
     expect(find.text('لم تُفتح قائمة التجهيز بعد'), findsOneWidget);
     expect(find.text('أنت على الطريق الصحيح'), findsNothing);
 
+  });
+
+  testWidgets('**والمحافظةُ بأيقونتها لا ملصوقةً بالتاريخ**', (tester) async {
+    // **وكانا في سطرٍ واحدٍ تحت أيقونة تقويم** — «٢٤ أكتوبر ٢٠٢٦ · أمانة
+    // العاصمة» — فيُقرأ اسمُ المحافظة جزءاً من التاريخ. وفي تصميم صاحب
+    // المنصّة لكلٍّ أيقونتُه وبينهما خيط.
+    await tester.pumpWidget(_wrap(PlanScreen(session: _session())));
+    await _settle(tester);
+
+    final plan = demoPlans.first;
+    expect(plan.governorate, isNotEmpty, reason: 'خطّةُ العرض بلا محافظة');
+
+    // نصّان اثنان لا نصٌّ واحدٌ فيه الاثنان.
+    expect(find.text(formatDate(plan.weddingDate)), findsOneWidget);
+    expect(find.text(plan.governorate), findsOneWidget,
+        reason: 'المحافظةُ ليست نصّاً قائماً بنفسه');
+    expect(find.byIcon(Icons.place_outlined), findsWidgets,
+        reason: 'لا أيقونةَ موقعٍ للمحافظة');
+
+    // **ولا يُسأل النصُّ عمّا فيه، بل يُقاس ما رُسم**: جُمعا في قرصٍ واحدٍ
+    // أوّلَ مرّةٍ كما في تصميمه، فخرج الاثنان مقصوصين — «24 أكتوبر …» و
+    // «أمانة العا…» — والنصُّ في الشجرة كاملٌ لا يكشف ذلك.
+    for (final text in [formatDate(plan.weddingDate), plan.governorate]) {
+      final para = tester.renderObject<RenderParagraph>(find.text(text));
+      expect(para.didExceedMaxLines, isFalse, reason: 'قُصّ: $text');
+    }
+  });
+
+  testWidgets('**ومن أتمّ المهامَّ كلَّها يُختم له لا يُترك بفراغ**',
+      (tester) async {
+    // **وقائمةٌ تخلو فجأةً تُقرأ عطباً لا إنجازاً** — «أين مهامّي؟». فموضعُ
+    // المهامّ الذاهبةِ يُملأ بخَتمٍ: قرصٌ وعلامةُ صحٍّ وشرارات، على تصميمٍ
+    // أرسله صاحبُ المنصّة.
+    demoPlanTasks = [
+      for (final t in demoPlanTasks)
+        PlanTask(
+          id: t.id,
+          title: t.title,
+          done: true,
+          dueDate: t.dueDate,
+          sortOrder: t.sortOrder,
+        ),
+    ];
+
+    await tester.pumpWidget(_wrap(PlanScreen(session: _session())));
+    await _settle(tester);
+
+    expect(find.text('أنهيت كلَّ شيء — مبارك!'), findsOneWidget);
+    expect(find.byIcon(Icons.check_rounded), findsWidgets,
+        reason: 'لا خَتمَ في موضع المهامّ الذاهبة');
+
+    // **ويبقى بابُ الإضافة**: من أتمّ اليومَ يضيف غداً.
+    expect(find.text('أضف مهمّة…'), findsOneWidget);
   });
 
   testWidgets('ومن لم يشطب شيئاً يُدعى إلى الأولى لا يُهنَّأ', (tester) async {

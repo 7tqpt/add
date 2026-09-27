@@ -16,11 +16,18 @@ command -v flutter >/dev/null || { echo "لا flutter في المسار"; exit 1
 
 SUITE="test/plan_test.dart test/plan_money_test.dart test/list_motion_test.dart"
 F=lib/src/screens/plan.dart
+# **و`BigNumberIn` انتقلت إلى العدّة** (`kit.dart`) لتُقرأ في الشاشتين،
+# فمراسي أسلوبها هناك لا هنا. وقد بقيت ثلاثةُ ضوابطَ تشير إلى موضعها
+# القديم فلم تقع أصلاً — وهذا ضابطٌ كاذبٌ يُطمئن ولا يحرس.
+K=lib/src/ui/kit.dart
 D=lib/src/data/demo.dart
 
 BACKUP=$(mktemp -d)
-cp "$F" "$BACKUP/f"; cp "$D" "$BACKUP/d"
-restore() { cp "$BACKUP/f" "$F"; cp "$BACKUP/d" "$D"; }
+cp "$F" "$BACKUP/f"; cp "$K" "$BACKUP/k"; cp "$D" "$BACKUP/d"
+# **وكلُّ ملفٍّ يُكسر يُستعاد.** أُضيف `$K` إلى النسخ ونُسي من الاستعادة،
+# فترك آخرُ تشغيلٍ `demo.dart` مكسوراً في الشجرة — واحمرّت بعده اختباراتٌ
+# لا علاقةَ لها بما كان يُقاس. فالثلاثةُ هنا جملةً واحدة.
+restore() { cp "$BACKUP/f" "$F"; cp "$BACKUP/k" "$K"; cp "$BACKUP/d" "$D"; }
 trap 'restore; rm -rf "$BACKUP"' EXIT
 PASS=0; FAIL=0
 
@@ -63,7 +70,7 @@ echo; echo "== العدُّ التنازلي =="
 # **والحجمُ جزءٌ من المعنى**: العدُّ التنازليُّ أوّلُ ما يُسأل عنه، ورقمٌ
 # بحجم الكلمة المجاورة يمرّ عليه النظرُ ولا يلتقطه.
 run "(أ) الرقمُ بحجم جيرانه" \
-  sub "$F" \
+  sub "$K" \
 "    const big = TextStyle(fontSize: 26, height: 1.1, fontWeight: FontWeight.w700);" \
 "    const big = TextStyle(fontSize: 15, height: 1.1, fontWeight: FontWeight.w700);"
 
@@ -74,8 +81,8 @@ run "(أ) الرقمُ بحجم جيرانه" \
 # و«بقي 11 يوماً» — وكلاهما خطأ.
 run "(ب) الجملةُ تُركَّب في الشاشة لا تُؤخذ" \
   sub "$F" \
-"            _BigNumberIn(countdownLabel(days))," \
-"            _BigNumberIn('بقي \${days ?? 0} يوماً'),"
+"            BigNumberIn(countdownLabel(days))," \
+"            BigNumberIn('بقي \${days ?? 0} يوماً'),"
 
 # ── ب٢) ويُعلَن احتياطيُّ الخطّ في أسلوب القِطعة ──────────────────────────
 #
@@ -84,7 +91,7 @@ run "(ب) الجملةُ تُركَّب في الشاشة لا تُؤخذ" \
 # مربّعاً مصمتاً. والنصُّ والحجمُ كلاهما سليمٌ في الشجرة، فلا يكشفه إلّا
 # سؤالٌ عن الأسلوب نفسِه.
 run "(ب٢) احتياطيُّ الخطّ في أسلوب القِطعة" \
-  sub "$F" \
+  sub "$K" \
 "    const big = TextStyle(fontSize: 26, height: 1.1, fontWeight: FontWeight.w700);" \
 "    const big = TextStyle(fontSize: 26, height: 1.1, fontWeight: FontWeight.w700,
       fontFamilyFallback: arabicFallback);"
@@ -160,6 +167,29 @@ run "(ط) الملغى يُعطي غلافاً" \
   sub "$D" \
 "          b.status != BookingStatus.cancelled &&" \
 "          true &&"
+
+echo; echo "== وخَتمُ القائمة =="
+
+# ── م) ويُترك من أتمّ المهامَّ كلَّها بفراغ ─────────────────────────────
+#
+# **قائمةٌ تخلو فجأةً تُقرأ عطباً لا إنجازاً** — «أين مهامّي؟». وموضعُ
+# المهامّ الذاهبةِ يُملأ بخَتمٍ، على تصميمٍ أرسله صاحبُ المنصّة.
+run "(م) لا خَتمَ لمن أتمّ كلَّ شيء" \
+  sub "$F" \
+"                    if (left.isEmpty && tasks.isNotEmpty) const _AllDone()," \
+"                    if (left.isEmpty && tasks.isEmpty) const _AllDone(),"
+
+# ── ن) وقرصُ الموعد يعرض المحافظةَ في التاريخ ──────────────────────────
+#
+# فيُقرأ اسمُ المحافظة جزءاً من التاريخ — وكانا كذلك قبل تصميمه.
+run "(ن) المحافظةُ ملصوقةٌ بالتاريخ" \
+  sub "$F" \
+"            Flexible(child: _PillText(date)),
+            if (place.isNotEmpty) ...[" \
+"            Flexible(
+              child: _PillText(place.isEmpty ? date : '\$date · \$place'),
+            ),
+            if (place.isEmpty) ...["
 
 echo
 echo "الساقط: $PASS — الباقي: $FAIL"
