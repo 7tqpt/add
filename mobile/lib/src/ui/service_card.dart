@@ -8,6 +8,7 @@ import '../data/api.dart';
 import '../data/models.dart';
 import 'kit.dart';
 import 'media.dart';
+import 'motion.dart';
 
 /// بطاقةُ خدمةٍ في قائمة.
 ///
@@ -58,74 +59,84 @@ class ServiceListCard extends StatelessWidget {
   /// استثناءً وقت الانتقال. فمن عرف أنّ قائمتَه لا تكرّر يرفعه.
   final bool flyCover;
 
+  /// ارتفاعُ الغلاف — واحدٌ لكلّ بطاقةٍ، بغلافٍ وبلا غلاف.
+  ///
+  /// **ومقياسٌ لا رقمٌ مكرَّر:** يُقاس في الاختبار ليُعرف أنّ القائمةَ لا
+  /// تتعرّج، ويُقرأ من هنا فلا يفترق المقيسُ عن المرسوم.
+  static const coverHeight = 168.0;
+
   Widget _cover() {
-    final image = ClipRRect(
-      borderRadius: BorderRadius.circular(12),
-      child: SizedBox(
-        width: 76,
-        height: 76,
-        child: MediaThumb(url: Api.mediaUrl(item.coverPath)),
+    final ground = SizedBox(
+      // **ومفتاحٌ على الغلاف**: يُقاس عرضُه وارتفاعُه ولونُ زاويته، ولا
+      // مرساةَ له في الشجرة غيرُ هذا — `SizedBox` في بطاقةٍ فيها عشرة.
+      key: ValueKey('cover-${item.id}'),
+      height: coverHeight,
+      width: double.infinity,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          // **والتدرّجُ تحت الصورة دائماً لا بديلاً عنها**: يُرى ريثما تصل
+          // الصورةُ على شبكة جوالٍ يمنية، ويبقى وحدَه لمن لا غلافَ له —
+          // فلا يخرج مربّعٌ رماديٌّ يُقرأ صورةً مكسورة.
+          _LetterGround(title: item.title),
+          if (item.coverPath != null)
+            MediaThumb(url: Api.mediaUrl(item.coverPath), blank: true),
+        ],
       ),
     );
-    if (!flyCover) return image;
-    return Hero(tag: serviceHeroTag(item.id), child: image);
+    if (!flyCover) return ground;
+    return Hero(tag: serviceHeroTag(item.id), child: ground);
   }
 
   @override
   Widget build(BuildContext context) {
     final favourite = isFavourite;
-    return AppCard(
+    return Pressable(
       onTap: onOpen,
-      children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+      child: Card(
+        // الغلافُ يبلغ حافّةَ البطاقة، فالقصُّ على نصف قطرها لا على مستطيل.
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // الغلاف إلى جانب العنوان لا فوقه: صفٌّ من عشرين بطاقةٍ بصورةٍ
-            // بعرض الشاشة في كلٍّ منها يصير صفحةَ صورٍ تُمرَّر طويلاً، والقصد
-            // مقارنةُ خدماتٍ لا تصفّحُ ألبوم.
-            if (item.coverPath != null) ...[
-              _cover(),
-              const SizedBox(width: Space.md),
-            ],
-            Expanded(
+            Stack(
+              children: [
+                _cover(),
+                // القلبُ على الغلاف في قرصٍ أبيض: يُقرأ على أيّ صورةٍ تحته،
+                // وله مساحتُه الخاصّة فلا تفتح الضغطةُ عليه صفحةَ التفاصيل.
+                if (favourite != null && onToggleFavourite != null)
+                  PositionedDirectional(
+                    top: Space.sm,
+                    end: Space.sm,
+                    child: _HeartDisc(
+                      on: favourite,
+                      onTap: onToggleFavourite!,
+                    ),
+                  ),
+                if (item.providerIsFeatured && showProvider)
+                  const PositionedDirectional(
+                    top: Space.sm,
+                    start: Space.sm,
+                    child: _FeaturedPill(),
+                  ),
+              ],
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(Space.lg, Space.md, Space.lg, Space.md),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          item.title,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.ink,
-                          ),
-                        ),
-                      ),
-                      if (item.providerIsFeatured && showProvider) ...[
-                        const SizedBox(width: Space.sm),
-                        StatusBadge(tr('مميّز'), color: AppColors.warning),
-                      ],
-                      // القلب داخل البطاقة على InkWell البطاقة نفسها: يُعطى
-                      // مساحته الخاصة كي لا تفتح الضغطةُ عليه صفحةَ التفاصيل.
-                      if (favourite != null && onToggleFavourite != null)
-                        IconButton(
-                          onPressed: onToggleFavourite,
-                          visualDensity: VisualDensity.compact,
-                          tooltip: favourite ? tr('أزل من المفضّلة') : tr('أضف للمفضّلة'),
-                          icon: Icon(
-                            favourite ? Icons.favorite : Icons.favorite_border,
-                            size: 20,
-                            // نبيذيُّ العلامة لا أحمرُ الخطأ: قلبٌ بلون «فشل» على خدمةٍ
-                            // أحبَّها المستخدم يقرأه بعضُهم تحذيراً.
-                            color: favourite ? AppColors.accent : AppColors.muted,
-                          ),
-                        ),
-                    ],
+                  Text(
+                    item.title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.ink,
+                    ),
                   ),
-                  const SizedBox(height: Space.xs),
+                  const SizedBox(height: 7),
                   if (showProvider)
                     _ProviderLine(
                       item: item,
@@ -133,10 +144,7 @@ class ServiceListCard extends StatelessWidget {
                       from: from,
                     )
                   else
-                    Muted(
-                      '${item.categoryName} · ${item.providerGovernorate}'
-                      '${distanceSuffix(from, item.providerPoint)}',
-                    ),
+                    _Place(item: item, from: from),
                   // شارتان تقولان إن وراء البطاقة ما يُرى ويُسمع: بلا هذه
                   // العلامة لا يعرف أحدٌ أن للخدمة مقطعاً حتى يفتحها — ومن لم
                   // يفتحها لم يعرف.
@@ -150,41 +158,189 @@ class ServiceListCard extends StatelessWidget {
                       ],
                     ),
                   ],
+                  const SizedBox(height: Space.md),
+                  // النطاق السعري يطول: «850,000 ر.ي – 1,200,000 ر.ي» وحده
+                  // يتجاوز عرض الشاشة الضيّقة، فبلا Expanded يفيض الصفّ
+                  // ويختفي التقييم خلف الحافة.
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          item.priceTo == null
+                              ? formatMoney(item.price)
+                              : '${formatMoney(item.price)} – ${formatMoney(item.priceTo!)}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.accent,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: Space.sm),
+                      if (item.providerRating > 0 && showProvider)
+                        Rating(item.providerRating, count: item.providerReviewsCount, size: 13)
+                      else if (showProvider)
+                        Muted(tr('جديد')),
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  Muted(trf('العربون {0}٪', ['${item.depositPercent}']), size: 12),
                 ],
               ),
             ),
-          ],
-        ),
-        const SizedBox(height: Space.sm),
-        // النطاق السعري يطول: «850,000 ر.ي – 1,200,000 ر.ي» وحده يتجاوز عرض
-        // الشاشة الضيّقة، فبلا Expanded يفيض الصفّ ويختفي التقييم خلف الحافة.
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Expanded(
-              child: Text(
-                item.priceTo == null
-                    ? formatMoney(item.price)
-                    : '${formatMoney(item.price)} – ${formatMoney(item.priceTo!)}',
-                style: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.accent,
+            const Divider(height: 1),
+            Padding(
+              padding: const EdgeInsets.all(Space.md),
+              child: FilledButton(
+                // **ومفتاحٌ لكلّ بطاقة**: بابُ الخدمة يُقاس من زرّه هو، لا من
+                // أيّ زرٍّ في الشاشة.
+                key: ValueKey('open-${item.id}'),
+                onPressed: onOpen,
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.accent,
+                  foregroundColor: AppColors.accentInk,
+                  minimumSize: const Size.fromHeight(46),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // **والحجمُ والوزنُ على `Text` لا في `styleFrom`:** نمطٌ
+                    // عارٍ هناك يستبدل `fontFamily` الثيمةِ كلَّه، فتخرج
+                    // الحروفُ العربيّةُ مربّعاتٍ بيضاء.
+                    Text(
+                      tr('عرض التفاصيل'),
+                      style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700),
+                    ),
+                    const SizedBox(width: 6),
+                    // **و`arrow_forward_ios` لا `chevron_left`:** هذا يتقلّب
+                    // مع اتجاه الشاشة من نفسِه، وذاك ممنوعٌ في الشجرة.
+                    const Icon(Icons.arrow_forward_ios, size: 14),
+                  ],
                 ),
               ),
             ),
-            const SizedBox(width: Space.sm),
-            if (item.providerRating > 0 && showProvider)
-              Rating(item.providerRating, count: item.providerReviewsCount)
-            else if (showProvider)
-              Muted(tr('جديد')),
           ],
         ),
-        const SizedBox(height: Space.xs),
-        Muted(trf('العربون {0}٪ · {1}', ['${item.depositPercent}', item.unit]), size: 11),
-      ],
+      ),
     );
   }
+}
+
+/// أرضيّةُ الغلاف: تدرّجُ العلامة وحرفُ أوّلِ الاسم.
+///
+/// **وحرفٌ لا مربّعٌ رماديّ:** الخدمةُ بلا غلافٍ حالٌ حقيقيّةٌ — مزوّدٌ سجّل
+/// خدمتَه ولم يرفع صورةً بعد — ومربّعُ «صورةٌ لم تُحمَّل» يقول إنّ في
+/// التطبيق عطباً، وهذا يقول إنّ الصورةَ لم تُرفع.
+class _LetterGround extends StatelessWidget {
+  const _LetterGround({required this.title});
+  final String title;
+
+  @override
+  Widget build(BuildContext context) => DecoratedBox(
+    decoration: const BoxDecoration(
+      gradient: LinearGradient(
+        begin: Alignment.topRight,
+        end: Alignment.bottomLeft,
+        colors: [AppColors.accentLift, AppColors.accentDeep],
+      ),
+    ),
+    child: Center(
+      child: Text(
+        title.trim().isEmpty ? tr('؟') : title.trim().characters.first,
+        style: TextStyle(
+          fontSize: 54,
+          fontWeight: FontWeight.w700,
+          color: Colors.white.withValues(alpha: 0.85),
+        ),
+      ),
+    ),
+  );
+}
+
+/// قرصُ القلب فوق الغلاف.
+class _HeartDisc extends StatelessWidget {
+  const _HeartDisc({required this.on, required this.onTap});
+  final bool on;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Material(
+    color: Colors.white.withValues(alpha: 0.92),
+    shape: const CircleBorder(),
+    clipBehavior: Clip.antiAlias,
+    child: InkWell(
+      onTap: onTap,
+      child: Tooltip(
+        message: on ? tr('أزل من المفضّلة') : tr('أضف للمفضّلة'),
+        child: Padding(
+          padding: const EdgeInsets.all(7),
+          child: Icon(
+            on ? Icons.favorite : Icons.favorite_border,
+            size: 20,
+            // نبيذيُّ العلامة لا أحمرُ الخطأ: قلبٌ بلون «فشل» على خدمةٍ
+            // أحبَّها المستخدم يقرأه بعضُهم تحذيراً.
+            color: on ? AppColors.accent : AppColors.muted,
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+/// شارةُ «مميّز» على الغلاف — قرصٌ أبيضُ لا إطارٌ ملوّن.
+///
+/// **والإطارُ الملوّنُ لا يُقرأ على صورة:** حدٌّ كهرمانيٌّ بحرفٍ كهرمانيٍّ
+/// فوق قاعةٍ مضاءةٍ بالذهب يذوب فيها. والأبيضُ المصمت يحمل لونَه معه.
+class _FeaturedPill extends StatelessWidget {
+  const _FeaturedPill();
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+    decoration: BoxDecoration(
+      color: Colors.white.withValues(alpha: 0.92),
+      borderRadius: BorderRadius.circular(999),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Icon(Icons.star_rounded, size: 14, color: AppColors.warning),
+        const SizedBox(width: 3),
+        Text(
+          tr('مميّز'),
+          style: const TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            color: AppColors.warning,
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+/// المكانُ وحدَه — في صفحة المزوّد حيث لا يُكرَّر اسمُه.
+class _Place extends StatelessWidget {
+  const _Place({required this.item, this.from});
+  final ServiceItem item;
+  final GeoPoint? from;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    children: [
+      const Icon(Icons.place_outlined, size: 14, color: AppColors.muted),
+      const SizedBox(width: 3),
+      Flexible(
+        child: Muted(
+          '${item.providerGovernorate}'
+          '${distanceSuffix(from, item.providerPoint)}',
+        ),
+      ),
+    ],
+  );
 }
 
 /// سطرُ المزوّد تحت العنوان، واسمُه فيه بابٌ إلى ملفّه.
@@ -200,48 +356,49 @@ class _ProviderLine extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final rest = '${item.categoryName} · ${item.providerGovernorate}'
-        '${distanceSuffix(from, item.providerPoint)}';
-    if (onOpenProvider == null) {
-      return Muted('${item.providerName} · $rest');
-    }
-    return Row(
+    final name = Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
+        const Icon(Icons.storefront_outlined, size: 15, color: AppColors.accent),
+        const SizedBox(width: 4),
         Flexible(
-          child: GestureDetector(
-            onTap: onOpenProvider,
-            // الشفّاف يقع عليه اللمس: بلا هذا لا تُلتقط الضغطة إلا على الحروف
-            // نفسها، فتذهب إلى البطاقة من بين الحروف.
-            behavior: HitTestBehavior.opaque,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.storefront_outlined, size: 13, color: AppColors.accent),
-                const SizedBox(width: 3),
-                Flexible(
-                  child: Text(
-                    item.providerName,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.accent,
-                    ),
-                  ),
-                ),
-                // العلامة ملاصقةٌ للاسم في القائمة كما هي في الملفّ: صفةٌ له
-                // لا خبرٌ مستقلّ. وحجمُها من حجم السطر لا ثابتٌ يزاحمه.
-                if (item.providerVerified) ...[
-                  const SizedBox(width: 3),
-                  const VerifiedMark(size: 13),
-                ],
-              ],
+          child: Text(
+            item.providerName,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 13.5,
+              fontWeight: FontWeight.w700,
+              color: AppColors.accent,
             ),
           ),
         ),
-        const SizedBox(width: Space.xs),
-        Flexible(child: Muted('· $rest')),
+        // العلامة ملاصقةٌ للاسم في القائمة كما هي في الملفّ: صفةٌ له
+        // لا خبرٌ مستقلّ. وحجمُها من حجم السطر لا ثابتٌ يزاحمه.
+        if (item.providerVerified) ...[
+          const SizedBox(width: 4),
+          const VerifiedMark(size: 15),
+        ],
+      ],
+    );
+    return Row(
+      children: [
+        Flexible(
+          child: onOpenProvider == null
+              ? name
+              : GestureDetector(
+                  onTap: onOpenProvider,
+                  // الشفّاف يقع عليه اللمس: بلا هذا لا تُلتقط الضغطة إلا على
+                  // الحروف نفسها، فتذهب إلى البطاقة من بين الحروف.
+                  behavior: HitTestBehavior.opaque,
+                  child: name,
+                ),
+        ),
+        const SizedBox(width: Space.sm),
+        // خيطٌ رأسيٌّ يفصل الاسمَ عن المكان — كما في تصميم صاحب المنصّة.
+        Container(width: 1, height: 13, color: AppColors.hairline),
+        const SizedBox(width: Space.sm),
+        Flexible(child: _Place(item: item, from: from)),
       ],
     );
   }
