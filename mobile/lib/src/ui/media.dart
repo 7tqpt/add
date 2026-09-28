@@ -44,17 +44,33 @@ Future<int> probeSeconds(Uri uri) async {
 /// و«لا رابط» حالٌ حقيقية لا فرضية: وضعُ العرض بلا Supabase لا سلّة فيه،
 /// وشبكةُ المستخدم قد تسقط. وفي الحالين تُرسم أيقونةٌ لا مربّعٌ رماديّ مكسور.
 class MediaThumb extends StatelessWidget {
-  const MediaThumb({super.key, required this.url, this.icon = Icons.image_outlined});
+  const MediaThumb({
+    super.key,
+    required this.url,
+    this.icon = Icons.image_outlined,
+    this.blank = false,
+  });
+
   final String? url;
   final IconData icon;
 
+  /// **ولا موضعَ باهتٌ على أرضيّةٍ ملوّنة.**
+  ///
+  /// الموضعُ الافتراضيُّ مربّعٌ بلون `surface2` — يصلح على البطاقات البيضاء،
+  /// ويخرج **لطخةً فاتحةً** على تدرّج رأس الخطّة وبطاقة الملخّص: يُرى قبل أن
+  /// تصل الصورة، **ويبقى إلى الأبد إن لم تصل**. فمن كان غلافُه على أرضيّةٍ
+  /// ملوّنةٍ يطلب `blank` فلا يُرسم شيءٌ ويظهر التدرّجُ وحدَه.
+  final bool blank;
+
   @override
   Widget build(BuildContext context) {
-    final placeholder = Container(
-      color: AppColors.surface2,
-      alignment: Alignment.center,
-      child: Icon(icon, color: AppColors.muted, size: 22),
-    );
+    final placeholder = blank
+        ? const SizedBox.shrink()
+        : Container(
+            color: AppColors.surface2,
+            alignment: Alignment.center,
+            child: Icon(icon, color: AppColors.muted, size: 22),
+          );
     if (url == null) return placeholder;
     return Image.network(
       url!,
@@ -62,8 +78,11 @@ class MediaThumb extends StatelessWidget {
       width: double.infinity,
       height: double.infinity,
       errorBuilder: (_, _, _) => placeholder,
-      loadingBuilder: (context, child, progress) =>
-          progress == null ? child : Container(color: AppColors.surface2),
+      loadingBuilder: (context, child, progress) => progress == null
+          ? child
+          : (blank
+              ? const SizedBox.shrink()
+              : Container(color: AppColors.surface2)),
     );
   }
 }

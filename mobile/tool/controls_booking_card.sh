@@ -224,7 +224,12 @@ run "(م) لوحُ تلاشٍ بلونٍ صلبٍ فوق التدرّج" \
         colors: [Color(0x00FFFFFF), Color(0xCCFFFFFF)],
         stops: [0.0, 0.72],
       ).createShader(rect, textDirection: Directionality.of(context)),
-      child: MediaThumb(url: url, icon: Icons.photo_camera_back_outlined),
+      child: MediaThumb(
+        url: url,
+        icon: Icons.photo_camera_back_outlined,
+        // ولا لطخةَ فاتحةٍ على التدرّج قبل وصول الصورة ولا إن لم تصل.
+        blank: true,
+      ),
     );" \
 "    return Stack(
       fit: StackFit.expand,
