@@ -4,6 +4,7 @@
 // من رآه ٨٠٪ قبل أسبوعٍ من العرس اطمأنّ. فإن كان محسوباً من عددٍ خاطئ —
 // أو مكتوباً لا محسوباً — طَمْأنَ في غير موضعه.
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -14,8 +15,10 @@ import 'package:aras/src/core/theme.dart';
 import 'package:aras/src/data/api.dart';
 import 'package:aras/src/data/demo.dart';
 import 'package:aras/src/data/models.dart';
+import 'package:aras/src/screens/labels.dart';
 import 'package:aras/src/screens/plan.dart';
 import 'package:aras/src/ui/kit.dart';
+import 'package:aras/src/ui/media.dart';
 
 Session _session() => Session()
   ..userId = 'u1'
@@ -32,7 +35,14 @@ Widget _wrap(Widget child) => MaterialApp(
     GlobalWidgetsLocalizations.delegate,
     GlobalCupertinoLocalizations.delegate,
   ],
-  home: Directionality(textDirection: TextDirection.rtl, child: Scaffold(body: child)),
+  home: Directionality(
+    textDirection: TextDirection.rtl,
+    // حدُّ رسمٍ حول الشاشة — تُصوَّر منه البكسلات حين لا يكفي سؤالُ الشجرة.
+    child: RepaintBoundary(
+      key: const ValueKey('plan-paint'),
+      child: Scaffold(body: child),
+    ),
+  ),
 );
 
 /// الضغطُ بعد الإحضار إلى الشاشة.
@@ -258,6 +268,96 @@ void main() {
     expect(find.text('لم تُفتح قائمة التجهيز بعد'), findsOneWidget);
     expect(find.text('أنت على الطريق الصحيح'), findsNothing);
 
+  });
+
+  group('وحبرُ الصدر يُقرأ على تدرّجه', () {
+    double ratio(Color a, Color b) {
+      final la = a.computeLuminance(), lb = b.computeLuminance();
+      final hi = la > lb ? la : lb, lo = la > lb ? lb : la;
+      return (hi + 0.05) / (lo + 0.05);
+    }
+
+    Color on(Color ink, Color ground) => Color.alphaBlend(ink, ground);
+
+    // **ويُقاس على طرفَي التدرّج لا على وسطه.** وهذا درسٌ قديمٌ في هذه
+    // الشجرة: قِيس ذهبُ النبيذيّ على `accent` وحدَه فأعطى ‎٥٫٤٥:١‎، وكان
+    // على الطرف الفاتح ‎٤٫٠٩:١‎ — تحت العتبة منذ كُتب.
+    for (final ground in [AppColors.brandLift, AppColors.brand]) {
+      test('ذهبُ العدّ التنازليّ على ${ground.toARGB32().toRadixString(16)}',
+          () {
+        final r = ratio(AppColors.goldOnBrand, ground);
+        expect(r, greaterThanOrEqualTo(4.5),
+            reason: 'العدُّ التنازليُّ ${r.toStringAsFixed(2)}:1');
+      });
+
+      test('وحبرُ الموعد على ${ground.toARGB32().toRadixString(16)}', () {
+        final r = ratio(on(Colors.white.withValues(alpha: 0.88), ground), ground);
+        expect(r, greaterThanOrEqualTo(4.5),
+            reason: 'التاريخُ والمحافظةُ ${r.toStringAsFixed(2)}:1');
+      });
+    }
+
+    test('**والذهبُ العاديُّ لا يصلح هناك** — وهو سببُ اللون الجديد', () {
+      // لو عاد أحدٌ فوضع `AppColors.gold` في الصدر، هذا الرقمُ يقول لماذا.
+      final r = ratio(AppColors.gold, AppColors.brandLift);
+      expect(r, lessThan(4.5),
+          reason: 'الذهبُ العاديُّ على الطَّفليّ ${r.toStringAsFixed(2)}:1');
+    });
+  });
+
+  testWidgets('**ومن لم يحجز لا يرى مربّعاً فارغاً**', (tester) async {
+    // **وهذه هي علّةُ الشكل القديم كلِّها**: الغلافُ لوحٌ يجاور النصّ،
+    // فمن لم يحجز خدمةً لها صورةٌ — وهي حالُ كلِّ من فتح خطّته أوّلَ مرّة —
+    // يرى مربّعاً فارغاً فيه أيقونةُ صورةٍ مكسورة. واختار صاحبُ المنصّة أن
+    // تذوب الصورةُ في الخلفيّة إن وُجدت، ولا يُرسم شيءٌ إن لم توجد.
+    demoBookings = [];
+    await tester.pumpWidget(_wrap(PlanScreen(session: _session())));
+    await _settle(tester);
+
+    expect(find.byType(BigNumberIn), findsOneWidget, reason: 'لا صدرَ أصلاً');
+    expect(find.byType(MediaThumb), findsNothing,
+        reason: 'موضعُ صورةٍ مرسومٌ لمن لا صورةَ له');
+
+    // **ولا يكفي ألّا تُبنى صورة**: لوحٌ بلونٍ فاتحٍ محلَّها يخرج مربّعاً
+    // باهتاً في الصدر الطَّفليّ — والشجرةُ لا تُنكره. فتُقرأ البكسلات.
+    final countdown = tester.getRect(find.byType(BigNumberIn));
+    late ByteData pixels;
+    late int width;
+    await tester.runAsync(() async {
+      final boundary = tester.renderObject<RenderRepaintBoundary>(
+          find.byKey(const ValueKey('plan-paint')));
+      final image = await boundary.toImage();
+      width = image.width;
+      pixels = (await image.toByteData())!;
+      image.dispose();
+    });
+
+    // **ونقطةُ القياس تُحسب من عنصرٍ في الصدر لا تُكتب رقماً**: حشوةُ
+    // القائمة وعرضُ الشاشة يتبدّلان، ورقمٌ مكتوبٌ يقع على أرضيّة الصفحة
+    // فيُقرأ بياضُها عطباً — وقد وقع.
+    final chip = tester.getRect(find.text(planStatusLabel(demoPlans.first.status)));
+    final logicalWidth =
+        tester.view.physicalSize.width / tester.view.devicePixelRatio;
+    final scale = width / logicalWidth;
+    final x = ((chip.left - 6) * scale).round();
+    final y = (countdown.center.dy * scale).round();
+    int at(int c) => pixels.getUint8(((y * width) + x) * 4 + c);
+    final luma = (0.2126 * at(0) + 0.7152 * at(1) + 0.0722 * at(2)) / 255;
+    expect(luma, lessThan(0.4),
+        reason: 'طرفُ الصدر فاتحٌ — لوحُ صورةٍ فارغٌ لا تدرّج (لمعان '
+            '${luma.toStringAsFixed(2)})');
+  });
+
+  testWidgets('**وعدُّ الأيّام بذهبٍ يُقرأ على الصدر**', (tester) async {
+    // **ولا يُسأل اللونُ في اللوحة، بل ما رُسم**: `BigNumberIn` كانت تكتب
+    // لونَها بيدها، فمن نسي أن يمرّر لوناً خرج العدُّ داكناً لا يُرى —
+    // وقد خرج كذلك في أوّل رسمةٍ للوح.
+    await tester.pumpWidget(_wrap(PlanScreen(session: _session())));
+    await _settle(tester);
+
+    final big = tester.widget<BigNumberIn>(find.byType(BigNumberIn));
+    expect(big.color, AppColors.goldOnBrand,
+        reason: 'العدُّ التنازليُّ بذهب الفاتح على أرضيّةٍ طَفليّة');
   });
 
   testWidgets('**والمحافظةُ بأيقونتها لا ملصوقةً بالتاريخ**', (tester) async {

@@ -1435,8 +1435,12 @@ class ProgressRing extends StatelessWidget {
 /// — بصيغة العدد العربيّة الصحيحة — ويُكبَّر ما كان أرقاماً فيها. فحسابٌ
 /// ثانٍ في الشاشة يفترق عن الأوّل يوماً ولا يُنتبه.
 class BigNumberIn extends StatelessWidget {
-  const BigNumberIn(this.text, {super.key});
+  const BigNumberIn(this.text, {super.key, this.color = AppColors.gold});
   final String text;
+
+  /// لونُ الجملة — **ويُبدَّل على الأرضيّات الملوّنة**: الذهبُ الافتراضيُّ
+  /// مقيسٌ على الفاتح، وعلى الطَّفليّ يعطي ‎١٫١٩:١‎ فلا يكاد يُرى.
+  final Color color;
 
   static final _digits = RegExp(r'\d+');
 
@@ -1451,10 +1455,10 @@ class BigNumberIn extends StatelessWidget {
     // وموضعُ الأسلوب — على `Text` أو على `TextSpan` — لا أثرَ له: جُرّب
     // الاثنان فخرجت الصورتان متطابقتين إلى البايت. فالعلّةُ الاحتياطيُّ
     // وحدَه، وعليه الضابطُ السالب.
-    const small = TextStyle(
+    final small = TextStyle(
       fontSize: 15,
       fontWeight: FontWeight.w600,
-      color: AppColors.gold,
+      color: color,
     );
     const big = TextStyle(fontSize: 26, height: 1.1, fontWeight: FontWeight.w700);
 

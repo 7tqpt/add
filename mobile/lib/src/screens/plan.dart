@@ -349,43 +349,34 @@ class _HeroCard extends StatelessWidget {
             // مكتوبٌ يفيض بخطٍّ كبير، ولا يُؤخذ من النصّ لأنّ `Image`
             // المرسومةَ بـ`height: double.infinity` تُجيب عن ارتفاعها
             // الطبيعيّ **بلا نهاية** فينهار التخطيط.
-            SizedBox(
-              height: 172 *
-                  MediaQuery.textScalerOf(context).scale(1).clamp(1.0, 1.6),
-              child: Row(
+            // ── الصدرُ: تدرّجٌ طَفليٌّ كبطاقة ملخّص «حجوزاتي» ──────────
+            //
+            // **والصورةُ خلفيّةٌ تذوب لا لوحٌ يجاور.** كان اللوحُ صورةً إلى
+            // جانب النصّ، **فمن لم يحجز خدمةً لها صورةٌ رأى مربّعاً فارغاً**
+            // — وهي حالُ كلِّ من فتح خطّته أوّلَ مرّة. وعُرض على صاحب
+            // المنصّة لوحان فاختار: **الصورةُ تذوب إن وُجدت، والتدرّجُ
+            // وحدَه إن لم توجد**.
+            DecoratedBox(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topRight,
+                  end: Alignment.bottomLeft,
+                  colors: [AppColors.brandLift, AppColors.brand],
+                ),
+              ),
+              child: Stack(
                 children: [
-                  Expanded(flex: 62, child: _HeroText(plan: plan, days: days)),
-                  Expanded(
-                    flex: 38,
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        // **وموضعُ الصورة محجوزٌ من أوّل رسمة**: لو بُني
-                        // الصندوقُ عند وصول المسار لتزحزحت البطاقةُ تحت
-                        // إصبعِ قارئها.
-                        Container(
-                          color: AppColors.surface2,
-                          child: MediaThumb(
-                            url: Api.mediaUrl(coverPath),
-                            icon: Icons.photo_camera_back_outlined,
-                          ),
-                        ),
-                        Positioned(
-                          top: 10,
-                          right: 8,
-                          left: 8,
-                          child: Align(
-                            alignment: AlignmentDirectional.centerStart,
-                            child: _Ribbon(planStatusLabel(plan.status)),
-                          ),
-                        ),
-                      ],
+                  Positioned.fill(
+                    child: FractionallySizedBox(
+                      alignment: AlignmentDirectional.centerEnd,
+                      widthFactor: 0.52,
+                      child: _FadedCover(path: coverPath),
                     ),
                   ),
+                  _HeroText(plan: plan, days: days),
                 ],
               ),
             ),
-            const Divider(height: 1, color: AppColors.hairline),
             Padding(
               padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
               child: p == null
@@ -412,7 +403,7 @@ class _HeroCard extends StatelessWidget {
   }
 }
 
-/// لوحُ النصّ: العنوانُ والتاريخُ والعدُّ التنازلي.
+/// نصُّ الصدر على التدرّج: العنوانُ وحالُ الخطّة والموعدُ والعدُّ التنازلي.
 class _HeroText extends StatelessWidget {
   const _HeroText({required this.plan, required this.days});
   final WeddingPlan plan;
@@ -420,23 +411,38 @@ class _HeroText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.fromLTRB(14, 14, 12, 14),
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              plan.title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                color: AppColors.ink,
-                fontFamilyFallback: arabicFallback,
-              ),
+            Row(
+              children: [
+                const Icon(Icons.favorite_rounded,
+                    size: 19, color: AppColors.goldOnBrand),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    plan.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 16.5,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                      fontFamilyFallback: arabicFallback,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                // **وحالُ الخطّة شارةٌ في الصدر لا شريطٌ على الصورة.**
+                // كانت فوق اللوح المجاور، وقد ذهب اللوح.
+                _StatusChip(planStatusLabel(plan.status)),
+              ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
+            Divider(height: 1, color: Colors.white.withValues(alpha: 0.22)),
+            const SizedBox(height: 10),
             _DatePill(
               date: formatDate(plan.weddingDate),
               place: plan.governorate,
@@ -444,15 +450,18 @@ class _HeroText extends StatelessWidget {
             const SizedBox(height: 10),
             // **الرقمُ داخلَ جملته لا فوقها** — والجملةُ من `countdownLabel`
             // كما كانت، فلا نصَّ ثانٍ يُترجم ولا حسابَ ثانٍ يُخطئ.
-            BigNumberIn(countdownLabel(days)),
-            const SizedBox(height: 6),
+            //
+            // **ولونُه ذهبُ الطَّفليّ**: الذهبُ الافتراضيُّ مقيسٌ على
+            // الفاتح، وعلى هذا التدرّج يعطي ‎١٫١٩:١‎.
+            BigNumberIn(countdownLabel(days), color: AppColors.goldOnBrand),
+            const SizedBox(height: 4),
             Text(
               tr('مستقبلٌ أجملُ يبدأ من هنا'),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 11,
-                color: AppColors.muted,
+                color: Colors.white.withValues(alpha: 0.88),
                 fontFamilyFallback: arabicFallback,
               ),
             ),
@@ -461,47 +470,96 @@ class _HeroText extends StatelessWidget {
       );
 }
 
-/// قرصُ الموعد: تاريخٌ بأيقونته، ومحافظةٌ بأيقونتها، بينهما خيط.
+/// شارةُ حال الخطّة — مطوّقةٌ بذهب الطَّفليّ.
+class _StatusChip extends StatelessWidget {
+  const _StatusChip(this.label);
+  final String label;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: AppColors.goldOnBrand, width: 1.2),
+        ),
+        child: Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            color: AppColors.goldOnBrand,
+            fontFamilyFallback: arabicFallback,
+          ),
+        ),
+      );
+}
+
+/// الغلافُ يذوب في التدرّج — **بشفافيّته هو لا بلوحٍ فوقه**.
 ///
-/// **وأيقونةٌ لكلٍّ لا نقطةٌ تفصلهما** — كما في تصميم صاحب المنصّة: كانا
-/// «٢٤ أكتوبر ٢٠٢٦ · أمانة العاصمة» في سطرٍ واحدٍ تحت أيقونة تقويم، فيُقرأ
-/// اسمُ المحافظة جزءاً من التاريخ.
+/// وهي الصياغةُ نفسُها في بطاقة ملخّص «حجوزاتي» حرفاً: لوحُ لونٍ صلبٍ فوق
+/// تدرّجٍ قُطريٍّ يترك **خيطاً رأسيّاً** عند حدّه، وقد رآه صاحبُ المنصّة.
+class _FadedCover extends StatelessWidget {
+  const _FadedCover({required this.path});
+  final String? path;
+
+  @override
+  Widget build(BuildContext context) {
+    final url = Api.mediaUrl(path);
+    if (url == null) return const SizedBox.shrink();
+    return ShaderMask(
+      blendMode: BlendMode.dstIn,
+      shaderCallback: (rect) => const LinearGradient(
+        begin: AlignmentDirectional.centerStart,
+        end: AlignmentDirectional.centerEnd,
+        colors: [Color(0x00FFFFFF), Color(0xCCFFFFFF)],
+        stops: [0.0, 0.72],
+      ).createShader(rect, textDirection: Directionality.of(context)),
+      child: MediaThumb(
+        url: url,
+        icon: Icons.photo_camera_back_outlined,
+        // ولا لطخةَ فاتحةٍ على التدرّج قبل وصول الصورة ولا إن لم تصل.
+        blank: true,
+      ),
+    );
+  }
+}
+
+/// سطرُ الموعد على التدرّج: تاريخٌ بأيقونته ومحافظةٌ بأيقونتها، بينهما خيط.
+///
+/// **وبلا قرصٍ تحته**: كان قرصاً فاتحاً على بطاقةٍ بيضاء، فلمّا صار الصدرُ
+/// تدرّجاً طَفليّاً صار القرصُ لطخةً فاتحةً فيه. وفي اللوح الذي اختاره
+/// صاحبُ المنصّة سطرٌ على التدرّج لا قرص.
+///
+/// **والحبرُ أبيضُ ‎٨٨٪‎ لا ‎٧٢٪‎**: على الطرف الفاتح من التدرّج يعطي
+/// اثنان وسبعون ‎٣٫٧١:١‎ — تحت العتبة — وثمانيةٌ وثمانون ‎٤٫٦٩:١‎.
 class _DatePill extends StatelessWidget {
   const _DatePill({required this.date, required this.place});
   final String date;
   final String place;
 
-  /// **قرصٌ واحدٌ كما في تصميمه.** جُرّب قرصان في سطرين حين خرج الاثنان
-  /// مقصوصَين، فقال إنّ البطاقةَ لم تُنفَّذ كما أرسلها. فرجع القرصُ واحداً
-  /// **ووُسّع له اللوح**: نصيبُ النصّ اثنان وستّون بالمئة بدل ثمانيةٍ
-  /// وخمسين، والخطُّ عشرةٌ ونصف، والحشوةُ أضيق — فيسعهما كاملَين.
-  ///
-  /// **والتاريخُ والمحافظةُ خبران لا زينة**: مقصوصان لا يُفيدان، ولذلك
-  /// يُقاس ما رُسم لا ما في النصّ.
   @override
-  Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-        decoration: BoxDecoration(
-          color: AppColors.surface2,
-          borderRadius: BorderRadius.circular(999),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.calendar_today_rounded,
-                size: 11, color: AppColors.muted),
+  Widget build(BuildContext context) => Row(
+        children: [
+          const Icon(Icons.calendar_today_rounded,
+              size: 12, color: AppColors.goldOnBrand),
+          const SizedBox(width: 5),
+          Flexible(child: _PillText(date)),
+          if (place.isNotEmpty) ...[
+            const SizedBox(width: 7),
+            Container(
+              width: 1,
+              height: 11,
+              color: Colors.white.withValues(alpha: 0.28),
+            ),
+            const SizedBox(width: 7),
+            const Icon(Icons.place_outlined,
+                size: 12, color: AppColors.goldOnBrand),
             const SizedBox(width: 4),
-            Flexible(child: _PillText(date)),
-            if (place.isNotEmpty) ...[
-              const SizedBox(width: 6),
-              Container(width: 1, height: 10, color: AppColors.hairline),
-              const SizedBox(width: 6),
-              const Icon(Icons.place_outlined, size: 11, color: AppColors.muted),
-              const SizedBox(width: 3),
-              Flexible(child: _PillText(place)),
-            ],
+            Flexible(child: _PillText(place)),
           ],
-        ),
+        ],
       );
 }
 
@@ -514,37 +572,11 @@ class _PillText extends StatelessWidget {
         text,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
-        style: const TextStyle(
-          fontSize: 10.5,
+        style: TextStyle(
+          fontSize: 11.5,
           fontWeight: FontWeight.w600,
-          color: AppColors.muted,
-          fontFamilyFallback: arabicFallback,
-        ),
-      );
-}
-
-/// الشريطُ فوق الصورة — أبيضُ نصفُ شفّافٍ ليُقرأ على أيّ صورةٍ كانت.
-class _Ribbon extends StatelessWidget {
-  const _Ribbon(this.label);
-  final String label;
-
-  @override
-  Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-        decoration: BoxDecoration(
           color: Colors.white.withValues(alpha: 0.88),
-          borderRadius: BorderRadius.circular(999),
-        ),
-        child: Text(
-          label,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(
-            fontSize: 10,
-            fontWeight: FontWeight.w700,
-            color: AppColors.ink,
-            fontFamilyFallback: arabicFallback,
-          ),
+          fontFamilyFallback: arabicFallback,
         ),
       );
 }

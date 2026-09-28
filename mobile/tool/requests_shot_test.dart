@@ -3,6 +3,7 @@
 //   SHOTS=<مجلّد> flutter test tool/requests_shot_test.dart
 //
 // **ولا شيءَ هنا مرسوم**: `RequestsScreen` بعينها ببيانات وضع العرض.
+import 'dart:async';
 import 'dart:io';
 import 'dart:ui' as ui;
 
@@ -15,6 +16,7 @@ import 'package:intl/date_symbol_data_local.dart';
 
 import 'package:aras/src/core/session.dart';
 import 'package:aras/src/core/theme.dart';
+import 'package:aras/src/data/api.dart';
 import 'package:aras/src/data/demo.dart';
 import 'package:aras/src/data/models.dart';
 import 'package:aras/src/screens/requests.dart';
@@ -40,6 +42,84 @@ Future<void> _loadFonts() async {
       '/opt/flutter/bin/cache/artifacts/material_fonts/MaterialIcons-Regular.otf');
   if (icons.existsSync()) await _load('MaterialIcons', [icons.path]);
   await initializeDateFormatting('ar');
+}
+
+// ── شبكةٌ مركَّبة تردّ صورةً واحدة ───────────────────────────────────────────
+class _OneImageHttp extends HttpOverrides {
+  _OneImageHttp(this.bytes);
+  final Uint8List bytes;
+
+  @override
+  HttpClient createHttpClient(SecurityContext? context) => _Client(bytes);
+}
+
+class _Client implements HttpClient {
+  _Client(this.bytes);
+  final Uint8List bytes;
+
+  @override
+  bool autoUncompress = true;
+
+  @override
+  Future<HttpClientRequest> getUrl(Uri url) async => _Request(bytes);
+
+  @override
+  Future<HttpClientRequest> openUrl(String method, Uri url) async =>
+      _Request(bytes);
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => null;
+}
+
+class _Request implements HttpClientRequest {
+  _Request(this.bytes);
+  final Uint8List bytes;
+
+  @override
+  final HttpHeaders headers = _Headers();
+
+  @override
+  Future<HttpClientResponse> close() async => _Response(bytes);
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => null;
+}
+
+class _Headers implements HttpHeaders {
+  @override
+  dynamic noSuchMethod(Invocation invocation) => null;
+}
+
+class _Response implements HttpClientResponse {
+  _Response(this.bytes);
+  final Uint8List bytes;
+
+  @override
+  int get statusCode => 200;
+
+  @override
+  int get contentLength => bytes.length;
+
+  @override
+  HttpClientResponseCompressionState get compressionState =>
+      HttpClientResponseCompressionState.notCompressed;
+
+  @override
+  StreamSubscription<List<int>> listen(
+    void Function(List<int>)? onData, {
+    Function? onError,
+    void Function()? onDone,
+    bool? cancelOnError,
+  }) =>
+      Stream<List<int>>.value(bytes).listen(
+        onData,
+        onError: onError,
+        onDone: onDone,
+        cancelOnError: cancelOnError,
+      );
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => null;
 }
 
 Session _customer() => Session()
@@ -121,6 +201,18 @@ void main() {
     final out = Platform.environment['SHOTS'] ?? '/tmp/shots';
     Directory(out).createSync(recursive: true);
 
+    // **وغلافُ الصدر يحتاج شبكةً مركَّبة**: بدونها لا تُبنى `Image` أصلاً
+    // فتخرج اللقطةُ بلا صورة — وهي حالُ من لم يحجز، لا حالُ من حجز.
+    final cover = Platform.environment['COVER'];
+    if (cover != null && File(cover).existsSync()) {
+      HttpOverrides.global = _OneImageHttp(File(cover).readAsBytesSync());
+      Api.mediaUrlOverride = (path) => 'https://example.invalid/$path';
+    }
+    addTearDown(() {
+      HttpOverrides.global = null;
+      Api.mediaUrlOverride = null;
+    });
+
     await tester.pumpWidget(MaterialApp(
       debugShowCheckedModeBanner: false,
       theme: buildTheme(),
@@ -145,6 +237,13 @@ void main() {
     await tester.pumpAndSettle();
     await tester.pump(const Duration(seconds: 1));
     await tester.pumpAndSettle();
+    // **والصورةُ تُفكّ على خيطٍ آخر فتحتاج زمناً حقيقيّاً.**
+    for (var i = 0; i < 4; i++) {
+      await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 300)));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 200));
+    }
 
     final boundary =
         tester.renderObject<RenderRepaintBoundary>(find.byKey(const ValueKey('plan')));

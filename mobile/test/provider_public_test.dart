@@ -138,7 +138,13 @@ void main() {
     await _settle(tester);
 
     await _openTab(tester, 'الخدمات');
-    await tester.tap(find.text('خيمة أفراح متنقّلة'));
+    // **والإحضارُ إلى المشهد قبل الضغط:** البطاقةُ صارت لوحاً بغلافٍ بعرضها،
+    // فالثالثةُ تقع تحت الطيّ — و`tap` على ما تحته يُطلق ضغطةً في مكانٍ لا
+    // شيءَ فيه، فلا يقع شيءٌ ولا يُرفع خطأ.
+    final card = find.text('خيمة أفراح متنقّلة', skipOffstage: false);
+    await tester.ensureVisible(card);
+    await tester.pumpAndSettle();
+    await tester.tap(card);
     await _settle(tester);
 
     expect(find.byType(ServiceDetailScreen), findsOneWidget);

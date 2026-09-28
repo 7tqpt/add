@@ -81,8 +81,8 @@ run "(أ) الرقمُ بحجم جيرانه" \
 # و«بقي 11 يوماً» — وكلاهما خطأ.
 run "(ب) الجملةُ تُركَّب في الشاشة لا تُؤخذ" \
   sub "$F" \
-"            BigNumberIn(countdownLabel(days))," \
-"            BigNumberIn('بقي \${days ?? 0} يوماً'),"
+"            BigNumberIn(countdownLabel(days), color: AppColors.goldOnBrand)," \
+"            BigNumberIn('بقي \${days ?? 0} يوماً', color: AppColors.goldOnBrand),"
 
 # ── ب٢) ويُعلَن احتياطيُّ الخطّ في أسلوب القِطعة ──────────────────────────
 #
@@ -184,12 +184,34 @@ run "(م) لا خَتمَ لمن أتمّ كلَّ شيء" \
 # فيُقرأ اسمُ المحافظة جزءاً من التاريخ — وكانا كذلك قبل تصميمه.
 run "(ن) المحافظةُ ملصوقةٌ بالتاريخ" \
   sub "$F" \
-"            Flexible(child: _PillText(date)),
-            if (place.isNotEmpty) ...[" \
-"            Flexible(
-              child: _PillText(place.isEmpty ? date : '\$date · \$place'),
-            ),
-            if (place.isEmpty) ...["
+"          Flexible(child: _PillText(date)),
+          if (place.isNotEmpty) ...[" \
+"          Flexible(
+            child: _PillText(place.isEmpty ? date : '\$date · \$place'),
+          ),
+          if (place.isEmpty) ...["
+
+# ── س) ويعود العدُّ التنازليُّ بالذهب العاديّ ───────────────────────────
+#
+# **وهو ذهبٌ مقيسٌ على الفاتح**: على تدرّج الصدر الطَّفليّ يعطي ‎١٫١٩:١‎ —
+# فيخرج العدُّ داكناً لا يكاد يُرى. وقد خرج كذلك في أوّل رسمةٍ للوح.
+run "(س) العدُّ التنازليُّ بذهبٍ لا يُقرأ على الصدر" \
+  sub "$F" \
+"            BigNumberIn(countdownLabel(days), color: AppColors.goldOnBrand)," \
+"            BigNumberIn(countdownLabel(days)),"
+
+# ── ع) ويعود الغلافُ لوحاً يجاور النصّ ──────────────────────────────────
+#
+# **فيرى من لم يحجز خدمةً لها صورةٌ مربّعاً فارغاً** — وهي حالُ كلِّ من
+# فتح خطّته أوّلَ مرّة. واختار صاحبُ المنصّة أن تذوب الصورةُ في الخلفيّة.
+run "(ع) الغلافُ لوحٌ يجاور لا خلفيّةٌ تذوب" \
+  sub "$F" \
+"    final url = Api.mediaUrl(path);
+    if (url == null) return const SizedBox.shrink();
+    return ShaderMask(" \
+"    final url = Api.mediaUrl(path);
+    if (url == null) return const ColoredBox(color: AppColors.surface2);
+    return ShaderMask("
 
 echo
 echo "الساقط: $PASS — الباقي: $FAIL"
