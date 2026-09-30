@@ -22,6 +22,7 @@ import 'package:aras/src/data/models.dart';
 import 'package:aras/src/screens/onboarding.dart';
 import 'package:aras/src/screens/root.dart';
 import 'package:aras/src/screens/verify_phone.dart';
+import 'package:aras/src/ui/auth_frame.dart';
 import 'package:aras/src/ui/kit.dart';
 
 Session _session() => Session()
@@ -172,17 +173,19 @@ void main() {
       expect(find.widgetWithText(FilledButton, 'تأكيد الرقم'), findsOneWidget);
     });
 
-    testWidgets('**وحقلُ الرمز أربعُ خاناتٍ لا ستّ**', (tester) async {
+    testWidgets('**وحقلُ الرمز أربعُ خاناتٍ، و«رمز التأكيد» داخلَه**', (tester) async {
       // أخرج صاحبُ المنصّة رسالةَ واتساب وفيها **أربعةُ أرقام**، والشاهدُ
-      // كان `------` ستَّ شُرَط — فيكتب أربعةً ثمّ ينتظر خانتين لا تأتيان،
-      // ويظنّ أنّ الرمزَ ناقص. واختار (أ): أربعُ شُرَطٍ وحدٌّ بأربع.
+      // كان `------` ستَّ شُرَط — فيكتب أربعةً ثمّ ينتظر خانتين لا تأتيان.
+      // فصار أربعَ شُرَط، **ثمّ أرسل صورةً فيها «رمز التأكيد» داخلَ الخانة
+      // بلا شُرَط، واختار (أ)**. والحدُّ بأربعٍ باقٍ.
       await open(tester);
       await tester.tap(find.byKey(const ValueKey('otp-action')));
       await _settle(tester);
 
       final field = tester.widget<TextField>(
           find.byKey(const ValueKey('otp-field')));
-      expect(field.decoration?.hintText, '----', reason: 'الشاهدُ لا يطابق الطول');
+      expect(field.decoration?.hintText, isNull, reason: 'عادت الشُّرَطُ داخلَ الخانة');
+      expect(field.decoration?.labelText, 'رمز التأكيد');
       expect(field.maxLength, 4);
 
       // **ولا عدّادَ تحت الحقل** — «0/4» رقمٌ لا يعني لصاحبه شيئاً.
@@ -265,8 +268,8 @@ void main() {
       await tester.pumpWidget(_wrap(VerifyPhoneScreen(session: _session())));
       await _settle(tester);
 
-      final scaffold = tester.widget<Scaffold>(find.byType(Scaffold));
-      expect(scaffold.backgroundColor, AppColors.accent);
+      // **وفي إطار شاشات الباب** — رأسٌ نبيذيٌّ بقوسٍ وورد، وبطاقةٌ عائمة.
+      expect(find.byType(AuthFrame), findsOneWidget);
       // **ولا بطاقةَ داخلَ الورقة** — بطاقةٌ بيضاءُ فوق ورقةٍ بيضاءَ إطارٌ
       // بلا معنى، وهو ما أُصلح في وجه استعادة كلمة المرور قبلها.
       expect(find.byType(AppCard), findsNothing);

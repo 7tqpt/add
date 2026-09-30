@@ -111,8 +111,8 @@ run "هـ) إرسالٌ تلقائيٌّ عند الفتح" sub "$V" \
 
 # و) و«أعد الإرسال» يُتاح بلا مهلة — فتُستنزف رسائلُ الرصيد بضغطاتٍ متتابعة.
 run "و) إعادةُ إرسالٍ بلا مهلة" sub "$V" \
-  "                  onPressed: _busy || _wait > 0 ? null : _send," \
-  "                  onPressed: _busy ? null : _send,"
+  "onPressed: _busy || _wait > 0 ? null : _send," \
+  "onPressed: _busy ? null : _send,"
 
 # ز) ورمزٌ خاطئٌ يُقبل — وهو أخطرُ ما يُكسَر: الحاجزُ كلُّه يصير زينةً.
 run "ز) رمزٌ خاطئٌ يُقبل" sub "$V" \
@@ -125,36 +125,53 @@ run "ز) رمزٌ خاطئٌ يُقبل" sub "$V" \
 # ح) ويُشال المخرجُ لمن كتب رقمه خطأً — فيُحبس على شاشةٍ تنتظر رمزاً لا
 #    يأتي أبداً إلى رقمٍ ليس له، و«حسابي» خلف الحاجز.
 run "ح) لا مخرجَ لمن أخطأ رقمَه" sub "$V" \
-  "                    OutlinedButton(
-                      key: const ValueKey('otp-edit-phone')," \
-  "                    if (false) OutlinedButton(
-                      key: const ValueKey('otp-edit-phone'),"
+  "        OutlinedButton(
+          key: const ValueKey('otp-edit-phone')," \
+  "        if (false) OutlinedButton(
+          key: const ValueKey('otp-edit-phone'),"
 
-# **والإطارُ يسقط** — الأرضيّةُ تعود بيضاءَ فتفترق الشاشةُ عن أختيها
-# (الدخول والقفل)، وهما الثلاثُ اللواتي يُرَين قبل التطبيق.
-run "الإطارُ يسقط" sub "$V" \
-  "      backgroundColor: AppColors.accent," \
-  "      backgroundColor: AppColors.surface,"
+# **والإطارُ يسقط** — تخرج الشاشةُ من إطار شاشات الباب إلى ورقةٍ بيضاء،
+# فتفترق عن أختيها (الدخول والقفل)، وهنّ الثلاثُ اللواتي يُرَين قبل التطبيق.
+frame_drop() {
+  sub "$V" "    return AuthFrame(
+      compact: true,
+      crowned: true,
+      crest: const _Crest(),
+      children: [" "    return Scaffold(
+      body: ListView(
+      children: [" &&
+  sub "$V" "      ],
+    );
+  }
 
-# ط) **والشاهدُ يعود ستَّ شُرَط** — فيكتب صاحبُه أربعةً وينتظر خانتين لا
-#    تأتيان، ويظنّ أنّ الرمزَ ناقص. وهو العيبُ الذي أخرجه صاحبُ المنصّة
-#    بصورة رسالة واتساب.
-run "ط) الشاهدُ ستُّ شُرَط" sub "$V" \
-  "                          hintText: '-' * otpLength," \
-  "                          hintText: '------',"
+  Future<void> _editPhone" "      ],
+    ));
+  }
+
+  Future<void> _editPhone"
+}
+run "الإطارُ يسقط" frame_drop
+
+# ط) **والشُّرَطُ تعود إلى الخانة** — وقد اختار صاحبُ المنصّة (أ): «رمز
+#    التأكيد» داخلَها بلا شُرَط. (وكان الضابطُ قبلها «ستُّ شُرَطٍ لا أربع»،
+#    فذهبت الشُّرَطُ كلُّها بأمره.)
+run "ط) الشُّرَطُ تعود" sub "$V" \
+  "              labelText: tr('رمز التأكيد')," \
+  "              labelText: tr('رمز التأكيد'),
+              hintText: '-' * otpLength,"
 
 # ي) **والحدُّ يسقط** — فيُلصق رقمٌ أطولُ بالخطأ ويُردّ.
 run "ي) لا حدَّ على الطول" sub "$V" \
-  "                        maxLength: otpLength," \
+  "            maxLength: otpLength," \
   ""
 
 # ك) **والحدُّ يبقى رقماً في الشجرة ولا يقصّ شيئاً.** `maxLengthEnforcement`
 #    إلى `none` تُبقي `maxLength` كما هي ويمرّ اختبارٌ يسأل عن الرقم وحدَه —
 #    فيُقاس ما بقي في المتحكّم لا ما كُتب في الحقل.
 run "ك) الحدُّ لا يقصّ" sub "$V" \
-  "                        maxLength: otpLength," \
-  "                        maxLength: otpLength,
-                        maxLengthEnforcement: MaxLengthEnforcement.none,"
+  "            maxLength: otpLength," \
+  "            maxLength: otpLength,
+            maxLengthEnforcement: MaxLengthEnforcement.none,"
 
 echo; echo "== الحصيلة: $PASS سقطت، $FAIL لم تسقط =="
 [ "$FAIL" -eq 0 ]

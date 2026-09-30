@@ -120,3 +120,19 @@ String? composePhone(String? dial, String raw) {
   if (local.isEmpty) return null;
   return normalisePhone('+$dial$local');
 }
+
+/// الرقمُ كما يُعرض ليُقرأ: `+967 771 234 567`.
+///
+/// **ويُعرض كاملاً** — شاشةُ التأكيد وُضعت ليرى صاحبُه أنّه كتبه صحيحاً.
+/// وما لم يُعرف تقسيمُه يُعرض مطهَّراً كما هو، وما لم يصحّ يُعرض كما كُتب.
+String displayPhone(String raw) {
+  final s = normalisePhone(raw);
+  if (s == null) return raw;
+  for (final key in _known.keys) {
+    final local = s.substring(1 + key.length);
+    if (s.startsWith('+$key') && local.length == 9) {
+      return '+$key ${local.substring(0, 3)} ${local.substring(3, 6)} ${local.substring(6)}';
+    }
+  }
+  return s;
+}

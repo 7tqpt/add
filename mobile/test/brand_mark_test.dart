@@ -134,6 +134,9 @@ void main() {
 
     await tester.pumpWidget(_wrap(VerifyPhoneScreen(session: session)));
     await _settle(tester);
-    expect(find.image(brandMark), findsOneWidget);
+    // **وصار في قوسها القلبُ و«فرحتي» و«تأكيد رقمك»** على صورتي صاحب
+    // المنصّة، كالدخول والقفل — ولا أيقونةَ التطبيق.
+    expect(find.byKey(const ValueKey('verify-crest')), findsOneWidget);
+    expect(find.image(brandMark), findsNothing);
   });
 }
