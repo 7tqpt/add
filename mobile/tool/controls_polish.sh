@@ -69,15 +69,21 @@ control "ب) الغلافُ داخل انتظارِ الخدمة فلا موضع
             Hero(' '          if (widget.coverPath != null && false)
             Hero('
 
-# ── ٢) لوحة القفل ─────────────────────────────────────────────────────────
+# ── ٢) لوحة القفل ─ (لوحةُ الشاشة `_RingPad` — ولذلك `final ring` في المرساة:
+#    السطرُ نفسُه في `_Pad` ورقةِ الضبط، فمرساةٌ بلا تتمّةٍ تطابق مرّتين.)
+# ─────────────────────────────────────────────────────────
 
 control "ج) المفتاحُ يعود إلى مقاسٍ ثابتٍ صغير" \
-  sub "$LOCK" '        final w = (available / 3).clamp(64.0, 104.0);' \
-              '        final w = 72.0;'
+  sub "$LOCK" '        final w = (available / 3).clamp(64.0, 104.0);
+        final ring' \
+              '        final w = 72.0;
+        final ring'
 
 control "د) المفتاحُ يتمدّد بلا سقفٍ على الشاشات العريضة" \
-  sub "$LOCK" '        final w = (available / 3).clamp(64.0, 104.0);' \
-              '        final w = available / 3;'
+  sub "$LOCK" '        final w = (available / 3).clamp(64.0, 104.0);
+        final ring' \
+              '        final w = available / 3;
+        final ring'
 
 # ── ٣) مهلة القفل ─────────────────────────────────────────────────────────
 

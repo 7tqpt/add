@@ -18,6 +18,7 @@ import 'package:aras/src/core/remember.dart';
 import 'package:aras/src/core/session.dart';
 import 'package:aras/src/core/theme.dart';
 import 'package:aras/src/screens/auth.dart';
+import 'package:aras/src/ui/auth_frame.dart';
 import 'package:aras/src/ui/kit.dart';
 
 Widget _wrap(Widget child) => MaterialApp(
@@ -68,15 +69,17 @@ void main() {
   tearDown(() => rememberStorageOverride = null);
 
   group('الشكل', () {
-    testWidgets('**رأسٌ أحمرُ وورقةٌ بيضاء**', (tester) async {
+    testWidgets('**رأسٌ نبيذيٌّ وبطاقةٌ عائمة — على تصميم صاحب المنصّة**', (tester) async {
+      // كان رأساً أحمرَ وورقةً بيضاء، ثمّ أرسل صاحبُ المنصّة صورَه: قوسٌ
+      // ووردٌ وبطاقةٌ على حرير. وتفصيلُه مقيسٌ في `auth_frame_test.dart`.
       _phone(tester);
       await tester.pumpWidget(_wrap(AuthScreen(session: _guest())));
       await _settle(tester);
 
-      // الأرضيّةُ حمراءُ والورقةُ تعلوها — وهو الفرقُ الأظهرُ عن القائم.
-      final scaffold = tester.widget<Scaffold>(find.byType(Scaffold));
-      expect(scaffold.backgroundColor, AppColors.accent);
+      expect(find.byType(AuthFrame), findsOneWidget);
+      expect(find.byKey(const ValueKey('auth-card')), findsOneWidget);
       expect(find.text('دخول الحساب'), findsOneWidget);
+      expect(find.text('أهلاً بعودتك'), findsOneWidget);
       expect(find.text('فرحتي'), findsOneWidget);
     });
 
@@ -99,12 +102,12 @@ void main() {
       await tester.pumpWidget(_wrap(AuthScreen(session: _guest())));
       await _settle(tester);
       expect(find.byKey(_remember), findsOneWidget);
-      expect(find.text('نسيت كلمة المرور'), findsOneWidget);
+      expect(find.text('نسيت كلمة المرور؟'), findsOneWidget);
 
       await tester.tap(find.byKey(_switch));
       await _settle(tester);
       expect(find.byKey(_remember), findsNothing);
-      expect(find.text('نسيت كلمة المرور'), findsNothing);
+      expect(find.text('نسيت كلمة المرور؟'), findsNothing);
     });
 
     testWidgets('والمربّعُ مرفوعٌ ابتداءً', (tester) async {

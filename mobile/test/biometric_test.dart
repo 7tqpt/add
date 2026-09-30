@@ -16,6 +16,7 @@ import 'package:aras/src/core/app_lock.dart';
 import 'package:aras/src/core/biometrics.dart';
 import 'package:aras/src/core/theme.dart';
 import 'package:aras/src/screens/lock.dart';
+import 'package:aras/src/ui/auth_frame.dart';
 
 /// حسّاسٌ مركَّب — **لا حسّاسَ في `flutter test`**.
 class _Fake implements Biometrics {
@@ -209,16 +210,16 @@ void main() {
       expect(find.textContaining('بقيت'), findsNothing);
     });
 
-    testWidgets('**ورأسٌ أحمرُ وورقةٌ بيضاء — كشاشة الدخول**', (tester) async {
+    testWidgets('**وفي إطار الدخول نفسِه**', (tester) async {
       // القفلُ والدخولُ الشاشتان الوحيدتان اللتان تُريان قبل التطبيق،
-      // فاختلافُهما يُقرأ تطبيقين.
+      // فاختلافُهما يُقرأ تطبيقين — فإطارٌ واحدٌ لهما.
       final lock = await _lock(biometric: true);
       fake.ok = false;
       await tester.pumpWidget(_wrap(LockScreen(lock: lock, onSignOut: () async {})));
       await _settle(tester);
 
-      final scaffold = tester.widget<Scaffold>(find.byType(Scaffold));
-      expect(scaffold.backgroundColor, AppColors.accent);
+      expect(find.byType(AuthFrame), findsOneWidget);
+      expect(find.byKey(const ValueKey('auth-crest')), findsOneWidget);
       expect(find.text('فرحتي'), findsOneWidget);
     });
 

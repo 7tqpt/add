@@ -238,4 +238,137 @@ void main() {
         reason: 'بقيت شاشةٌ من التطبيق فوق شاشة الترحيب بعد الخروج');
     expect(find.byType(WelcomeScreen), findsOneWidget);
   });
+
+  // ==========================================================================
+  //  **الورد والزخرفة والنجوم** — تصميمُ صاحب المنصّة
+  //
+  //  أرسل صورةً فيها وردٌ على مخملٍ في أسفل الشاشة، وزخرفةٌ على الأطراف،
+  //  ونجومٌ بدل الذرّات، و«دخول» بتدرّجٍ ذهبيّ — وقال: «احتفظ بالأنيميشن».
+  // ==========================================================================
+
+  group('الوردُ والزخرفة', () {
+    /// الطبقةُ (`Positioned`) التي يقع فيها [of] من طبقات الشاشة.
+    int layerOf(WidgetTester tester, Finder of) {
+      final stack = tester.widget<Stack>(find
+          .descendant(of: find.byType(BrandBackdrop), matching: find.byType(Stack))
+          .first);
+      final el = tester.element(of);
+      var layer = -1;
+      el.visitAncestorElements((a) {
+        final i = stack.children.indexOf(a.widget);
+        if (i >= 0) {
+          layer = i;
+          return false;
+        }
+        return true;
+      });
+      return layer;
+    }
+
+    testWidgets('**الوردُ فوق القوس — يغطّي ساقيه كما في صورته**',
+        (tester) async {
+      // **وكان في أوّل رسمةٍ تحته** فخرج القوسُ مرسوماً على الورد.
+      _phone(tester);
+      await tester.pumpWidget(_wrap(WelcomeScreen(session: _guest())));
+      await _settle(tester);
+
+      expect(find.byType(WelcomeRoses), findsOneWidget, reason: 'لا ورد');
+      final roses = find.descendant(
+        of: find.byType(WelcomeRoses),
+        matching: find.byType(Image),
+      );
+      expect(
+        (tester.widget<Image>(roses).image as AssetImage).assetName,
+        WelcomeRoses.asset,
+      );
+      expect(layerOf(tester, find.byType(WelcomeRoses)),
+          greaterThan(layerOf(tester, find.byType(ArchMark))),
+          reason: 'الوردُ تحت القوس — فيُرسم القوسُ عليه');
+    });
+
+    testWidgets('**ولا الوردُ ولا الزخرفةُ خلف الزرّين**', (tester) async {
+      // **والزخرفةُ كانت تُرى من داخل «إنشاء حساب» المحاط** في الرسمة.
+      _phone(tester);
+      await tester.pumpWidget(_wrap(WelcomeScreen(session: _guest())));
+      await _settle(tester);
+
+      final doors = tester.getRect(find.byKey(_signIn)).top;
+      expect(tester.getRect(find.byType(WelcomeRoses)).bottom,
+          lessThanOrEqualTo(doors + 0.5),
+          reason: 'الوردُ ينزل خلف «دخول»');
+      expect(
+          tester.getRect(find.byKey(const ValueKey('welcome-lattice'))).bottom,
+          lessThanOrEqualTo(doors + 0.5),
+          reason: 'الزخرفةُ تمتدّ خلف الزرّين');
+    });
+
+    testWidgets('**وعلى أقصر الجوالات لا يغطّي الوردُ الوعدَ**', (tester) async {
+      // الوردُ مثبَّتٌ فوق الزرّين والنصُّ في وسط القوس، فكلّما قصرت الشاشةُ
+      // اقتربا. ويُقاس ما يظهر من الورد لا مربّعُه: أعلاه يذوب في الأرضيّة.
+      tester.view.physicalSize = const Size(1080, 1920);
+      tester.view.devicePixelRatio = 3.0;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(_wrap(WelcomeScreen(session: _guest())));
+      await _settle(tester);
+
+      final roses = tester.getRect(find.byType(WelcomeRoses));
+      final seen = roses.top + roses.height * WelcomeRoses.fadeTop;
+      final promise = tester.getRect(find.text('كل خدمات زفافك في مكان واحد'));
+      expect(promise.bottom, lessThanOrEqualTo(seen),
+          reason: 'الوردُ يغطّي «كل خدمات زفافك في مكان واحد»');
+    });
+
+    testWidgets('**و«دخول» بتدرّجٍ ذهبيّ — واللونُ المقيسُ تحته**',
+        (tester) async {
+      _phone(tester);
+      await tester.pumpWidget(_wrap(WelcomeScreen(session: _guest())));
+      await _settle(tester);
+
+      final gold = find.descendant(
+        of: find.byKey(_signIn),
+        matching: find.byKey(const ValueKey('welcome-gold')),
+      );
+      expect(gold, findsOneWidget, reason: 'الزرُّ ذهبٌ مصمتٌ لا تدرّج');
+      final box = tester.widget<DecoratedBox>(gold);
+      expect((box.decoration as BoxDecoration).gradient, welcomeGold);
+      // **ويُقاس المرسومُ لا المُعلَن**: تدرّجٌ في الشجرة ومربّعُه صفر.
+      expect(tester.getSize(gold).height, greaterThanOrEqualTo(48));
+    });
+
+    testWidgets('**والنجومُ تومض بعد الدخول — والذرّاتُ ذهبت**',
+        (tester) async {
+      _phone(tester);
+      await tester.pumpWidget(_wrap(WelcomeScreen(session: _guest())));
+      await _settle(tester);
+
+      expect(find.byKey(const ValueKey('motes')), findsNothing,
+          reason: 'عادت الذرّاتُ الصاعدة');
+      final stars = find.byKey(const ValueKey('stars'));
+      expect(stars, findsOneWidget);
+      final a = tester.widget<CustomPaint>(stars).painter!;
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(tester.widget<CustomPaint>(stars).painter!.shouldRepaint(a),
+          isTrue, reason: 'سكنت النجوم — «احتفظ بالأنيميشن»');
+    });
+
+    testWidgets('**والوردُ يدخل مع المشهد لا قبله**', (tester) async {
+      // «احتفظ بالأنيميشن»: الطبقاتُ الجديدةُ جزءٌ من الحركة نفسِها. ووردٌ
+      // يظهر تامّاً قبل أن يُرسم القوس يسبق المشهدَ الذي جاء ليكمله.
+      _phone(tester);
+      await tester.pumpWidget(_wrap(WelcomeScreen(session: _guest())));
+      await tester.pump();
+
+      double opacity() {
+        final o = find.ancestor(
+          of: find.byType(WelcomeRoses),
+          matching: find.byType(Opacity),
+        );
+        return o.evaluate().isEmpty ? 1 : tester.widget<Opacity>(o.first).opacity;
+      }
+
+      expect(opacity(), lessThan(0.05), reason: 'الوردُ ظاهرٌ قبل المشهد');
+      await _settle(tester);
+      expect(opacity(), 1, reason: 'الوردُ لم يظهر بعد انتهاء المشهد');
+    });
+  });
 }

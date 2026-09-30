@@ -10,10 +10,10 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:aras/src/core/format.dart';
 import 'package:aras/src/core/theme.dart';
 import 'package:aras/src/data/demo.dart';
 import 'package:aras/src/data/models.dart';
-import 'package:aras/src/ui/kit.dart';
 import 'package:aras/src/ui/service_card.dart';
 
 Widget _wrap(Widget child) => MaterialApp(
@@ -30,7 +30,14 @@ Widget _wrap(Widget child) => MaterialApp(
     // حدُّ رسمٍ حول الشاشة — تُصوَّر منه البكسلات حين لا يكفي سؤالُ الشجرة.
     child: RepaintBoundary(
       key: const ValueKey('card-paint'),
-      child: Scaffold(body: Padding(padding: const EdgeInsets.all(16), child: child)),
+      // **وفي قائمةٍ لا في سقّالةٍ فارغة:** البطاقةُ في `body` بلا قيدٍ
+      // تمتدّ إلى قاع الشاشة، فيُقاس ارتفاعُ الشاشة ويُظنّ ارتفاعَ البطاقة.
+      child: Scaffold(
+        body: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [child],
+        ),
+      ),
     ),
   ),
 );
@@ -39,10 +46,13 @@ ServiceItem get _withCover => demoServices.firstWhere((s) => s.coverPath != null
 ServiceItem get _noCover => demoServices.firstWhere((s) => s.coverPath == null);
 
 void main() {
-  testWidgets('**الغلافُ يبلغ حافّتَي البطاقة لا مربّعاً إلى جانب الاسم**',
-      (tester) async {
-    // **ويُقاس بالعرض لا بوجود الصورة**: الغلافُ كان مربّعاً ‎٧٦×٧٦‎ إلى جانب
-    // العنوان، وتصميمُ صاحب المنصّة يجعله لوحاً بعرض البطاقة يعلوه القلب.
+  testWidgets('**والبطاقةُ صفٌّ قصير — مربّعٌ إلى جانب الاسم**', (tester) async {
+    // **وهذا ما قاله صاحبُ المنصّة نصّاً**: «صار حجم البطاقة كبير جدن».
+    // كان الغلافُ لوحاً بعرض البطاقة بارتفاع ‎١٦٨‎، فبلغت ‎٣٩٧‎ بكسلاً ولم
+    // يظهر في الشاشة إلّا اثنتان ونصف. فاختار المربّعَ إلى جانب الاسم.
+    //
+    // **والارتفاعُ يُقاس لا يُوصف**: «قصيرة» كلمةٌ لا تسقط بكسر، والرقمُ
+    // يسقط.
     final s = _withCover;
     await tester.pumpWidget(_wrap(ServiceListCard(item: s, onOpen: () {})));
     await tester.pumpAndSettle();
@@ -50,10 +60,13 @@ void main() {
     final card = tester.getRect(find.byType(Card));
     final cover = tester.getRect(find.byKey(ValueKey('cover-${s.id}')));
 
-    expect(cover.width, closeTo(card.width, 1),
-        reason: 'الغلافُ لا يبلغ حافّتَي البطاقة');
-    expect(cover.height, ServiceListCard.coverHeight,
-        reason: 'ارتفاعُ الغلاف ليس الارتفاعَ المعلن');
+    expect(cover.width, ServiceListCard.coverSide,
+        reason: 'ضلعُ الغلاف ليس الضلعَ المعلن');
+    expect(cover.height, ServiceListCard.coverSide, reason: 'الغلافُ ليس مربّعاً');
+    expect(cover.width, lessThan(card.width / 2),
+        reason: 'الغلافُ يبتلع نصفَ البطاقة — عاد لوحاً لا مربّعاً');
+    expect(card.height, lessThan(150),
+        reason: 'البطاقةُ طويلةٌ (${card.height.round()} بكسل) — والمطلوبُ نحو ١٢٠');
   });
 
   testWidgets('**ومن لا غلافَ له يرى تدرّجاً وحرفاً لا مربّعاً رمادياً**',
@@ -97,28 +110,54 @@ void main() {
             '(لمعان ${luma.toStringAsFixed(2)})');
   });
 
-  testWidgets('**وزرُّ «عرض التفاصيل» هو البابُ — ويُقاس من زرّ بطاقته**',
+  testWidgets('**والبطاقةُ كلُّها بابٌ — وتقول ذلك بحرفٍ في زاويتها**',
       (tester) async {
-    // **ومن مفتاح البطاقة لا من نصِّ الزرّ**: قائمةُ الاستكشاف عشرون بطاقةً
-    // في كلٍّ منها زرٌّ بالنصّ نفسِه، فسؤالٌ بالنصّ يلتقط أوّلَها.
+    // **وزرُّ «عرض التفاصيل» ذهب حين قُصّرت البطاقة** — اختار صاحبُ المنصّة
+    // ذلك على بقائه. فبقي البابُ في البطاقة نفسِها، و«التفاصيل ›» تقول
+    // للعين إنّها تُضغط. **وبلا هذا الحرف بابٌ لا يُرى.**
     final s = _withCover;
     var opened = 0;
     await tester.pumpWidget(_wrap(ServiceListCard(item: s, onOpen: () => opened++)));
     await tester.pumpAndSettle();
 
-    final button = find.byKey(ValueKey('open-${s.id}'));
-    expect(button, findsOneWidget, reason: 'لا زرَّ تفاصيلَ على البطاقة');
-    expect(tester.widget<FilledButton>(button).onPressed, isNotNull,
-        reason: 'الزرُّ معطَّل');
+    expect(find.text('التفاصيل'), findsOneWidget,
+        reason: 'لا حرفَ يقول إنّ البطاقةَ تُضغط');
+    expect(find.byIcon(Icons.arrow_forward_ios), findsOneWidget,
+        reason: 'لا سهمَ مع الحرف');
 
-    await tester.tap(button);
+    // **ويُقاس الفتحُ من ضغطةٍ على البطاقة نفسِها** لا من وجود الحرف.
+    await tester.tap(find.text(s.title));
     await tester.pumpAndSettle();
-    expect(opened, 1, reason: 'الضغطةُ على الزرّ لم تفتح الخدمة');
+    expect(opened, 1, reason: 'الضغطةُ على البطاقة لم تفتح الخدمة');
   });
 
-  testWidgets('**والقلبُ على الغلاف يحفظ ولا يفتح الخدمة**', (tester) async {
-    // **وهذا يسقط بسهولة**: القلبُ فوق غلافٍ تحته بطاقةٌ كلُّها تُضغط —
-    // فإن لم يكن له سطحُه الخاصّ ذهبت الضغطةُ إلى البطاقة وفُتحت الخدمة.
+  testWidgets('**وعلى جوالٍ بعرض ٣٢٠ لا تفيض — ويبقى السهمُ بابَها**',
+      (tester) async {
+    // **فاضت بسبعةَ عشرَ بكسلاً** وكشفها اختبارُ مرشِّح المحافظات: العربونُ
+    // والتقييمُ و«التفاصيل ›» لا يسعها عمودٌ عرضُه ‎١٥٦‎. فتسقط الكلمةُ
+    // على الضيّق — **ولا يسقط السهم**: بغيره بابٌ لا يُرى.
+    tester.view.physicalSize = const Size(960, 1920);
+    tester.view.devicePixelRatio = 3.0;
+    addTearDown(tester.view.reset);
+
+    final s = demoServices.firstWhere((x) => x.providerRating > 0);
+    await tester.pumpWidget(_wrap(ServiceListCard(
+      item: s,
+      onOpen: () {},
+      isFavourite: false,
+      onToggleFavourite: () {},
+      onOpenProvider: () {},
+    )));
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull, reason: 'البطاقةُ تفيض على جوالٍ بعرض ٣٢٠');
+    expect(find.byIcon(Icons.arrow_forward_ios), findsOneWidget,
+        reason: 'ذهب السهمُ مع الكلمة — فلا شيءَ يقول إنّ البطاقةَ تُضغط');
+  });
+
+  testWidgets('**والقلبُ يحفظ ولا يفتح الخدمة**', (tester) async {
+    // **وهذا يسقط بسهولة**: القلبُ داخل بطاقةٍ كلُّها تُضغط — فإن لم يكن له
+    // سطحُه الخاصّ ذهبت الضغطةُ إلى البطاقة وفُتحت الخدمة.
     final s = _withCover;
     var opened = 0;
     var toggled = 0;
@@ -196,34 +235,57 @@ void main() {
     expect(opened, 0, reason: 'اسمُ المزوّد فتح الخدمة');
   });
 
-  testWidgets('**وزرُّ التفاصيل بخطّ التطبيق لا بمربّعات**', (tester) async {
-    // **`textStyle` عارٍ في `styleFrom` يحلّ محلَّ أسلوب الثيمة كلِّه** —
-    // ومعه عائلةُ الخطّ — فتُرسم الحروفُ العربيّةُ مربّعاتٍ بيضاء. وقد وقع
-    // في زرّ «إعادة فتح» وخرج في لقطة.
-    final s = _withCover;
-    await tester.pumpWidget(_wrap(ServiceListCard(item: s, onOpen: () {})));
+  testWidgets('**والنطاقُ السعريُّ يظهر كاملاً لا مقصوصاً**', (tester) async {
+    // **وهذا وقع فعلاً في أوّل رسمةٍ للبطاقة القصيرة**: حشرتُ التقييمَ في
+    // سطر السعر، فضاق عمودُ النصّ إلى جانب المربّع وخرج «850,000 ر.ي –
+    // 1,400…». فنزل التقييمُ إلى سطر العربون.
+    //
+    // **ولا يُسأل `didExceedMaxLines` هنا، وقد سألتُه فكذب**: خطُّ التطبيق
+    // (IBM Plex Sans Arabic) لا يُحمَّل في هذا المجلّد، فيرسم الإطارُ بخطٍّ
+    // بديلٍ كلُّ حرفٍ فيه مربّعٌ بعرض الحجم — فيطلب النطاقُ ‎٣٥٠‎ بكسلاً
+    // بدل ‎١٨٠‎، ويخرج «مقصوصاً» في الاختبار وهو سليمٌ على الجهاز.
+    //
+    // **فيُقاس ما يملكه السطرُ لا ما رُسم فيه**: للسعر عرضُ العمود كلِّه.
+    // ومن أعاد التقييمَ إلى سطره ضيّق عليه، فيسقط هذا مهما كان الخطّ.
+    final s = demoServices.firstWhere((x) => x.priceTo != null);
+    await tester.pumpWidget(_wrap(ServiceListCard(
+      item: s,
+      onOpen: () {},
+      isFavourite: false,
+      onToggleFavourite: () {},
+      onOpenProvider: () {},
+    )));
     await tester.pumpAndSettle();
 
-    // **ويُسأل المحلولُ لا الخاصّيّة**: `styleFrom` يعيد
-    // `WidgetStatePropertyAll(null)` حتى حين لا يُمرَّر نمطٌ — فسؤالُ
-    // `textStyle` وحدَها لا يكون فارغاً أبداً، ويخضرّ الاختبارُ كاذباً.
-    final button = tester.widget<FilledButton>(find.byKey(ValueKey('open-${s.id}')));
-    expect(button.style?.textStyle?.resolve(<WidgetState>{}), isNull,
-        reason: 'أسلوبٌ عارٍ يحلّ محلَّ أسلوب الثيمة — فتذهب عائلةُ الخطّ');
-    final label = tester.widget<Text>(find.text('عرض التفاصيل'));
-    expect(label.style?.fontFamily, isNull,
-        reason: 'عائلةٌ مكتوبةٌ بيدٍ تتجاوز الثيمة');
+    final price = formatMoneyRange(s.price, s.priceTo);
+    final para = tester.renderObject<RenderParagraph>(find.text(price));
+    // **وعرضُ العمود من العمود نفسِه**: `Expanded` يعطيه عرضاً محكماً فيكون
+    // بقدر ما بقي بعد المربّع. (وكان يُقرأ من صفِّ العربون، فلمّا صار العربونُ
+    // في صفٍّ داخليٍّ أضيقَ خرج المرجعُ أضيقَ من العمود واحمرّ الاختبارُ
+    // والشيفرةُ سليمة.)
+    final column = tester.getRect(find
+        .ancestor(of: find.text(price), matching: find.byType(Column))
+        .first);
+
+    expect(para.constraints.maxWidth, closeTo(column.width, 1),
+        reason: 'السعرُ يقاسم سطرَه غيرَه فيضيق عليه، وينقصّ طرفُ النطاق');
   });
 
-  testWidgets('**و«مميّز» تُقرأ على الصورة — قرصٌ لا إطارٌ ملوّن**',
-      (tester) async {
-    // **وإطارٌ كهرمانيٌّ بحرفٍ كهرمانيٍّ فوق قاعةٍ مضاءةٍ بالذهب يذوب فيها.**
+  testWidgets('**و«مميّز» مصبوغةٌ تُقرأ على البطاقة البيضاء**', (tester) async {
+    // **وكانت قرصاً أبيضَ حين كان الغلافُ صورةً تحتها**؛ وعلى بطاقةٍ بيضاء
+    // يصير الأبيضُ على الأبيض. فصارت صبغةً كهرمانيّة.
     final s = demoServices.firstWhere((s) => s.providerIsFeatured);
     await tester.pumpWidget(_wrap(ServiceListCard(item: s, onOpen: () {})));
     await tester.pumpAndSettle();
 
     expect(find.text('مميّز'), findsOneWidget);
-    expect(find.byType(StatusBadge), findsNothing,
-        reason: 'الشارةُ ما زالت إطاراً شفّافاً على الصورة');
+    final box = tester.widget<Container>(find.ancestor(
+      of: find.text('مميّز'),
+      matching: find.byType(Container),
+    ).first);
+    final colour = (box.decoration as BoxDecoration).color!;
+    expect(colour.a, greaterThan(0.0),
+        reason: 'أرضيّةُ الشارة شفّافةٌ — لا تُرى على الأبيض');
+    expect(colour.a, lessThan(0.5), reason: 'الشارةُ مصمتةٌ تزاحم الاسم');
   });
 }

@@ -10,6 +10,7 @@ import '../core/biometrics.dart';
 import '../core/i18n.dart';
 import '../core/theme.dart';
 import '../data/supabase.dart';
+import '../ui/auth_frame.dart';
 import '../ui/kit.dart';
 import '../ui/motion.dart';
 
@@ -134,149 +135,78 @@ class _LockScreenState extends State<LockScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // **ورأسٌ بنسبةٍ لا برقمٍ ثابت** — كشاشة الدخول، والعلّةُ واحدة: رقمٌ
-    // ثابتٌ يأكل نصفَ جوالٍ قصيرٍ فتُدفع لوحةُ الأرقام خارجَ المشهد.
-    final headerHeight = (MediaQuery.sizeOf(context).height * 0.26).clamp(140.0, 230.0);
-
-    return Scaffold(
-      backgroundColor: AppColors.accent,
-      body: Column(
-        children: [
-          // ── الرأسُ الأحمر ───────────────────────────────────────────────
-          //
-          // **وهو شكلُ شاشة الدخول بعينه.** القفلُ والدخولُ الشاشتان
-          // الوحيدتان اللتان تُريان قبل التطبيق، فاختلافُهما يُقرأ تطبيقين.
-          // **ورمزُ القفل لا أيقونةُ التطبيق:** من رأى شاشةً حمراءَ باسم
-          // «فرحتي» ظنَّها شاشةَ دخولٍ فبحث عن بريده — والقفلُ يقول بصورته
-          // إنّ الحسابَ قائمٌ وإنّما البابُ مغلق.
-          SizedBox(
-            height: headerHeight,
-            child: SafeArea(
-              bottom: false,
-              // **ويُصغَّر ما لا يتّسع.** رأسٌ بارتفاعٍ محدودٍ وخطُّ جهازٍ
-              // مضاعَفٌ يفيض — وقد فاض باثني عشر بكسلاً أوّلَ ما وُضعت
-              // الأيقونةُ مكانَ الرمز، فأمسكه اختبارُ «لا يفيض بخطّ الجهاز
-              // الكبير». والتصغيرُ أصدقُ من قصّ الاسم أو حبسِ مقياس الخطّ:
-              // من كبّر خطَّ جهازه كبّره ليقرأ، لا ليُقصَّ عليه.
-              child: Center(
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // **وأيقونةُ التطبيق نفسُها لا رمزٌ مرسوم.** اختارها
-                      // صاحبُ المنصّة وقال: «في كل مكان». وهي `app_mark.png`
-                      // — النسخةُ المشحونةُ من الأيقونة، ٢٥٦ بكسلاً تكفي
-                      // رأساً يُرسم في ٦٤.
-                      Image.asset(
-                        'assets/brand/app_mark.png',
-                        width: 68,
-                        height: 68,
-                        filterQuality: FilterQuality.medium,
-                      ),
-                      const SizedBox(height: Space.sm),
-                      Text(
-                        tr('فرحتي'),
-                        style: const TextStyle(
-                          fontSize: 30,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.accentInk,
-                        ),
-                      ),
-                    ],
-                  ),
+    // ── على تصميم صاحب المنصّة، وفي إطار الدخول نفسِه ─────────────────────
+    //
+    // **القفلُ والدخولُ الشاشتان الوحيدتان اللتان تُريان قبل التطبيق**،
+    // فاختلافُهما يُقرأ تطبيقين — ولذلك إطارٌ واحدٌ لهما (`AuthFrame`).
+    return AuthFrame(
+      crest: const AuthCrest(),
+      children: [
+        // **وعرضٌ محدود.** على لوحٍ أو جوالٍ عريضٍ جدّاً تتباعد المفاتيحُ
+        // حتى لا تُدخَل أربعةُ أرقامٍ بإبهامٍ واحد.
+        Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 380),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                AuthHeading(
+                  tr('أدخل رمز القفل'),
+                  sub: tr('أربعة أرقام'),
+                  accentLastWord: true,
+                  rule: false,
                 ),
-              ),
-            ),
-          ),
-          Expanded(
-            child: Container(
-              width: double.infinity,
-              decoration: const BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-              ),
-              clipBehavior: Clip.antiAlias,
-              child: SafeArea(
-                top: false,
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(Space.xl),
-                  // **وعرضٌ محدود.** على لوحٍ أو جوالٍ عريضٍ جدّاً تتباعد
-                  // المفاتيحُ حتى لا تُدخَل أربعةُ أرقامٍ بإبهامٍ واحد.
-                  child: Center(
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 380),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            tr('أدخل رمز القفل'),
-                            style: const TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.ink,
-                            ),
-                          ),
-                          const SizedBox(height: Space.xs),
-                          Muted(tr('أربعة أرقام'), size: 12),
-                          const SizedBox(height: Space.xl),
+                const SizedBox(height: Space.lg),
 
-                          // النقاطُ الأربع — تُري ما أُدخل بلا أن تُظهر الرقم.
-                          PinDots(key: const ValueKey('pin-dots'), filled: _pin.length),
+                // النقاطُ الأربع — تُري ما أُدخل بلا أن تُظهر الرقم.
+                PinDots(
+                  key: const ValueKey('pin-dots'),
+                  filled: _pin.length,
+                  size: 22,
+                  ring: authGoldEdge,
+                ),
 
-                          if (_error != null) ...[
-                            const SizedBox(height: Space.lg),
-                            Text(
-                              _error!,
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                color: AppColors.critical,
-                                fontSize: 13,
-                                height: 1.7,
-                              ),
-                            ),
-                          ],
-
-                          const SizedBox(height: Space.xl),
-                          _Pad(onDigit: _push, onBack: _back, busy: _busy),
-
-                          // **والبصمةُ بابٌ ثانٍ لا بديلٌ عن الرمز** — واللوحةُ فوقها
-                          // باقيةٌ لمن أخفق حسّاسُه أو ألغى الحوار.
-                          if (_canBiometric) ...[
-                            const SizedBox(height: Space.lg),
-                            OutlinedButton.icon(
-                              key: const ValueKey('unlock-biometric'),
-                              onPressed: _busy ? null : _biometric,
-                              // **ورمزُ البصمة نبيذيٌّ** — اختاره صاحبُ المنصّة
-                              // بالصورة. ولا يُترك للون الزرّ: `OutlinedButton` يصبغ
-                              // رمزَه بلون نصّه، وهو حبرٌ داكنٌ في هذه الثيمة.
-                              icon: const Icon(
-                                Icons.fingerprint,
-                                size: 26,
-                                color: AppColors.accent,
-                              ),
-                              label: Text(tr('افتح بالبصمة')),
-                            ),
-                            const SizedBox(height: Space.sm),
-                            Muted(tr('أو أدخل رمزك'), size: 12),
-                          ],
-
-                          const SizedBox(height: Space.lg),
-                          TextButton(
-                            key: const ValueKey('forgot-pin'),
-                            onPressed: _busy ? null : _forgot,
-                            child: Text(tr('نسيتُ الرمز')),
-                          ),
-                        ],
-                      ),
+                if (_error != null) ...[
+                  const SizedBox(height: Space.lg),
+                  Text(
+                    _error!,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: AppColors.critical,
+                      fontSize: 13,
+                      height: 1.7,
                     ),
                   ),
+                ],
+
+                const SizedBox(height: Space.xl),
+                _RingPad(
+                  onDigit: _push,
+                  onBack: _back,
+                  busy: _busy,
+                  // **والبصمةُ مفتاحٌ في اللوحة** — في الخانة التي كانت
+                  // فارغةً يسارَ الصفر، كما في صورته. وتغيب لمن لم يشغّلها
+                  // أو محا بصماتِه فتعود الخانةُ فارغة: مفتاحٌ لا يفتح شيئاً
+                  // أسوأُ من خانةٍ فارغة.
+                  onBiometric: _canBiometric ? _biometric : null,
                 ),
-              ),
+
+                const SizedBox(height: Space.sm),
+                TextButton(
+                  key: const ValueKey('forgot-pin'),
+                  onPressed: _busy ? null : _forgot,
+                  style: TextButton.styleFrom(foregroundColor: AppColors.accent),
+                  child: Text(
+                    tr('نسيتُ الرمز'),
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ],
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
@@ -286,9 +216,17 @@ class _LockScreenState extends State<LockScreen> {
 /// **وواحدةٌ للشاشة وللورقة.** كانتا نسختين متطابقتين في ملفٍّ واحد، فبُدّلت
 /// إحداهما مرّةً وبقيت الأخرى.
 class PinDots extends StatelessWidget {
-  const PinDots({super.key, required this.filled, this.size = 17});
+  const PinDots({
+    super.key,
+    required this.filled,
+    this.size = 17,
+    this.ring = AppColors.hairline,
+  });
   final int filled;
   final double size;
+
+  /// إطارُ النقطة الفارغة — ذهبيٌّ في شاشة القفل، وخيطٌ في ورقة الضبط.
+  final Color ring;
 
   @override
   Widget build(BuildContext context) => Row(
@@ -305,7 +243,7 @@ class PinDots extends StatelessWidget {
             shape: BoxShape.circle,
             color: i < filled ? AppColors.accent : Colors.transparent,
             border: Border.all(
-              color: i < filled ? AppColors.accent : AppColors.hairline,
+              color: i < filled ? AppColors.accent : ring,
               width: 1.6,
             ),
           ),
@@ -387,6 +325,146 @@ class _Pad extends StatelessWidget {
                   'back',
                   onTap: onBack,
                   icon: Icon(Icons.backspace_outlined, size: digit * 0.82, color: AppColors.ink2),
+                ),
+              ],
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+/// لوحةُ شاشة القفل — **مفاتيحُ دائريّةٌ بإطارٍ ذهبيّ** كما في صورة صاحب
+/// المنصّة، والبصمةُ مفتاحٌ فيها.
+///
+/// **والأرقامُ لاتينيّة** — سُئل صاحبُ المنصّة فاختارها: «(أ) لاتينيّة 1 2 3»،
+/// كما اختارها في الأسعار.
+///
+/// **وورقةُ ضبط الرمز باقيةٌ على `_Pad`** — سُئل عنها فقال: «تبقى كما هي».
+class _RingPad extends StatelessWidget {
+  const _RingPad({
+    required this.onDigit,
+    required this.onBack,
+    required this.busy,
+    this.onBiometric,
+  });
+
+  final void Function(String digit) onDigit;
+  final VoidCallback onBack;
+  final bool busy;
+
+  /// `null` تعني: لا بصمة — فالخانةُ فارغة.
+  final VoidCallback? onBiometric;
+
+  @override
+  Widget build(BuildContext context) {
+    // **والمفتاحُ يكبر بكِبَر المتاح وله سقف** — العلّتان اللتان في `_Pad`
+    // وشرحُهما هناك.
+    return LayoutBuilder(
+      builder: (context, box) {
+        final available = box.maxWidth.isFinite ? box.maxWidth : 320.0;
+        final w = (available / 3).clamp(64.0, 104.0);
+        final ring = w * 0.82;
+        final digit = (w * 0.34).clamp(24.0, 34.0);
+
+        Widget key(
+          String label, {
+          VoidCallback? onTap,
+          Widget? icon,
+          bool tile = false,
+          Key? id,
+        }) => SizedBox(
+          width: w,
+          height: ring + Space.md,
+          child: Center(
+            child: SizedBox(
+              width: ring,
+              height: ring,
+              child: Material(
+                color: Colors.transparent,
+                shape: tile
+                    ? RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(18),
+                        side: const BorderSide(color: authGoldEdge),
+                      )
+                    : const CircleBorder(side: BorderSide(color: authGoldLine)),
+                clipBehavior: Clip.antiAlias,
+                child: Ink(
+                  decoration: tile
+                      ? const BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [Color(0xFFFBEFD6), Color(0xFFF1D9A6)],
+                          ),
+                        )
+                      : null,
+                  child: InkWell(
+                    key: id ?? ValueKey('pad-$label'),
+                    onTap: busy ? null : (onTap ?? () => onDigit(label)),
+                    child: Center(
+                      child:
+                          icon ??
+                          Text(
+                            label,
+                            style: TextStyle(
+                              fontSize: digit,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.accent,
+                            ),
+                          ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+
+        final bio = onBiometric;
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (final row in const [
+              ['1', '2', '3'],
+              ['4', '5', '6'],
+              ['7', '8', '9'],
+            ])
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [for (final d in row) key(d)],
+              ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (bio == null)
+                  SizedBox(width: w)
+                else
+                  key(
+                    'bio',
+                    id: const ValueKey('unlock-biometric'),
+                    tile: true,
+                    onTap: bio,
+                    icon: Semantics(
+                      label: tr('افتح بالبصمة'),
+                      child: Icon(
+                        Icons.fingerprint,
+                        size: ring * 0.52,
+                        // **نبيذيٌّ** — اختاره صاحبُ المنصّة بالصورة.
+                        color: AppColors.accent,
+                      ),
+                    ),
+                  ),
+                key('0'),
+                key(
+                  'back',
+                  onTap: onBack,
+                  icon: Icon(
+                    Icons.backspace_outlined,
+                    size: digit * 0.82,
+                    color: AppColors.accent,
+                  ),
                 ),
               ],
             ),

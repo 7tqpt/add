@@ -59,29 +59,42 @@ class ServiceListCard extends StatelessWidget {
   /// استثناءً وقت الانتقال. فمن عرف أنّ قائمتَه لا تكرّر يرفعه.
   final bool flyCover;
 
-  /// ارتفاعُ الغلاف — واحدٌ لكلّ بطاقةٍ، بغلافٍ وبلا غلاف.
+  /// ضلعُ الغلاف المربّع.
   ///
-  /// **ومقياسٌ لا رقمٌ مكرَّر:** يُقاس في الاختبار ليُعرف أنّ القائمةَ لا
-  /// تتعرّج، ويُقرأ من هنا فلا يفترق المقيسُ عن المرسوم.
-  static const coverHeight = 168.0;
+  /// **ومربّعٌ إلى جانب الاسم لا لوحٌ بعرض البطاقة.** كان اللوحُ ‎١٦٨‎ بكسلاً
+  /// فصارت البطاقةُ ‎٣٩٧‎، ولا يظهر في الشاشة إلّا اثنتان ونصف — فقال صاحبُ
+  /// المنصّة إنّها كبرت واختار المربّع. والبطاقةُ الآن ‎١٢٠‎ بكسلاً.
+  ///
+  /// **ومقياسٌ لا رقمٌ مكرَّر:** يُقاس في الاختبار، ويُقرأ من هنا فلا يفترق
+  /// المقيسُ عن المرسوم.
+  static const coverSide = 96.0;
+
+  /// أضيقُ عمودٍ تُكتب فيه «التفاصيل» مع السهم — وما دونه السهمُ وحدَه.
+  ///
+  /// ‎١٩٦‎ عمودُ جوالٍ بعرض ‎٣٦٠‎ وفيه يسع الثلاثة، و‎١٥٦‎ عمودُ ‎٣٢٠‎ وفيه
+  /// فاضت. والحدُّ بينهما.
+  static const _detailsWordMinWidth = 180.0;
 
   Widget _cover() {
     final ground = SizedBox(
-      // **ومفتاحٌ على الغلاف**: يُقاس عرضُه وارتفاعُه ولونُ زاويته، ولا
-      // مرساةَ له في الشجرة غيرُ هذا — `SizedBox` في بطاقةٍ فيها عشرة.
+      // **ومفتاحٌ على الغلاف**: يُقاس ضلعُه ولونُ زاويته، ولا مرساةَ له في
+      // الشجرة غيرُ هذا — `SizedBox` في بطاقةٍ فيها عشرة.
       key: ValueKey('cover-${item.id}'),
-      height: coverHeight,
-      width: double.infinity,
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          // **والتدرّجُ تحت الصورة دائماً لا بديلاً عنها**: يُرى ريثما تصل
-          // الصورةُ على شبكة جوالٍ يمنية، ويبقى وحدَه لمن لا غلافَ له —
-          // فلا يخرج مربّعٌ رماديٌّ يُقرأ صورةً مكسورة.
-          _LetterGround(title: item.title),
-          if (item.coverPath != null)
-            MediaThumb(url: Api.mediaUrl(item.coverPath), blank: true),
-        ],
+      height: coverSide,
+      width: coverSide,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            // **والتدرّجُ تحت الصورة دائماً لا بديلاً عنها**: يُرى ريثما تصل
+            // الصورةُ على شبكة جوالٍ يمنية، ويبقى وحدَه لمن لا غلافَ له —
+            // فلا يخرج مربّعٌ رماديٌّ يُقرأ صورةً مكسورة.
+            _LetterGround(title: item.title),
+            if (item.coverPath != null)
+              MediaThumb(url: Api.mediaUrl(item.coverPath), blank: true),
+          ],
+        ),
       ),
     );
     if (!flyCover) return ground;
@@ -94,135 +107,161 @@ class ServiceListCard extends StatelessWidget {
     return Pressable(
       onTap: onOpen,
       child: Card(
-        // الغلافُ يبلغ حافّةَ البطاقة، فالقصُّ على نصف قطرها لا على مستطيل.
-        clipBehavior: Clip.antiAlias,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Stack(
-              children: [
-                _cover(),
-                // القلبُ على الغلاف في قرصٍ أبيض: يُقرأ على أيّ صورةٍ تحته،
-                // وله مساحتُه الخاصّة فلا تفتح الضغطةُ عليه صفحةَ التفاصيل.
-                if (favourite != null && onToggleFavourite != null)
-                  PositionedDirectional(
-                    top: Space.sm,
-                    end: Space.sm,
-                    child: _HeartDisc(
-                      on: favourite,
-                      onTap: onToggleFavourite!,
-                    ),
-                  ),
-                if (item.providerIsFeatured && showProvider)
-                  const PositionedDirectional(
-                    top: Space.sm,
-                    start: Space.sm,
-                    child: _FeaturedPill(),
-                  ),
-              ],
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(Space.lg, Space.md, Space.lg, Space.md),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    item.title,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.ink,
-                    ),
-                  ),
-                  const SizedBox(height: 7),
-                  if (showProvider)
-                    _ProviderLine(
-                      item: item,
-                      onOpenProvider: onOpenProvider,
-                      from: from,
-                    )
-                  else
-                    _Place(item: item, from: from),
-                  // شارتان تقولان إن وراء البطاقة ما يُرى ويُسمع: بلا هذه
-                  // العلامة لا يعرف أحدٌ أن للخدمة مقطعاً حتى يفتحها — ومن لم
-                  // يفتحها لم يعرف.
-                  if (item.hasVideo || item.hasAudio) ...[
-                    const SizedBox(height: Space.sm),
+        child: Padding(
+          padding: const EdgeInsets.all(Space.md),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _cover(),
+              const SizedBox(width: Space.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
                     Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        if (item.hasVideo) MediaChip(Icons.play_circle_outline, tr('فيديو')),
-                        if (item.hasVideo && item.hasAudio) const SizedBox(width: Space.xs),
-                        if (item.hasAudio) MediaChip(Icons.graphic_eq, tr('مقطع صوتي')),
-                      ],
-                    ),
-                  ],
-                  const SizedBox(height: Space.md),
-                  // النطاق السعري يطول: «850,000 ر.ي – 1,200,000 ر.ي» وحده
-                  // يتجاوز عرض الشاشة الضيّقة، فبلا Expanded يفيض الصفّ
-                  // ويختفي التقييم خلف الحافة.
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          item.priceTo == null
-                              ? formatMoney(item.price)
-                              : '${formatMoney(item.price)} – ${formatMoney(item.priceTo!)}',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.accent,
+                        Expanded(
+                          child: Text(
+                            item.title,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 15.5,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.ink,
+                            ),
                           ),
                         ),
-                      ),
-                      const SizedBox(width: Space.sm),
-                      if (item.providerRating > 0 && showProvider)
-                        Rating(item.providerRating, count: item.providerReviewsCount, size: 13)
-                      else if (showProvider)
-                        Muted(tr('جديد')),
-                    ],
-                  ),
-                  const SizedBox(height: 2),
-                  Muted(trf('العربون {0}٪', ['${item.depositPercent}']), size: 12),
-                ],
-              ),
-            ),
-            const Divider(height: 1),
-            Padding(
-              padding: const EdgeInsets.all(Space.md),
-              child: FilledButton(
-                // **ومفتاحٌ لكلّ بطاقة**: بابُ الخدمة يُقاس من زرّه هو، لا من
-                // أيّ زرٍّ في الشاشة.
-                key: ValueKey('open-${item.id}'),
-                onPressed: onOpen,
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.accent,
-                  foregroundColor: AppColors.accentInk,
-                  minimumSize: const Size.fromHeight(46),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // **والحجمُ والوزنُ على `Text` لا في `styleFrom`:** نمطٌ
-                    // عارٍ هناك يستبدل `fontFamily` الثيمةِ كلَّه، فتخرج
-                    // الحروفُ العربيّةُ مربّعاتٍ بيضاء.
-                    Text(
-                      tr('عرض التفاصيل'),
-                      style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700),
+                        if (item.providerIsFeatured && showProvider) ...[
+                          const SizedBox(width: 6),
+                          const _FeaturedPill(),
+                        ],
+                        // القلبُ له سطحُه الخاصّ فلا تفتح الضغطةُ عليه
+                        // صفحةَ التفاصيل.
+                        if (favourite != null && onToggleFavourite != null) ...[
+                          const SizedBox(width: 2),
+                          _Heart(on: favourite, onTap: onToggleFavourite!),
+                        ],
+                      ],
                     ),
-                    const SizedBox(width: 6),
-                    // **و`arrow_forward_ios` لا `chevron_left`:** هذا يتقلّب
-                    // مع اتجاه الشاشة من نفسِه، وذاك ممنوعٌ في الشجرة.
-                    const Icon(Icons.arrow_forward_ios, size: 14),
+                    const SizedBox(height: 4),
+                    if (showProvider)
+                      _ProviderLine(
+                        item: item,
+                        onOpenProvider: onOpenProvider,
+                        from: from,
+                      )
+                    else
+                      _Place(item: item, from: from),
+                    // شارتان تقولان إن وراء البطاقة ما يُرى ويُسمع: بلا هذه
+                    // العلامة لا يعرف أحدٌ أن للخدمة مقطعاً حتى يفتحها — ومن
+                    // لم يفتحها لم يعرف.
+                    if (item.hasVideo || item.hasAudio) ...[
+                      const SizedBox(height: 5),
+                      Row(
+                        children: [
+                          if (item.hasVideo)
+                            MediaChip(Icons.play_circle_outline, tr('فيديو')),
+                          if (item.hasVideo && item.hasAudio)
+                            const SizedBox(width: Space.xs),
+                          if (item.hasAudio) MediaChip(Icons.graphic_eq, tr('مقطع صوتي')),
+                        ],
+                      ),
+                    ],
+                    const SizedBox(height: 6),
+                    // **والسعرُ وحدَه في سطره.** عمودُ النصّ إلى جانب مربّعٍ
+                    // ‎٩٦‎ يضيق عن «850,000 ر.ي – 1,400,000 ر.ي» ومعه
+                    // التقييم، فينقصّ الطرفُ الأعلى من النطاق — وهو أهمُّ
+                    // رقمٍ في البطاقة. وقد خرج مقصوصاً في أوّل رسمة.
+                    // **وسطران لا قصّ**: على جوالٍ بعرض ‎٣٢٠‎ لا يسع العمودُ
+                    // النطاقَ بخطّ التطبيق — قيس في راسم اللقطة فخرج
+                    // «850,000 – 1,400…». فينزل طرفُه الأعلى سطراً بدل أن
+                    // يُقصّ، وعلى ما هو أعرضُ يبقى سطراً واحداً.
+                    Text(
+                      formatMoneyRange(item.price, item.priceTo),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.accent,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    // **وثلاثةٌ في صفٍّ ضيّق تفيض بلا مرونة**: عمودُ النصّ
+                    // على جوالٍ بعرض ‎٣٦٠‎ يضيق عن العربون والتقييم
+                    // و«التفاصيل ›» مجتمعةً — فاض بأربعةٍ وأربعين بكسلاً
+                    // وكشفه اختبارُ «الأقرب إليّ». فصار الأوّلان يتقلّصان.
+                    //
+                    // **وعلى جوالٍ بعرض ‎٣٢٠‎ لا يكفي التقلّص**: العمودُ
+                    // ‎١٥٦‎ بكسلاً، ففاض بسبعةَ عشرَ وكشفه اختبارُ مرشِّح
+                    // المحافظات. فتسقط كلمةُ «التفاصيل» ويبقى السهمُ وحدَه
+                    // — والسهمُ هو ما يقول إنّ البطاقةَ تُضغط، والكلمةُ
+                    // شرحٌ له.
+                    LayoutBuilder(builder: (context, box) {
+                      final roomy = box.maxWidth >= _detailsWordMinWidth;
+                      return Row(
+                        children: [
+                          // **والعربونُ والتقييمُ في صفٍّ داخل `Expanded` لا
+                          // إلى جانب `Spacer`**: `Flexible` و`Spacer` في صفٍّ
+                          // واحدٍ يقتسمان الفراغَ نصفين، فخرج «العربون …3»
+                          // مقصوصاً وبجانبه فراغٌ لا يملؤه شيء — وظهر في
+                          // اللقطة. وهنا يأخذ الاثنان كلَّ ما لم يأخذه
+                          // «التفاصيل ›»، ولا يتقلّص العربونُ إلّا حين يضيق.
+                          Expanded(
+                            child: Row(
+                              children: [
+                                Flexible(
+                                  child: Muted(
+                                    trf('العربون {0}٪', ['${item.depositPercent}']),
+                                    size: 11,
+                                    maxLines: 1,
+                                  ),
+                                ),
+                                if (showProvider) ...[
+                                  const SizedBox(width: Space.sm),
+                                  // **والتقييمُ لا يُلفّ في `Flexible`**: هو
+                                  // صفٌّ بحجم أصغرِه فيه نصٌّ بلا حدِّ أسطر،
+                                  // فتقليصُه يفيضه من داخله. والمتقلّصُ هو
+                                  // العربونُ وحدَه.
+                                  if (item.providerRating > 0)
+                                    Rating(item.providerRating,
+                                        count: item.providerReviewsCount, size: 11.5)
+                                  else
+                                    Muted(tr('جديد'), size: 11, maxLines: 1),
+                                ],
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: Space.xs),
+                          // **وبابٌ مرئيٌّ بلا زرّ.** البطاقةُ كلُّها تُضغط،
+                          // وهذا يقول ذلك للعين — واختاره صاحبُ المنصّة على
+                          // الزرّ الملوّن حين قصّرنا البطاقة.
+                          if (roomy) ...[
+                            Text(
+                              tr('التفاصيل'),
+                              style: const TextStyle(
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.accent,
+                              ),
+                            ),
+                            const SizedBox(width: 3),
+                          ],
+                          // **و`arrow_forward_ios` لا `chevron_left`:** هذا
+                          // يتقلّب مع اتجاه الشاشة من نفسِه، وذاك ممنوعٌ في
+                          // الشجرة.
+                          const Icon(Icons.arrow_forward_ios,
+                              size: 11, color: AppColors.accent),
+                        ],
+                      );
+                    }),
                   ],
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -251,7 +290,9 @@ class _LetterGround extends StatelessWidget {
       child: Text(
         title.trim().isEmpty ? tr('؟') : title.trim().characters.first,
         style: TextStyle(
-          fontSize: 54,
+          // من ضلع المربّع لا رقماً ثابتاً: حرفٌ بحجم اللوح الكبير في مربّعٍ
+          // صغير يخرج مقصوصاً.
+          fontSize: ServiceListCard.coverSide * 0.4,
           fontWeight: FontWeight.w700,
           color: Colors.white.withValues(alpha: 0.85),
         ),
@@ -260,15 +301,18 @@ class _LetterGround extends StatelessWidget {
   );
 }
 
-/// قرصُ القلب فوق الغلاف.
-class _HeartDisc extends StatelessWidget {
-  const _HeartDisc({required this.on, required this.onTap});
+/// القلب إلى جانب الاسم — وله سطحُه الخاصّ.
+///
+/// **وسطحٌ لا أيقونةٌ مرسومة:** البطاقةُ كلُّها تُضغط، فقلبٌ بلا `InkWell`
+/// تنزل ضغطتُه إلى البطاقة وتُفتح الخدمة بدل أن تُحفظ.
+class _Heart extends StatelessWidget {
+  const _Heart({required this.on, required this.onTap});
   final bool on;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) => Material(
-    color: Colors.white.withValues(alpha: 0.92),
+    color: Colors.transparent,
     shape: const CircleBorder(),
     clipBehavior: Clip.antiAlias,
     child: InkWell(
@@ -276,10 +320,10 @@ class _HeartDisc extends StatelessWidget {
       child: Tooltip(
         message: on ? tr('أزل من المفضّلة') : tr('أضف للمفضّلة'),
         child: Padding(
-          padding: const EdgeInsets.all(7),
+          padding: const EdgeInsets.all(5),
           child: Icon(
             on ? Icons.favorite : Icons.favorite_border,
-            size: 20,
+            size: 19,
             // نبيذيُّ العلامة لا أحمرُ الخطأ: قلبٌ بلون «فشل» على خدمةٍ
             // أحبَّها المستخدم يقرأه بعضُهم تحذيراً.
             color: on ? AppColors.accent : AppColors.muted,
@@ -290,29 +334,26 @@ class _HeartDisc extends StatelessWidget {
   );
 }
 
-/// شارةُ «مميّز» على الغلاف — قرصٌ أبيضُ لا إطارٌ ملوّن.
-///
-/// **والإطارُ الملوّنُ لا يُقرأ على صورة:** حدٌّ كهرمانيٌّ بحرفٍ كهرمانيٍّ
-/// فوق قاعةٍ مضاءةٍ بالذهب يذوب فيها. والأبيضُ المصمت يحمل لونَه معه.
+/// شارةُ «مميّز» إلى جانب الاسم — صبغةٌ كهرمانيّةٌ على البطاقة البيضاء.
 class _FeaturedPill extends StatelessWidget {
   const _FeaturedPill();
 
   @override
   Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
     decoration: BoxDecoration(
-      color: Colors.white.withValues(alpha: 0.92),
+      color: AppColors.warning.withValues(alpha: Tint.chip),
       borderRadius: BorderRadius.circular(999),
     ),
     child: Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        const Icon(Icons.star_rounded, size: 14, color: AppColors.warning),
-        const SizedBox(width: 3),
+        const Icon(Icons.star_rounded, size: 13, color: AppColors.warning),
+        const SizedBox(width: 2),
         Text(
           tr('مميّز'),
           style: const TextStyle(
-            fontSize: 11,
+            fontSize: 10.5,
             fontWeight: FontWeight.w700,
             color: AppColors.warning,
           ),
@@ -394,9 +435,10 @@ class _ProviderLine extends StatelessWidget {
                   child: name,
                 ),
         ),
-        const SizedBox(width: Space.sm),
-        // خيطٌ رأسيٌّ يفصل الاسمَ عن المكان — كما في تصميم صاحب المنصّة.
-        Container(width: 1, height: 13, color: AppColors.hairline),
+        // **والخيطُ الرأسيُّ الفاصلُ ذهب حين قُصّرت البطاقة**، وكان في تصميم
+        // صاحب المنصّة. عمودُ النصّ إلى جانب مربّعٍ ‎٩٦‎ أضيق من عرض
+        // البطاقة كلِّها، والخيطُ بفراغَيه يأكل سبعةَ عشرَ بكسلاً — فكان
+        // اسمُ المزوّد يخرج «مطبخ الأ…». والاسمُ أولى من خيط.
         const SizedBox(width: Space.sm),
         Flexible(child: _Place(item: item, from: from)),
       ],
