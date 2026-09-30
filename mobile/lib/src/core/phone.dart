@@ -99,3 +99,24 @@ String? normalisePhone(String raw) {
 
 /// هل هذا رقمٌ صالحٌ — سؤالٌ للنماذج.
 bool isValidPhone(String raw) => normalisePhone(raw) != null;
+
+/// يجمع مفتاحَ الدولة المختار [dial] إلى ما كُتب في الحقل [raw].
+///
+/// **ولمفتاح «+967» بجانب الحقل ثلاثُ حالاتٍ لا حالةٌ واحدة:**
+/// - كتب رقماً محلّيّاً (`771234567` أو `0771234567`): يُسبَق بالمفتاح،
+///   ويُسقط صفرُه السابق — وإلّا صار `+9670771…` فرُدّ.
+/// - كتب الرقمَ بمفتاحه (`+966…` أو `00966…`): **يُحترم ما كتب** ولا
+///   يُلصق مفتاحٌ ثانٍ قبله.
+/// - اختار «دولة أخرى» ([dial] فارغ): **يُطلب المفتاحُ مكتوباً** — ولا يُنسب
+///   رقمٌ بلا مفتاحٍ إلى اليمن كما يفعل `normalisePhone`: من قال «دولة أخرى»
+///   ثمّ كتب رقماً محلّيّاً نسي المفتاح، ونسبتُه إلى اليمن تحفظ له رقماً
+///   ليس رقمَه.
+String? composePhone(String? dial, String raw) {
+  final s = _digits(raw);
+  final keyed = s.startsWith('+') || s.startsWith('00');
+  if (dial == null) return keyed ? normalisePhone(raw) : null;
+  if (keyed) return normalisePhone(raw);
+  final local = s.startsWith('0') ? s.substring(1) : s;
+  if (local.isEmpty) return null;
+  return normalisePhone('+$dial$local');
+}

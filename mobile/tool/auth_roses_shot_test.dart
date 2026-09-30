@@ -20,6 +20,7 @@ import 'package:aras/src/core/session.dart';
 import 'package:aras/src/core/theme.dart';
 import 'package:aras/src/screens/auth.dart';
 import 'package:aras/src/screens/lock.dart';
+import 'package:aras/src/screens/onboarding.dart';
 import 'package:aras/src/screens/recover_password.dart';
 
 Future<void> _load(String family, List<String> paths) async {
@@ -111,6 +112,17 @@ void main() {
       'الاستعادة',
       (t) => _shoot(
           t, RecoverPasswordScreen(session: Session()..loading = false), 'c-recover'));
+  testWidgets(
+      'أكمل ملفك',
+      (t) => _shoot(
+          t,
+          OnboardingScreen(
+            session: Session()
+              ..userId = 'u-new'
+              ..email = 'new@sdd.company'
+              ..loading = false,
+          ),
+          'e-onboarding'));
   testWidgets('القفل', (tester) async {
     biometricsOverride = _Sensor();
     final lock = AppLock();

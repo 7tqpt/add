@@ -53,26 +53,26 @@ echo; echo "== الضوابط =="
 # أ) جدارُ الشرائح يعود — وهو ما شكا منه صاحبُ المنصّة: عشرون شريحةً تدفع
 #    زرَّ «متابعة» تحت الطيّة في أوّل شاشةٍ يراها من سجّل.
 run "أ) الشرائحُ تعود" sub "$O" \
-  "                  DropdownButtonFormField<String>(
-                    key: const ValueKey('governorate-field')," \
-  "                  Wrap(children: [
-                    for (final g in governorates)
-                      PickChip(
-                        label: g.name,
-                        active: _governorate == g.name,
-                        onTap: () => setState(() => _governorate = g.name),
-                      ),
-                  ]),
-                  if (false) DropdownButtonFormField<String>(
-                    key: const ValueKey('governorate-field'),"
+  "      DropdownButtonFormField<String>(
+        key: const ValueKey('governorate-field')," \
+  "      Wrap(children: [
+        for (final g in governorates)
+          PickChip(
+            label: g.name,
+            active: _governorate == g.name,
+            onTap: () => setState(() => _governorate = g.name),
+          ),
+      ]),
+      if (false) DropdownButtonFormField<String>(
+        key: const ValueKey('governorate-field'),"
 
 # ب) والمنسدلةُ تُفتح فارغة — تُضغط ولا تُظهر محافظةً، فيظنّها عاطلة.
 run "ب) منسدلةٌ بلا خيارات" sub "$O" \
-  "                      for (final g in governorates)
-                        DropdownMenuItem<String>(
-                          value: g.name,
-                          child: Text(g.name, overflow: TextOverflow.ellipsis),
-                        )," \
+  "          for (final g in governorates)
+            DropdownMenuItem<String>(
+              value: g.name,
+              child: Text(g.name, overflow: TextOverflow.ellipsis),
+            )," \
   ""
 
 # ج) والاختيارُ لا يُحفظ — يُرى في الحقل ويصل الخادمَ فراغاً.
@@ -80,8 +80,8 @@ run "ب) منسدلةٌ بلا خيارات" sub "$O" \
 #    **وهذا هو الضابطُ الذي لا يسقط بلا تسجيلِ وضعِ العرض:** الحقلُ يعرض
 #    اختيارَه ولو لم يصل `onChanged` شيئاً، فسؤالُ الشاشة يمرّ.
 run "ج) الاختيارُ لا يصل الخادم" sub "$O" \
-  "                    onChanged: (v) => setState(() => _governorate = v)," \
-  "                    onChanged: (v) {},"
+  "        onChanged: (v) => setState(() => _governorate = v)," \
+  "        onChanged: (v) {},"
 
 # د) ويمرّ نموذجٌ بلا محافظة — فيصير مستخدماً بلا محافظةٍ لا يظهر له قريب.
 #
@@ -106,22 +106,23 @@ run "هـ) وضعُ العرض لا يسجّل" sub "$A" \
 # **حذفها صاحبُ المنصّة: «احذف لي هذا صفحة نهائي».** فعودتُها — بشرطٍ
 # يصدق على كلّ جديد — يجب أن تُحمِر الحزمة.
 run "و) «من أنت؟» تعود قبل النموذج" sub "$O" \
-  "    return Scaffold(
-      // **ولا سهمَ رجوعٍ في الرأس**" \
+  "    return AuthFrame(
+      compact: true," \
   "    if (widget.session.appUserId == null) {
       return const Scaffold(body: Center(child: Text('أنا عروس')));
     }
-    return Scaffold(
-      // **ولا سهمَ رجوعٍ في الرأس**"
+    return AuthFrame(
+      compact: true,"
 
 # ── ز) وسهمُ الرجوع يعود إلى صفحةٍ لا وجودَ لها ─────────────────────────
+#    (وصارت الشاشةُ في إطار شاشات الباب بلا رأسِ `AppBar`، فالكسرُ يعطيها
+#    عنواناً في الرأس — وبه يعود سهمُ الرجوع.)
 run "ز) سهمُ الرجوع يعود" sub "$O" \
-  "        automaticallyImplyLeading: false," \
-  "        leading: IconButton(
-          onPressed: () {},
-          tooltip: 'غيّر الاختيار',
-          icon: const Icon(Icons.arrow_forward),
-        ),"
+  "      compact: true,
+      crowned: true," \
+  "      compact: true,
+      crowned: true,
+      title: 'غيّر الاختيار',"
 
 echo; echo "== الحصيلة: $PASS سقطت، $FAIL لم تسقط =="
 [ "$FAIL" -eq 0 ]

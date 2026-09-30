@@ -38,9 +38,12 @@ const authGoldEdge = Color(0xFFD9B26A);
 ///
 /// والعلّةُ القديمةُ نفسُها: رقمٌ ثابتٌ يأكل نصفَ جوالٍ قصيرٍ فيدفع «دخول»
 /// تحت لوحة المفاتيح.
-double authHeadHeight(BuildContext context, {bool titled = false}) {
+double authHeadHeight(BuildContext context, {bool titled = false, bool compact = false}) {
   final mq = MediaQuery.of(context);
-  return (mq.size.height * 0.25).clamp(150.0, 220.0) + mq.padding.top + (titled ? 44 : 0);
+  final share = compact
+      ? (mq.size.height * 0.17).clamp(120.0, 170.0)
+      : (mq.size.height * 0.25).clamp(150.0, 220.0);
+  return share + mq.padding.top + (titled ? 44 : 0);
 }
 
 class AuthFrame extends StatelessWidget {
@@ -51,7 +54,15 @@ class AuthFrame extends StatelessWidget {
     this.title,
     this.canLeave = true,
     this.cardKey,
+    this.compact = false,
+    this.crowned = false,
   });
+
+  /// رأسٌ أقصر — لبطاقةٍ أطول («أكمل ملفك»: ثلاثةُ حقولٍ وصورةٌ فوقها).
+  final bool compact;
+
+  /// حافّةُ البطاقة العليا ترتفع في وسطها — كما في صورة «أكمل ملفك».
+  final bool crowned;
 
   /// ما في القوس: القلبُ والاسم، أو رمزُ الاستعادة.
   final Widget crest;
@@ -71,7 +82,7 @@ class AuthFrame extends StatelessWidget {
   Widget build(BuildContext context) {
     final size = MediaQuery.sizeOf(context);
     final top = MediaQuery.paddingOf(context).top;
-    final head = authHeadHeight(context, titled: title != null);
+    final head = authHeadHeight(context, titled: title != null, compact: compact);
     // **والقوسُ لا يتّسع بلا حدّ** — على لوحٍ عريضٍ يصير بوّابةً لا علامة.
     final archInset = math.max(size.width * 0.19, (size.width - 300) / 2);
 
@@ -117,7 +128,9 @@ class AuthFrame extends StatelessWidget {
                       child: CustomPaint(
                         painter: const ArchPainter(),
                         child: Padding(
-                          padding: const EdgeInsets.fromLTRB(12, 34, 12, 44),
+                          // **وفي الرأس القصير يُترك تحت الاسم ما يسع ذيلَ
+                          // «ي»** — كان يغيب تحت البطاقة في أوّل لقطة.
+                          padding: EdgeInsets.fromLTRB(12, compact ? 26 : 34, 12, compact ? 62 : 44),
                           // **ويُصغَّر ما لا يتّسع** — خطُّ جهازٍ مضاعَفٌ في
                           // رأسٍ بارتفاعٍ محدود يفيض، والتصغيرُ أصدقُ من القصّ.
                           child: Center(
@@ -192,19 +205,21 @@ class AuthFrame extends StatelessWidget {
                     constraints: const BoxConstraints(maxWidth: 480),
                     child: Container(
                       key: cardKey ?? const ValueKey('auth-card'),
-                      padding: const EdgeInsets.fromLTRB(22, 26, 22, 22),
-                      decoration: BoxDecoration(
-                        color: authPaper,
-                        borderRadius: BorderRadius.circular(28),
-                        border: Border.all(color: authGoldLine.withValues(alpha: 0.7)),
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppColors.accentDeep.withValues(alpha: 0.06),
-                            blurRadius: 18,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
+                      padding: EdgeInsets.fromLTRB(22, 26 + (crowned ? CrownedCardBorder.rise : 0), 22, 22),
+                      decoration: crowned
+                          ? ShapeDecoration(
+                              color: authPaper,
+                              shape: CrownedCardBorder(
+                                side: BorderSide(color: authGoldLine.withValues(alpha: 0.7)),
+                              ),
+                              shadows: _cardShadow,
+                            )
+                          : BoxDecoration(
+                              color: authPaper,
+                              borderRadius: BorderRadius.circular(28),
+                              border: Border.all(color: authGoldLine.withValues(alpha: 0.7)),
+                              boxShadow: _cardShadow,
+                            ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: children,
@@ -219,6 +234,64 @@ class AuthFrame extends StatelessWidget {
       ),
     );
   }
+}
+
+final _cardShadow = [
+  BoxShadow(
+    color: AppColors.accentDeep.withValues(alpha: 0.06),
+    blurRadius: 18,
+    offset: const Offset(0, 4),
+  ),
+];
+
+/// بطاقةٌ حافّتُها العليا ترتفع في وسطها ارتفاعاً ليّناً — كما في صورة
+/// «أكمل ملفك». **ويبدأ الارتفاعُ وينتهي بمنحنى** لا بزاوية، فيُقرأ حليةً
+/// لا كسراً في الإطار.
+class CrownedCardBorder extends ShapeBorder {
+  const CrownedCardBorder({this.side = BorderSide.none});
+
+  final BorderSide side;
+
+  /// كم ترتفع الحافّةُ في وسطها.
+  static const rise = 14.0;
+  static const radius = 28.0;
+
+  @override
+  EdgeInsetsGeometry get dimensions => EdgeInsets.all(side.width);
+
+  @override
+  Path getOuterPath(Rect rect, {TextDirection? textDirection}) {
+    const r = radius;
+    final l = rect.left, rt = rect.right, b = rect.bottom, w = rect.width;
+    final top = rect.top + rise;
+    return Path()
+      ..moveTo(l, top + r)
+      ..arcToPoint(Offset(l + r, top), radius: const Radius.circular(r))
+      ..lineTo(l + w * 0.17, top)
+      ..cubicTo(l + w * 0.24, top, l + w * 0.24, rect.top, l + w * 0.31, rect.top)
+      ..lineTo(l + w * 0.69, rect.top)
+      ..cubicTo(l + w * 0.76, rect.top, l + w * 0.76, top, l + w * 0.83, top)
+      ..lineTo(rt - r, top)
+      ..arcToPoint(Offset(rt, top + r), radius: const Radius.circular(r))
+      ..lineTo(rt, b - r)
+      ..arcToPoint(Offset(rt - r, b), radius: const Radius.circular(r))
+      ..lineTo(l + r, b)
+      ..arcToPoint(Offset(l, b - r), radius: const Radius.circular(r))
+      ..close();
+  }
+
+  @override
+  Path getInnerPath(Rect rect, {TextDirection? textDirection}) =>
+      getOuterPath(rect.deflate(side.width), textDirection: textDirection);
+
+  @override
+  void paint(Canvas canvas, Rect rect, {TextDirection? textDirection}) {
+    if (side.style == BorderStyle.none) return;
+    canvas.drawPath(getOuterPath(rect), side.toPaint());
+  }
+
+  @override
+  ShapeBorder scale(double t) => CrownedCardBorder(side: side.scale(t));
 }
 
 /// القلبُ و«فرحتي» — ما في القوس.
