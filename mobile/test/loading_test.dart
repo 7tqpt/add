@@ -248,32 +248,43 @@ void main() {
   //  الحياة — حسابٌ صافٍ يُسأل بلا شاشة
   // ==========================================================================
 
-  group('الذرّاتُ الذهبيّة', () {
-    test('**تعود كلُّ ذرّةٍ إلى موضعها عند تمام الدورة**', () {
-      // ولو كانت سرعةُ ذرّةٍ كسراً من الدورة لَقفزت عند تمامها — وأربعَ
-      // عشرةَ ذرّةً تقفز معاً كلَّ تسع ثوانٍ تُرى ارتجاجةً في الشاشة كلِّها.
-      for (var i = 0; i < 14; i++) {
-        final a = moteAt(i, 0);
-        final b = moteAt(i, 1);
-        expect(b.x, closeTo(a.x, 1e-9), reason: 'قفزت أفقيّاً: $i');
-        expect(b.y, closeTo(a.y, 1e-9), reason: 'قفزت رأسيّاً: $i');
-        expect(b.alpha, closeTo(a.alpha, 1e-9), reason: 'ومضت: $i');
+  group('النجوم', () {
+    // **وكانت ذرّاتٍ تصعد**، فأرسل صاحبُ المنصّة تصميماً فيه نجومٌ ثابتةٌ
+    // تومض، واختار أن تحلّ محلّها. والعبرُ التي كانت تُقاس في الذرّات باقيةٌ
+    // هنا: لا قفزةَ عند تمام الدورة، ولا خروجَ عن المنطقة، ولا اصطفاف.
+    final n = starSpots.length;
+
+    test('**تعود كلُّ نجمةٍ إلى لمعانها عند تمام الدورة**', () {
+      // ولو كانت سرعةُ الوميض كسراً من الدورة لَقفز اللمعانُ عند تمامها —
+      // ونجومٌ كثيرةٌ تقفز معاً كلَّ تسع ثوانٍ تُرى ومضةً في الشاشة كلِّها.
+      for (var i = 0; i < n; i++) {
+        final a = starAt(i, 0);
+        final b = starAt(i, 1);
+        expect(b.x, closeTo(a.x, 1e-9), reason: 'تحرّكت: $i');
+        expect(b.y, closeTo(a.y, 1e-9), reason: 'تحرّكت: $i');
+        expect(b.alpha, closeTo(a.alpha, 1e-9), reason: 'قفز لمعانُها: $i');
       }
     });
 
-    test('**وتولد وتنطفئ في طرفَيها ولا تنبثق**', () {
-      for (var i = 0; i < 14; i++) {
-        // في لحظةِ ولادتها وموتها تكون معدومةَ الشفافيّة.
-        final born = _birthOf(i);
-        expect(moteAt(i, born).alpha, closeTo(0, 1e-6),
-            reason: 'ظهرت الذرّةُ $i فجأةً');
+    test('**تومض ولا تنطفئ**', () {
+      // في الصورة نجومٌ لا أضواءٌ تُطفأ: أخفتُها ثلثُ ضيائها. ويُقاس
+      // الوميضُ نفسُه كذلك — نجمةٌ ثابتةُ اللمعان صورةٌ لا حياة.
+      for (var i = 0; i < n; i++) {
+        var lo = 1.0, hi = 0.0;
+        for (var k = 0; k <= 120; k++) {
+          final a = starAt(i, k / 120).alpha;
+          if (a < lo) lo = a;
+          if (a > hi) hi = a;
+        }
+        expect(lo, greaterThanOrEqualTo(0.3), reason: 'انطفأت النجمةُ $i');
+        expect(hi - lo, greaterThan(0.5), reason: 'لا تومض النجمةُ $i');
       }
     });
 
-    test('ولا تخرج ذرّةٌ عن حدود المنطقة', () {
-      for (var i = 0; i < 14; i++) {
+    test('ولا تخرج نجمةٌ عن حدود المنطقة', () {
+      for (var i = 0; i < n; i++) {
         for (var k = 0; k <= 60; k++) {
-          final m = moteAt(i, k / 60);
+          final m = starAt(i, k / 60);
           expect(m.x, inInclusiveRange(0, 1), reason: 'خرجت $i عند $k');
           expect(m.y, inInclusiveRange(0, 1), reason: 'خرجت $i عند $k');
           expect(m.alpha, inInclusiveRange(0, 1));
@@ -282,12 +293,12 @@ void main() {
       }
     });
 
-    test('**ولا تصعد كلُّها في صفٍّ واحدٍ ولا بسرعةٍ واحدة**', () {
-      // ذرّاتٌ متساويةُ السرعة تُقرأ شبكةً تتحرّك لا غباراً في ضوء.
-      final ys = {for (var i = 0; i < 14; i++) moteAt(i, 0.3).y.toStringAsFixed(3)};
-      expect(ys.length, greaterThan(8), reason: 'اصطفّت الذرّاتُ في خطّ');
-      final xs = {for (var i = 0; i < 14; i++) moteAt(i, 0.3).x.toStringAsFixed(2)};
-      expect(xs.length, greaterThan(8), reason: 'اصطفّت في عمود');
+    test('**ولا تصطفّ ولا تومض معاً**', () {
+      // نجومٌ في صفٍّ واحدٍ تُقرأ شبكة، ونجومٌ تومض معاً تُقرأ إشارةً تتقطّع.
+      final ys = {for (var i = 0; i < n; i++) starAt(i, 0.3).y.toStringAsFixed(2)};
+      expect(ys.length, greaterThan(n - 2), reason: 'اصطفّت النجومُ في خطّ');
+      final as = {for (var i = 0; i < n; i++) starAt(i, 0.3).alpha.toStringAsFixed(2)};
+      expect(as.length, greaterThan(n ~/ 2), reason: 'تومض النجومُ معاً');
     });
   });
 
@@ -394,8 +405,8 @@ void main() {
       expect(archProgress(tester), 1, reason: 'رُسم القوسُ وقد طُلب الإطفاء');
       expect(_opacityOf(tester, find.text('فرحتي')), 1);
       expect(find.text('كل خدمات زفافك في مكان واحد'), findsOneWidget);
-      // ولا ذرّةَ تصعد، ولا مقودَ يدور: `pumpAndSettle` تُعلَّق لو بقي واحد.
-      expect(find.byKey(const ValueKey('motes')), findsNothing);
+      // ولا نجمةَ تومض، ولا مقودَ يدور: `pumpAndSettle` تُعلَّق لو بقي واحد.
+      expect(find.byKey(const ValueKey('stars')), findsNothing);
       await tester.pumpAndSettle();
     });
 
@@ -414,15 +425,15 @@ void main() {
       )));
       await enter(tester);
 
-      CustomPainter motes() => tester
-          .widget<CustomPaint>(find.byKey(const ValueKey('motes')))
+      CustomPainter stars() => tester
+          .widget<CustomPaint>(find.byKey(const ValueKey('stars')))
           .painter!;
 
       // مقودُ الدخول انتهى، والقوسُ اكتمل — ومع ذلك ما زال شيءٌ يتحرّك.
       expect(archProgress(tester), 1);
-      final a = motes();
+      final a = stars();
       await tester.pump(const Duration(milliseconds: 500));
-      expect(motes().shouldRepaint(a), isTrue,
+      expect(stars().shouldRepaint(a), isTrue,
           reason: 'سكنت الشاشةُ بعد الدخول فصارت صورةً');
     });
 
@@ -438,12 +449,12 @@ void main() {
       await enter(tester);
       await tester.pump(const Duration(seconds: 60));
 
-      CustomPainter motes() => tester
-          .widget<CustomPaint>(find.byKey(const ValueKey('motes')))
+      CustomPainter stars() => tester
+          .widget<CustomPaint>(find.byKey(const ValueKey('stars')))
           .painter!;
-      final a = motes();
+      final a = stars();
       await tester.pump(const Duration(milliseconds: 400));
-      expect(motes().shouldRepaint(a), isTrue,
+      expect(stars().shouldRepaint(a), isTrue,
           reason: 'ماتت الشاشةُ بعد دورةٍ أو دورتين');
     });
 
@@ -554,10 +565,3 @@ class _DriveState extends State<_Drive> with SingleTickerProviderStateMixin {
 /// لحظةُ ولادة الذرّة [i] من الدورة — حين تكون في أسفل المنطقة.
 ///
 /// `p == 0` يقع حين `v * speed + phase` عددٌ صحيح.
-double _birthOf(int i) {
-  final phase = _frac(i * 0.7548776662);
-  final speed = 1 + (i % 3);
-  return (1 - phase) / speed;
-}
-
-double _frac(double x) => x - x.floorToDouble();

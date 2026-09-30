@@ -100,90 +100,237 @@ class _WelcomeScreenState extends State<WelcomeScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       body: BrandBackdrop(
-        child: Padding(
-          padding: EdgeInsets.all(Space.xl),
-          child: Column(
-            children: [
-              Spacer(),
-              Expanded(flex: 6, child: ArchMark(t: _c)),
-              Spacer(),
-              // ── بابان لا بابٌ واحد ────────────────────────────────────
-              //
-              // **ويصعدان آخرَ الجميع.** الزرُّ دعوةٌ إلى الفعل، ودعوةٌ تسبق
-              // التعريفَ بالنفس تُضغط قبل أن يُقرأ ما فوقها.
-              //
-              // كان زرّاً واحداً اسمُه «ابدأ رحلتك» يفتح **إنشاء الحساب**،
-              // والعائدُ يبحث عن بابه في قاع شاشةٍ ليست له. فقال صاحبُ
-              // المنصّة: «عند ضغط ابدأ رحلتك خلّه ينطلق إلى تسجيل الدخول
-              // وليس العكس»، ثمّ اختار من ثلاثٍ عُرضت عليه **(ج): زرّان**.
-              //
-              // **و«دخول» هو الذهبيُّ.** شاشةُ الترحيب لا تُعرض إلّا لمن لا
-              // جلسةَ له — ومن سجّل مرّةً يفتح التطبيق على شاشته مباشرةً.
-              // فمن يراها إمّا جديدٌ لم يسجّل قطّ، وإمّا عائدٌ خرج أو بدّل
-              // جهازَه. والأوّلُ يأتي مرّةً واحدةً في عمره، والثاني يعود.
-              //
-              // **ولا صفحةَ بينهما.** كانت «اختر نوع الحساب» تسبق التسجيل
-              // فحُذفت بأمر صاحب المنصّة: خطوةٌ تُسأل قبل أن يُعرف السائلُ
-              // من هو. ثمّ انتقل السؤالُ إلى أوّل «أكمل ملفك»، **فحُذف من
-              // هناك أيضاً**: «احذف لي هذا صفحة نهائي». فلا يُسأل أحدٌ من
-              // هو، ومقدّمُ الخدمة يفتح ملفّه من «حسابي».
-              Stage(
-                t: _c,
-                from: 0.78,
-                to: 1,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // زرٌّ ذهبيٌّ بحبرٍ نبيذيّ — لا نبيذيٌّ على نبيذيّ
-                    // فيختفي. والأبيضُ على الذهب لا يُقرأ (‎١٫٦٦:١‎)،
-                    // والنبيذيُّ عليه ‎٨٫٢٨:١‎.
-                    FilledButton(
-                      key: const ValueKey('welcome-sign-in'),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.goldOnAccent,
-                        foregroundColor: AppColors.accentDeep,
-                        minimumSize: Size.fromHeight(52),
-                      ),
-                      onPressed: () => _open(signUp: false),
-                      child: Text(
-                        tr('دخول'),
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          fontFamilyFallback: arabicFallback,
+        // ── الترحيبُ على تصميم صاحب المنصّة ──────────────────────────────
+        //
+        // أرسل صورةً فيها وردٌ على مخملٍ في أسفل الشاشة، وزخرفةٌ خفيفةٌ على
+        // الأطراف، ونجومٌ بدل الذرّات، و«دخول» بتدرّجٍ ذهبيّ — وقال:
+        // «احتفظ بالأنيميشن». فبقي القوسُ والقلبُ والاسمُ بحركتها، ودخلت
+        // الطبقاتُ الجديدةُ في الحركة نفسِها: تظهر في أواخر الدخول.
+        //
+        // **والترتيبُ طبقاتٌ لا عمود:** الزخرفةُ تحت كلّ شيء، والوردُ **فوق
+        // القوس** يغطّي ساقيه كما في صورته — وكان في أوّل رسمةٍ تحته فخرج
+        // القوسُ مرسوماً على الورد — **وفوق الزرّين لا عليهما.**
+        child: Stack(
+          children: [
+            Positioned(
+              left: 0,
+              right: 0,
+              top: 0,
+              bottom: _doorsHeight,
+              child: Stage(t: _c, from: 0.5, to: 0.9, child: const _Lattice()),
+            ),
+            Padding(
+              padding: EdgeInsets.all(Space.xl),
+              child: Column(
+                children: [
+                  Spacer(),
+                  Expanded(flex: 6, child: ArchMark(t: _c)),
+                  Spacer(),
+                  // ── بابان لا بابٌ واحد ────────────────────────────────────
+                  //
+                  // **ويصعدان آخرَ الجميع.** الزرُّ دعوةٌ إلى الفعل، ودعوةٌ تسبق
+                  // التعريفَ بالنفس تُضغط قبل أن يُقرأ ما فوقها.
+                  //
+                  // كان زرّاً واحداً اسمُه «ابدأ رحلتك» يفتح **إنشاء الحساب**،
+                  // والعائدُ يبحث عن بابه في قاع شاشةٍ ليست له. فقال صاحبُ
+                  // المنصّة: «عند ضغط ابدأ رحلتك خلّه ينطلق إلى تسجيل الدخول
+                  // وليس العكس»، ثمّ اختار من ثلاثٍ عُرضت عليه **(ج): زرّان**.
+                  //
+                  // **و«دخول» هو الذهبيُّ.** شاشةُ الترحيب لا تُعرض إلّا لمن لا
+                  // جلسةَ له — ومن سجّل مرّةً يفتح التطبيق على شاشته مباشرةً.
+                  // فمن يراها إمّا جديدٌ لم يسجّل قطّ، وإمّا عائدٌ خرج أو بدّل
+                  // جهازَه. والأوّلُ يأتي مرّةً واحدةً في عمره، والثاني يعود.
+                  //
+                  // **ولا صفحةَ بينهما.** كانت «اختر نوع الحساب» تسبق التسجيل
+                  // فحُذفت بأمر صاحب المنصّة: خطوةٌ تُسأل قبل أن يُعرف السائلُ
+                  // من هو. ثمّ انتقل السؤالُ إلى أوّل «أكمل ملفك»، **فحُذف من
+                  // هناك أيضاً**: «احذف لي هذا صفحة نهائي». فلا يُسأل أحدٌ من
+                  // هو، ومقدّمُ الخدمة يفتح ملفّه من «حسابي».
+                  Stage(
+                    t: _c,
+                    from: 0.78,
+                    to: 1,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // زرٌّ ذهبيٌّ بحبرٍ نبيذيّ — لا نبيذيٌّ على نبيذيّ
+                        // فيختفي. والأبيضُ على الذهب لا يُقرأ (‎١٫٦٦:١‎)،
+                        // والنبيذيُّ عليه ‎٨٫٢٨:١‎.
+                        //
+                        // **وبتدرّجٍ ذهبيٍّ كما في صورته، واللونُ المصمتُ تحته
+                        // باقٍ**: `backgroundColor` هو ما يُقاس عليه التباين،
+                        // والتدرّجُ لا ينزل عنه — طرفُه الداكنُ ‎٦٫٦:١‎ مع الحبر.
+                        FilledButton(
+                          key: const ValueKey('welcome-sign-in'),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: AppColors.goldOnAccent,
+                            foregroundColor: AppColors.accentDeep,
+                            minimumSize: Size.fromHeight(52),
+                            backgroundBuilder: (context, states, child) =>
+                                DecoratedBox(
+                              key: const ValueKey('welcome-gold'),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(12),
+                                gradient: welcomeGold,
+                              ),
+                              child: child,
+                            ),
+                          ),
+                          onPressed: () => _open(signUp: false),
+                          child: Text(
+                            tr('دخول'),
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              fontFamilyFallback: arabicFallback,
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
-                    SizedBox(height: Space.md),
-                    // **ومحاطٌ بالذهب لا شفّافٌ بحرفٍ أبيض.** إطارٌ باهتٌ
-                    // على تدرّجٍ نبيذيٍّ لا يُرى، فيُقرأ الزرُّ نصّاً لا
-                    // باباً — وهو بابُ كلِّ قادمٍ جديدٍ إلى المنصّة.
-                    OutlinedButton(
-                      key: const ValueKey('welcome-sign-up'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppColors.goldOnAccent,
-                        side: BorderSide(color: AppColors.goldOnAccent),
-                        minimumSize: Size.fromHeight(52),
-                      ),
-                      onPressed: () => _open(signUp: true),
-                      child: Text(
-                        tr('إنشاء حساب'),
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          fontFamilyFallback: arabicFallback,
+                        SizedBox(height: Space.md),
+                        // **ومحاطٌ بالذهب لا شفّافٌ بحرفٍ أبيض.** إطارٌ باهتٌ
+                        // على تدرّجٍ نبيذيٍّ لا يُرى، فيُقرأ الزرُّ نصّاً لا
+                        // باباً — وهو بابُ كلِّ قادمٍ جديدٍ إلى المنصّة.
+                        OutlinedButton(
+                          key: const ValueKey('welcome-sign-up'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.goldOnAccent,
+                            side: BorderSide(color: AppColors.goldOnAccent),
+                            minimumSize: Size.fromHeight(52),
+                          ),
+                          onPressed: () => _open(signUp: true),
+                          child: Text(
+                            tr('إنشاء حساب'),
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              fontFamilyFallback: arabicFallback,
+                            ),
+                          ),
                         ),
-                      ),
+                      ],
                     ),
-                  ],
+                  ),
+                ],
+              ),
+            ),
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: _doorsHeight + 6,
+              child: IgnorePointer(
+                child: Stage(
+                  t: _c,
+                  from: 0.55,
+                  to: 0.95,
+                  child: const WelcomeRoses(),
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
+}
+
+/// ارتفاعُ ما يشغله الزرّان من قاع الشاشة: الحشوةُ وزرّان والفراغُ بينهما.
+///
+/// **والوردُ والزخرفةُ يقفان عنده** — فلا يُرسم شيءٌ منهما خلف الزرّين.
+/// والزخرفةُ كانت تُرى من داخل «إنشاء حساب» المحاط في الرسمة.
+const _doorsHeight = Space.xl + 52 + Space.md + 52;
+
+/// تدرّجُ «دخول» الذهبيّ — فاتحٌ في أعلاه، والذهبُ المقيسُ في وسطه.
+const welcomeGold = LinearGradient(
+  begin: Alignment.topCenter,
+  end: Alignment.bottomCenter,
+  colors: [Color(0xFFF6D68A), AppColors.goldOnAccent, Color(0xFFD9A94E)],
+);
+
+/// شريطُ الورد والمخمل — مقصوصٌ من تصميم صاحب المنصّة.
+///
+/// **يذوب أعلاه وأسفلُه بألفاه لا بلونٍ فوقه**: التلاشي بلونٍ مصمتٍ على
+/// أرضيّةٍ متدرّجةٍ يترك خيطاً يُرى — وقد تُرك مثلُه في ملخّص «حجوزاتي».
+class WelcomeRoses extends StatelessWidget {
+  const WelcomeRoses({super.key});
+
+  static const asset = 'assets/brand/welcome_roses.webp';
+
+  /// ما يذوب من أعلاه — وما تحته هو الوردُ ظاهراً.
+  static const fadeTop = 0.38;
+
+  @override
+  Widget build(BuildContext context) => ShaderMask(
+    blendMode: BlendMode.dstIn,
+    shaderCallback: (r) => const LinearGradient(
+      begin: Alignment.topCenter,
+      end: Alignment.bottomCenter,
+      colors: [
+        Colors.transparent,
+        Colors.black,
+        Colors.black,
+        Colors.transparent,
+      ],
+      stops: [0, fadeTop, 0.82, 1],
+    ).createShader(r),
+    child: Image.asset(
+      asset,
+      fit: BoxFit.fitWidth,
+      width: double.infinity,
+      // وعطبُ الأصل لا يُسقط الشاشة: الوردُ زينةٌ والبابان هما الخبر.
+      errorBuilder: (_, _, _) => const SizedBox.shrink(),
+    ),
+  );
+}
+
+/// **الزخرفة**: شبكةُ دوائرَ متداخلةٍ بخطٍّ ذهبيٍّ باهت — نقشٌ لا صورة.
+///
+/// **وتذوب نحو الوسط** فلا تزاحم القوسَ والاسم، وتبقى على الأطراف كما في
+/// صورة صاحب المنصّة.
+class _Lattice extends StatelessWidget {
+  const _Lattice();
+
+  @override
+  Widget build(BuildContext context) => IgnorePointer(
+    child: ShaderMask(
+      key: const ValueKey('welcome-lattice'),
+      blendMode: BlendMode.dstIn,
+      shaderCallback: (r) => const RadialGradient(
+        center: Alignment(0, -0.2),
+        radius: 0.95,
+        colors: [Colors.transparent, Colors.transparent, Colors.black],
+        stops: [0, 0.5, 1],
+      ).createShader(r),
+      child: const RepaintBoundary(
+        child: CustomPaint(painter: _LatticePainter(), size: Size.infinite),
+      ),
+    ),
+  );
+}
+
+class _LatticePainter extends CustomPainter {
+  const _LatticePainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.9
+      ..color = AppColors.goldOnAccent.withValues(alpha: 0.10);
+    const step = 34.0;
+    for (var y = -step; y < size.height + step; y += step) {
+      final odd = (y / step).round().isOdd;
+      for (var x = -step; x < size.width + step; x += step) {
+        canvas.drawCircle(
+          Offset(x + (odd ? step / 2 : 0), y),
+          step * 0.62,
+          paint,
+        );
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(_LatticePainter old) => false;
 }
 
 /// أرضيّةُ الهويّة — تدرّجٌ نبيذيٌّ تُبنى عليه شاشتا الدخول والترحيب.
@@ -485,32 +632,31 @@ const _ambienceCycle = Duration(seconds: 9);
 
 double _frac(double x) => x - x.floorToDouble();
 
-/// موضعُ الذرّة الذهبيّة رقم [i] وحجمُها وشفافيّتُها عند اللحظة [v] من الدورة.
+/// النجومُ في مواضعها — كسورٌ من عرض العلامة وارتفاعها، ونصفُ قطرها.
 ///
-/// و[x] و[y] كسران من العرض والارتفاع لا بكسلات، فتُسأل الدالّةُ بلا شاشة.
+/// **ومنقولةٌ من صورة صاحب المنصّة لا مولَّدة**: نجومٌ حول القوس وعلى
+/// جانبيه، وقليلٌ في داخله. (وكانت هنا ذرّاتٌ تصعد، فأرسل تصميماً فيه نجومٌ
+/// ثابتة واختار أن تحلّ محلّها.)
+const starSpots = [
+  (0.95, 0.02, 9.0), (0.03, 0.12, 7.0), (0.72, 0.14, 5.0), (0.14, 0.30, 6.0),
+  (0.83, 0.38, 4.0), (0.16, 0.50, 4.5), (0.90, 0.55, 6.0), (0.14, 0.68, 5.0),
+  (0.95, 0.66, 3.5), (0.05, 0.82, 3.5),
+];
+
+/// النجمةُ رقم [i] عند اللحظة [v] من الدورة — تومض في مكانها.
 ///
-/// **وسرعاتُها أعدادٌ صحيحةٌ من الدورة عمداً** — مرّةً أو مرّتين أو ثلاثاً.
-/// ولو كانت كسراً (١٫٤ مثلاً) لَقفزت الذرّةُ إلى موضعٍ آخر عند تمام الدورة،
-/// وهي قفزةٌ تقع كلَّ تسع ثوانٍ في أربعَ عشرةَ ذرّةً معاً فتُرى ارتجاجةً في
-/// الشاشة كلِّها. وهذا لا يُكتشف إلّا بالنظر إلى الشاشة عشرَ ثوانٍ متّصلة.
-({double x, double y, double r, double alpha}) moteAt(int i, double v) {
-  // توزيعٌ ثابتٌ لا عشوائيّ: يُسأل في الاختبار، ويخرج واحداً في كلّ تشغيل.
-  final phase = _frac(i * 0.7548776662);
-  final lane = _frac(i * 0.6180339887);
+/// **وسرعاتُ الوميض أعدادٌ صحيحةٌ من الدورة عمداً** — مرّةً أو مرّتين أو
+/// ثلاثاً — وهي العبرةُ نفسُها التي كانت في الذرّات: لو كانت كسراً لَقفز
+/// لمعانُ النجمة عند تمام الدورة، فتومض النجومُ كلُّها معاً كلَّ تسع ثوانٍ.
+///
+/// **ولا تنطفئ تماماً**: أخفتُها ثلثُ ضيائها — فهي نجومٌ في الصورة لا
+/// أضواءٌ تُطفأ وتُشعل.
+({double x, double y, double r, double alpha}) starAt(int i, double v) {
+  final (x, y, r) = starSpots[i];
   final speed = 1 + (i % 3);
-
-  // ٠ في أسفل المنطقة، ١ في أعلاها.
-  final p = _frac(v * speed + phase);
-  final sway = math.sin(p * 2 * math.pi + phase * 6.0) * 0.03;
-
-  return (
-    x: (0.07 + 0.86 * lane + sway).clamp(0.0, 1.0),
-    y: 1 - p,
-    r: 1.1 + 2.0 * _frac(i * 0.3819660113),
-    // **تولد وتنطفئ في طرفَيها.** ذرّةٌ تظهر فجأةً في أسفل الشاشة وتنقطع
-    // في أعلاها تُقرأ عطباً في الرسم لا ضوءاً.
-    alpha: math.sin(p * math.pi).clamp(0.0, 1.0),
-  );
+  final phase = _frac(i * 0.6180339887);
+  final wave = 0.5 + 0.5 * math.sin(2 * math.pi * (v * speed + phase));
+  return (x: x, y: y, r: r, alpha: 0.35 + 0.65 * wave);
 }
 
 /// أين يقف شريطُ الضوء الذي يمرّ على الذهب — أو `null` إن كان في راحته.
@@ -624,12 +770,12 @@ class _ArchMarkState extends State<ArchMark>
     if (life != null) {
       mark = Stack(
         children: [
-          // الذرّاتُ خلف القوس والحرف.
+          // النجومُ خلف القوس والحرف.
           Positioned.fill(
             child: RepaintBoundary(
               child: CustomPaint(
-                key: const ValueKey('motes'),
-                painter: _MotesPainter(t: life),
+                key: const ValueKey('stars'),
+                painter: _StarsPainter(t: life),
               ),
             ),
           ),
@@ -770,31 +916,44 @@ class _ArchMarkState extends State<ArchMark>
 }
 
 /// ذرّاتٌ ذهبيّةٌ تصعد داخل القوس — كغبارٍ في ضوء.
-class _MotesPainter extends CustomPainter {
-  const _MotesPainter({required this.t});
+class _StarsPainter extends CustomPainter {
+  const _StarsPainter({required this.t});
   final double t;
 
-  /// **أربعَ عشرةَ لا أربعين.** أربعون تصير ثلجاً متساقطاً بالمقلوب، وهي
-  /// زخرفةٌ تُلاحَظ فتُشغل؛ وأربعَ عشرةَ تُحسّ الشاشةَ حيّةً ولا تُعدّ.
-  static const count = 14;
+  static const _light = Color(0xFFFFE7A8);
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint();
-    for (var i = 0; i < count; i++) {
-      final m = moteAt(i, t);
-      if (m.alpha <= 0.01) continue;
-      paint.color = AppColors.goldOnAccent.withValues(alpha: 0.34 * m.alpha);
+    for (var i = 0; i < starSpots.length; i++) {
+      final s = starAt(i, t);
+      final c = Offset(s.x * size.width, s.y * size.height);
+      // هالةٌ ليّنةٌ خلف النجمة.
       canvas.drawCircle(
-        Offset(m.x * size.width, m.y * size.height),
-        m.r,
-        paint,
+        c,
+        s.r * 1.8,
+        Paint()
+          ..shader = RadialGradient(colors: [
+            _light.withValues(alpha: 0.45 * s.alpha),
+            _light.withValues(alpha: 0),
+          ]).createShader(Rect.fromCircle(center: c, radius: s.r * 1.8)),
       );
+      // نجمةٌ رباعيّةٌ بأضلاعٍ مقعّرة — المركزُ نقطةُ التحكّم في كلّ ضلع.
+      final path = Path()..moveTo(c.dx, c.dy - s.r);
+      for (var k = 1; k <= 4; k++) {
+        final a = -math.pi / 2 + k * math.pi / 2;
+        path.quadraticBezierTo(
+          c.dx,
+          c.dy,
+          c.dx + s.r * math.cos(a),
+          c.dy + s.r * math.sin(a),
+        );
+      }
+      canvas.drawPath(path, Paint()..color = _light.withValues(alpha: s.alpha));
     }
   }
 
   @override
-  bool shouldRepaint(_MotesPainter old) => old.t != t;
+  bool shouldRepaint(_StarsPainter old) => old.t != t;
 }
 
 /// قوسٌ يمنيٌّ بخطٍّ ذهبيّ — قوسان متداخلان وتاجٌ مدبَّب.
