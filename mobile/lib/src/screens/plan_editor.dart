@@ -174,7 +174,7 @@ class _PlanEditorScreenState extends State<PlanEditorScreen> {
                 Padding(
                   padding: const EdgeInsetsDirectional.only(start: 52),
                   child: Text(
-                    isNew ? tr('لنبدأ بتنظيم يومك المميز') : tr('عدّل تفاصيل يومك المميز'),
+                    isNew ? tr('لنبدأ بتنظيم عرسك المميز') : tr('عدّل تفاصيل يومك المميز'),
                     style: const TextStyle(fontSize: 15, color: AppColors.muted),
                   ),
                 ),

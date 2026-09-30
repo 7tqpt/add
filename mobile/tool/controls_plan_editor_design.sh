@@ -93,6 +93,9 @@ run "(ط) مربّعُ الصفة بارتفاعٍ ثابت" sub "$P" \
   "            constraints: const BoxConstraints(minHeight: 58)," \
   "            constraints: const BoxConstraints.tightFor(height: 58),"
 
+run "(ي) «يومك» يعود مكانَ «عرسك»" sub "$P" \
+  "tr('لنبدأ بتنظيم عرسك المميز')" "tr('لنبدأ بتنظيم يومك المميز')"
+
 echo
 echo "سقط $PASS — ولم يسقط $FAIL"
 [ "$FAIL" = 0 ]

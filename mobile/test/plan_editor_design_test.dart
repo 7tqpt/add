@@ -132,6 +132,13 @@ void main() {
   });
 
   group('الشكل', () {
+    testWidgets('**«لنبدأ بتنظيم عرسك المميز» — بكلمة صاحب المنصّة**', (tester) async {
+      // كتبها بنفسه تحت لقطة الشاشة: «عرسك» لا «يومك».
+      await _open(tester);
+      expect(find.text('لنبدأ بتنظيم عرسك المميز'), findsOneWidget);
+      expect(find.text('لنبدأ بتنظيم يومك المميز'), findsNothing);
+    });
+
     testWidgets('**وكلُّ عنوانٍ فوق صندوقه لا داخلَه**', (tester) async {
       await _open(tester);
       final pairs = {

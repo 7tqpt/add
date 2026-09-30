@@ -802,7 +802,7 @@ const Map<String, String> englishStrings = {
   'أنا عروس': "I'm the bride",
   'أنا عريس': "I'm the groom",
   'تاريخ العرس': 'Wedding date',
-  'لنبدأ بتنظيم يومك المميز': "Let's start planning your special day",
+  'لنبدأ بتنظيم عرسك المميز': "Let's start planning your special wedding",
   'عدّل تفاصيل يومك المميز': 'Edit the details of your special day',
   'أدخل رمز التأكيد': 'Enter the confirmation code',
   'أرسلنا رمزاً إلى واتساب على رقمك': 'We sent a code to your number on WhatsApp',
