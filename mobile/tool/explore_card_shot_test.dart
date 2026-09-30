@@ -122,7 +122,10 @@ void main() {
   setUpAll(_loadFonts);
 
   testWidgets('لقطةُ بطاقةِ الخدمة في «استكشف»', (tester) async {
-    tester.view.physicalSize = const Size(392, 1500);
+    // **وعرضُ الجوال يُمرَّر**: ‎٣٩٢‎ افتراضاً، و‎٣٦٠‎ و‎٣٢٠‎ لأضيق الأجهزة —
+    // وبها تُقاس السطورُ المزدحمةُ بخطّ التطبيق لا بخطّ الاختبار البديل.
+    final width = double.tryParse(Platform.environment['WIDTH'] ?? '') ?? 392;
+    tester.view.physicalSize = Size(width, 1500);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
 
@@ -174,8 +177,20 @@ void main() {
       final image = await boundary.toImage(pixelRatio: 2.0);
       final png = await image.toByteData(format: ui.ImageByteFormat.png);
       image.dispose();
-      File('$out/explore.png').writeAsBytesSync(png!.buffer.asUint8List());
+      File('$out/explore-${width.round()}.png')
+          .writeAsBytesSync(png!.buffer.asUint8List());
     });
+
+    // **وما قُصّ يُقال بالرقم**: كلُّ نصٍّ مقصوصٍ في البطاقات، بخطّ التطبيق.
+    for (final p in tester
+        .renderObjectList<RenderParagraph>(find.descendant(
+          of: find.byType(Card),
+          matching: find.byType(RichText),
+        ))
+        .where((p) => p.didExceedMaxLines)) {
+      // ignore: avoid_print
+      print('مقصوصٌ عند ${width.round()}: «${p.text.toPlainText()}»');
+    }
 
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull, reason: 'فاضت الشاشة');

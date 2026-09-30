@@ -53,25 +53,26 @@ else echo "الأساسُ أحمر — لا معنى للضوابط."; exit 1; f
 
 echo; echo "== الغلاف =="
 
-# ── أ) يعود مربّعاً إلى جانب الاسم ──────────────────────────────────────
+# ── أ) يعود لوحاً بعرض البطاقة فتطول ───────────────────────────────────
 #
-# **وهو ما كان قبل تصميم صاحب المنصّة**: ‎٧٦×٧٦‎ إلى جانب العنوان.
-run "(أ) الغلافُ مربّعٌ لا بعرض البطاقة" \
+# **وهو ما شكا منه صاحبُ المنصّة**: «صار حجم البطاقة كبير جدن» — ‎٣٩٧‎
+# بكسلاً، لا يظهر في الشاشة إلّا اثنتان ونصف.
+run "(أ) الغلافُ لوحٌ بعرض البطاقة فتطول" \
   sub "$F" \
-"      height: coverHeight,
-      width: double.infinity," \
-"      height: coverHeight,
-      width: 76,"
-
-# ── ب) ويقصر ارتفاعُه عن المعلن ────────────────────────────────────────
-#
-# فتتعرّج القائمةُ: بطاقةٌ بغلافٍ عالٍ وأخرى بغلافٍ قصير.
-run "(ب) ارتفاعُ الغلاف غيرُ المعلن" \
-  sub "$F" \
-"      height: coverHeight,
-      width: double.infinity," \
-"      height: coverHeight - 20,
+"      height: coverSide,
+      width: coverSide," \
+"      height: 168,
       width: double.infinity,"
+
+# ── ب) ويكبر ضلعُه عن المعلن ───────────────────────────────────────────
+#
+# فتتعرّج القائمةُ: بطاقةٌ بمربّعٍ كبيرٍ وأخرى بصغير.
+run "(ب) ضلعُ الغلاف غيرُ المعلن" \
+  sub "$F" \
+"      height: coverSide,
+      width: coverSide," \
+"      height: coverSide + 24,
+      width: coverSide + 24,"
 
 # ── ج) ومن لا غلافَ له يعود إلى المربّع الباهت ─────────────────────────
 #
@@ -79,10 +80,10 @@ run "(ب) ارتفاعُ الغلاف غيرُ المعلن" \
 # لوحَ `surface2` بأيقونة صورة — عنصرٌ قائمٌ كالتدرّج، والشجرةُ لا تفرّق.
 run "(ج) لوحٌ باهتٌ مكان التدرّج" \
   sub "$F" \
-"          _LetterGround(title: item.title),
-          if (item.coverPath != null)
-            MediaThumb(url: Api.mediaUrl(item.coverPath), blank: true)," \
-"          MediaThumb(url: Api.mediaUrl(item.coverPath)),"
+"            _LetterGround(title: item.title),
+            if (item.coverPath != null)
+              MediaThumb(url: Api.mediaUrl(item.coverPath), blank: true)," \
+"            MediaThumb(url: Api.mediaUrl(item.coverPath)),"
 
 # ── د) والحرفُ يذهب فيبقى التدرّجُ أصمّ ────────────────────────────────
 #
@@ -94,25 +95,26 @@ run "(د) تدرّجٌ بلا حرف" \
 
 echo; echo "== الزرّ والقلب =="
 
-# ── هـ) ويفقد الزرُّ مفتاحَه ───────────────────────────────────────────
+# ── هـ) ويذهب الحرفُ الذي يقول إنّ البطاقةَ تُضغط ──────────────────────
 #
-# **فيُقاس بالنصّ**: عشرون بطاقةً في الشاشة بالنصّ نفسِه، فيُلتقط أوّلُها
-# ويُظنّ أنّ كلَّ زرٍّ قيس.
-run "(هـ) زرُّ التفاصيل بلا مفتاح" \
+# **وزرُّ «عرض التفاصيل» ذهب حين قُصّرت البطاقة**، فبقي «التفاصيل ›» وحدَه
+# يقول للعين إنّ هنا باباً. وبلا هذا بابٌ لا يُرى.
+run "(هـ) لا حرفَ يقول إنّ البطاقةَ تُضغط" \
   sub "$F" \
-"                key: ValueKey('open-\${item.id}')," \
-"                key: const ValueKey('open'),"
+"                            Text(
+                              tr('التفاصيل')," \
+"                            Text(
+                              ''," 
 
-# ── و) والزرُّ زينةٌ لا باب ────────────────────────────────────────────
+# ── و) والبطاقةُ نفسُها تفقد بابَها ────────────────────────────────────
 #
-# **وهذا يخرج زرّاً يُضغط ولا يفعل**: البطاقةُ كلُّها تُضغط فتُفتح الخدمةُ
-# من حولِه، فلا يُرى العطبُ بالعين.
-run "(و) زرُّ التفاصيل لا يفتح" \
+# **وهذا يخرج بطاقةً كتبت «التفاصيل ›» ولا تُفتح** — وعدٌ مرسوم.
+run "(و) البطاقةُ لا تُفتح بالضغط" \
   sub "$F" \
-"                key: ValueKey('open-\${item.id}'),
-                onPressed: onOpen," \
-"                key: ValueKey('open-\${item.id}'),
-                onPressed: () {},"
+"    return Pressable(
+      onTap: onOpen," \
+"    return Pressable(
+      onTap: () {},"
 
 # ── ز) والقلبُ يفقد سطحَه فتذهب ضغطتُه إلى البطاقة ────────────────────
 #
@@ -138,8 +140,8 @@ run "(ح) القسمُ عاد إلى البطاقة" \
 # ── ط) وتعود الوحدةُ إلى العربون ───────────────────────────────────────
 run "(ط) الوحدةُ عادت إلى العربون" \
   sub "$F" \
-"                  Muted(trf('العربون {0}٪', ['\${item.depositPercent}']), size: 12)," \
-"                  Muted(trf('العربون {0}٪ · {1}', ['\${item.depositPercent}', item.unit]), size: 12),"
+"                            trf('العربون {0}٪', ['\${item.depositPercent}'])," \
+"                            trf('العربون {0}٪ · {1}', ['\${item.depositPercent}', item.unit]),"
 
 # ── ي) وتسقط شارتا فيديو وصوت ──────────────────────────────────────────
 #
@@ -161,25 +163,63 @@ run "(ك) المسافةُ لا تُكتب" \
 
 echo; echo "== الخطّ والشارة =="
 
-# ── ل) ويعود الأسلوبُ العاري إلى `styleFrom` ──────────────────────────
+# ── ل) ويعود التقييمُ إلى سطر السعر فيضيق عليه ────────────────────────
 #
-# **فتُرسم «عرض التفاصيل» مربّعاتٍ بيضاء**: أسلوبٌ عارٍ يحلّ محلَّ أسلوب
-# الثيمة كلِّه، ومعه عائلةُ الخطّ. وقد وقع في زرّ «إعادة فتح» وخرج في لقطة.
-run "(ل) أسلوبٌ عارٍ يُذهب عائلةَ الخطّ" \
+# **وهذا وقع فعلاً في أوّل رسمةٍ للبطاقة القصيرة**: عمودُ النصّ إلى جانب
+# مربّعٍ ‎٩٦‎ يضيق عن النطاق ومعه التقييم، فخرج «850,000 – 1,400…» —
+# والطرفُ الأعلى هو نصفُ الخبر.
+run "(ل) التقييمُ في سطر السعر فيضيق عليه" \
   sub "$F" \
-"                  minimumSize: const Size.fromHeight(46),
-                )," \
-"                  minimumSize: const Size.fromHeight(46),
-                  textStyle: const TextStyle(fontSize: 15.5),
-                ),"
+"                    Text(
+                      formatMoneyRange(item.price, item.priceTo),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.accent,
+                      ),
+                    )," \
+"                    Row(children: [
+                      Expanded(child: Text(
+                        formatMoneyRange(item.price, item.priceTo),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.accent,
+                        ),
+                      )),
+                      Rating(item.providerRating, count: item.providerReviewsCount),
+                    ]),"
 
-# ── م) وتعود «مميّز» إطاراً شفّافاً على الصورة ────────────────────────
-#
-# حدٌّ كهرمانيٌّ بحرفٍ كهرمانيٍّ فوق قاعةٍ مضاءةٍ بالذهب يذوب فيها.
-run "(م) «مميّز» إطارٌ شفّافٌ على الغلاف" \
+# ── م) وتصير صبغةُ «مميّز» شفّافةً فلا تُرى على البطاقة البيضاء ───────
+run "(م) «مميّز» شفّافةٌ على الأبيض" \
   sub "$F" \
-"                    child: _FeaturedPill()," \
-"                    child: StatusBadge('مميّز', color: AppColors.warning),"
+"      color: AppColors.warning.withValues(alpha: Tint.chip)," \
+"      color: Colors.transparent,"
+
+echo; echo "== الجوالُ الضيّق =="
+
+# ── ن) وتُكتب «التفاصيل» على كلّ عرض ──────────────────────────────────
+#
+# **فتفيض البطاقةُ بسبعةَ عشرَ بكسلاً على جوالٍ بعرض ‎٣٢٠‎** — وقد فاضت.
+run "(ن) الكلمةُ على الضيّق فتفيض" \
+  sub "$F" \
+"                      final roomy = box.maxWidth >= _detailsWordMinWidth;" \
+"                      final roomy = box.maxWidth >= 0;"
+
+# ── س) ويسقط السهمُ مع الكلمة ──────────────────────────────────────────
+#
+# **فلا تفيض، ولا يبقى ما يقول إنّ البطاقةَ تُضغط** — بابٌ لا يُرى.
+run "(س) السهمُ يسقط مع الكلمة" \
+  sub "$F" \
+"                          const Icon(Icons.arrow_forward_ios,
+                              size: 11, color: AppColors.accent)," \
+"                          if (roomy)
+                            const Icon(Icons.arrow_forward_ios,
+                                size: 11, color: AppColors.accent),"
 
 echo
 echo "الساقط: $PASS — الباقي: $FAIL"
