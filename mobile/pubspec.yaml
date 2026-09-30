@@ -25,7 +25,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # وقد بقي `1.0.0+1` من أوّل دفعةٍ للتطبيق حتى ٥٧ حزمةً بُنيت كلُّها تقول
 # «أنا الأولى». ويحرسه `app_update_test.dart`: يقرأ هذا السطر ويقارنه
 # بثابتَي `app_version.dart`.
-version: 1.96.0+122
+version: 1.97.0+123
 
 environment:
   sdk: ^3.13.0
@@ -155,9 +155,17 @@ flutter:
   # **و`welcome_roses.webp`** شريطُ الورد والمخمل في أسفل الترحيب — مقصوصٌ
   # من تصميمٍ أرسله صاحبُ المنصّة واختار أن يؤخذ منه (٨٧١×٣٦٥، ‎٤٠‎ ك.ب).
   # وإن وصلت نسخةٌ أوضح بُدّل الملفُّ وحدَه.
+  #
+  # **و`role_bride.png` و`role_groom.png` و`plan_floral.png`** رسومُ «خطة
+  # جديدة» — مقصوصةٌ من صورة صاحب المنصّة، وحُوّلت **أقنعةَ ألفا بيضاء**:
+  # تُلوَّن في الشيفرة، فيصير الرسمُ أبيضَ على النبيذيّ حين يُختار وداكناً
+  # على الكريميّ حين لا يُختار — من أصلٍ واحد.
   assets:
     - assets/brand/app_mark.png
     - assets/brand/welcome_roses.webp
+    - assets/brand/role_bride.png
+    - assets/brand/role_groom.png
+    - assets/brand/plan_floral.png
 
   # خطّ عربي مرفق بالتطبيق لا مُعتمَد على الجهاز.
   #

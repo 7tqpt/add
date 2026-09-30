@@ -94,11 +94,18 @@ void main() {
     );
     await _settle(tester);
 
+    // **ويُمرَّر إليها أوّلاً** — طال النموذجُ بصورة صاحب المنصّة («الصفة»
+    // وعناوينُ فوق الحقول)، فصارت المحافظةُ تحت شاشة الاختبار الافتراضيّة
+    // (٦٠٠). وظهورُ الزرّ بلا تمريرٍ على جوالٍ حقيقيٍّ مقيسٌ في آخر الملفّ.
+    await tester.ensureVisible(find.byKey(_field));
+    await _settle(tester);
     await tester.tap(find.byKey(_field));
     await _settle(tester);
     await tester.tap(find.text('تعز').last);
     await _settle(tester);
 
+    await tester.ensureVisible(find.widgetWithText(FilledButton, 'حفظ'));
+    await _settle(tester);
     await tester.tap(find.widgetWithText(FilledButton, 'حفظ'));
     await _settle(tester);
 
@@ -122,6 +129,8 @@ void main() {
     await _settle(tester);
     expect(find.text('اختر تاريخ العرس'), findsNothing);
 
+    await tester.ensureVisible(find.widgetWithText(FilledButton, 'إنشاء الخطة'));
+    await _settle(tester);
     await tester.tap(find.widgetWithText(FilledButton, 'إنشاء الخطة'));
     await _settle(tester);
 
