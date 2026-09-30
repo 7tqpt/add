@@ -55,18 +55,21 @@ echo; echo "== العطبُ الأصليُّ يعود =="
 # **وهو ما شكا منه بعينه**: نصٌّ في صندوقٍ فارغ.
 run "(أ) عنوانُ الاسم في الصندوق" \
   sub "$O" \
-"                      labelText: tr('الاسم الكامل'),
-                      floatingLabelBehavior: FloatingLabelBehavior.always," \
-"                      labelText: tr('الاسم الكامل'),"
+"        decoration: _field(tr('الاسم الكامل'), Icons.person_outline_rounded)," \
+"        decoration: _field(tr('الاسم الكامل'), Icons.person_outline_rounded)
+            .copyWith(floatingLabelBehavior: FloatingLabelBehavior.auto),"
 
 # ── ب) ويعود عنوانُ الجوال وحدَه ──────────────────────────────────────────
 #
 # الضابطُ الذي يمنع نصفَ التنفيذ: حقلٌ صحّ وحقلٌ بقي، والبطاقةُ نصفان.
 run "(ب) عنوانُ الجوال في الصندوق" \
   sub "$O" \
-"                      labelText: tr('رقم الجوال'),
-                      floatingLabelBehavior: FloatingLabelBehavior.always," \
-"                      labelText: tr('رقم الجوال'),"
+"            onChanged: (d) => setState(() => _dial = d),
+          ),
+        )," \
+"            onChanged: (d) => setState(() => _dial = d),
+          ),
+        ).copyWith(floatingLabelBehavior: FloatingLabelBehavior.auto),"
 
 # ── ج) وتفترق المحافظةُ عنهما ─────────────────────────────────────────────
 #
@@ -79,17 +82,13 @@ drop_governorate_float() {
 import io
 p = 'lib/src/screens/onboarding.dart'
 s = io.open(p, encoding='utf-8').read()
-old = """                    decoration: InputDecoration(
-                      labelText: tr('المحافظة'),
-                      floatingLabelBehavior: FloatingLabelBehavior.always,
-                    ),
-                    hint: Text(
-                      tr('اختر محافظتك'),
-                      style: const TextStyle(color: AppColors.muted),
-                    ),"""
-new = """                    decoration: InputDecoration(
-                      labelText: tr('المحافظة'),
-                    ),"""
+old = """        decoration: _field(tr('المحافظة'), Icons.location_on_outlined),
+        hint: Text(
+          tr('اختر محافظتك'),
+          style: const TextStyle(color: AppColors.ink2),
+        ),"""
+new = """        decoration: _field(tr('المحافظة'), Icons.location_on_outlined)
+            .copyWith(floatingLabelBehavior: FloatingLabelBehavior.auto),"""
 assert s.count(old) == 1
 io.open(p, 'w', encoding='utf-8').write(s.replace(old, new, 1))
 PYX
@@ -105,20 +104,19 @@ echo; echo "== النصُّ في الصندوق =="
 # وقد **أبدل نصّاً بنصّ**: يطفو العنوانُ فيظهر المثالُ مكانَه.
 run "(د) يعود المثالُ في حقل الاسم" \
   sub "$O" \
-"                      labelText: tr('الاسم الكامل'),
-                      floatingLabelBehavior: FloatingLabelBehavior.always," \
-"                      labelText: tr('الاسم الكامل'),
-                      hintText: tr('محمد الصنعاني'),
-                      floatingLabelBehavior: FloatingLabelBehavior.always,"
+"        decoration: _field(tr('الاسم الكامل'), Icons.person_outline_rounded)," \
+"        decoration: _field(tr('الاسم الكامل'), Icons.person_outline_rounded)
+            .copyWith(hintText: tr('محمد الصنعاني')),"
 
 # ── هـ) وفي حقل الجوال ────────────────────────────────────────────────────
 run "(هـ) يعود مثالُ الجوال" \
   sub "$O" \
-"                      labelText: tr('رقم الجوال'),
-                      floatingLabelBehavior: FloatingLabelBehavior.always," \
-"                      labelText: tr('رقم الجوال'),
-                      hintText: '+967 7XX XXX XXX',
-                      floatingLabelBehavior: FloatingLabelBehavior.always,"
+"            onChanged: (d) => setState(() => _dial = d),
+          ),
+        )," \
+"            onChanged: (d) => setState(() => _dial = d),
+          ),
+        ).copyWith(hintText: '+967 7XX XXX XXX'),"
 
 # ── و) ويُكتب في الحقل نصٌّ لم يكتبه صاحبُه ───────────────────────────────
 #
