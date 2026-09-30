@@ -46,16 +46,14 @@ Session _fresh() => Session()
   ..email = 'new@sdd.company'
   ..loading = false;
 
-/// يفتح الشاشةَ ويتجاوز اختيارَ الصفة — فشاشةُ التسجيل خطوتان، ولا تظهر
-/// بطاقةُ «أهلاً بك» إلّا بعد الأولى.
+/// يفتح الشاشة. (وكان يتجاوز «من أنت؟» قبلها، ثمّ حُذفت فصار النموذجُ
+/// أوّلَها.)
 Future<void> _open(WidgetTester tester) async {
   tester.view.physicalSize = const Size(1080, 2400);
   tester.view.devicePixelRatio = 3.0;
   addTearDown(tester.view.reset);
 
   await tester.pumpWidget(_wrap(OnboardingScreen(session: _fresh())));
-  await tester.pumpAndSettle();
-  await tester.tap(find.text('أنا عروس'));
   await tester.pumpAndSettle();
 }
 

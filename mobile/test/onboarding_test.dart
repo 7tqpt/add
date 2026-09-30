@@ -1,9 +1,10 @@
-// «من أنت؟» — ثلاثةُ أبوابٍ إلى بابٍ واحد.
+// «أكمل ملفك» — **ولا «من أنت؟» قبلها.**
 //
-// **وأهمّ ما يُقاس هنا أن الاختيار طريقٌ لا قسمة.** شاشةٌ تسأل «عروس أم
-// مقدّم خدمة؟» يقرأها المستخدم على أنها نوعُ حسابٍ لا يُبدَّل — فمن أراد أن
-// يعرض خدمةً ويحجز فتح حسابين. ولذلك يُقال له صراحةً إن الحساب واحد، ولذلك
-// يبقى بابُ الرجوع مفتوحاً بعد الاختيار.
+// كانت تسبق النموذجَ صفحةٌ فيها «أنا عروس» و«أنا عريس» و«مقدّم خدمة»،
+// فحذفها صاحبُ المنصّة: «احذف لي هذا صفحة نهائي»، واختار أن تُحذف **وحدها**
+// — والشارةُ تبقى «عميل» لكلّ جديد، ومقدّمُ الخدمة يفتح ملفّه من «حسابي».
+//
+// **وما يُقاس هنا أنّها لا تعود:** من سجّل يرى النموذجَ أوّلَ ما يرى.
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -41,46 +42,35 @@ Future<void> _settle(WidgetTester tester) async {
 }
 
 void main() {
-  testWidgets('الاختيارُ أوّلاً — ثلاثةٌ لا اثنان', (tester) async {
+  testWidgets('**النموذجُ أوّلَ ما يُرى — لا «من أنت؟» قبله**', (tester) async {
     await tester.pumpWidget(_wrap(_session()));
     await _settle(tester);
 
-    expect(find.text('أنا عروس'), findsOneWidget);
-    expect(find.text('أنا عريس'), findsOneWidget);
-    expect(find.text('مقدّم خدمة'), findsOneWidget);
-    // ولا حقولَ قبل الاختيار: شاشةٌ واحدة تسأل شيئاً واحداً.
-    expect(find.byType(TextField), findsNothing);
+    expect(find.text('أكمل ملفك'), findsOneWidget,
+        reason: 'من سجّل لا يرى النموذجَ أوّلاً');
+    expect(find.byType(TextField), findsNWidgets(2),
+        reason: 'حقلا الاسم والجوال ليسا أوّلَ الشاشة');
+    for (final gone in [
+      'مرحباً بك في فرحتي',
+      'أنا عروس',
+      'أنا عريس',
+      'مقدّم خدمة',
+    ]) {
+      expect(find.text(gone), findsNothing, reason: 'عادت «$gone» — والصفحةُ محذوفة');
+    }
   });
 
-  testWidgets('ويُقال إن الحساب واحد — وإلّا فُتح حسابان', (tester) async {
-    await tester.pumpWidget(_wrap(_session()));
-    await _settle(tester);
-    expect(find.textContaining('الحساب واحد'), findsOneWidget);
-  });
-
-  testWidgets('والاختيارُ يفتح النموذج نفسه للثلاثة', (tester) async {
+  testWidgets('**ولا سهمَ رجوعٍ إلى صفحةٍ حُذفت**', (tester) async {
+    // كان في الرأس سهمٌ «غيّر الاختيار» يعود إلى «من أنت؟». وسهمٌ يبقى بعد
+    // حذف وجهته إمّا لا يفعل شيئاً وإمّا يُخرج من التطبيق.
     await tester.pumpWidget(_wrap(_session()));
     await _settle(tester);
 
-    await tester.tap(find.text('أنا عروس'));
-    await _settle(tester);
-
-    expect(find.text('أكمل ملفك'), findsOneWidget);
-    expect(find.byType(TextField), findsNWidgets(2));
-  });
-
-  testWidgets('وبابُ الرجوع مفتوحٌ بعده', (tester) async {
-    // من ضغط «مقدّم خدمة» وهو يريد أن يحجز كان سيمضي في طريقٍ لم يقصده.
-    await tester.pumpWidget(_wrap(_session()));
-    await _settle(tester);
-
-    await tester.tap(find.text('مقدّم خدمة'));
-    await _settle(tester);
-    expect(find.text('أكمل ملفك'), findsOneWidget);
-
-    await tester.tap(find.byTooltip('غيّر الاختيار'));
-    await _settle(tester);
-    expect(find.text('أنا عروس'), findsOneWidget);
+    expect(find.byTooltip('غيّر الاختيار'), findsNothing);
+    expect(find.byType(BackButton), findsNothing);
+    expect(find.byIcon(Icons.arrow_forward), findsNothing);
+    // **والمخرجُ باقٍ** لمن لا يريد المتابعة.
+    expect(find.text('تسجيل الخروج'), findsOneWidget);
   });
 
   // ── المحافظة: منسدلةٌ لا جدارُ شرائح ──────────────────────────────────────
@@ -94,8 +84,6 @@ void main() {
     tester.view.devicePixelRatio = 3.0;
     addTearDown(tester.view.reset);
     await tester.pumpWidget(_wrap(_session()));
-    await _settle(tester);
-    await tester.tap(find.text('أنا عروس'));
     await _settle(tester);
   }
 

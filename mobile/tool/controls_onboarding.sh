@@ -101,5 +101,27 @@ run "هـ) وضعُ العرض لا يسجّل" sub "$A" \
       return;" \
   "      return;"
 
+# ── و) و«من أنت؟» تعود قبل النموذج ────────────────────────────────────
+#
+# **حذفها صاحبُ المنصّة: «احذف لي هذا صفحة نهائي».** فعودتُها — بشرطٍ
+# يصدق على كلّ جديد — يجب أن تُحمِر الحزمة.
+run "و) «من أنت؟» تعود قبل النموذج" sub "$O" \
+  "    return Scaffold(
+      // **ولا سهمَ رجوعٍ في الرأس**" \
+  "    if (widget.session.appUserId == null) {
+      return const Scaffold(body: Center(child: Text('أنا عروس')));
+    }
+    return Scaffold(
+      // **ولا سهمَ رجوعٍ في الرأس**"
+
+# ── ز) وسهمُ الرجوع يعود إلى صفحةٍ لا وجودَ لها ─────────────────────────
+run "ز) سهمُ الرجوع يعود" sub "$O" \
+  "        automaticallyImplyLeading: false," \
+  "        leading: IconButton(
+          onPressed: () {},
+          tooltip: 'غيّر الاختيار',
+          icon: const Icon(Icons.arrow_forward),
+        ),"
+
 echo; echo "== الحصيلة: $PASS سقطت، $FAIL لم تسقط =="
 [ "$FAIL" -eq 0 ]

@@ -19,6 +19,7 @@ import 'package:aras/src/core/theme.dart';
 import 'package:aras/src/screens/welcome.dart';
 import 'package:aras/src/data/demo.dart';
 import 'package:aras/src/data/models.dart';
+import 'package:aras/src/screens/onboarding.dart';
 import 'package:aras/src/screens/root.dart';
 import 'package:aras/src/screens/verify_phone.dart';
 import 'package:aras/src/ui/kit.dart';
@@ -105,9 +106,11 @@ void main() {
       await tester.pumpWidget(_wrap(RootScreen(session: session)));
       await _settle(tester);
       expect(find.byType(VerifyPhoneScreen), findsNothing);
-      // **وأوّلُ الإكمال سؤالُ الدور لا النموذج.** «أكمل ملفك» خطوةٌ ثانية،
-      // وسؤالٌ عنها هنا يفشل وإن كانت الشاشةُ هي الصحيحة — وقد فشل.
-      expect(find.text('أنا عروس'), findsOneWidget);
+      // **وشاشةُ الإكمال هي التي تُرى.** (وكان أوّلُها سؤالَ «من أنت؟»
+      // فكان يُسأل عنه هنا؛ ثمّ حُذف بأمر صاحب المنصّة فصار النموذجُ
+      // أوّلَها.)
+      expect(find.byType(OnboardingScreen), findsOneWidget);
+      expect(find.text('أكمل ملفك'), findsOneWidget);
     });
   });
 
