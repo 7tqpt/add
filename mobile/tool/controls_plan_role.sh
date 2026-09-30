@@ -76,6 +76,26 @@ run "(و) الرسمُ بعد الاسم لا قبله" sub "$P" \
   "                _RoleMark(role: role)," \
   "                Transform.translate(offset: const Offset(-300, 0), child: _RoleMark(role: role)),"
 
+run "(ز) الكبيرُ غائب" sub "$P" \
+  "                  if (role == 'bride' || role == 'groom')
+                    PositionedDirectional(" \
+  "                  if (false)
+                    PositionedDirectional("
+
+run "(ح) الكبيرُ للعروس رسمُ الذكر" sub "$P" \
+  "role == 'bride' ? 'assets/brand/role_bride.png' : 'assets/brand/role_groom.png'," \
+  "'assets/brand/role_groom.png',"
+
+run "(ط) الكبيرُ غيرُ باهت" sub "$P" \
+  "color: Colors.white.withValues(alpha: 0.30)," \
+  "color: Colors.white,"
+
+run "(ي) الكبيرُ في الطرف الأيمن" sub "$P" \
+  "                    PositionedDirectional(
+                      end: 10," \
+  "                    PositionedDirectional(
+                      start: 10,"
+
 echo
 echo "سقط $PASS — ولم يسقط $FAIL"
 [ "$FAIL" = 0 ]

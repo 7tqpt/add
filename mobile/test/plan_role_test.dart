@@ -87,6 +87,35 @@ void main() {
     expect((mark.center.dy - title.center.dy).abs(), lessThan(8), reason: 'الرسمُ ليس في سطر الاسم');
   });
 
+  // ── والرسمُ الكبيرُ الباهتُ معه — (ج) «وعروس نفسه» ──────────────────────
+  for (final role in ['bride', 'groom']) {
+    testWidgets('**ورسمٌ كبيرٌ باهتٌ لـ«$role» في طرف الصدر**', (tester) async {
+      demoSetWeddingRole(role);
+      await _open(tester);
+      final img = tester.widget<Image>(_mark('plan-role-emblem'));
+      expect((img.image as AssetImage).assetName, 'assets/brand/role_$role.png');
+      expect(img.color!.a, inInclusiveRange(0.15, 0.45), reason: 'ليس باهتاً — يزاحم النصّ');
+      final emblem = tester.getRect(_mark('plan-role-emblem'));
+      expect(emblem.height, greaterThan(70), reason: 'صغيرٌ لا يُرى');
+    });
+  }
+
+  testWidgets('**ولا رسمَ كبيرَ لمن لم يختر**', (tester) async {
+    await _open(tester);
+    expect(_mark('plan-role-emblem'), findsNothing);
+  });
+
+  testWidgets('**والكبيرُ في الطرف الأيسر لا يغطّي العنوانَ ولا العدَّ**', (tester) async {
+    demoSetWeddingRole('groom');
+    await _open(tester);
+    final emblem = tester.getRect(_mark('plan-role-emblem'));
+    final title = tester.getRect(find.text(demoPlans.first.title).first);
+    expect(emblem.right, lessThanOrEqualTo(title.left + 1), reason: 'الرسمُ تحت العنوان');
+    expect(emblem.center.dx, lessThan(180), reason: 'الرسمُ ليس في الطرف الأيسر');
+    final count = tester.getRect(find.textContaining('يوم').first);
+    expect(emblem.overlaps(count), isFalse, reason: 'الرسمُ على العدّ التنازليّ');
+  });
+
   testWidgets('**وتبديلُ الصفة في «تعديل الخطة» يبدّل الرسمَ عند العودة**', (tester) async {
     demoSetWeddingRole('groom');
     await _open(tester);

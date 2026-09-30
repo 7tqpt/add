@@ -458,6 +458,27 @@ class _HeroCard extends StatelessWidget {
                       child: _FadedCover(path: coverPath),
                     ),
                   ),
+                  // **ورسمٌ كبيرٌ باهتٌ للصفة في طرف الصدر** — اختار صاحبُ
+                  // المنصّة (ج): الرسمَ الصغيرَ مكانَ القلب **وهذا معه**،
+                  // «وعروس نفسه». فوق غلاف الحجز (قيل له إنّهما في الطرف
+                  // نفسِه فاختار) وتحت النصّ، ولا يلتقط لمسة.
+                  if (role == 'bride' || role == 'groom')
+                    PositionedDirectional(
+                      end: 10,
+                      bottom: 4,
+                      height: 96,
+                      child: IgnorePointer(
+                        child: ExcludeSemantics(
+                          child: Image.asset(
+                            role == 'bride' ? 'assets/brand/role_bride.png' : 'assets/brand/role_groom.png',
+                            key: const ValueKey('plan-role-emblem'),
+                            color: Colors.white.withValues(alpha: 0.30),
+                            colorBlendMode: BlendMode.srcIn,
+                            errorBuilder: (_, _, _) => const SizedBox.shrink(),
+                          ),
+                        ),
+                      ),
+                    ),
                   _HeroText(plan: plan, days: days, role: role),
                 ],
               ),
