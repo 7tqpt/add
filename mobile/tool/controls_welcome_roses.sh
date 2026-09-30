@@ -62,11 +62,12 @@ roses = """            Positioned(
               right: 0,
               bottom: _doorsHeight + 6,
               child: IgnorePointer(
-                child: Stage(
+                child: _Bloom(
                   t: _c,
+                  life: _amb,
                   from: 0.55,
                   to: 0.95,
-                  child: const WelcomeRoses(),
+                  child: const RepaintBoundary(child: WelcomeRoses()),
                 ),
               ),
             ),
@@ -112,13 +113,15 @@ run "(هـ) الزرُّ بلا تدرّج" sub "$F" \
 
 # ── و) والوردُ خارجَ المشهد — يظهر تامّاً قبل أن يُرسم القوس ────────────
 #
-# «احتفظ بالأنيميشن»: وردٌ يسبق الحركةَ ليس منها.
+# «احتفظ بالأنيميشن»: وردٌ يسبق الحركةَ ليس منها. (وصار دخولُه تفتّحاً في
+# `_Bloom` لا صعوداً في `Stage` — والكسرُ نفسُه: ينزعه.)
 run "(و) الوردُ خارجَ المشهد" sub "$F" \
-"                child: Stage(
+"                child: _Bloom(
                   t: _c,
+                  life: _amb,
                   from: 0.55,
                   to: 0.95,
-                  child: const WelcomeRoses(),
+                  child: const RepaintBoundary(child: WelcomeRoses()),
                 )," \
 "                child: const WelcomeRoses(),"
 

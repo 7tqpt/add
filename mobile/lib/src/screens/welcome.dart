@@ -58,7 +58,7 @@ double introProgress() {
 void resetIntroClock() => _introStart = null;
 
 class _WelcomeScreenState extends State<WelcomeScreen>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   /// **ومقودٌ واحدٌ لكلّ ما في الشاشة.** لو كان لكلّ عنصرٍ مقودُه لَبدأ كلٌّ
   /// في لحظته فتفكّك المشهد؛ وواحدٌ يُقسَم بالفترات يجعلها حركةً واحدةً
   /// لها بدايةٌ ونهاية.
@@ -67,6 +67,13 @@ class _WelcomeScreenState extends State<WelcomeScreen>
     duration: introDuration,
   );
   bool _started = false;
+
+  /// مقودُ الحياة في الشاشة — البتلاتُ والوردُ وبريقُ «دخول».
+  ///
+  /// **ودورتُه دورةُ العلامة نفسُها** (`_ambienceCycle`) فيتّسق ما يدور في
+  /// الشاشة وما يدور في القوس. و`null` لمن طلب تقليلَ الحركة: لا بتلاتٌ
+  /// تسقط ولا بريقٌ يمرّ.
+  AnimationController? _amb;
 
   @override
   void didChangeDependencies() {
@@ -81,10 +88,12 @@ class _WelcomeScreenState extends State<WelcomeScreen>
     // **ويُستأنَف من حيث وصل لا من الصفر.** شاشةُ الإقلاع قبلها ترسم
     // العلامةَ نفسَها، فبدءٌ من الصفر هنا يُعيد المشهدَ مرّتين.
     _c.forward(from: introProgress());
+    _amb = AnimationController(vsync: this, duration: _ambienceCycle)..repeat();
   }
 
   @override
   void dispose() {
+    _amb?.dispose();
     _c.dispose();
     super.dispose();
   }
@@ -119,6 +128,32 @@ class _WelcomeScreenState extends State<WelcomeScreen>
               bottom: _doorsHeight,
               child: Stage(t: _c, from: 0.5, to: 0.9, child: const _Lattice()),
             ),
+            // ── البتلاتُ — تسقط خلف القوس وتتقلّب ──────────────────────────
+            //
+            // طلب صاحبُ المنصّة «انميش احترافي» هنا. **وخلف القوس لا
+            // أمامه**: بتلةٌ تمرّ على «فرحتي» تُقطّع الاسمَ للعين، وخلفه
+            // تُحسّ ولا تُزاحم. **وتقف فوق الزرّين** كالزخرفة والورد.
+            if (_amb != null)
+              Positioned(
+                left: 0,
+                right: 0,
+                top: 0,
+                bottom: _doorsHeight,
+                child: IgnorePointer(
+                  child: Stage(
+                    t: _c,
+                    from: 0.7,
+                    to: 1,
+                    child: RepaintBoundary(
+                      child: CustomPaint(
+                        key: const ValueKey('petals'),
+                        painter: PetalsPainter(t: _amb!),
+                        size: Size.infinite,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             Padding(
               padding: EdgeInsets.all(Space.xl),
               child: Column(
@@ -173,7 +208,27 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                                 borderRadius: BorderRadius.circular(12),
                                 gradient: welcomeGold,
                               ),
-                              child: child,
+                              // **وبريقٌ يمرّ على الذهب** مرّةً في الدورة —
+                              // **تحت الحرف لا فوقه**: ضوءٌ على «دخول»
+                              // يُبهت الكلمةَ لحظةَ مروره.
+                              child: _amb == null
+                                  ? child
+                                  : Stack(
+                                      // **ويمرّ ما تحته كما هو**: بلا هذا
+                                      // يُوضع الحرفُ في زاوية الزرّ لا في
+                                      // وسطه — وقد وقع في أوّل لقطة.
+                                      fit: StackFit.passthrough,
+                                      children: [
+                                        Positioned.fill(
+                                          child: ClipRRect(
+                                            borderRadius:
+                                                BorderRadius.circular(12),
+                                            child: _Shimmer(t: _amb!),
+                                          ),
+                                        ),
+                                        ?child,
+                                      ],
+                                    ),
                             ),
                           ),
                           onPressed: () => _open(signUp: false),
@@ -218,11 +273,12 @@ class _WelcomeScreenState extends State<WelcomeScreen>
               right: 0,
               bottom: _doorsHeight + 6,
               child: IgnorePointer(
-                child: Stage(
+                child: _Bloom(
                   t: _c,
+                  life: _amb,
                   from: 0.55,
                   to: 0.95,
-                  child: const WelcomeRoses(),
+                  child: const RepaintBoundary(child: WelcomeRoses()),
                 ),
               ),
             ),
@@ -280,6 +336,185 @@ class WelcomeRoses extends StatelessWidget {
       errorBuilder: (_, _, _) => const SizedBox.shrink(),
     ),
   );
+}
+
+/// الوردُ يتفتّح داخلاً ثمّ يتنفّس.
+///
+/// **يدخل صاعداً ويكبر قليلاً من أسفله** — كأنّه يتفتّح لا كأنّه يُلصق.
+/// ثمّ **يتنفّس** ببطءٍ ما دامت الشاشة: نفَسٌ واحدٌ في الدورة، وعلى محورٍ
+/// من أسفله فلا يتحرّك حدُّه فوق الزرّين.
+///
+/// **والنفَسُ ينقبض ولا ينبسط**: لا يطول الوردُ عن مقاسه أبداً، فلا يغطّي
+/// «كل خدمات زفافك» على الجوالات القصيرة — وهو مقيسٌ هناك بمقاسه التامّ.
+class _Bloom extends StatelessWidget {
+  const _Bloom({
+    required this.t,
+    required this.life,
+    required this.from,
+    required this.to,
+    required this.child,
+  });
+
+  final Animation<double> t;
+  final Animation<double>? life;
+  final double from;
+  final double to;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => AnimatedBuilder(
+    animation: Listenable.merge([t, ?life]),
+    child: child,
+    builder: (context, child) {
+      final s = Stage.at(t.value, from, to);
+      final l = life;
+      final breath = l == null ? 1.0 : roseBreathAt(l.value);
+      return Opacity(
+        opacity: s,
+        child: Transform.translate(
+          offset: Offset(0, 28 * (1 - s)),
+          child: Transform.scale(
+            scale: 0.94 + 0.06 * s,
+            alignment: Alignment.bottomCenter,
+            child: Transform(
+              key: const ValueKey('rose-breath'),
+              alignment: Alignment.bottomCenter,
+              transform: Matrix4.diagonal3Values(1, breath, 1),
+              child: child,
+            ),
+          ),
+        ),
+      );
+    },
+  );
+}
+
+/// نفَسُ الورد عند اللحظة [v] من الدورة — **لا يزيد عن ١ أبداً**.
+double roseBreathAt(double v) =>
+    1 - 0.018 * (0.5 - 0.5 * math.cos(2 * math.pi * v));
+
+/// بريقٌ يمرّ على «دخول».
+class _Shimmer extends StatelessWidget {
+  const _Shimmer({required this.t});
+  final Animation<double> t;
+
+  @override
+  Widget build(BuildContext context) => AnimatedBuilder(
+    animation: t,
+    builder: (context, _) {
+      final c = shimmerAt(t.value);
+      if (c == null) {
+        return const SizedBox.expand(key: ValueKey('welcome-shimmer'));
+      }
+      return DecoratedBox(
+        key: const ValueKey('welcome-shimmer'),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: const Alignment(-1, -0.6),
+            end: const Alignment(1, 0.6),
+            colors: const [
+              Color(0x00FFFFFF),
+              Color(0x8CFFFFFF),
+              Color(0x00FFFFFF),
+            ],
+            stops: [
+              (c - 0.14).clamp(0.0, 1.0),
+              c.clamp(0.0, 1.0),
+              (c + 0.14).clamp(0.0, 1.0),
+            ],
+          ),
+        ),
+      );
+    },
+  );
+}
+
+/// أين يقف بريقُ «دخول» عند اللحظة [v] — أو `null` في راحته.
+///
+/// **مرّةً في الدورة، وبعد مرور المذنّب على القوس لا معه**: ضوءان يتحرّكان
+/// معاً يتنازعان العين. ومن خارج الحافّة إلى خارجها فلا يُرى يبدأ ولا ينتهي.
+double? shimmerAt(double v) {
+  // بعد مرّة شريط الضوء الثانية (‎٠٫٥–٠٫٦٧٥‎) لا فيها — وكانت فيها أوّلاً.
+  const start = 0.78, span = 0.12;
+  final g = _frac(v) - start;
+  if (g < 0 || g > span) return null;
+  return -0.2 + 1.4 * (g / span);
+}
+
+/// بذورُ البتلات: (موضعُها من العرض، نصفُ طولها، سرعتُها).
+///
+/// **والسرعاتُ أعدادٌ صحيحةٌ من الدورة** — العبرةُ التي في النجوم والذرّات
+/// قبلها: كسرٌ هنا يجعل البتلاتِ تقفز إلى أعلى الشاشة كلَّ تسع ثوانٍ معاً.
+const petalSeeds = [
+  (0.10, 11.0, 1), (0.24, 9.0, 1), (0.37, 10.0, 2), (0.52, 8.0, 1),
+  (0.66, 12.0, 1), (0.80, 9.0, 2), (0.91, 10.5, 1), (0.30, 7.5, 1),
+];
+
+/// البتلةُ رقم [i] عند اللحظة [v] من الدورة.
+///
+/// تسقط من فوق الحافّة العليا إلى تحت منطقتها، وتتمايل يمنةً ويسرة،
+/// وتتقلّب — `flip` عرضُها الظاهر، كأنّها تدور على نفسها في الهواء.
+/// **وتظهر وتختفي تدريجاً** فلا تنبت من العدم ولا تُقصّ عند الحافّة.
+({double x, double y, double angle, double flip, double size, double alpha})
+petalAt(int i, double v) {
+  final (x0, size, speed) = petalSeeds[i];
+  final phase = _frac(i * 0.3819660113);
+  final fall = _frac(v * speed + phase);
+  final sway = math.sin(2 * math.pi * (v * speed * 2 + phase));
+  final edge = math.min(fall / 0.12, (1 - fall) / 0.2).clamp(0.0, 1.0);
+  return (
+    x: x0 + 0.035 * sway,
+    y: -0.06 + 1.12 * fall,
+    angle: 2 * math.pi * (v * speed + phase) + 0.5 * sway,
+    flip: 0.3 + 0.7 * math.cos(2 * math.pi * (v * speed * 3 + phase)).abs(),
+    size: size,
+    alpha: 0.8 * Curves.easeInOut.transform(edge),
+  );
+}
+
+/// البتلاتُ الساقطة — تُرسم من مقود الحياة مباشرةً بلا إعادة بناء.
+class PetalsPainter extends CustomPainter {
+  PetalsPainter({required this.t}) : super(repaint: t);
+
+  final Animation<double> t;
+
+  static const _light = Color(0xFFFFF4DE);
+  static const _deep = Color(0xFFEBCB98);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    for (var i = 0; i < petalSeeds.length; i++) {
+      final p = petalAt(i, t.value);
+      if (p.alpha <= 0.01) continue;
+      final r = p.size;
+      canvas.save();
+      canvas.translate(p.x * size.width, p.y * size.height);
+      canvas.rotate(p.angle);
+      canvas.scale(p.flip, 1);
+      // بتلةٌ كقطرة: رأسٌ مدبَّبٌ وبطنٌ مستدير.
+      final path = Path()
+        ..moveTo(0, -r)
+        ..quadraticBezierTo(r * 0.95, -r * 0.15, 0, r)
+        ..quadraticBezierTo(-r * 0.95, -r * 0.15, 0, -r)
+        ..close();
+      canvas.drawPath(
+        path,
+        Paint()
+          ..shader = LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              _light.withValues(alpha: p.alpha),
+              _deep.withValues(alpha: p.alpha * 0.9),
+            ],
+          ).createShader(Rect.fromCircle(center: Offset.zero, radius: r)),
+      );
+      canvas.restore();
+    }
+  }
+
+  @override
+  bool shouldRepaint(PetalsPainter old) => old.t != t;
 }
 
 /// **الزخرفة**: شبكةُ دوائرَ متداخلةٍ بخطٍّ ذهبيٍّ باهت — نقشٌ لا صورة.
@@ -661,6 +896,31 @@ const starSpots = [
   return (x: x, y: y, r: r, alpha: 0.35 + 0.65 * wave);
 }
 
+/// كم ظهرت النجمةُ رقم [i] عند القيمة [t] من مقود الدخول.
+///
+/// **تتفتّح واحدةً بعد واحدة** بعد أن يُرسم القوس — لا دفعةً واحدة. وتكبر
+/// فوق حجمها قليلاً ثمّ تستقرّ (`easeOutBack` في الرسّام) فتُقرأ ومضةَ ولادة.
+double starEntryAt(int i, double t) {
+  // **وآخرُها يكتمل قبل تمام المشهد** — كانت الخطوةُ ‎٠٫٠٣‎ فبقيت العاشرةُ
+  // ناقصةً بعده.
+  final from = 0.58 + 0.025 * i;
+  return ((t - from) / 0.16).clamp(0.0, 1.0);
+}
+
+/// أين يقف المذنّبُ على القوس عند اللحظة [v] — كسرٌ من طوله، أو `null`.
+///
+/// **مرّةً في الدورة، وفي فجوةٍ بين مرّتي شريط الضوء** (`glintAt`): ضوءان
+/// يتحرّكان في العلامة معاً يتنازعان العين.
+double? cometAt(double v) {
+  const start = 0.2, span = 0.26;
+  final g = _frac(v) - start;
+  if (g < 0 || g > span) return null;
+  return Curves.easeInOut.transform(g / span);
+}
+
+/// موجةُ الضوء من القلب حين يصل — من ٠ إلى ١، ثمّ تبقى ١ (أي: انقضت).
+double rippleAt(double t) => ((t - 0.5) / 0.32).clamp(0.0, 1.0);
+
 /// أين يقف شريطُ الضوء الذي يمرّ على الذهب — أو `null` إن كان في راحته.
 ///
 /// **ولمَ يرتاح أكثرَ ممّا يمرّ:** بريقٌ متّصلٌ يصير خلفيّةً متحرّكةً تُتعب
@@ -777,11 +1037,21 @@ class _ArchMarkState extends State<ArchMark>
             child: RepaintBoundary(
               child: CustomPaint(
                 key: const ValueKey('stars'),
-                painter: _StarsPainter(t: life),
+                painter: StarsPainter(t: life, entry: t),
               ),
             ),
           ),
           Positioned.fill(child: mark),
+          // **والمذنّبُ بعد أن يكتمل الدخول** — ضوءٌ يجري على القوس
+          // المرسوم، لا على قوسٍ لم يُرسم بعد.
+          Positioned.fill(
+            child: RepaintBoundary(
+              child: CustomPaint(
+                key: const ValueKey('arch-comet'),
+                painter: CometPainter(progress: t >= 1 ? cometAt(life) : null),
+              ),
+            ),
+          ),
         ],
       );
     }
@@ -817,7 +1087,7 @@ class _ArchMarkState extends State<ArchMark>
           mainAxisSize: MainAxisSize.min,
           children: [
             // القلبُ يكبر إلى حجمه لا يصعد — فيُقرأ نبضةً أولى.
-            _heart(Stage.at(t, 0.34, 0.64), life),
+            _heart(Stage.at(t, 0.34, 0.64), life, rippleAt(t)),
             const SizedBox(height: Space.sm),
             _rise(
               Stage.at(t, 0.44, 0.76),
@@ -884,7 +1154,7 @@ class _ArchMarkState extends State<ArchMark>
   /// **ولمَ الهالةُ لا القلب:** قلبٌ يكبر ويصغر بلا انقطاع يسحب البصرَ إليه
   /// أبداً فيمنع قراءةَ ما حوله؛ وضوءٌ يشتدّ ويخفت خلفه يُحسّ ولا يُنظر
   /// إليه.
-  Widget _heart(double s, double? life) {
+  Widget _heart(double s, double? life, double ripple) {
     // ثلاثُ نفَساتٍ في الدورة — عددٌ صحيحٌ فلا تنقطع النفَسُ عند تمامها.
     final breath =
         life == null ? 0.55 : 0.35 + 0.65 * (0.5 - 0.5 * math.cos(life * 6 * math.pi));
@@ -904,12 +1174,34 @@ class _ArchMarkState extends State<ArchMark>
               ],
             ),
           ),
-          child: const Center(
-            child: Icon(
-              Icons.favorite_rounded,
-              size: 40,
-              color: AppColors.goldOnAccent,
-            ),
+          child: Stack(
+            clipBehavior: Clip.none,
+            alignment: Alignment.center,
+            children: [
+              // **موجةُ الوصول** — حلقةٌ تتّسع من القلب وتذوب، مرّةً واحدة.
+              if (ripple > 0 && ripple < 1)
+                Transform.scale(
+                  key: const ValueKey('heart-ripple'),
+                  scale: 0.7 + 1.5 * ripple,
+                  child: Container(
+                    width: 78,
+                    height: 78,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: AppColors.goldOnAccent
+                            .withValues(alpha: 0.6 * (1 - ripple)),
+                        width: 1.4,
+                      ),
+                    ),
+                  ),
+                ),
+              const Icon(
+                Icons.favorite_rounded,
+                size: 40,
+                color: AppColors.goldOnAccent,
+              ),
+            ],
           ),
         ),
       ),
@@ -918,16 +1210,23 @@ class _ArchMarkState extends State<ArchMark>
 }
 
 /// ذرّاتٌ ذهبيّةٌ تصعد داخل القوس — كغبارٍ في ضوء.
-class _StarsPainter extends CustomPainter {
-  const _StarsPainter({required this.t});
+class StarsPainter extends CustomPainter {
+  const StarsPainter({required this.t, this.entry = 1});
   final double t;
+
+  /// لحظةُ مقود الدخول — النجومُ تتفتّح فيه واحدةً بعد واحدة.
+  final double entry;
 
   static const _light = Color(0xFFFFE7A8);
 
   @override
   void paint(Canvas canvas, Size size) {
     for (var i = 0; i < starSpots.length; i++) {
-      final s = starAt(i, t);
+      final s0 = starAt(i, t);
+      final e = starEntryAt(i, entry);
+      if (e <= 0) continue;
+      final pop = Curves.easeOutBack.transform(e);
+      final s = (x: s0.x, y: s0.y, r: s0.r * pop, alpha: s0.alpha * e);
       final c = Offset(s.x * size.width, s.y * size.height);
       // هالةٌ ليّنةٌ خلف النجمة.
       canvas.drawCircle(
@@ -947,7 +1246,7 @@ class _StarsPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_StarsPainter old) => old.t != t;
+  bool shouldRepaint(StarsPainter old) => old.t != t || old.entry != entry;
 }
 
 /// نجمةٌ رباعيّةٌ بأضلاعٍ مقعّرة — المركزُ نقطةُ التحكّم في كلّ ضلع.
@@ -1000,24 +1299,8 @@ class ArchPainter extends CustomPainter {
         ..color = AppColors.goldOnAccent.withValues(alpha: alpha)
         ..strokeWidth = width;
 
-      final w = size.width - inset * 2;
-      final h = size.height - inset * 2;
-      if (w <= 0 || h <= 0) return;
-
-      final left = inset;
-      final right = inset + w;
-      final bottom = inset + h;
-      // ثلثُ الارتفاع قوسٌ مدبَّب وثلثاه قائمان: نسبةُ القمرية الصنعانية.
-      final shoulder = inset + h * 0.42;
-      final peak = inset;
-
-      final path = Path()
-        ..moveTo(left, bottom)
-        ..lineTo(left, shoulder)
-        // ضلعان يلتقيان في رأسٍ مدبَّب لا نصفِ دائرة.
-        ..quadraticBezierTo(left, peak + h * 0.10, size.width / 2, peak)
-        ..quadraticBezierTo(right, peak + h * 0.10, right, shoulder)
-        ..lineTo(right, bottom);
+      final path = outline(size, inset);
+      if (path == null) return;
 
       if (t >= 1) {
         canvas.drawPath(path, gold);
@@ -1042,7 +1325,83 @@ class ArchPainter extends CustomPainter {
     if (in2 > 0) arch(math.min(14, size.width * 0.06), 0.45, 1.2, in2);
   }
 
+  /// خطُّ القوس — **واحدٌ للرسم وللمذنّب** فلا يجري الضوءُ على غير الخطّ.
+  static Path? outline(Size size, double inset) {
+    final w = size.width - inset * 2;
+    final h = size.height - inset * 2;
+    if (w <= 0 || h <= 0) return null;
+
+    final left = inset;
+    final right = inset + w;
+    final bottom = inset + h;
+    // ثلثُ الارتفاع قوسٌ مدبَّب وثلثاه قائمان: نسبةُ القمرية الصنعانية.
+    final shoulder = inset + h * 0.42;
+    final peak = inset;
+
+    return Path()
+      ..moveTo(left, bottom)
+      ..lineTo(left, shoulder)
+      // ضلعان يلتقيان في رأسٍ مدبَّب لا نصفِ دائرة.
+      ..quadraticBezierTo(left, peak + h * 0.10, size.width / 2, peak)
+      ..quadraticBezierTo(right, peak + h * 0.10, right, shoulder)
+      ..lineTo(right, bottom);
+  }
+
   @override
   bool shouldRepaint(ArchPainter old) => old.progress != progress;
 }
+
+/// مذنّبُ ضوءٍ يجري على القوس — رأسٌ مضيءٌ وذيلٌ يذوب.
+class CometPainter extends CustomPainter {
+  const CometPainter({this.progress});
+
+  /// أين رأسُه من طول القوس — `null` تعني: لا مذنّبَ الآن.
+  final double? progress;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final p = progress;
+    if (p == null) return;
+    final path = ArchPainter.outline(size, 0);
+    if (path == null) return;
+    final metric = path.computeMetrics().first;
+    final head = metric.length * p;
+    final tail = math.max(0.0, head - metric.length * 0.14);
+    if (head - tail < 1) return;
+    // يشتدّ في وسط رحلته ويخفت عند طرفيها — فلا يولد ولا يموت فجأة.
+    final a = math.sin(math.pi * p);
+    final from = metric.getTangentForOffset(tail)!.position;
+    final at = metric.getTangentForOffset(head)!.position;
+    canvas.drawPath(
+      metric.extractPath(tail, head),
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round
+        ..strokeWidth = 4
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3.5)
+        ..shader = LinearGradient(
+          colors: [
+            const Color(0x00FFE7A8),
+            const Color(0xFFFFE7A8).withValues(alpha: a),
+          ],
+        ).createShader(Rect.fromPoints(from, at)),
+    );
+    canvas.drawCircle(
+      at,
+      10,
+      Paint()
+        ..color = const Color(0xFFFFE7A8).withValues(alpha: 0.7 * a)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 7),
+    );
+    canvas.drawCircle(
+      at,
+      2.8,
+      Paint()..color = Colors.white.withValues(alpha: a),
+    );
+  }
+
+  @override
+  bool shouldRepaint(CometPainter old) => old.progress != progress;
+}
+
 
