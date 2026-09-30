@@ -123,6 +123,10 @@ void main() {
               ..loading = false,
           ),
           'e-onboarding'));
+  testWidgets('باب القفل', (tester) async {
+    biometricsOverride = _Sensor();
+    await _shoot(tester, LockGateScreen(lock: AppLock(), onSignOut: () async {}), 'f-gate');
+  });
   testWidgets('القفل', (tester) async {
     biometricsOverride = _Sensor();
     final lock = AppLock();

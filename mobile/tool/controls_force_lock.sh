@@ -86,22 +86,22 @@ run "(أ) لا بابَ في الجذر" \
 # **وهو الفرقُ بين الإجبار والتشجيع.** بابٌ يُتخطّى ليس باباً.
 run "(ب) بابٌ يُتخطّى" \
   sub "$L" \
-"                    TextButton(
-                      key: const ValueKey('gate-sign-out')," \
-"                    TextButton(
-                      onPressed: () {},
-                      child: Text(tr('لاحقاً')),
-                    ),
-                    TextButton(
-                      key: const ValueKey('gate-sign-out'),"
+"        TextButton(
+          key: const ValueKey('gate-sign-out')," \
+"        TextButton(
+          onPressed: () {},
+          child: Text(tr('لاحقاً')),
+        ),
+        TextButton(
+          key: const ValueKey('gate-sign-out'),"
 
 # ── ج) والمخرجُ يُشال فيصير التطبيقُ سجناً ─────────────────────────────────
 #
 # من لم يُرد قفلاً يُترك في شاشةٍ بلا باب — وهو أذىً لا حماية.
 run "(ج) لا مخرجَ لمن لم يُرد قفلاً" \
   sub "$L" \
-"                      onPressed: _busy ? null : () => widget.onSignOut()," \
-"                      onPressed: null,"
+"          onPressed: _busy ? null : () => widget.onSignOut()," \
+"          onPressed: null,"
 
 # ── د) والرمزُ يُضبط بخطوةٍ واحدة ───────────────────────────────────────────
 #

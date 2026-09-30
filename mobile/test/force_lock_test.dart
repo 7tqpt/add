@@ -156,7 +156,7 @@ void main() {
       await _settle(tester);
 
       expect(find.text('ولا بصمةَ في جهازك'), findsOneWidget);
-      expect(find.text('وبصمتُك تفتحه أسرع'), findsNothing);
+      expect(find.text('بصمتك تفتحه أسرع'), findsNothing);
     });
   });
 

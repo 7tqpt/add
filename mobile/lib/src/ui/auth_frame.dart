@@ -56,7 +56,18 @@ class AuthFrame extends StatelessWidget {
     this.cardKey,
     this.compact = false,
     this.crowned = false,
+    this.bare = false,
+    this.crestOnTop = false,
   });
+
+  /// ما في القوس يُرسم **فوق الورد** — لعنوانٍ عريضٍ يبلغ طرفي القوس («اقفل
+  /// تطبيقك قبل أن تبدأ»)، وكان الوردُ يغطّي طرفيه في أوّل لقطة. والقلبُ
+  /// والاسمُ في الشاشات الأخرى أضيقُ من أن يبلغاه، فيبقيان تحته.
+  final bool crestOnTop;
+
+  /// بلا بطاقة: المحتوى على الحرير مباشرةً — كصورة «اقفل تطبيقك»، وفيها
+  /// بطاقةٌ داخليّةٌ لِما يُعدَّد فقط. وبطاقةٌ حول بطاقةٍ صندوقٌ في صندوق.
+  final bool bare;
 
   /// رأسٌ أقصر — لبطاقةٍ أطول («أكمل ملفك»: ثلاثةُ حقولٍ وصورةٌ فوقها).
   final bool compact;
@@ -133,9 +144,11 @@ class AuthFrame extends StatelessWidget {
                           padding: EdgeInsets.fromLTRB(12, compact ? 26 : 34, 12, compact ? 62 : 44),
                           // **ويُصغَّر ما لا يتّسع** — خطُّ جهازٍ مضاعَفٌ في
                           // رأسٍ بارتفاعٍ محدود يفيض، والتصغيرُ أصدقُ من القصّ.
-                          child: Center(
-                            child: FittedBox(fit: BoxFit.scaleDown, child: crest),
-                          ),
+                          child: crestOnTop
+                              ? const SizedBox.expand()
+                              : Center(
+                                  child: FittedBox(fit: BoxFit.scaleDown, child: crest),
+                                ),
                         ),
                       ),
                     ),
@@ -192,6 +205,49 @@ class AuthFrame extends StatelessWidget {
             child: const IgnorePointer(child: _RoseCorner(left: false)),
           ),
 
+          // ── ما في القوس فوق الورد (`crestOnTop`) ─────────────────────────
+          if (crestOnTop)
+            Positioned(
+              left: archInset,
+              right: archInset,
+              top: top + 14 + (title == null ? 0 : 44),
+              height: head - (top + 14 + (title == null ? 0 : 44)) + 40,
+              child: IgnorePointer(
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(12, compact ? 26 : 34, 12, compact ? 62 : 44),
+                  child: Center(
+                    key: const ValueKey('auth-crest-top'),
+                    child: FittedBox(fit: BoxFit.scaleDown, child: crest),
+                  ),
+                ),
+              ),
+            ),
+
+          // ── ورقةٌ كريميّةٌ بحافّةٍ مستديرة — في وضع «بلا بطاقة» وحدَه ──────
+          //
+          // **وفوق الورد لا تحته**: في الورد مخملٌ أحمرُ من صورته، وبلا بطاقةٍ
+          // تغطّيه كان يُرى تحت السطر الأوّل — وقد وقع في أوّل لقطة.
+          if (bare)
+            Positioned(
+              left: 0,
+              right: 0,
+              top: head - 18,
+              bottom: 0,
+              child: DecoratedBox(
+                key: const ValueKey('auth-sheet'),
+                decoration: BoxDecoration(
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+                  border: Border(top: BorderSide(color: authGoldLine.withValues(alpha: 0.7))),
+                  gradient: const LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [authPaper, authPaper, Color(0x00FFFDFA)],
+                    stops: [0, 0.55, 0.85],
+                  ),
+                ),
+              ),
+            ),
+
           // ── البطاقة ──────────────────────────────────────────────────────
           Positioned.fill(
             top: head - 4,
@@ -205,8 +261,12 @@ class AuthFrame extends StatelessWidget {
                     constraints: const BoxConstraints(maxWidth: 480),
                     child: Container(
                       key: cardKey ?? const ValueKey('auth-card'),
-                      padding: EdgeInsets.fromLTRB(22, 26 + (crowned ? CrownedCardBorder.rise : 0), 22, 22),
-                      decoration: crowned
+                      padding: bare
+                          ? const EdgeInsets.fromLTRB(0, 22, 0, 8)
+                          : EdgeInsets.fromLTRB(22, 26 + (crowned ? CrownedCardBorder.rise : 0), 22, 22),
+                      decoration: bare
+                          ? null
+                          : crowned
                           ? ShapeDecoration(
                               color: authPaper,
                               shape: CrownedCardBorder(
