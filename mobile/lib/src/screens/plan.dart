@@ -7,6 +7,7 @@ import '../core/theme.dart';
 import '../data/api.dart';
 import '../data/models.dart';
 import '../data/supabase.dart';
+import '../ui/auth_frame.dart';
 import '../ui/kit.dart';
 import '../ui/media.dart';
 import '../ui/motion.dart';
@@ -61,30 +62,7 @@ class _PlanScreenState extends State<PlanScreen> {
           return ErrorBlock(message: messageOf(snap.error!), onRetry: _reload);
         }
         final rows = snap.data ?? const <WeddingPlan>[];
-        if (rows.isEmpty) {
-          return Center(
-            child: Padding(
-              padding: const EdgeInsets.all(Space.xl),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  EmptyBlock(
-                    title: tr('لا خطة بعد'),
-                    description: tr(
-                        'خطة العرس تجمع حجوزاتك، وتحسب المتبقّي من ميزانيتك، '
-                        'وتفتح لك قائمة تجهيزٍ تشطبها مهمّةً مهمّة.'),
-                  ),
-                  const SizedBox(height: Space.lg),
-                  FilledButton.icon(
-                    onPressed: _edit,
-                    icon: const Icon(Icons.add, size: 20),
-                    label: Text(tr('أنشئ خطتك')),
-                  ),
-                ],
-              ),
-            ),
-          );
-        }
+        if (rows.isEmpty) return _NoPlan(onCreate: _edit);
         return ListView.separated(
           padding: EdgeInsets.fromLTRB(
             Space.lg, glassHeaderTop(context), Space.lg, glassNavSpace),
@@ -99,6 +77,79 @@ class _PlanScreenState extends State<PlanScreen> {
       },
     );
   }
+}
+
+/// «لا خطة بعد» — على صورة صاحب المنصّة: مذكّرةٌ بقلبين وقائمةِ تجهيزٍ بين
+/// الورد، ثمّ سطران، ثمّ زرٌّ بعرض الشاشة.
+///
+/// **والرسمُ مقصوصٌ من صورته** (`plan_empty.webp`، ‎٨٠٠×٦٩٥‎). وأرضيّتُه كانت
+/// عاجيّةً (‎253,251,249‎) والشاشةُ بيضاء، فحُوّلت ألوانُه حتى صارت أرضيّتُه
+/// بيضاءَ تماماً، وذابت حوافُّه فيها — فلا يُرى له إطار.
+///
+/// **ويُمرَّر ولا يُقصّ**: بين رأسٍ زجاجيٍّ وشريطٍ سفليٍّ على جوالٍ قصير لا
+/// يتّسع الرسمُ والسطرُ والزرّ معاً.
+class _NoPlan extends StatelessWidget {
+  const _NoPlan({required this.onCreate});
+  final VoidCallback onCreate;
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, box) => SingleChildScrollView(
+      padding: EdgeInsets.fromLTRB(Space.xl, glassHeaderTop(context), Space.xl, glassNavSpace),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          minHeight: box.maxHeight - glassHeaderTop(context) - glassNavSpace,
+        ),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 420),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // **ولا يطول الرسمُ فيدفع الزرَّ تحت الشريط**: سقفُه دون نصف الشاشة.
+                ConstrainedBox(
+                  constraints: BoxConstraints(maxHeight: box.maxHeight * 0.42),
+                  child: Image.asset(
+                    'assets/brand/plan_empty.webp',
+                    key: const ValueKey('plan-empty-art'),
+                    fit: BoxFit.contain,
+                    errorBuilder: (_, _, _) => const SizedBox.shrink(),
+                  ),
+                ),
+                const SizedBox(height: Space.lg),
+                Text(
+                  tr('لا خطة بعد'),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.ink,
+                  ),
+                ),
+                const SizedBox(height: Space.sm),
+                Text(
+                  tr('اجمع حجوزاتك، وتابع ميزانيتك، ونظّم تجهيزات عرسك في مكان واحد.'),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 15, color: AppColors.muted, height: 1.8),
+                ),
+                const SizedBox(height: Space.xl),
+                FilledButton.icon(
+                  key: const ValueKey('plan-create'),
+                  style: authPrimaryStyle.copyWith(
+                    minimumSize: const WidgetStatePropertyAll(Size.fromHeight(52)),
+                  ),
+                  onPressed: onCreate,
+                  icon: const Icon(Icons.add, size: 22),
+                  label: Text(tr('أنشئ خطتك')),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
 }
 
 class _PlanBlock extends StatefulWidget {

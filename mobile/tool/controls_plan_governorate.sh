@@ -53,8 +53,8 @@ echo; echo "== الضوابط =="
 # أ) جدارُ الشرائح يعود — وهو ما شكا منه صاحبُ المنصّة بلقطة: عشرون شريحةً
 #    تدفع «إنشاء الخطة» إلى أسفل البطاقة.
 run "أ) الشرائحُ تعود" sub "$P" \
-  "                  return DropdownButtonFormField<String>(
-                    key: const ValueKey('plan-governorate-field')," \
+  "                          return DropdownButtonFormField<String>(
+                            key: const ValueKey('plan-governorate-field')," \
   "                  if (rows.isNotEmpty) {
                     return Wrap(children: [
                       for (final g in rows)
@@ -70,11 +70,11 @@ run "أ) الشرائحُ تعود" sub "$P" \
 
 # ب) والمنسدلةُ تُفتح فارغة — تُضغط ولا تُظهر محافظةً، فيظنّها عاطلة.
 run "ب) منسدلةٌ بلا خيارات" sub "$P" \
-  "                      for (final g in rows)
-                        DropdownMenuItem<String>(
-                          value: g.name,
-                          child: Text(g.name, overflow: TextOverflow.ellipsis),
-                        )," \
+  "                              for (final g in rows)
+                                DropdownMenuItem<String>(
+                                  value: g.name,
+                                  child: Text(g.name, overflow: TextOverflow.ellipsis),
+                                )," \
   ""
 
 # ج) والاختيارُ لا يصل الخادم — يُرى في الحقل ويُحفظ فراغاً.
@@ -82,7 +82,7 @@ run "ب) منسدلةٌ بلا خيارات" sub "$P" \
 #    **وهذا هو الضابطُ الذي لا يسقط بلا سؤالِ `demoPlans`:** الحقلُ يعرض
 #    اختيارَه ولو لم يستقبل `onChanged` شيئاً، فسؤالُ الشاشة يمرّ.
 run "ج) الاختيارُ لا يصل الخادم" sub "$P" \
-  "                        : (v) => setState(() => _governorate = v)," \
+  "                                : (v) => setState(() => _governorate = v)," \
   "                        : (v) {},"
 
 # د) وتمرّ خطّةٌ بلا محافظة — فتُحفظ خطّةٌ لا يعرف أحدٌ أين عرسُها.
@@ -94,9 +94,10 @@ run "د) تمرّ بلا محافظة" sub "$P" \
 #     شاشةَ التعديل بدعوى `There should be exactly one item…` حين تُطفأ
 #     محافظةٌ من `governorates` بعد أن حُفظت الخطّة.
 run "هـ) قيمةٌ ليست في الخيارات" sub "$P" \
-  "                  final value =
-                      rows.any((g) => g.name == _governorate) ? _governorate : null;" \
-  "                  final value = _governorate;"
+  "                          final value = rows.any((g) => g.name == _governorate)
+                              ? _governorate
+                              : null;" \
+  "                          final value = _governorate;"
 
 # و) ووضعُ العرض يعود صامتاً — وهو **كسرٌ في أداة القياس لا في المقيس**،
 #    ويجب أن تحمرّ الحزمةُ به: اختبارٌ لا يرى ما وصل الخادمَ يقيس الشاشةَ
