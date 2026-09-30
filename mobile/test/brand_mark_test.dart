@@ -93,11 +93,17 @@ void main() {
     resetDemoPhoneGate();
   });
 
-  testWidgets('**الدخولُ يرفع الأيقونة**', (tester) async {
+  // **والدخولُ والقفلُ صار في قوسهما القلبُ والاسم لا الأيقونة.**
+  //
+  // كانت الأيقونةُ فيهما بقول صاحب المنصّة «في كل مكان»، ثمّ أرسل صورَ
+  // الدخول والإنشاء والاستعادة والقفل وفي قوسها القلبُ و«فرحتي»، وقال:
+  // «نفذهم بنفس الاستيل» — والأحدثُ من أمره هو أمرُه.
+  testWidgets('**الدخولُ: القلبُ والاسمُ في القوس لا الأيقونة**', (tester) async {
     _phone(tester);
     await tester.pumpWidget(_wrap(AuthScreen(session: Session()..loading = false)));
     await _settle(tester);
-    expect(find.image(brandMark), findsOneWidget);
+    expect(find.byKey(const ValueKey('auth-crest')), findsOneWidget);
+    expect(find.image(brandMark), findsNothing);
   });
 
   testWidgets('**والقفلُ كذلك**', (tester) async {
@@ -109,7 +115,8 @@ void main() {
 
     await tester.pumpWidget(_wrap(LockScreen(lock: lock, onSignOut: () async {})));
     await _settle(tester);
-    expect(find.image(brandMark), findsOneWidget);
+    expect(find.byKey(const ValueKey('auth-crest')), findsOneWidget);
+    expect(find.image(brandMark), findsNothing);
   });
 
   testWidgets('**وتأكيدُ الرقم كذلك**', (tester) async {

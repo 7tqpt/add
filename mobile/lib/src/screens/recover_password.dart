@@ -30,6 +30,7 @@ import '../core/i18n.dart';
 import '../core/session.dart';
 import '../core/theme.dart';
 import '../data/supabase.dart';
+import '../ui/auth_frame.dart';
 import '../ui/kit.dart';
 
 /// اسمُ الطريق — **يُقرأ في `root.dart`** فلا يُطوى مع ما يُطوى.
@@ -177,57 +178,51 @@ class _RecoverPasswordScreenState extends State<RecoverPasswordScreen> {
     return PopScope(
       // زرُّ الرجوع في الجهاز مثلُ السهم: يُمنع حيث يُمنع.
       canPop: _canLeave,
-      child: Scaffold(
-        backgroundColor: AppColors.surface,
-        appBar: AppBar(
-          backgroundColor: AppColors.accent,
-          foregroundColor: AppColors.accentInk,
-          elevation: 0,
-          automaticallyImplyLeading: _canLeave,
-          title: Text(tr('استعادة كلمة المرور')),
+      // **وفي إطار الدخول نفسِه** — رأسٌ نبيذيٌّ فيه عنوانُها وسهمُها، وفي
+      // القوس رمزُ الاستعادة مكانَ القلب. وكانت شاشةً بيضاءَ برأسٍ أحمرَ
+      // مسطّح، فتُقرأ تطبيقاً آخرَ فُتح من زرّ.
+      child: AuthFrame(
+        title: tr('استعادة كلمة المرور'),
+        canLeave: _canLeave,
+        crest: const Icon(
+          Icons.lock_reset_rounded,
+          size: 96,
+          color: AppColors.goldOnAccent,
         ),
-        body: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(
-                Space.lg, Space.xl, Space.lg, Space.lg),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                ..._stepBody(),
-                if (_note != null) ...[
-                  const SizedBox(height: Space.sm),
-                  Text(
-                    _note!,
-                    style: const TextStyle(
-                        color: AppColors.good, fontSize: 13, height: 1.6),
-                  ),
-                ],
-                if (_error != null) ...[
-                  const SizedBox(height: Space.md),
-                  Text(
-                    _error!,
-                    style: const TextStyle(
-                        color: AppColors.critical, fontSize: 13, height: 1.6),
-                  ),
-                ],
-                const SizedBox(height: Space.lg),
-                FilledButton(
-                  key: const ValueKey('recover-go'),
-                  onPressed: _busy ? null : _onGo,
-                  child: _busy
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                              strokeWidth: 2, color: AppColors.accentInk),
-                        )
-                      : Text(_goLabel),
-                ),
-                ..._footer(),
-              ],
+        children: [
+          ..._stepBody(),
+          if (_note != null) ...[
+            const SizedBox(height: Space.sm),
+            Text(
+              _note!,
+              style: const TextStyle(
+                  color: AppColors.good, fontSize: 13, height: 1.6),
             ),
+          ],
+          if (_error != null) ...[
+            const SizedBox(height: Space.md),
+            Text(
+              _error!,
+              style: const TextStyle(
+                  color: AppColors.critical, fontSize: 13, height: 1.6),
+            ),
+          ],
+          const SizedBox(height: 20),
+          FilledButton(
+            key: const ValueKey('recover-go'),
+            style: authPrimaryStyle,
+            onPressed: _busy ? null : _onGo,
+            child: _busy
+                ? const SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: AppColors.accentInk),
+                  )
+                : Text(_goLabel),
           ),
-        ),
+          ..._footer(),
+        ],
       ),
     );
   }
@@ -246,22 +241,14 @@ class _RecoverPasswordScreenState extends State<RecoverPasswordScreen> {
 
   List<Widget> _stepBody() => switch (_step) {
         RecoverStep.email => [
-            const Icon(Icons.lock_reset_rounded,
-                size: 56, color: AppColors.accent),
-            const SizedBox(height: Space.lg),
+            // **والرمزُ في القوس لا هنا** — كان فوق العنوان في الورقة،
+            // وصار في رأسها كما في صورة صاحب المنصّة.
+            AuthHeading(tr('نسيت كلمتك؟')),
             Text(
-              tr('نسيت كلمتك؟'),
+              tr('اكتب بريدك الإلكترونيّ، ونرسل إليه رمزاً تستعيد به كلمتك.'),
               textAlign: TextAlign.center,
               style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: AppColors.ink,
-              ),
-            ),
-            const SizedBox(height: Space.md),
-            Muted(
-              tr('اكتب بريدك الإلكترونيّ، ونرسل إليه رمزاً تستعيد به كلمتك.'),
-              size: 13,
+                  fontSize: 14, color: AppColors.ink2, height: 1.7),
             ),
             const SizedBox(height: Space.lg),
             TextField(
@@ -276,7 +263,8 @@ class _RecoverPasswordScreenState extends State<RecoverPasswordScreen> {
               // البريد لاتينيّ: يُترك من اليسار وإلّا تبعثرت رموزه.
               textDirection: TextDirection.ltr,
               autofillHints: const [AutofillHints.email],
-              decoration: InputDecoration(labelText: tr('البريد الإلكتروني')),
+              decoration:
+                  authInput(tr('البريد الإلكتروني'), Icons.mail_outline),
             ),
           ],
         RecoverStep.code => [
@@ -294,10 +282,8 @@ class _RecoverPasswordScreenState extends State<RecoverPasswordScreen> {
               textAlign: TextAlign.center,
               style: const TextStyle(fontSize: 22, letterSpacing: 8),
               autofillHints: const [AutofillHints.oneTimeCode],
-              decoration: InputDecoration(
-                labelText: tr('رمز الاستعادة'),
-                hintText: '------',
-              ),
+              decoration: authInput(tr('رمز الاستعادة'), Icons.pin_outlined,
+                  hint: '------'),
             ),
           ],
         RecoverStep.password => [
@@ -306,28 +292,20 @@ class _RecoverPasswordScreenState extends State<RecoverPasswordScreen> {
               style: const TextStyle(height: 1.7),
             ),
             const SizedBox(height: Space.md),
-            TextField(
-              key: const ValueKey('recover-new-password'),
+            SecretField(
+              fieldKey: const ValueKey('recover-new-password'),
               controller: _newPassword,
-              obscureText: true,
               autofocus: true,
-              textDirection: TextDirection.ltr,
+              label: tr('كلمة المرور الجديدة'),
+              helper: tr('ثمانية أحرف فأكثر.'),
               autofillHints: const [AutofillHints.newPassword],
-              decoration: InputDecoration(
-                labelText: tr('كلمة المرور الجديدة'),
-                helperText: tr('ثمانية أحرف فأكثر.'),
-              ),
             ),
             const SizedBox(height: Space.md),
-            TextField(
-              key: const ValueKey('recover-confirm-password'),
+            SecretField(
+              fieldKey: const ValueKey('recover-confirm-password'),
               controller: _confirmPassword,
-              obscureText: true,
-              textDirection: TextDirection.ltr,
+              label: tr('أعِد كتابة الكلمة الجديدة'),
               autofillHints: const [AutofillHints.newPassword],
-              decoration: InputDecoration(
-                labelText: tr('أعِد كتابة الكلمة الجديدة'),
-              ),
             ),
           ],
       };

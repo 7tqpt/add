@@ -59,11 +59,8 @@ echo; echo "== الضوابط =="
 # وهو العطبُ الذي طلب إصلاحَه بعينه.
 run "(أ) «نسيت» ترسل بدل أن تفتح حقلاً" \
   sub "$A" \
-"  void _openRecover() => openRecoverPassword(
-    context,
-    session: widget.session,
-    seedEmail: _email.text.trim(),
-  );" \
+"  void _openRecover() =>
+      openRecoverPassword(context, session: widget.session, seedEmail: _email.text.trim());" \
 "  void _openRecover() {
     if (_email.text.trim().isEmpty) {
       setState(() => _error = tr('اكتب بريدك أوّلاً.'));
@@ -164,11 +161,11 @@ run "(ل) الكلمةُ القصيرةُ تُرسَل" \
 run "(م) لا حقلَ تأكيدٍ في الاستعادة" \
   sub "$R" \
 "            const SizedBox(height: Space.md),
-            TextField(
-              key: const ValueKey('recover-confirm-password')," \
+            SecretField(
+              fieldKey: const ValueKey('recover-confirm-password')," \
 "            const SizedBox(height: Space.md),
-            TextField(
-              key: const ValueKey('recover-confirm-password-x'),"
+            SecretField(
+              fieldKey: const ValueKey('recover-confirm-password-x'),"
 
 # ── ن) والمختلفتان تمضيان إلى الخادم ─────────────────────────────────────────
 #
@@ -191,8 +188,8 @@ run "(س) الفارغُ يُقبل تأكيداً" \
 # ── ع) وتأكيدُ الإنشاء يُشال ─────────────────────────────────────────────────
 run "(ع) لا حقلَ تأكيدٍ في إنشاء الحساب" \
   sub "$A" \
-"        key: const ValueKey('signup-confirm-password')," \
-"        key: const ValueKey('signup-confirm-password-x'),"
+"        fieldKey: const ValueKey('signup-confirm-password')," \
+"        fieldKey: const ValueKey('signup-confirm-password-x'),"
 
 # ── ف) والمختلفتان تُنشئان حساباً ────────────────────────────────────────────
 run "(ف) المختلفتان تُنشئان الحساب" \
@@ -206,13 +203,13 @@ run "(ف) المختلفتان تُنشئان الحساب" \
 run "(ص) التأكيدُ يُعرض في وجه الدخول" \
   sub "$A" \
 "    if (_signUp) ...[
-      const SizedBox(height: Space.md),
-      TextField(
-        key: const ValueKey('signup-confirm-password')," \
+      const SizedBox(height: 10),
+      SecretField(
+        fieldKey: const ValueKey('signup-confirm-password')," \
 "    ...[
-      const SizedBox(height: Space.md),
-      TextField(
-        key: const ValueKey('signup-confirm-password'),"
+      const SizedBox(height: 10),
+      SecretField(
+        fieldKey: const ValueKey('signup-confirm-password'),"
 
 # ── ق) وما كُتب في التأكيد يبقى بعد قلب الوجه ────────────────────────────────
 run "(ق) قلبُ الوجه يترك التأكيدَ مملوءاً" \

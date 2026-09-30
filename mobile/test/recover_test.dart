@@ -145,11 +145,11 @@ void main() {
     await tester.pumpWidget(_wrap());
     await tester.pumpAndSettle();
 
-    expect(find.text('نسيت كلمة المرور'), findsOneWidget);
+    expect(find.text('نسيت كلمة المرور؟'), findsOneWidget);
 
     await tester.tap(find.byKey(const ValueKey('switch-face')));
     await tester.pumpAndSettle();
-    expect(find.text('نسيت كلمة المرور'), findsNothing);
+    expect(find.text('نسيت كلمة المرور؟'), findsNothing);
   });
 
   // ==========================================================================

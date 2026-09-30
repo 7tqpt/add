@@ -301,14 +301,16 @@ class _Lattice extends StatelessWidget {
         stops: [0, 0.5, 1],
       ).createShader(r),
       child: const RepaintBoundary(
-        child: CustomPaint(painter: _LatticePainter(), size: Size.infinite),
+        child: CustomPaint(painter: LatticePainter(), size: Size.infinite),
       ),
     ),
   );
 }
 
-class _LatticePainter extends CustomPainter {
-  const _LatticePainter();
+/// **وواحدٌ للترحيب ورأسِ الدخول والقفل** — نقشٌ واحدٌ في كلّ ما يُرى قبل
+/// التطبيق.
+class LatticePainter extends CustomPainter {
+  const LatticePainter();
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -330,7 +332,7 @@ class _LatticePainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_LatticePainter old) => false;
+  bool shouldRepaint(LatticePainter old) => false;
 }
 
 /// أرضيّةُ الهويّة — تدرّجٌ نبيذيٌّ تُبنى عليه شاشتا الدخول والترحيب.
@@ -937,23 +939,32 @@ class _StarsPainter extends CustomPainter {
             _light.withValues(alpha: 0),
           ]).createShader(Rect.fromCircle(center: c, radius: s.r * 1.8)),
       );
-      // نجمةٌ رباعيّةٌ بأضلاعٍ مقعّرة — المركزُ نقطةُ التحكّم في كلّ ضلع.
-      final path = Path()..moveTo(c.dx, c.dy - s.r);
-      for (var k = 1; k <= 4; k++) {
-        final a = -math.pi / 2 + k * math.pi / 2;
-        path.quadraticBezierTo(
-          c.dx,
-          c.dy,
-          c.dx + s.r * math.cos(a),
-          c.dy + s.r * math.sin(a),
-        );
-      }
-      canvas.drawPath(path, Paint()..color = _light.withValues(alpha: s.alpha));
+      canvas.drawPath(
+        starPath(c, s.r),
+        Paint()..color = _light.withValues(alpha: s.alpha),
+      );
     }
   }
 
   @override
   bool shouldRepaint(_StarsPainter old) => old.t != t;
+}
+
+/// نجمةٌ رباعيّةٌ بأضلاعٍ مقعّرة — المركزُ نقطةُ التحكّم في كلّ ضلع.
+///
+/// **وواحدةٌ للترحيب ورأسِ الدخول** فلا تُرسم نجمتان مختلفتان في تطبيقٍ واحد.
+Path starPath(Offset c, double r) {
+  final path = Path()..moveTo(c.dx, c.dy - r);
+  for (var k = 1; k <= 4; k++) {
+    final a = -math.pi / 2 + k * math.pi / 2;
+    path.quadraticBezierTo(
+      c.dx,
+      c.dy,
+      c.dx + r * math.cos(a),
+      c.dy + r * math.sin(a),
+    );
+  }
+  return path;
 }
 
 /// قوسٌ يمنيٌّ بخطٍّ ذهبيّ — قوسان متداخلان وتاجٌ مدبَّب.

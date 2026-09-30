@@ -57,11 +57,17 @@ echo; echo "== الضوابط =="
 # **والمرساةُ سطرُ المسار وحدَه لا الكتلةُ بإزاحتها:** `dart format` يُزيح
 # الكتلةَ بحسب عمقها في كلّ شاشة، فمرساةٌ بإزاحةٍ مكتوبةٍ تُطابق في واحدةٍ
 # وتخيب في أختيها — وقد خابت في الثلاث أوّلَ مرّة.
-for pair in "أ) الدخول:$A" "ب) القفل:$L" "ج) تأكيد الرقم:$V"; do
+run "ج) تأكيدُ الرقم يرفع أصلاً آخر" sub "$V" \
+  "'assets/brand/app_mark.png'," \
+  "'assets/brand/not_a_mark.png',"
+
+# أ) ب) **والدخولُ والقفلُ في قوسهما القلبُ والاسم** — على صور صاحب المنصّة
+#    الأحدث. والكسرُ يُعيد الأيقونةَ إليهما.
+for pair in "أ) الدخول:$A" "ب) القفل:$L"; do
   name="${pair%%:*}"; file="${pair##*:}"
-  run "$name يرفع أصلاً آخر" sub "$file" \
-    "'assets/brand/app_mark.png'," \
-    "'assets/brand/not_a_mark.png',"
+  run "$name تعود إليه الأيقونة" sub "$file" \
+    "crest: const AuthCrest()," \
+    "crest: Image.asset('assets/brand/app_mark.png', width: 68, height: 68),"
 done
 
 # د) **والأصلُ يُنزع من الحزمة** — فتبقى `Image.asset` في الشيفرة ويخرج
