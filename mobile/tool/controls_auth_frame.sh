@@ -67,6 +67,8 @@ run "(ج) البطاقةُ من الحافّة إلى الحافّة" sub "$FRAM
   "padding: const EdgeInsets.fromLTRB(20, 0, 20, 24)," \
   "padding: const EdgeInsets.fromLTRB(0, 0, 0, 24),"
 
+# (وكانت المرساةُ نهايةَ الإطار ثمّ «القلبُ و«فرحتي»»، فدخل بينهما `_cardShadow`
+# و`CrownedCardBorder` في جولة «أكمل ملفك»، فلم يقع الكسر.)
 roses_over_card() {
   python3 - "$FRAME" <<'PY2'
 import sys, re
@@ -76,7 +78,7 @@ a = s.index("          // ── الوردُ في الزاويتين")
 b = s.index("          // ── البطاقة ──")
 roses = s[a:b]
 s = s[:a] + s[b:]
-end = "        ],\n      ),\n    );\n  }\n}\n\n/// القلبُ و«فرحتي»"
+end = "        ],\n      ),\n    );\n  }\n}\n\nfinal _cardShadow"
 if s.count(end) != 1:
     sys.exit(1)
 s = s.replace(end, roses + end)

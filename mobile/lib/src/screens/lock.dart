@@ -699,134 +699,247 @@ class _LockGateScreenState extends State<LockGateScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: SafeArea(
-        // **والزرُّ في أسفل الشاشة، والنزولُ ممكنٌ على القصيرة.**
-        //
-        // **و`Spacer` وحدَها لا تكفي داخلَ ما يُمرَّر.** كتبتُها في
-        // `SingleChildScrollView` مع `minHeight` فسقط البناءُ كلُّه:
-        // «RenderFlex children have non-zero flex but incoming height
-        // constraints are unbounded». والأدنى لا يحدّ الأعلى — والعمودُ
-        // داخلَ ما يُمرَّر بلا سقف. فيُقاس سقفُ المتاح بـ`LayoutBuilder`
-        // ويُفرض بـ`IntrinsicHeight`.
-        child: LayoutBuilder(
-          builder: (context, box) => SingleChildScrollView(
-            padding: const EdgeInsets.all(Space.lg),
-            child: ConstrainedBox(
-              constraints: BoxConstraints(minHeight: box.maxHeight - Space.lg * 2),
-              child: IntrinsicHeight(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const SizedBox(height: Space.xl),
-                    Icon(
-                      Icons.lock_outline,
-                      size: 56,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                    const SizedBox(height: Space.lg),
-                    Text(
-                      tr('اقفل تطبيقك قبل أن تبدأ'),
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.titleLarge
-                          ?.copyWith(fontWeight: FontWeight.w700),
-                    ),
-                    const SizedBox(height: Space.sm),
-                    Muted(
-                      tr(
-                        'في حسابك حجوزاتُك ومحادثاتُك ومبالغُك. ومن أخذ جوالك '
-                        'لحظةً يراها كلَّها ما لم يكن عليه قفل.',
-                      ),
-                      size: 14,
-                    ),
-                    const SizedBox(height: Space.lg),
-                    AppCard(
-                      children: [
-                        _GateFact(
-                          icon: Icons.pin_outlined,
-                          title: tr('رمزٌ من أربعة أرقام'),
-                          body: tr(
-                            'يُطلب كلّما فتحتَ التطبيق. ولا يُخزَّن الرمزُ '
-                            'نفسُه — بل بصمةٌ منه لا تُعكس.',
-                          ),
-                        ),
-                        const SizedBox(height: Space.md),
-                        _GateFact(
-                          icon: Icons.fingerprint,
-                          title: _hasSensor ? tr('وبصمتُك تفتحه أسرع') : tr('ولا بصمةَ في جهازك'),
-                          body: _hasSensor
-                              ? tr(
-                                  'اختياريّةٌ فوق الرمز — والرمزُ باقٍ تحتها لِما '
-                                  'تعذّرت البصمة.',
-                                )
-                              : tr('لا حسّاسَ هنا، فالرمزُ وحدَه يفتح.'),
-                        ),
-                        const SizedBox(height: Space.md),
-                        _GateFact(
-                          icon: Icons.key_outlined,
-                          title: tr('ونسيتَ رمزك؟'),
-                          body: tr(
-                            'تخرج من حسابك وتدخل ببريدك وكلمة مرورك، ثمّ '
-                            'تضبط رمزاً جديداً.',
-                          ),
-                        ),
-                      ],
-                    ),
-                    const Spacer(),
-                    const SizedBox(height: Space.lg),
-                    FilledButton(
-                      key: const ValueKey('gate-set-pin'),
-                      onPressed: _busy ? null : _set,
-                      child: Text(tr('اضبط الرمز الآن')),
-                    ),
-                    const SizedBox(height: Space.sm),
-                    TextButton(
-                      key: const ValueKey('gate-sign-out'),
-                      onPressed: _busy ? null : () => widget.onSignOut(),
-                      child: Text(tr('خروج من الحساب')),
-                    ),
-                  ],
-                ),
+    // ── على صورة صاحب المنصّة ─────────────────────────────────────────────
+    //
+    // في إطار شاشات الباب (`AuthFrame`) — **بلا بطاقة** (`bare`): العنوانُ في
+    // القوس تحت قفلٍ بقلب، والسطرُ على الحرير، ثمّ بطاقةٌ فيها الحقائقُ
+    // الثلاث، ثمّ «خطوة واحدة لحماية خصوصيتك»، ثمّ الزرّ والمخرج.
+    return AuthFrame(
+      bare: true,
+      crestOnTop: true,
+      crest: const _GateCrest(),
+      children: [
+        Text(
+          tr('احم حجوزاتك ومحادثاتك وملفاتك برمز قفل خاص بالتطبيق.'),
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontSize: 15, color: AppColors.ink2, height: 1.7),
+        ),
+        const AuthRule(),
+        Container(
+          key: const ValueKey('gate-facts'),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          decoration: BoxDecoration(
+            color: authPaper,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: authGoldLine.withValues(alpha: 0.8)),
+          ),
+          child: Column(
+            children: [
+              _GateFact(
+                icon: const _FourDots(),
+                title: tr('رمز من أربعة أرقام'),
+                body: tr('يُطلب عند فتح التطبيق ويضيف طبقة حماية.'),
               ),
-            ),
+              const Divider(height: 1, color: authGoldLine),
+              // **ولا يُوعَد بما ليس في الجهاز:** من قرأ «بصمتك تفتحه أسرع» ولا
+              // حسّاسَ عنده ينتظر شيئاً لا يأتي.
+              _GateFact(
+                icon: const Icon(Icons.fingerprint, size: 30, color: AppColors.accent),
+                title: _hasSensor ? tr('بصمتك تفتحه أسرع') : tr('ولا بصمةَ في جهازك'),
+                body: _hasSensor
+                    // وتُشغَّل من «حسابي» بعد ضبط الرمز — وهو ما يقوله السطر.
+                    ? tr('يمكنك تفعيلها بعد إعداد الرمز.')
+                    : tr('لا حسّاسَ هنا، فالرمزُ وحدَه يفتح.'),
+              ),
+              const Divider(height: 1, color: authGoldLine),
+              _GateFact(
+                // مفتاحٌ مائلٌ كما في صورته — `key_outlined` أفقيٌّ في أصله.
+                icon: Transform.rotate(
+                  angle: -0.8,
+                  child: const Icon(Icons.key_outlined, size: 28, color: AppColors.accent),
+                ),
+                title: tr('ونسيت رمزك؟'),
+                body: tr('سجّل الدخول ببريدك وكلمة مرورك لضبط رمز جديد.'),
+              ),
+            ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _GateFact extends StatelessWidget {
-  const _GateFact({required this.icon, required this.title, required this.body});
-
-  final IconData icon;
-  final String title;
-  final String body;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icon, size: 20, color: AppColors.muted),
-        const SizedBox(width: Space.sm),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // **ولا `textStyle` بلا `fontFamily`.** نمطُ النصّ المكتوبُ يدوياً
-              // لا يرث عائلةَ الثيمة، فتخرج الحروفُ مربّعاتٍ بيضاء. وقد وقعت.
-              Text(
-                title,
-                style: Theme.of(context).textTheme.bodyMedium
-                    ?.copyWith(fontWeight: FontWeight.w700),
-              ),
-              const SizedBox(height: 2),
-              Muted(body, size: 13),
-            ],
+        const SizedBox(height: Space.lg),
+        const _GatePledge(),
+        const SizedBox(height: Space.lg),
+        FilledButton(
+          key: const ValueKey('gate-set-pin'),
+          style: authPrimaryStyle,
+          onPressed: _busy ? null : _set,
+          child: Text(tr('اضبط الرمز الآن')),
+        ),
+        const SizedBox(height: Space.sm),
+        TextButton(
+          key: const ValueKey('gate-sign-out'),
+          onPressed: _busy ? null : () => widget.onSignOut(),
+          style: TextButton.styleFrom(foregroundColor: AppColors.accent),
+          child: Text(
+            tr('خروج من الحساب'),
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
           ),
         ),
       ],
     );
   }
+}
+
+/// ما في القوس: قفلٌ في قلبه قلب، وتحته «اقفل تطبيقك قبل أن تبدأ» بالذهب.
+class _GateCrest extends StatelessWidget {
+  const _GateCrest();
+
+  @override
+  Widget build(BuildContext context) => Column(
+    key: const ValueKey('gate-crest'),
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      const SizedBox(
+        width: 64,
+        height: 64,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            Icon(Icons.lock_outline_rounded, size: 64, color: AppColors.goldOnAccent),
+            // **قلبٌ مكانَ ثقب المفتاح** — على قرصٍ بلون الأرضيّة يغطّي الثقب،
+            // وإلّا اندمجا فقُرئ ثقباً في أوّل لقطة.
+            Positioned(
+              bottom: 11,
+              child: DecoratedBox(
+                decoration: BoxDecoration(shape: BoxShape.circle, color: AppColors.accent),
+                child: Padding(
+                  padding: EdgeInsets.all(3),
+                  child: Icon(
+                    Icons.favorite_rounded,
+                    key: ValueKey('gate-lock-heart'),
+                    size: 16,
+                    color: AppColors.goldOnAccent,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+      const SizedBox(height: Space.sm),
+      Text(
+        tr('اقفل تطبيقك قبل أن تبدأ'),
+        textAlign: TextAlign.center,
+        style: const TextStyle(
+          fontSize: 26,
+          height: 1.3,
+          fontWeight: FontWeight.w700,
+          color: AppColors.goldOnAccent,
+          fontFamilyFallback: arabicFallback,
+        ),
+      ),
+    ],
+  );
+}
+
+/// رمزُ «أربعة أرقام»: أربعُ دوائرَ صغيرةٍ في مربّع — نقاطُ الرمز نفسُها.
+class _FourDots extends StatelessWidget {
+  const _FourDots();
+
+  @override
+  Widget build(BuildContext context) {
+    Widget dot() => Container(
+      width: 10,
+      height: 10,
+      margin: const EdgeInsets.all(2.5),
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(color: AppColors.accent, width: 2),
+      ),
+    );
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(mainAxisSize: MainAxisSize.min, children: [dot(), dot()]),
+        Row(mainAxisSize: MainAxisSize.min, children: [dot(), dot()]),
+      ],
+    );
+  }
+}
+
+/// «خطوة واحدة لحماية خصوصيتك» — في شريطٍ محاطٍ بالذهب بين خطّين.
+class _GatePledge extends StatelessWidget {
+  const _GatePledge();
+
+  @override
+  Widget build(BuildContext context) => Row(
+    key: const ValueKey('gate-pledge'),
+    children: [
+      Expanded(child: Container(height: 1, color: authGoldLine)),
+      Flexible(
+        flex: 12,
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: Space.sm),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            color: authPaper,
+            borderRadius: BorderRadius.circular(40),
+            border: Border.all(color: authGoldEdge),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.auto_awesome, size: 14, color: Color(0xFFD9A94E)),
+              const SizedBox(width: Space.sm),
+              // **سطرٌ واحدٌ يُصغَّر ولا يُكسر** — انكسر سطرين في أوّل لقطة.
+              Flexible(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    tr('خطوة واحدة لحماية خصوصيتك'),
+                    key: const ValueKey('gate-pledge-text'),
+                    maxLines: 1,
+                    style: const TextStyle(fontSize: 14, color: AppColors.gold, fontWeight: FontWeight.w500),
+                  ),
+                ),
+              ),
+              const SizedBox(width: Space.sm),
+              const Icon(Icons.auto_awesome, size: 14, color: Color(0xFFD9A94E)),
+            ],
+          ),
+        ),
+      ),
+      Expanded(child: Container(height: 1, color: authGoldLine)),
+    ],
+  );
+}
+
+/// حقيقةٌ من ثلاث: رمزُها في دائرةٍ كريميّةٍ بإطارٍ ذهبيّ، وعنوانُها نبيذيّ.
+class _GateFact extends StatelessWidget {
+  const _GateFact({required this.icon, required this.title, required this.body});
+
+  final Widget icon;
+  final String title;
+  final String body;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 11),
+    child: Row(
+      children: [
+        Container(
+          width: 52,
+          height: 52,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: const Color(0xFFFFF7EC),
+            border: Border.all(color: authGoldLine),
+          ),
+          child: Center(child: icon),
+        ),
+        const SizedBox(width: Space.md),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: AppColors.accent),
+              ),
+              const SizedBox(height: 2),
+              Text(body, style: const TextStyle(fontSize: 13.5, color: AppColors.ink2, height: 1.55)),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
 }
