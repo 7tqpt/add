@@ -33,15 +33,37 @@ class PlanScreen extends StatefulWidget {
 class _PlanScreenState extends State<PlanScreen> {
   late Future<List<WeddingPlan>> _future;
 
+  /// «الصفة» من الملفّ — `bride` أو `groom` أو فراغ.
+  ///
+  /// **وتُقرأ من الملفّ لا من الخطّة**: هناك تُحفظ في «خطة جديدة»، وهي شارةُ
+  /// «حسابي» نفسُها. فمن اختار «أنا عروس» يرى رسمَ الأنثى في بطاقة خطّته،
+  /// ومن اختار «أنا عريس» يرى رسمَ الذكر — قال صاحبُ المنصّة: «في حالة
+  /// اختار العميل انا عروس تظهر له ايقون انثى، انا عريس ايقون ذكر».
+  String _role = '';
+
   @override
   void initState() {
     super.initState();
     _future = Api.myPlans();
+    _loadRole();
   }
 
-  void _reload() => setState(() {
-    _future = Api.myPlans();
-  });
+  Future<void> _loadRole() async {
+    try {
+      final me = await Api.myProfile();
+      if (mounted) setState(() => _role = me?.weddingRole ?? '');
+    } catch (_) {
+      // والقلبُ يبقى مكانه إن تعذّرت القراءة — لا شاشةَ تسقط لأجل رسم.
+    }
+  }
+
+  void _reload() {
+    setState(() {
+      _future = Api.myPlans();
+    });
+    // **والصفةُ تُقرأ من جديد**: قد تكون بُدّلت في «خطة جديدة» للتوّ.
+    _loadRole();
+  }
 
   Future<void> _edit([WeddingPlan? plan]) async {
     final saved = await Navigator.of(context).push<bool>(
@@ -71,6 +93,7 @@ class _PlanScreenState extends State<PlanScreen> {
           itemBuilder: (context, i) => _PlanBlock(
             key: ValueKey(rows[i].id),
             plan: rows[i],
+            role: _role,
             onEdit: () => _edit(rows[i]),
           ),
         );
@@ -153,7 +176,15 @@ class _NoPlan extends StatelessWidget {
 }
 
 class _PlanBlock extends StatefulWidget {
-  const _PlanBlock({super.key, required this.plan, required this.onEdit});
+  const _PlanBlock({
+    super.key,
+    required this.plan,
+    required this.onEdit,
+    this.role = '',
+  });
+
+  /// «الصفة» — تُمرَّر إلى رسم الصدر.
+  final String role;
   final WeddingPlan plan;
   final VoidCallback onEdit;
 
@@ -237,7 +268,7 @@ class _PlanBlockState extends State<_PlanBlock> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _HeroCard(plan: p, days: days, progress: _head, coverPath: _cover),
+        _HeroCard(plan: p, days: days, progress: _head, coverPath: _cover, role: widget.role),
         const SizedBox(height: Space.md),
         FutureBuilder<(PlanProgress, List<PlanTask>, List<PlanCategorySpend>)>(
           future: _future,
@@ -371,7 +402,10 @@ class _HeroCard extends StatelessWidget {
     required this.days,
     required this.progress,
     required this.coverPath,
+    this.role = '',
   });
+
+  final String role;
 
   final WeddingPlan plan;
   final int? days;
@@ -424,7 +458,28 @@ class _HeroCard extends StatelessWidget {
                       child: _FadedCover(path: coverPath),
                     ),
                   ),
-                  _HeroText(plan: plan, days: days),
+                  // **ورسمٌ كبيرٌ باهتٌ للصفة في طرف الصدر** — اختار صاحبُ
+                  // المنصّة (ج): الرسمَ الصغيرَ مكانَ القلب **وهذا معه**،
+                  // «وعروس نفسه». فوق غلاف الحجز (قيل له إنّهما في الطرف
+                  // نفسِه فاختار) وتحت النصّ، ولا يلتقط لمسة.
+                  if (role == 'bride' || role == 'groom')
+                    PositionedDirectional(
+                      end: 10,
+                      bottom: 4,
+                      height: 96,
+                      child: IgnorePointer(
+                        child: ExcludeSemantics(
+                          child: Image.asset(
+                            role == 'bride' ? 'assets/brand/role_bride.png' : 'assets/brand/role_groom.png',
+                            key: const ValueKey('plan-role-emblem'),
+                            color: Colors.white.withValues(alpha: 0.30),
+                            colorBlendMode: BlendMode.srcIn,
+                            errorBuilder: (_, _, _) => const SizedBox.shrink(),
+                          ),
+                        ),
+                      ),
+                    ),
+                  _HeroText(plan: plan, days: days, role: role),
                 ],
               ),
             ),
@@ -454,11 +509,52 @@ class _HeroCard extends StatelessWidget {
   }
 }
 
+/// رسمُ «الصفة» في صدر البطاقة: أنثى للعروس، وذكرٌ للعريس، وقلبٌ لغيرهما.
+///
+/// **والرسمان قناعا «خطة جديدة» نفسُهما** (`role_bride.png` و`role_groom.png`)
+/// يُلوَّنان هنا بذهب الطَّفليّ — لونِ القلب الذي حلّا محلَّه.
+class _RoleMark extends StatelessWidget {
+  const _RoleMark({required this.role});
+  final String role;
+
+  @override
+  Widget build(BuildContext context) {
+    final asset = switch (role) {
+      'bride' => 'assets/brand/role_bride.png',
+      'groom' => 'assets/brand/role_groom.png',
+      _ => null,
+    };
+    if (asset == null) {
+      return const Icon(
+        Icons.favorite_rounded,
+        key: ValueKey('plan-role-none'),
+        size: 19,
+        color: AppColors.goldOnBrand,
+      );
+    }
+    return Image.asset(
+      asset,
+      key: ValueKey('plan-role-$role'),
+      height: 28,
+      color: AppColors.goldOnBrand,
+      colorBlendMode: BlendMode.srcIn,
+      semanticLabel: role == 'bride' ? tr('أنا عروس') : tr('أنا عريس'),
+      // وعطبُ الأصل لا يُسقط البطاقة: يعود القلب.
+      errorBuilder: (_, _, _) => const Icon(
+        Icons.favorite_rounded,
+        size: 19,
+        color: AppColors.goldOnBrand,
+      ),
+    );
+  }
+}
+
 /// نصُّ الصدر على التدرّج: العنوانُ وحالُ الخطّة والموعدُ والعدُّ التنازلي.
 class _HeroText extends StatelessWidget {
-  const _HeroText({required this.plan, required this.days});
+  const _HeroText({required this.plan, required this.days, this.role = ''});
   final WeddingPlan plan;
   final int? days;
+  final String role;
 
   @override
   Widget build(BuildContext context) => Padding(
@@ -469,8 +565,9 @@ class _HeroText extends StatelessWidget {
           children: [
             Row(
               children: [
-                const Icon(Icons.favorite_rounded,
-                    size: 19, color: AppColors.goldOnBrand),
+                // **رسمُ الصفة مكانَ القلب** — اختاره صاحبُ المنصّة (أ) من
+                // ثلاث. والقلبُ باقٍ لمن لم يختر صفته.
+                _RoleMark(role: role),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
