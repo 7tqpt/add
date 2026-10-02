@@ -576,8 +576,9 @@ class LatticePainter extends CustomPainter {
 /// نبيذيٍّ كاملٍ عند الترحيب، فيرى فاتحُ التطبيقِ ومضةً بيضاء ثمّ لوناً —
 /// وهي أوّلُ ما يراه من التطبيق كلِّه.
 class BrandBackdrop extends StatelessWidget {
-  const BrandBackdrop({super.key, required this.child});
+  const BrandBackdrop({super.key, required this.child, this.satinSplash = false});
   final Widget child;
+  final bool satinSplash;
 
   @override
   Widget build(BuildContext context) => Container(
@@ -587,6 +588,13 @@ class BrandBackdrop extends StatelessWidget {
         end: Alignment.bottomCenter,
         colors: [AppColors.accentDeep, AppColors.accent, AppColors.accentDeep],
       ),
+      image: satinSplash
+          ? const DecorationImage(
+              image: AssetImage('assets/brand/launch_satin.png'),
+              fit: BoxFit.cover,
+              alignment: Alignment.center,
+            )
+          : null,
     ),
     child: SafeArea(child: child),
   );
@@ -692,6 +700,7 @@ class _BootScreenState extends State<BootScreen>
     final amb = _amb;
     return Scaffold(
       body: BrandBackdrop(
+        satinSplash: true,
         child: AnimatedBuilder(
           animation: Listenable.merge([_c, ?amb]),
           builder: (context, _) => _scene(context, _c.value, amb?.value),

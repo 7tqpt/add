@@ -165,6 +165,7 @@ flutter:
   # صورته، وأرضيّتُه صُحّحت إلى البياض لتذوب في الشاشة (‎٨٠٠×٦٩٥‎، ‎٦٥‎ ك.ب).
   assets:
     - assets/brand/app_mark.png
+    - assets/brand/launch_satin.png
     - assets/brand/welcome_roses.webp
     - assets/brand/role_bride.png
     - assets/brand/role_groom.png

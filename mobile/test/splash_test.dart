@@ -78,6 +78,17 @@ void main() {
       await tester.pump();
 
       expect(find.byType(BrandBackdrop), findsOneWidget);
+      final backdrop = tester.widget<Container>(
+        find.descendant(
+          of: find.byType(BrandBackdrop),
+          matching: find.byType(Container),
+        ).first,
+      );
+      final decoration = backdrop.decoration! as BoxDecoration;
+      expect(
+        decoration.image!.image,
+        const AssetImage('assets/brand/launch_satin.png'),
+      );
     });
 
     testWidgets('**والعلامةُ تظهر قبل نصف ثانية**', (tester) async {
