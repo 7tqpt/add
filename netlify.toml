@@ -6,8 +6,8 @@
 # الربط (مرة واحدة، من الجوال أو الحاسوب):
 #   1. netlify.com ← Sign up with GitHub
 #   2. Add new site ← Import an existing project ← اختر 7tqpt/add
-#   3. الفرع: claude/mobile-app-dashboard-gsbgq6
-#      (الإعدادات أدناه تُقرأ تلقائياً، لا تكتب شيئاً)
+#   3. الفرع: main — **لا فرعُ التطوير**: ما يُنشر يصل كلَّ من يفتح اللوحة،
+#      فلا يصلهم إلّا ما دُمج. (الإعدادات أدناه تُقرأ تلقائياً، لا تكتب شيئاً)
 #   4. Site settings ← Environment variables ← أضف:
 #        VITE_SUPABASE_URL       = https://<project-ref>.supabase.co
 #        VITE_SUPABASE_ANON_KEY  = <publishable key>
@@ -39,3 +39,11 @@
     X-Frame-Options = "DENY"
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
+    # **سياسةُ المحتوى** (فحصٌ أمنيّ): لا يعمل في اللوحة سكربتٌ إلّا ملفّاتُها
+    # وسكربتُ الثيم في `index.html` ببصمته — فنصٌّ يتسرّب إلى الصفحة من
+    # بيانات مستخدمٍ لا يُنفَّذ. ولا تتّصل إلّا بـSupabase.
+    #
+    # **ومن عدّل سكربتَ الثيم بدّل بصمتَه هنا**، وإلّا وقف السكربتُ صامتاً
+    # وومضت الصفحةُ فاتحةً قبل أن تُظلم. و`test/csp.test.ts` يحسبها من
+    # `index.html` ويحمرّ إن افترقتا.
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'sha256-UHxpKKnrBniASu0eLtaUR7qhFpnm2pIm/O6w8LnaN5U='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.supabase.co; media-src 'self' blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co; font-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"

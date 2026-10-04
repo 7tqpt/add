@@ -103,6 +103,15 @@ begin
     raise exception 'مقدّم الخدمة غير موجود أو غير موثّق.' using errcode = 'P0002';
   end if;
 
+  -- **والحجزُ المربوطُ حجزُه هو، ومع هذا المزوّد.** كان يُقبل أيُّ معرّف،
+  -- فيُربط بمحادثته حجزُ غيره.
+  if p_booking_id is not null and not exists (
+    select 1 from public.bookings b
+    where b.id = p_booking_id and b.user_id = me and b.provider_id = p_provider_id
+  ) then
+    raise exception 'الحجز غير موجود أو ليس لك.' using errcode = 'P0002';
+  end if;
+
   select u.full_name into my_name from public.app_users u where u.id = me;
 
   -- محادثةٌ واحدة لكل (عميل، مقدّم خدمة) بصرف النظر عن الحجز: من راسل صاحب

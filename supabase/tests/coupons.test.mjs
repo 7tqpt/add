@@ -149,14 +149,39 @@ const lower = await one(
   `select * from public.api_check_coupon('  eid25 ', $1)`, [svc.id])
 ok('وحروفٌ صغيرةٌ ومسافاتٌ تُقبل', Number(lower.discount) === Number(checked.discount))
 
-ok('وكودٌ لا وجود له يُردّ برسالة',
-   /غير صحيح/.test(
-     (await raises(`select * from public.api_check_coupon('NOPE', $1)`, [svc.id])) ?? ''))
+// **وكودٌ لا وجود له لا يرمي: يُرجع «لا صفّ» ويُسجَّل.** الرميُ يُلغي
+// المعاملةَ ومعها سطرَ التسجيل، فلا يُعدّ خطأٌ ولا يقوم حدّ (فحصٌ أمنيّ). و«لا
+// صفّ» يقول له التطبيقُ «هذا الكود غير صحيح» (`api.dart`: `checkCoupon`).
+//
+// **ولا صفَّ من NULLات:** الدالّة `returns table` لا نوعاً مركَّباً، فلا يعود
+// صفٌّ فارغٌ يُقرأ في التطبيق فيسقط بـ Null is not a String.
+const nope = (await db.query(
+  `select * from public.api_check_coupon('NOPE', $1)`, [svc.id])).rows
+ok('وكودٌ لا وجود له يُرجع «لا صفّ» — لا صفّاً من NULLات', nope.length === 0,
+   JSON.stringify(nope))
+await db.exec(`reset role`)
+ok('ويُسجَّل خطؤه',
+   Number((await one(`select count(*) n from public.coupon_checks
+                       where user_id = $1 and code = 'NOPE' and not ok`, [customer.id])).n) === 1)
 
-// **ولا صفَّ من NULLات:** الدالّة `returns table` لا نوعاً مركَّباً، فالخطأ
-// يُرفع ولا يعود صفٌّ فارغٌ يُقرأ في التطبيق فيسقط بـ Null is not a String.
-ok('ولا يعود صفٌّ فارغٌ بدل الخطأ',
-   (await raises(`select * from public.api_check_coupon('NOPE', $1)`, [svc.id])) !== null)
+// **والعاشرُ يُوقف التخمين** ربعَ ساعة — حتى عن الكود الصحيح.
+await asCustomer()
+for (let i = 2; i <= 10; i++) {
+  await db.query(`select * from public.api_check_coupon($1, $2)`, [`GUESS${i}`, svc.id])
+}
+ok('وبعد عشرة أخطاءٍ يقف التخمين',
+   /كثيرة/.test(
+     (await raises(`select * from public.api_check_coupon('EID25', $1)`, [svc.id])) ?? ''))
+await db.exec(`reset role`)
+await db.exec(`delete from public.coupon_checks where user_id = '${customer.id}' and not ok`)
+await asCustomer()
+ok('ويعود بعد انقضاء الأخطاء',
+   (await db.query(`select * from public.api_check_coupon('EID25', $1)`, [svc.id])).rows.length === 1)
+
+// **ولا يقرأ السجلَّ أحدٌ من التطبيق** — ولا صاحبُه.
+ok('وسجلُّ التحقّق محجوبٌ عن العميل',
+   /permission denied/.test(
+     (await raises(`select * from public.coupon_checks`)) ?? ''))
 
 // ── ٣. **الخصمُ من جيب المنصّة لا من جيب مقدّم الخدمة** ─────────────────────
 //

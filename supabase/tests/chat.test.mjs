@@ -253,7 +253,11 @@ const { rows: pol } = await db.query(
   `select tablename, policyname, cmd from pg_policies
     where schemaname = 'public' and tablename in ('conversations', 'conversation_messages')
     order by tablename, policyname`)
-ok('أربع سياساتٍ على الجدولين', pol.length === 4, pol.map((p) => p.policyname).join('، '))
+// **ثلاثٌ لا أربع:** نُزعت سياسةُ الإدخال المباشر في المحادثات بعد فحصٍ أمنيّ —
+// كانت تُفتح بها محادثةٌ مع أيّ عميلٍ باسمٍ مزوَّر. والفتحُ بالدالّتين وحدهما.
+ok('ثلاثُ سياساتٍ على الجدولين — ولا إدخالَ مباشراً في المحادثات',
+  pol.length === 3 && !pol.some((p) => p.tablename === 'conversations' && p.cmd === 'INSERT'),
+  pol.map((p) => p.policyname).join('، '))
 ok('ولا سياسة `update` على المحادثات — التحديث للمُشغِّل وحده',
   !pol.some((p) => p.tablename === 'conversations' && p.cmd === 'UPDATE'))
 

@@ -102,6 +102,13 @@ const _keySalt = 'lock_pin_salt';
 /// `shared_preferences` لَأمكن إطفاؤه من خارج التطبيق على جهازٍ مكسور،
 /// ولا فائدةَ من خزنةٍ للرمز ومِلفٍّ عاديٍّ لمن يفتحه.
 const _keyBiometric = 'lock_biometric';
+
+/// **عددُ المحاولات الخاطئة — في الخزنة لا في الذاكرة.**
+///
+/// كشف فحصٌ أمنيٌّ أنّه كان عدّاداً في الذاكرة وحدَها: من يمسك الجوالَ يجرّب
+/// أربعاً، ثمّ يغلق التطبيقَ ويفتحه فيعود العدُّ صفراً — فيجرّب عشرةَ آلاف
+/// رمزٍ أربعاً أربعاً. فيُكتب قبل أن يُعلَن الخطأ، ويُقرأ عند الإقلاع.
+const _keyWrong = 'lock_wrong';
 // **ويُمسح مفتاحا العهد القديم عند الإزالة.** «lock_after» و«lock_left_at»
 // لم يعودا يُقرآن، لكنّهما باقيان في خزائن الأجهزة التي حدّثت. ومفتاحٌ
 // مهجورٌ في الخزنة لا يضرّ اليوم، لكنّه يضرّ يومَ يُكتب مفتاحٌ باسمٍ يشبهه.
@@ -183,6 +190,7 @@ Future<void> lockClear() async {
   await _write(_keyHash, null);
   await _write(_keySalt, null);
   await _write(_keyBiometric, null);
+  await _write(_keyWrong, null);
   await _write(_keyLegacyAfter, null);
   await _write(_keyLegacyLeftAt, null);
 }
@@ -265,6 +273,8 @@ class AppLock extends ChangeNotifier {
   Future<void> boot() async {
     _enabled = await lockIsSet();
     _biometric = _enabled && await lockBiometricIsOn();
+    // **والعدُّ يعيش بين الإقلاعين** — انظر `_keyWrong`.
+    _wrong = _enabled ? int.tryParse(await _read(_keyWrong) ?? '') ?? 0 : 0;
     _locked = _enabled;
     _left = false;
     notifyListeners();
@@ -373,14 +383,21 @@ class AppLock extends ChangeNotifier {
   /// ويعيد `true` إن فُتح. ومن بلغ الحدَّ يُخرَج حسابُه — والمنادي هو من
   /// يُخرجه، فالخروجُ شأنُ الجلسة لا شأنُ القفل.
   Future<bool> unlock(String pin) async {
+    // **ومن بلغ الحدَّ لا يُسأل بعدها** — ولو أصاب. يقع هذا حين يُغلق
+    // التطبيقُ بين الخطأ الأخير وإخراج الحساب: يُقلع والعدُّ عند الحدّ،
+    // فأوّلُ رمزٍ يُكتب يُخرجه (`LockScreen._submit`).
+    if (exhausted) return false;
     if (await lockVerify(pin)) {
       _locked = false;
       _wrong = 0;
       _left = false;
+      await _write(_keyWrong, null);
       notifyListeners();
       return true;
     }
     _wrong++;
+    // **قبل أن يُعلَن الخطأ:** إغلاقٌ بعد الإعلان وقبل الكتابة يُضيّع العدّ.
+    await _write(_keyWrong, '$_wrong');
     notifyListeners();
     return false;
   }
@@ -397,6 +414,7 @@ class AppLock extends ChangeNotifier {
     _locked = false;
     _wrong = 0;
     _left = false;
+    await _write(_keyWrong, null);
     notifyListeners();
     return true;
   }
@@ -423,6 +441,7 @@ class AppLock extends ChangeNotifier {
     _locked = false;
     _left = false;
     _wrong = 0;
+    await _write(_keyWrong, null);
     notifyListeners();
   }
 

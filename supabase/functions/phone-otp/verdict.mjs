@@ -58,3 +58,24 @@ export function otpVerified(httpOk, raw) {
 
   return body.verified === true || body.status === true;
 }
+
+// ── وبابُ المحاولات: **يُغلق عند الشكّ** ──────────────────────────────────────
+//
+// كان خطأُ `otp_claim_verify` يُكتب في السجلّ **ثمّ يُمضى** إلى المُرسِل بلا
+// حدّ — حتى يُلصق `phone_verify_attempts.sql`. فكشف فحصٌ أمنيٌّ أنّ أيَّ عطبٍ
+// في تلك الدالّة، عابراً أو دائماً، يفتح تخمينَ الرمز الرباعيّ كلِّه، وهو
+// عشرةُ آلافِ احتمال. والملفُّ صار شرطاً لـ`security_fixes.sql` يقف بدونه،
+// فلم يبقَ للنافذة سبب.
+//
+// **والحدُّ نفسُه إشارةٌ موجبةٌ كالقبول:** `allowed === true` وحدَه يمرّ.
+
+/// أيمضي الطلبُ إلى المُرسِل؟ — `null` إن مضى، وإلّا `{status, error, reason}`.
+///
+/// [error] خطأُ النداء كما رجع، و[claim] صفُّه.
+export function verifyGate(error, claim) {
+  if (error || !claim || typeof claim !== 'object') {
+    return { status: 503, error: 'التحقّقُ متوقّفٌ لحظةً. أعد المحاولة بعد قليل.', reason: 'gate_unavailable' };
+  }
+  if (claim.allowed === true) return null;
+  return { status: 429, error: null, reason: String(claim.reason ?? ''), wait: Number(claim.wait_seconds ?? 0) };
+}

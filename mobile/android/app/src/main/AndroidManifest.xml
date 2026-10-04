@@ -51,10 +51,18 @@
          يسأل حسّاسَه ويردّ «طابقت» أو «لم تطابق» لا غير. -->
     <uses-permission android:name="android.permission.USE_BIOMETRIC"/>
 
+    <!-- **ولا نسخَ احتياطيّاً لبيانات التطبيق** (فحصٌ أمنيّ). جلسةُ الدخول
+         تسكن ملفّاتِ التطبيق، والنسخُ الاحتياطيُّ (سحابةُ جوجل أو نقلُ جهازٍ
+         إلى جهاز أو `adb backup`) يحملها إلى جهازٍ آخر فيفتح الحسابَ بلا
+         كلمة مرور. و`dataExtractionRules` لأندرويد ١٢ فما فوق: هناك لا يكفي
+         `allowBackup` وحدَه لمنع النقل من جهازٍ إلى جهاز. -->
     <application
         android:label="@string/app_name"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:allowBackup="false"
+        android:fullBackupContent="false"
+        android:dataExtractionRules="@xml/data_extraction_rules">
         <activity
             android:name=".MainActivity"
             android:exported="true"

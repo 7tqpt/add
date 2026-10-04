@@ -229,6 +229,17 @@ begin
   comm_base  := round(svc.price * commission / 100.0, 2);
 
   if btrim(coalesce(p_coupon_code, '')) <> '' then
+    -- **قبل البحث عن الكود:** وإلّا صار «هذا الكود غير صحيح» هنا جوابَ
+    -- تخمينٍ بلا حدّ. والحدُّ في `api_check_coupon` (`coupons.sql`).
+    if not exists (
+      select 1 from public.coupon_checks k
+       where k.user_id = me and k.ok
+         and k.code = upper(btrim(p_coupon_code))
+         and k.created_at > now() - interval '1 day'
+    ) then
+      raise exception 'تحقّق من الكود أولاً';
+    end if;
+
     select * into coupon from public.coupons k
      where k.code = upper(btrim(p_coupon_code))
      for update;

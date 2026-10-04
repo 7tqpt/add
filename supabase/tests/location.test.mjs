@@ -171,10 +171,20 @@ await db.exec(`
   insert into public.coupons (code, description, kind, value)
        values ('LOC10', 'قياس', 'percent', 10)`)
 await asMe()
+const couponDay = new Date(Date.now() + 11 * 86400000).toISOString().slice(0, 10)
+// **والحجزُ بكودٍ لم يُتحقَّق منه يُردّ** — وإلّا صار تخمينُ الأكواد هنا بلا
+// حدّ (فحصٌ أمنيّ؛ الحدُّ في `api_check_coupon`).
+ok('والحجزُ بكودٍ لم يُتحقَّق منه يُردّ',
+   /تحقّق من الكود/.test(
+     (await raises(
+       `select * from public.api_create_booking(
+          $1, $2, null, null, 300, 'حي', '', true, 'LOC10', $3, $4)`,
+       [svc.id, couponDay, LAT, LNG])) ?? ''))
+await one(`select * from public.api_check_coupon('LOC10', $1)`, [svc.id])
 const withCoupon = await one(
   `select * from public.api_create_booking(
      $1, $2, null, null, 300, 'حي', '', true, 'LOC10', $3, $4)`,
-  [svc.id, new Date(Date.now() + 11 * 86400000).toISOString().slice(0, 10), LAT, LNG])
+  [svc.id, couponDay, LAT, LNG])
 await db.exec(`reset role`)
 ok('والكوبونُ ما زال يعمل بعد إضافة الموقع',
    withCoupon.coupon_code === 'LOC10' && Number(withCoupon.discount_amount) > 0)
