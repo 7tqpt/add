@@ -87,6 +87,49 @@ create unique index if not exists bookings_confirmed_provider_day_key
     "notify pgrst, 'reload schema';\ncommit;\n"].join('\n\n')
 }
 
+function block(file, pattern) {
+  const match = read(file).match(pattern)
+  if (!match) throw new Error(`Missing block ${pattern} in ${file}`)
+  return `-- Source: ${file}\n` + match[0]
+}
+
+/** Second security review: one paste for a live database, built from the canonical files. */
+export function buildFixes() {
+  const prelude = `-- إصلاحات الفحص الأمني الثاني — لصقةٌ واحدة للقاعدة الحيّة، بلا حذف بيانات.
+-- المصدر مركّب من الملفات الأصلية بواسطة tool/security_sql.mjs (buildFixes).
+-- شغّله بعد security_hardening.sql وphone_verify_attempts.sql. آمنٌ عند التكرار.
+begin;
+
+do $$
+begin
+  if to_regprocedure('public.otp_claim_verify(uuid,text)') is null then
+    raise exception 'الصق phone_verify_attempts.sql أوّلاً — دالّةُ الرسائل صارت تردّ التحقّقَ بدون حدّ المحاولات';
+  end if;
+  if to_regprocedure('public.can_write_area(text)') is null
+     or to_regclass('public.coupons') is null
+     or to_regprocedure('public.api_create_booking(uuid,date,time,uuid,integer,text,text,boolean,text,numeric,numeric)') is null then
+    raise exception 'تحتاج roles.sql وcoupons.sql وlocation.sql قبل هذا الملف';
+  end if;
+end;
+$$;
+
+-- Source: policies.sql
+drop policy if exists conversations_parties_write on public.conversations;
+`
+  return [
+    prelude,
+    fn('chat.sql', 'api_open_conversation'),
+    block('coupons.sql', /create table if not exists public\.coupon_checks[\s\S]*?revoke all on public\.coupon_checks from public, anon, authenticated;/),
+    fn('coupons.sql', 'api_check_coupon'),
+    fn('location.sql', 'api_create_booking'),
+    block('policies.sql', /do \$\$\ndeclare\n {2}cols text;[\s\S]*?end \$\$;/),
+    '-- Source: document_guard.sql\n' +
+      read('document_guard.sql').split('\nbegin;\n')[1].replace(/\ncommit;\s*$/, '').trim(),
+    "notify pgrst, 'reload schema';\ncommit;\n",
+  ].join('\n\n')
+}
+
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
-  process.stdout.write(process.argv[2] === 'install' ? buildInstall() : buildHardening())
+  const which = process.argv[2]
+  process.stdout.write(which === 'install' ? buildInstall() : which === 'fixes' ? buildFixes() : buildHardening())
 }

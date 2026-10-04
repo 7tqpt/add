@@ -41,7 +41,7 @@
 
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 
-import { otpVerified } from './verdict.mjs'
+import { otpVerified, verifyGate } from './verdict.mjs'
 
 const AUTHENTICA = 'https://api.authentica.sa/api/v2'
 
@@ -229,20 +229,17 @@ Deno.serve(async (request) => {
         .rpc('otp_claim_verify', { p_auth_user: authUser, p_phone: phone })
         .single()
 
-      if (claimError) {
-        // **وقاعدةٌ لم يُشغَّل عليها الملفُّ بعد لا تُغلق الباب.** الدالّةُ
-        // تُضاف بيدٍ في محرّر SQL، وبينها وبين الدالّة المنشورة نافذة —
-        // يجب أن ينقص فيها حدٌّ لا أن يُحبس الناسُ عن تأكيد أرقامهم.
-        // ويُكتب في السجلّ كي لا تبقى النافذةُ مفتوحةً بصمت.
-        console.error('otp_claim_verify:', claimError)
-      } else {
-        const gate = claim as { allowed: boolean; reason: string; wait_seconds: number }
-        if (!gate.allowed) {
-          return json(
-            { error: limitMessage(gate.reason, gate.wait_seconds), reason: gate.reason },
-            429,
-          )
-        }
+      // **ويُغلق البابُ إن تعطّل الحدّ** — لا يُمضى بلا عدّ (`verdict.mjs`).
+      const gate = verifyGate(claimError, claim)
+      if (gate) {
+        if (claimError) console.error('otp_claim_verify:', claimError)
+        return json(
+          {
+            error: gate.error ?? limitMessage(gate.reason, gate.wait),
+            reason: gate.reason,
+          },
+          gate.status,
+        )
       }
 
       const checked = await fetch(`${AUTHENTICA}/verify-otp`, {

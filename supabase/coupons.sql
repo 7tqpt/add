@@ -236,6 +236,32 @@ end;
 $$;
 
 -- ----------------------------------------------------------------------------
+-- سجلُّ التحقّق من الأكواد — حدٌّ للتخمين، وإذنٌ للحجز
+--
+-- **كان تجريبُ الأكواد بلا حدّ** (فحصٌ أمنيّ): من ملك حساباً ينادي
+-- `api_check_coupon` ألفَ مرّةٍ بألفِ كود حتى يصيب كوداً لم يُعطَه.
+--
+-- · **الخطأُ يُسجَّل ولا يُرمى.** رميُ استثناءٍ يُلغي المعاملةَ كلَّها، ومعها
+--   سطرُ التسجيل — فلا يُعدّ خطأٌ أبداً. فيُرجَع «لا صفّ» ويقول التطبيقُ
+--   «هذا الكود غير صحيح» كما كان يقول.
+-- · **والحجزُ يطلب تحقّقاً ناجحاً قبله.** وإلّا انتقل التخمينُ إلى
+--   `api_create_booking` وهي ترمي عند الكود الخاطئ — فلا تُعدّ. والتطبيقُ لا
+--   يرسل إلّا كوداً مرّ بالتحقّق (`booking_flow.dart`: `_applied?.code`).
+-- · ولا يقرؤه أحدٌ من التطبيق: لا سياسةَ عليه ولا منح؛ تكتبه الدالّتان وحدهما.
+-- ----------------------------------------------------------------------------
+create table if not exists public.coupon_checks (
+  id         uuid primary key default gen_random_uuid(),
+  user_id    uuid not null references public.app_users (id) on delete cascade,
+  code       text not null,
+  ok         boolean not null,
+  created_at timestamptz not null default now()
+);
+create index if not exists coupon_checks_user_time_idx
+  on public.coupon_checks (user_id, created_at desc);
+alter table public.coupon_checks enable row level security;
+revoke all on public.coupon_checks from public, anon, authenticated;
+
+-- ----------------------------------------------------------------------------
 -- api_check_coupon — يتحقّق العميل من كودٍ يعرفه قبل أن يحجز
 --
 -- **`returns table` لا `returns public.coupons`:** الدالّة المُرجِعة لنوعٍ
@@ -249,22 +275,33 @@ create or replace function public.api_check_coupon(
   p_service_id uuid
 )
 returns table (code text, description text, discount numeric)
-language plpgsql stable security definer set search_path = public as $$
+language plpgsql security definer set search_path = public as $$
 declare
   me       uuid := public.current_app_user();
   c        public.coupons;
   svc      record;
   settings public.app_settings;
   comm     numeric(5, 2);
+  misses   integer;
 begin
   if me is null then
     raise exception 'يجب تسجيل الدخول أولاً';
   end if;
 
+  -- عشرةُ أكوادٍ خاطئةٍ في ربع ساعة — ثمّ انتظار.
+  select count(*) into misses
+    from public.coupon_checks k
+   where k.user_id = me and not k.ok and k.created_at > now() - interval '15 minutes';
+  if misses >= 10 then
+    raise exception 'جرّبتَ أكواداً كثيرة. انتظر ربع ساعة ثمّ أعد المحاولة.';
+  end if;
+
   select * into c from public.coupons k
    where k.code = upper(btrim(p_code));
   if not found then
-    raise exception 'هذا الكود غير صحيح';
+    insert into public.coupon_checks (user_id, code, ok)
+    values (me, upper(btrim(coalesce(p_code, ''))), false);
+    return;
   end if;
 
   select s.price, s.category_id, p.commission_percent as provider_commission
@@ -285,6 +322,9 @@ begin
            public.coupon_discount(
              c, me, svc.price, svc.category_id,
              round(svc.price * comm / 100.0, 2));
+
+  -- بعد الحساب لا قبله: كودٌ موجودٌ لا ينطبق يرمي أعلاه، فلا يأذن بحجز.
+  insert into public.coupon_checks (user_id, code, ok) values (me, c.code, true);
 end;
 $$;
 

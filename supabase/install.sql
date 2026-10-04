@@ -1313,10 +1313,12 @@ create policy conversations_parties on public.conversations
     or public.is_admin()
   );
 
+-- **ولا إدخالَ مباشراً.** كانت هنا سياسةٌ تقبل صفّاً فيه أحدُ الطرفين صاحبَ
+-- الطلب — فيختار الطرفَ الآخرَ واسمَي الطرفين كما شاء. فكشف فحصٌ أمنيٌّ أنّ
+-- من قدّم طلبَ «مقدّم خدمة» ولم يُوثَّق يفتح محادثةً مع أيّ عميلٍ باسم «فريق
+-- دعم فرحتي»، فيصله إشعارٌ بذلك الاسم. والمحادثةُ تُفتح بدالّتَي `chat.sql`
+-- وحدهما: تأخذان الاسمين من الملفّات، والمزوّدَ موثّقاً، والعميلَ من حجز.
 drop policy if exists conversations_parties_write on public.conversations;
-create policy conversations_parties_write on public.conversations
-  for insert to authenticated
-  with check (user_id = public.current_app_user() or provider_id = public.current_provider());
 
 drop policy if exists conversation_messages_parties on public.conversation_messages;
 create policy conversation_messages_parties on public.conversation_messages
@@ -1448,6 +1450,29 @@ alter default privileges in schema public
   grant select on tables to anon, authenticated;
 alter default privileges in schema public
   grant insert, update, delete on tables to authenticated;
+
+-- ----------------------------------------------------------------------------
+-- التقييمات: الزائرُ لا يرى مَن كتبها
+--
+-- كشف فحصٌ أمنيٌّ أنّ `reviews.user_id` يُقرأ بلا حساب — معرّفُ كلّ عميلٍ كتب
+-- رأياً منشوراً. ولا يحتاجه شيءٌ معروض: الاسمُ في `user_name`، والصورةُ تأتي
+-- من `api_provider_reviews`. فيُنزع منحُ الجدول ويُعاد على الأعمدة كلِّها
+-- **عدا هذا** — ويُحسب ما سواه من الجدول نفسِه، فعمودٌ يُضاف غداً يُمنح.
+--
+-- والداخلون كما كانوا: `v_admin_reviews` تقرأ `r.*` بصلاحية قارئها.
+-- ----------------------------------------------------------------------------
+do $$
+declare
+  cols text;
+begin
+  select string_agg(quote_ident(column_name), ', ' order by ordinal_position)
+    into cols
+    from information_schema.columns
+   where table_schema = 'public' and table_name = 'reviews'
+     and column_name <> 'user_id';
+  execute 'revoke select on public.reviews from anon';
+  execute format('grant select (%s) on public.reviews to anon', cols);
+end $$;
 
 -- Source: api.sql
 -- ============================================================================
@@ -2220,5 +2245,3 @@ to authenticated;
 
 grant select on public.v_services, public.v_providers to anon, authenticated;
 grant select on public.v_plan_summary to authenticated;
-
-
