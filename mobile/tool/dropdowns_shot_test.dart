@@ -45,12 +45,18 @@ Future<void> _loadFonts() async {
   if (icons.existsSync()) await _load('MaterialIcons', [icons.path]);
 }
 
+/// **وفي `runAsync`:** `toImage` ينتظر محرّكاً حقيقيّاً، والساعةُ الوهميّةُ لا
+/// تتقدّم بلا `pump` — فكان الراسمُ يتعلّق هنا بلا خطأ حتى يُقطع.
 Future<void> _shoot(WidgetTester tester, Finder of, String path) async {
   final boundary = tester.renderObject<RenderRepaintBoundary>(of);
-  final image = await boundary.toImage(pixelRatio: 3.0);
-  final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
-  image.dispose();
-  File(path).writeAsBytesSync(bytes!.buffer.asUint8List());
+  await tester.runAsync(() async {
+    final image = await boundary.toImage(pixelRatio: 3.0);
+    final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
+    image.dispose();
+    File(path)
+      ..parent.createSync(recursive: true)
+      ..writeAsBytesSync(bytes!.buffer.asUint8List());
+  });
 }
 
 Session _session() => Session()
