@@ -25,7 +25,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # وقد بقي `1.0.0+1` من أوّل دفعةٍ للتطبيق حتى ٥٧ حزمةً بُنيت كلُّها تقول
 # «أنا الأولى». ويحرسه `app_update_test.dart`: يقرأ هذا السطر ويقارنه
 # بثابتَي `app_version.dart`.
-version: 2.4.0+132
+version: 2.5.0+133
 
 environment:
   sdk: ^3.13.0
@@ -168,6 +168,9 @@ flutter:
   # ألفا أبيض، ورسمُ المتجر الذي كان فوقه مُسح منه (‎٢١٠×٢٤٦‎، ‎٦‎ ك.ب).
   # و`apply_store.png` رسمُ المتجر بزائده الذهبيّة **بألوانه**، وأرضُ البطاقة
   # فُكّت عنه ألفا (‎١٣٤×١٠٨‎).
+  #
+  # **و`doc_*.png`** أيقوناتُ «مستندات التوثيق» السبع — درعان وبطاقةٌ وورقةٌ
+  # وصورةٌ وورقةٌ بزائد وورقةٌ بسهم — مقصوصةٌ من صورته أقنعةَ ألفا بيضاء.
   assets:
     - assets/brand/app_mark.png
     - assets/brand/launch_satin.png
@@ -178,6 +181,13 @@ flutter:
     - assets/brand/plan_empty.webp
     - assets/brand/apply_sprig.png
     - assets/brand/apply_store.png
+    - assets/brand/doc_shield.png
+    - assets/brand/doc_shield_small.png
+    - assets/brand/doc_idcard.png
+    - assets/brand/doc_doc.png
+    - assets/brand/doc_image.png
+    - assets/brand/doc_fileplus.png
+    - assets/brand/doc_upload.png
 
   # خطّ عربي مرفق بالتطبيق لا مُعتمَد على الجهاز.
   #
