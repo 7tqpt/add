@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "لوحة تحكم سد",
-  "version": "0.1.0",
+  "productName": "فرحتي",
+  "version": "0.2.0",
   "identifier": "company.sdd.dashboard",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -13,7 +13,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "لوحة تحكم سد — منصة حجوزات وتجهيز الأعراس",
+        "title": "فرحتي — لوحة الإدارة",
         "width": 1440,
         "height": 900,
         "minWidth": 1024,
@@ -26,7 +26,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; img-src 'self' asset: http://asset.localhost data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; connect-src 'self' https://*.supabase.co wss://*.supabase.co ipc: http://ipc.localhost"
+      "csp": "default-src 'self'; img-src 'self' asset: http://asset.localhost data: blob: https://*.supabase.co; media-src 'self' blob: https://*.supabase.co; style-src 'self' 'unsafe-inline'; font-src 'self' data:; connect-src 'self' https://*.supabase.co wss://*.supabase.co ipc: http://ipc.localhost"
     }
   },
   "bundle": {
@@ -41,8 +41,8 @@
     ],
     "copyright": "© سد للبرمجيات",
     "category": "Business",
-    "shortDescription": "لوحة تحكم منصة الأعراس",
-    "longDescription": "إدارة الحجوزات ومقدّمي الخدمة والمدفوعات والتسويات لمنصة حجوزات وتجهيز الأعراس اليمنية.",
+    "shortDescription": "فرحتي — لوحة الإدارة",
+    "longDescription": "لوحة إدارة «فرحتي»: الحجوزات ومقدّمو الخدمة والمدفوعات والتسويات لمنصة حجوزات وتجهيز الأعراس اليمنية.",
     "windows": {
       "nsis": {
         "languages": ["Arabic", "English"],

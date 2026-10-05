@@ -129,7 +129,7 @@ jobs:
             -o -name '*.deb' -o -name '*.AppImage' \) -print0 |
           while IFS= read -r -d '' f; do
             ext="${f##*.}"
-            cp "$f" "out/sdd-dashboard-${{ matrix.os }}.$ext"
+            cp "$f" "out/farhati-dashboard-${{ matrix.os }}.$ext"
           done
           ls -la out
           {
@@ -142,7 +142,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: steps.gate.outputs.run == 'yes'
         with:
-          name: sdd-dashboard-${{ matrix.os }}
+          name: farhati-dashboard-${{ matrix.os }}
           path: out/*
           if-no-files-found: error
           retention-days: 30
@@ -189,7 +189,7 @@ jobs:
           NOTES
 
           gh release create "$TAG" \
-            --title "لوحة تحكم سد — $TAG" \
+            --title "فرحتي — لوحة الإدارة $TAG" \
             --notes-file notes.md \
             downloaded/* || \
           gh release upload "$TAG" downloaded/* --clobber
