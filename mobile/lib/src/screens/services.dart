@@ -27,15 +27,25 @@ class _ServicesScreenState extends State<ServicesScreen> {
   late Future<List<MyService>> _future;
   String? _busyId;
 
+  /// حالُ الملفّ — يُقرأ مع الخدمات لا من الجلسة: الإدارةُ قد توثّقه والشاشةُ
+  /// مفتوحة، فتُقرأ الحالُ الحاضرةُ مع كلّ تحديث.
+  String? _status;
+
+  /// **غيرُ الموثَّق لا تظهر خدماتُه لأحد** — فلا تُكتب عليها «معروضة».
+  bool get _unlisted => _status != null && _status != 'verified';
+
   @override
   void initState() {
     super.initState();
     _future = _load();
   }
 
-  Future<List<MyService>> _load() {
+  Future<List<MyService>> _load() async {
     final id = widget.session.providerId;
-    return id == null ? Future.value(const []) : Api.myServices(id);
+    if (id == null) return const [];
+    final (rows, status) = (await Api.myServices(id), await Api.myProviderStatus(id));
+    _status = status;
+    return rows;
   }
 
   void _reload() {
@@ -164,10 +174,46 @@ class _ServicesScreenState extends State<ServicesScreen> {
             ),
           );
 
+          // ── (ب) من مقترحَين: العلامةُ وسطرٌ يشرح السبب ──────────────────
+          //
+          // سأل صاحبُ المنصّة: «كيف يقدر مقدم الخدمة عرض خدمته بدون توثيق»
+          // — وهو لا يقدر: القاعدةُ تُخفيها عن الناس. لكنّ البطاقةَ كانت
+          // تقول «معروضة»، فيظنّها صاحبُها منشورةً وينتظر طلباتٍ لا تصل.
+          final note = _unlisted
+              ? Padding(
+                  padding: const EdgeInsets.fromLTRB(Space.lg, 0, Space.lg, Space.md),
+                  child: Container(
+                    key: const ValueKey('services-pending-note'),
+                    padding: const EdgeInsets.all(Space.md),
+                    decoration: BoxDecoration(
+                      color: AppColors.warning.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: AppColors.warning.withValues(alpha: 0.35)),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(Icons.hourglass_top_rounded, color: AppColors.warning, size: 22),
+                        const SizedBox(width: Space.sm),
+                        Expanded(
+                          child: Text(
+                            _status == 'pending'
+                                ? tr('خدماتك لا تظهر للعملاء حتى توثّق الإدارةُ ملفّك. ارفع مستنداتك من «ملفي».')
+                                : tr('خدماتك لا تظهر للعملاء ما دام ملفّك غير موثّق. راجع «ملفي».'),
+                            style: const TextStyle(fontSize: 13.5, height: 1.6, color: AppColors.ink),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              : const SizedBox.shrink();
+
           if (rows.isEmpty) {
             return Column(
               children: [
                 addBar,
+                note,
                 Expanded(
                   child: EmptyBlock(
                     title: tr('لا خدمات بعد'),
@@ -184,6 +230,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
           return Column(
             children: [
               addBar,
+              note,
               Expanded(
                 child: RefreshIndicator(
             onRefresh: () async => _reload(),
@@ -216,11 +263,18 @@ class _ServicesScreenState extends State<ServicesScreen> {
                   CardTitleBar(
                     s.title,
                     subtitle: s.description,
-                    badge: s.isActive ? tr('معروضة') : tr('موقوفة'),
+                    // **وغيرُ الموثَّق لا «معروضة» عنده** — ولو فعّلها: لا
+                    // يراها أحد. فتُكتب حالُ الملفّ لا حالُ الخدمة.
+                    badge: _unlisted
+                        ? (_status == 'pending' ? tr('قيد المراجعة') : tr('غير ظاهرة'))
+                        : s.isActive ? tr('معروضة') : tr('موقوفة'),
                     // **ولونُ الشارة يفرّق الحالَين بلمحة**: المعروضةُ
                     // خضراء والموقوفةُ باهتة — وعلى الشريط النبيذيّ القديم
                     // كانتا بيضاوين تُقرآن حرفاً حرفاً.
-                    badgeColor: s.isActive ? AppColors.good : AppColors.muted,
+                    badgeColor: _unlisted
+                        ? AppColors.warning
+                        : s.isActive ? AppColors.good : AppColors.muted,
+                    badgeIcon: _unlisted ? Icons.hourglass_top_rounded : null,
                     opens: true,
                   ),
                   const SizedBox(height: Space.sm),

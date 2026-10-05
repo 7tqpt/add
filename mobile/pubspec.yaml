@@ -25,7 +25,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # وقد بقي `1.0.0+1` من أوّل دفعةٍ للتطبيق حتى ٥٧ حزمةً بُنيت كلُّها تقول
 # «أنا الأولى». ويحرسه `app_update_test.dart`: يقرأ هذا السطر ويقارنه
 # بثابتَي `app_version.dart`.
-version: 2.2.2+130
+version: 2.4.0+132
 
 environment:
   sdk: ^3.13.0
@@ -163,6 +163,11 @@ flutter:
   #
   # **و`plan_empty.webp`** رسمُ «لا خطة بعد» (مذكّرةٌ بين الورد) — مقصوصٌ من
   # صورته، وأرضيّتُه صُحّحت إلى البياض لتذوب في الشاشة (‎٨٠٠×٦٩٥‎، ‎٦٥‎ ك.ب).
+  #
+  # **و`apply_sprig.png`** غصنُ «تقديم خدمة» وقلبُه — مقصوصٌ من صورته قناعَ
+  # ألفا أبيض، ورسمُ المتجر الذي كان فوقه مُسح منه (‎٢١٠×٢٤٦‎، ‎٦‎ ك.ب).
+  # و`apply_store.png` رسمُ المتجر بزائده الذهبيّة **بألوانه**، وأرضُ البطاقة
+  # فُكّت عنه ألفا (‎١٣٤×١٠٨‎).
   assets:
     - assets/brand/app_mark.png
     - assets/brand/launch_satin.png
@@ -171,6 +176,8 @@ flutter:
     - assets/brand/role_groom.png
     - assets/brand/plan_floral.png
     - assets/brand/plan_empty.webp
+    - assets/brand/apply_sprig.png
+    - assets/brand/apply_store.png
 
   # خطّ عربي مرفق بالتطبيق لا مُعتمَد على الجهاز.
   #

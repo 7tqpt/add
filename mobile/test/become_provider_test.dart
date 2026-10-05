@@ -20,6 +20,7 @@ import 'package:aras/src/data/demo.dart';
 import 'package:aras/src/screens/account_extras.dart';
 import 'package:aras/src/screens/become_provider.dart';
 import 'package:aras/src/ui/kit.dart';
+import 'package:flutter/rendering.dart';
 
 Session _session() => Session()
   ..userId = 'u1'
@@ -129,8 +130,9 @@ void main() {
       });
 
       await _open(tester);
-      await tester.enterText(find.byType(TextField).at(0), 'قاعة التجربة');
-      await tester.enterText(find.byType(TextField).at(1), '770000000');
+      await tester.enterText(find.byKey(const ValueKey('apply-name')), 'قاعة التجربة');
+      await tester.enterText(find.byKey(const ValueKey('apply-phone')), '770000000');
+      await tester.enterText(find.byKey(const ValueKey('apply-bio')), 'قاعةٌ لخمسمئة ضيف');
 
       await tester.tap(find.byKey(const ValueKey('governorate-field')));
       await _settle(tester);
@@ -160,8 +162,9 @@ void main() {
       addTearDown(() => demoProviderProfile = null);
 
       await _open(tester);
-      await tester.enterText(find.byType(TextField).at(0), 'قاعة التجربة');
-      await tester.enterText(find.byType(TextField).at(1), '770000000');
+      await tester.enterText(find.byKey(const ValueKey('apply-name')), 'قاعة التجربة');
+      await tester.enterText(find.byKey(const ValueKey('apply-phone')), '770000000');
+      await tester.enterText(find.byKey(const ValueKey('apply-bio')), 'قاعةٌ لخمسمئة ضيف');
       await tester.tap(find.byKey(const ValueKey('governorate-field')));
       await _settle(tester);
       await tester.tap(find.text(demoGovernorates[1].name).last);
@@ -172,6 +175,149 @@ void main() {
 
       expect(demoProviderProfile, isNull, reason: 'مرّ طلبٌ بلا قسم');
       expect(find.textContaining('وقسمك'), findsOneWidget);
+    });
+
+    // ── على صورة صاحب المنصّة ────────────────────────────────────────────
+    //
+    // «خلي الحقول فارغه مثل اسم المنشاة ورقم التوصل» — ثمّ اختار (أ): تصميمُه
+    // كلُّه، والحقولُ فارغة.
+
+    testWidgets('**الحقولُ فارغةٌ عند الفتح، والرماديُّ فيها اسمُها لا مثال**', (tester) async {
+      await _open(tester);
+      for (final key in ['apply-name', 'apply-phone', 'apply-bio']) {
+        final field = tester.widget<TextField>(find.byKey(ValueKey(key)));
+        expect(field.controller!.text, isEmpty, reason: '$key ليس فارغاً');
+      }
+      String? hint(String key) => tester.widget<TextField>(find.byKey(ValueKey(key))).decoration!.hintText;
+      expect(hint('apply-name'), 'اسم المنشأة');
+      expect(hint('apply-phone'), '7XX XXX XXX');
+      expect(hint('apply-bio'), 'عرّف العرسان بخدماتك');
+      // **ولا مثالَ يُقرأ كأنّه مكتوب** — وهو ما كان: «قاعة التاج».
+      expect(find.text('قاعة التاج'), findsNothing);
+      expect(find.text('اختر محافظتك'), findsOneWidget);
+      expect(find.text('اختر قسمك'), findsOneWidget);
+    });
+
+    testWidgets('**وعنوانٌ فوق كلّ حقلٍ بنجمةٍ ذهبيّة**', (tester) async {
+      await _open(tester);
+      for (final (label, field) in [
+        ('اسم المنشأة', 'apply-name'),
+        ('رقم التواصل', 'apply-phone'),
+        ('نبذة عن الخدمة', 'apply-bio'),
+        ('المحافظة', 'governorate-field'),
+        ('القسم الذي تعمل فيه', 'category-field'),
+      ]) {
+        final title = find.byWidgetPredicate((w) =>
+            w is RichText && w.text.toPlainText() == '$label *');
+        expect(title, findsOneWidget, reason: 'لا عنوانَ بنجمةٍ لـ$label');
+        final t = tester.getRect(title), f = tester.getRect(find.byKey(ValueKey(field)));
+        expect(t.bottom, lessThanOrEqualTo(f.top + 1), reason: '$label ليس فوق حقله');
+      }
+    });
+
+    testWidgets('**والرقمُ يصل الخادمَ بمفتاحه** — +967 بجانب الحقل', (tester) async {
+      // **ما وصل لا ما في الحقل:** الحقلُ فيه «770000000»، والواصلُ مجموعُه
+      // إلى المفتاح — كما في «أكمل ملفك».
+      demoProviderProfile = null;
+      demoProviderPhone = null;
+      addTearDown(() {
+        demoProviderProfile = null;
+        demoProviderPhone = null;
+      });
+      await _open(tester);
+      expect(find.byKey(const ValueKey('dial-picker')), findsOneWidget);
+      expect(find.byKey(const ValueKey('dial-label')), findsOneWidget);
+      await tester.enterText(find.byKey(const ValueKey('apply-name')), 'قاعة التجربة');
+      await tester.enterText(find.byKey(const ValueKey('apply-phone')), '770000000');
+      await tester.enterText(find.byKey(const ValueKey('apply-bio')), 'قاعةٌ لخمسمئة ضيف');
+      await tester.tap(find.byKey(const ValueKey('governorate-field')));
+      await _settle(tester);
+      await tester.tap(find.text(demoGovernorates[1].name).last);
+      await _settle(tester);
+      await tester.tap(find.byKey(const ValueKey('category-field')));
+      await _settle(tester);
+      await tester.tap(find.text(demoCategories[1].name).last);
+      await _settle(tester);
+      await tester.tap(find.widgetWithText(FilledButton, 'إرسال الطلب'));
+      await _settle(tester);
+      expect(demoProviderPhone, '+967770000000');
+      expect(demoProviderProfile?.bio, 'قاعةٌ لخمسمئة ضيف');
+    });
+
+    testWidgets('**و«دولة أخرى» تطلب المفتاحَ مكتوباً** — لا يُنسب الرقمُ إلى اليمن', (tester) async {
+      demoProviderProfile = null;
+      addTearDown(() => demoProviderProfile = null);
+      await _open(tester);
+      await tester.tap(find.byKey(const ValueKey('dial-picker')));
+      await _settle(tester);
+      await tester.tap(find.byKey(const ValueKey('dial-other')));
+      await _settle(tester);
+      expect(find.byKey(const ValueKey('dial-label')), findsNothing);
+      await tester.enterText(find.byKey(const ValueKey('apply-name')), 'قاعة التجربة');
+      await tester.enterText(find.byKey(const ValueKey('apply-phone')), '770000000');
+      await tester.enterText(find.byKey(const ValueKey('apply-bio')), 'قاعةٌ لخمسمئة ضيف');
+      await tester.tap(find.byKey(const ValueKey('governorate-field')));
+      await _settle(tester);
+      await tester.tap(find.text(demoGovernorates[1].name).last);
+      await _settle(tester);
+      await tester.tap(find.byKey(const ValueKey('category-field')));
+      await _settle(tester);
+      await tester.tap(find.text(demoCategories[1].name).last);
+      await _settle(tester);
+      await tester.tap(find.widgetWithText(FilledButton, 'إرسال الطلب'));
+      await _settle(tester);
+      expect(demoProviderProfile, isNull, reason: 'نُسب رقمٌ بلا مفتاحٍ إلى اليمن');
+      expect(find.textContaining('مفتاح الدولة'), findsOneWidget);
+    });
+
+    testWidgets('**والنبذةُ مطلوبةٌ كالبقيّة** — عليها نجمة', (tester) async {
+      demoProviderProfile = null;
+      addTearDown(() => demoProviderProfile = null);
+      await _open(tester);
+      await tester.enterText(find.byKey(const ValueKey('apply-name')), 'قاعة التجربة');
+      await tester.enterText(find.byKey(const ValueKey('apply-phone')), '770000000');
+      await tester.tap(find.byKey(const ValueKey('governorate-field')));
+      await _settle(tester);
+      await tester.tap(find.text(demoGovernorates[1].name).last);
+      await _settle(tester);
+      await tester.tap(find.byKey(const ValueKey('category-field')));
+      await _settle(tester);
+      await tester.tap(find.text(demoCategories[1].name).last);
+      await _settle(tester);
+      await tester.tap(find.widgetWithText(FilledButton, 'إرسال الطلب'));
+      await _settle(tester);
+      expect(demoProviderProfile, isNull, reason: 'مرّ طلبٌ بلا نبذة');
+      expect(find.textContaining('نبذةً عن خدمتك'), findsOneWidget);
+    });
+
+    testWidgets('**وبطاقةُ الرأس: سطرٌ واحدٌ ومتجرٌ وغصنٌ من صورته**', (tester) async {
+      // جوالٌ ضيّق: ‎٣٢٠‎ نقطة.
+      tester.view.physicalSize = const Size(960, 2400);
+      tester.view.devicePixelRatio = 3.0;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(_wrap(BecomeProviderScreen(session: _session())));
+      await _settle(tester);
+      expect(find.text('سجّل منشأتك'), findsOneWidget);
+      final line = tester.renderObject<RenderParagraph>(find.byKey(const ValueKey('apply-head-line')));
+      expect(line.maxLines, 1);
+      expect(line.didExceedMaxLines, isFalse, reason: 'قُصّ آخرُ السطر');
+      final head = tester.getRect(find.byKey(const ValueKey('apply-head')));
+      for (final (key, asset) in [('apply-store', 'apply_store'), ('apply-sprig', 'apply_sprig')]) {
+        final art = tester.widget<Image>(find.byKey(ValueKey(key)));
+        expect((art.image as AssetImage).assetName, 'assets/brand/$asset.png');
+        expect(head.contains(tester.getRect(find.byKey(ValueKey(key))).center), isTrue, reason: '$key خارجَ البطاقة');
+      }
+      // **والمتجرُ في الطرف الأيسر، والعنوانُ في الأيمن** — كما في صورته.
+      expect(tester.getRect(find.byKey(const ValueKey('apply-store'))).center.dx,
+          lessThan(tester.getRect(find.text('سجّل منشأتك')).left));
+    });
+
+    testWidgets('**وطائرةُ الورق يسارَ «إرسال الطلب»**', (tester) async {
+      await _open(tester);
+      final mark = tester.getRect(find.byKey(const ValueKey('apply-send-mark')));
+      final text = tester.getRect(find.text('إرسال الطلب'));
+      expect(mark.right, lessThanOrEqualTo(text.left), reason: 'الطائرةُ ليست يسارَ النصّ');
+      expect((mark.center.dy - text.center.dy).abs(), lessThan(6));
     });
 
     testWidgets('ولا يفيض النموذجُ بخطّ الجهاز الكبير', (tester) async {

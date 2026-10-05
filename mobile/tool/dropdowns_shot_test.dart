@@ -45,12 +45,18 @@ Future<void> _loadFonts() async {
   if (icons.existsSync()) await _load('MaterialIcons', [icons.path]);
 }
 
+/// **وفي `runAsync`:** `toImage` ينتظر محرّكاً حقيقيّاً، والساعةُ الوهميّةُ لا
+/// تتقدّم بلا `pump` — فكان الراسمُ يتعلّق هنا بلا خطأ حتى يُقطع.
 Future<void> _shoot(WidgetTester tester, Finder of, String path) async {
   final boundary = tester.renderObject<RenderRepaintBoundary>(of);
-  final image = await boundary.toImage(pixelRatio: 3.0);
-  final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
-  image.dispose();
-  File(path).writeAsBytesSync(bytes!.buffer.asUint8List());
+  await tester.runAsync(() async {
+    final image = await boundary.toImage(pixelRatio: 3.0);
+    final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
+    image.dispose();
+    File(path)
+      ..parent.createSync(recursive: true)
+      ..writeAsBytesSync(bytes!.buffer.asUint8List());
+  });
 }
 
 Session _session() => Session()
@@ -90,12 +96,20 @@ void main() {
   setUpAll(_loadFonts);
 
   testWidgets('النموذجُ مغلقاً', (tester) async {
-    tester.view.physicalSize = const Size(1176, 2400);
+    // **وطولُ الشاشة يُختار** (`HEIGHT` بالنقاط) — ليُرى أين يقع الزرّ.
+    final h = double.parse(Platform.environment['HEIGHT'] ?? '800');
+    tester.view.physicalSize = Size(1176, h * 3);
     tester.view.devicePixelRatio = 3.0;
     addTearDown(tester.view.reset);
 
     await tester.pumpWidget(_wrap(BecomeProviderScreen(session: _session())));
     await _settle(tester);
+    // **والصورُ تُفكّ في وقتٍ حقيقيّ لا وهميّ** — بلا هذا خرج الغصنُ والمتجرُ
+    // فارغَين في أوّل لقطة.
+    for (var i = 0; i < 4; i++) {
+      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 300)));
+      await tester.pump();
+    }
 
     // ولا يُصدَّق أنّ النموذجَ رُسم: تُسأل الحقولُ عن نفسها.
     //

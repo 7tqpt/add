@@ -120,6 +120,34 @@ class Api {
   /// [near] نقطةُ الباحث. إن أُعطيت رُتِّبت النتائجُ بالقرب منها — ويقع
   /// الترتيبُ **في الخادم**: القائمةُ محدودةٌ بأربعين صفّاً، وترتيبُ صفحةٍ
   /// جاءت مرتّبةً بالتمييز يعطي «أقربَ الأربعين» لا «الأقربَ فعلاً».
+  /// مزوّدٌ لا تُعرض خدماتُه في «استكشف» — **صاحبُ الجلسة ما دام لم يُوثَّق**.
+  ///
+  /// القاعدةُ تُخفي خدماتِ غير الموثَّق عن الناس كلِّهم إلّا صاحبَها: سياسةُ
+  /// `services_public_read` تقبل `provider_id = current_provider()`. فكان
+  /// يرى خدماتِه في «استكشف» كأنّها منشورة، **وهي لا تظهر لأحد** — فسأل
+  /// صاحبُ المنصّة: «كيف يقدر مقدم الخدمة عرض خدمته بدون توثيق؟». فاختار أن
+  /// تُخفى عنه أيضاً، ويراها في «خدماتي» وعليها «قيد المراجعة».
+  ///
+  /// **ويُضبط من `Session` عند قراءة الهويّة** لا يُمرَّر إلى كلّ شاشة: «استكشف»
+  /// و«مقترحةٌ لك» في الرئيسيّة تناديان `services` بلا جلسة.
+  static String? unlistedProviderId;
+
+  static List<ServiceItem> _listed(List<ServiceItem> rows) {
+    final hidden = unlistedProviderId;
+    return hidden == null ? rows : rows.where((s) => s.providerId != hidden).toList();
+  }
+
+  /// حالُ ملفّ المزوّد: `pending` أو `verified` أو `rejected` أو `suspended`.
+  static Future<String?> myProviderStatus(String providerId) async {
+    if (!isSupabaseConfigured) return demoProviderProfile?.status ?? 'verified';
+    final row = await db
+        .from('service_providers')
+        .select('status')
+        .eq('id', providerId)
+        .maybeSingle();
+    return row?['status'] as String?;
+  }
+
   static Future<List<ServiceItem>> services({
     String? search,
     String? categoryId,
@@ -136,7 +164,7 @@ class Api {
             s.providerName.toLowerCase().contains(term);
       }).toList();
       if (near != null) sortByDistance(list, near, (s) => s.providerPoint);
-      return demoDelay(list);
+      return demoDelay(_listed(list));
     }
 
     if (near != null) {
@@ -148,9 +176,9 @@ class Api {
         'p_limit': 40,
         'p_governorate': governorate,
       });
-      return (rows as List)
+      return _listed((rows as List)
           .map((r) => ServiceItem.fromMap(r as Map<String, dynamic>))
-          .toList();
+          .toList());
     }
 
     var query = db.from('v_services').select();
@@ -166,7 +194,7 @@ class Api {
         .order('provider_is_featured', ascending: false)
         .order('provider_rating', ascending: false)
         .limit(40);
-    return rows.map(ServiceItem.fromMap).toList();
+    return _listed(rows.map(ServiceItem.fromMap).toList());
   }
 
   static Future<ServiceItem?> service(String id) async {
@@ -363,7 +391,8 @@ class Api {
           businessName: businessName,
           governorate: governorate,
           bio: bio,
-          categoryId: categoryId);
+          categoryId: categoryId,
+          phone: phone);
       return;
     }
     await db.rpc(

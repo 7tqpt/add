@@ -60,9 +60,20 @@ run "(ب) البطاقةُ بلا حافّةٍ مرتفعة" sub "$O" \
   "      compact: true,
       crowned: true," "      compact: true,"
 
-run "(ج) ذيلُ «ي» تحت البطاقة" sub "$F" \
-  "padding: EdgeInsets.fromLTRB(12, compact ? 26 : 34, 12, compact ? 62 : 44)," \
-  "padding: EdgeInsets.fromLTRB(12, compact ? 26 : 34, 12, 44),"
+# **والسطرُ في موضعين** منذ «اقفل تطبيقك» (#143): القوسُ في البطاقة، ونسختُه
+# فوق الورد (`crestOnTop`). فطابقت المرساةُ مرّتين ولم يقع الكسرُ — فيُكسران معاً.
+tail_both() {
+  python3 - "$F" <<'PY'
+import sys
+p = sys.argv[1]
+s = open(p, encoding='utf-8').read()
+old = "padding: EdgeInsets.fromLTRB(12, compact ? 26 : 34, 12, compact ? 62 : 44),"
+if s.count(old) != 2:
+    print(f"   ✗ المرساةُ تطابق {s.count(old)} مرّة — لا كسرَ وقع"); sys.exit(1)
+open(p, 'w', encoding='utf-8').write(s.replace(old, "padding: EdgeInsets.fromLTRB(12, compact ? 26 : 34, 12, 44),"))
+PY
+}
+run "(ج) ذيلُ «ي» تحت البطاقة" tail_both
 
 run "(د) القلبُ يسارَ الشخص" sub "$O" \
   "        Positioned(

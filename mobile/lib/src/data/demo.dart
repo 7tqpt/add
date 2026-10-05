@@ -682,14 +682,20 @@ String? demoProviderCategoryId;
 /// الإدارة — وعرضُ طلباتٍ عليه قبل ذلك يناقض ما تقوله شاشته نفسها.
 List<Booking> demoProviderRequests = [];
 
+/// رقمُ التواصل الذي وصل مع «تقديم خدمة» — **ما وصل لا ما في الحقل**: الحقلُ
+/// فيه «770000000» ومفتاحُ الدولة بجانبه، والواصلُ يجب أن يكون مجموعَهما.
+String? demoProviderPhone;
+
 void demoBecomeProvider({
   required String businessName,
   required String governorate,
   required String bio,
   String categoryId = '',
+  String phone = '',
 }) {
   demoProviderId = 'demo-provider';
   demoProviderCategoryId = categoryId;
+  demoProviderPhone = phone;
   demoProviderProfile = ProviderProfile(
     id: 'demo-provider',
     // ما كتبه المستخدم لا اسمٌ ثابت: نموذجٌ يُرسَل ثم يُعرض بغير ما أُدخل يجعل
