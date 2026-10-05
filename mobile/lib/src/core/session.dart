@@ -17,6 +17,10 @@ class Session extends ChangeNotifier {
   String email = '';
   String? appUserId;
   String? providerId;
+
+  /// حالُ ملفّ المزوّد — `null` لمن لا ملفَّ له. **وغيرُ الموثَّق لا تُعرض
+  /// خدماتُه في «استكشف» ولا له** (`Api.unlistedProviderId`).
+  String? providerStatus;
   bool asProvider = false;
   bool loading = true;
 
@@ -65,6 +69,7 @@ class Session extends ChangeNotifier {
         email = 'demo@example.com';
         appUserId = 'demo-user';
         providerId = await Api.myProviderId('demo-user');
+        await _readProviderStatus();
       }
       loading = false;
       notifyListeners();
@@ -80,6 +85,7 @@ class Session extends ChangeNotifier {
         email = '';
         appUserId = null;
         providerId = null;
+        _clearProviderStatus();
         asProvider = false;
         loading = false;
         notifyListeners();
@@ -111,9 +117,21 @@ class Session extends ChangeNotifier {
   /// فرقُ الساعة المقيس حين يكون هو السبب — يُعرض رقماً لا وصفاً.
   Duration? clockDrift;
 
+  Future<void> _readProviderStatus() async {
+    final id = providerId;
+    providerStatus = id == null ? null : await Api.myProviderStatus(id);
+    Api.unlistedProviderId = id != null && providerStatus != 'verified' ? id : null;
+  }
+
+  void _clearProviderStatus() {
+    providerStatus = null;
+    Api.unlistedProviderId = null;
+  }
+
   Future<void> _readIdentity() async {
     appUserId = await Api.myAppUserId();
     providerId = appUserId == null ? null : await Api.myProviderId(appUserId!);
+    await _readProviderStatus();
     // **ويُقرأ الحاجزُ هنا لا في الشاشة.** الشاشةُ تُبنى ثمّ تقرأ، فتظهر
     // شاشةُ التطبيق لحظةً قبل أن يهبط الحاجزُ عليها — وهي لحظةٌ يُقرأ فيها
     // ما لا يُراد أن يُقرأ قبل التأكيد.
@@ -165,6 +183,7 @@ class Session extends ChangeNotifier {
       if (identityErrorCode == jwtIssuedAtFuture) clockDrift = await clockSkew();
       appUserId = null;
       providerId = null;
+      _clearProviderStatus();
     }
     loading = false;
     notifyListeners();
@@ -259,6 +278,7 @@ class Session extends ChangeNotifier {
     email = '';
     appUserId = null;
     providerId = null;
+    _clearProviderStatus();
     asProvider = false;
     notifyListeners();
   }
