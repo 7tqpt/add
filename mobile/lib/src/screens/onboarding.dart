@@ -170,7 +170,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         decoration: _field(
           tr('رقم الجوال'),
           Icons.phone_outlined,
-          trailing: _DialPicker(
+          trailing: DialPicker(
             dial: _dial,
             enabled: !_busy,
             onChanged: (d) => setState(() => _dial = d),
@@ -267,13 +267,19 @@ class _ProfileBadge extends StatelessWidget {
 /// **والسهمُ بجانبه يفتح شيئاً** — سهمٌ لا يفعل شيئاً يَعِد ولا يفي. فيُختار
 /// بين اليمن و«دولة أخرى»: ومن اختار الثانيةَ كتب الرقمَ بمفتاحه كما كان
 /// يكتب قبل هذا، فلا يُردّ من يسجّل من خارج اليمن.
-class _DialPicker extends StatelessWidget {
-  const _DialPicker({required this.dial, required this.enabled, required this.onChanged});
+///
+/// **ووجهُه يُبدَّل ولا يُبدَّل عملُه:** «تقديم خدمة» ترسمه على صورة صاحب
+/// المنصّة ([face]) — والقائمةُ واختيارُها واحدٌ في الشاشتين.
+class DialPicker extends StatelessWidget {
+  const DialPicker({super.key, required this.dial, required this.enabled, required this.onChanged, this.face});
 
   /// `'967'` أو `null` لـ«دولة أخرى».
   final String? dial;
   final bool enabled;
   final ValueChanged<String?> onChanged;
+
+  /// ما يُرسم في الحقل — وإن غاب فوجهُ «أكمل ملفك».
+  final Widget Function(String? dial)? face;
 
   @override
   Widget build(BuildContext context) => PopupMenuButton<String>(
@@ -307,7 +313,7 @@ class _DialPicker extends StatelessWidget {
         ),
       ),
     ],
-    child: Padding(
+    child: face?.call(dial) ?? Padding(
       padding: const EdgeInsetsDirectional.only(end: 12),
       child: Row(
         mainAxisSize: MainAxisSize.min,

@@ -363,7 +363,8 @@ class Api {
           businessName: businessName,
           governorate: governorate,
           bio: bio,
-          categoryId: categoryId);
+          categoryId: categoryId,
+          phone: phone);
       return;
     }
     await db.rpc(
