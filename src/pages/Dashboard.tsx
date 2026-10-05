@@ -180,7 +180,6 @@ export function DashboardPage() {
       <div className="stagger grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatTile
           label="الحجوزات"
-          tone="azure"
           value={formatNumber(data.bookings.value)}
           change={data.bookings.change}
           comparisonLabel={COMPARISON}
@@ -189,7 +188,6 @@ export function DashboardPage() {
         />
         <StatTile
           label="قيمة الحجوزات"
-          tone="emerald"
           value={formatMoneyCompact(data.revenue.value)}
           valueTitle={formatMoney(data.revenue.value)}
           change={data.revenue.change}
@@ -199,7 +197,6 @@ export function DashboardPage() {
         />
         <StatTile
           label="عمولة المنصة"
-          tone="navy"
           value={formatMoneyCompact(data.commission.value)}
           valueTitle={formatMoney(data.commission.value)}
           change={data.commission.change}
@@ -209,7 +206,6 @@ export function DashboardPage() {
         />
         <StatTile
           label="متوسط المستخدمين النشطين يومياً"
-          tone="cyan"
           value={formatNumber(data.activeUsers.value)}
           change={data.activeUsers.change}
           comparisonLabel={COMPARISON}

@@ -102,3 +102,18 @@ describe('صفحةُ الدخول — (أ) من صورتين', () => {
     expect(login()).toMatch(/data-theme="light"\s+data-login-card/)
   })
 })
+
+describe('بقيّةُ الصفحات — (أ) من صورتين', () => {
+  it('**بطاقةُ الأرقام بيضاءُ بقرصٍ ذهبيّ ورقمٍ نبيذيّ** — لا مصبوغةٌ بنوعها', () => {
+    const tile = read('src/components/charts/StatTile.tsx')
+    expect(tile).toContain('bg-gold-soft text-gold-ink')
+    expect(tile).toContain('text-accent')
+    expect(tile).not.toContain('toneStyle(')
+  })
+
+  it('**ولا صبغةَ بقيت على بطاقةٍ في الصفحات**', () => {
+    for (const page of ['Payments', 'Dashboard', 'Support', 'ProviderDetail', 'UserDetail']) {
+      expect(read(`src/pages/${page}.tsx`), page).not.toMatch(/tone="(azure|emerald|navy|cyan|violet)"/)
+    }
+  })
+})

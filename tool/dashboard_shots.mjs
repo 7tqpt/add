@@ -125,6 +125,31 @@ check('والتحيّةُ في الرأس', /صباح الخير|مساء الخ
 check('وأربعُ بطاقاتٍ بأقراصٍ ذهبيّة', m.discs === 4 && m.discBg === 'rgb(243, 231, 211)', `${m.discs} ${m.discBg}`)
 check('وعنوانُ الصفحة', m.title === 'فرحتي — لوحة الإدارة', m.title)
 
+// ── بقيّةُ الصفحات — (أ): بطاقاتٌ بيضاء، وأقراصٌ ذهبيّة، ورؤوسُ جداولَ ذهبيّة ──
+await page.goto(`${base}/#/payments`)
+await page.waitForTimeout(1500)
+const pay = await page.evaluate(() => {
+  const css = (el, prop) => (el ? getComputedStyle(el)[prop] : '')
+  const stats = [...document.querySelectorAll('[data-stat]')]
+  const panel = document.querySelector('.glass-panel')
+  return {
+    stats: stats.length,
+    statBg: [...new Set(stats.map((el) => css(el, 'backgroundColor')))],
+    discBg: [...new Set(stats.map((el) => css(el.querySelector('[data-stat-disc]'), 'backgroundColor')))],
+    valueInk: [...new Set(stats.map((el) => css(el.querySelector('p[title], p.text-2xl'), 'color')))],
+    th: [...new Set([...document.querySelectorAll('thead th')].map((el) => css(el, 'color')))],
+    panelBg: css(panel, 'backgroundColor'),
+    panelBorder: css(panel, 'borderTopColor'),
+    track: css(document.querySelector('[data-bar-track]'), 'backgroundColor'),
+  }
+})
+check('**المدفوعات: أربعُ بطاقاتِ أرقامٍ بيضاء**', pay.stats === 4 && pay.statBg.join() === 'rgb(255, 255, 255)', `${pay.stats} ${pay.statBg}`)
+check('**بأقراصٍ ذهبيّة**', pay.discBg.join() === 'rgb(243, 231, 211)', pay.discBg.join(' | '))
+check('**والرقمُ نبيذيّ**', pay.valueInk.join() === 'rgb(123, 15, 46)', pay.valueInk.join(' | '))
+check('**ورأسُ الجدول بحبرٍ ذهبيّ**', pay.th.length > 0 && pay.th.join() === 'rgb(138, 95, 20)', pay.th.join(' | '))
+check('**والبطاقةُ بيضاءُ بحدٍّ رمليّ لا ورديّ**', pay.panelBg === 'rgb(255, 255, 255)' && pay.panelBorder === 'rgb(235, 218, 205)', `${pay.panelBg} ${pay.panelBorder}`)
+check('ومجرى الأعمدة ذهبيٌّ فاتح', pay.track === 'rgb(243, 231, 211)', pay.track)
+
 const phone = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 })
 await phone.goto(`${base}/#/`)
 await phone.waitForTimeout(1300)

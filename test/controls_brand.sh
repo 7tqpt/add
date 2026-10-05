@@ -5,7 +5,7 @@
 set -uo pipefail
 cd "$(dirname "$0")/.."
 
-FILES="src/index.css src/components/brand/Brand.tsx src/components/layout/Sidebar.tsx src/components/layout/UserMenu.tsx src/components/layout/Topbar.tsx src/pages/Login.tsx index.html"
+FILES="src/index.css src/components/brand/Brand.tsx src/components/layout/Sidebar.tsx src/components/layout/UserMenu.tsx src/components/layout/Topbar.tsx src/pages/Login.tsx src/components/charts/StatTile.tsx src/components/charts/BarChart.tsx src/pages/Payments.tsx index.html"
 BACKUP=$(mktemp -d)
 for f in $FILES; do mkdir -p "$BACKUP/$(dirname "$f")"; cp "$f" "$BACKUP/$f"; done
 restore() { for f in $FILES; do cp "$BACKUP/$f" "$f"; done; }
@@ -98,6 +98,29 @@ run browser "(ك) الحقلُ بـrem فيطول على جذر ١٧" sub src/in
   ".login-field {
   height: 48px;" ".login-field {
   height: 3rem;"
+
+run unit "(ل) قرصُ بطاقة الأرقام مربّعٌ مصبوغ" sub src/components/charts/StatTile.tsx \
+  'className="flex size-11 shrink-0 items-center justify-center rounded-full bg-gold-soft text-gold-ink"' \
+  'className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-accent text-accent-ink"'
+
+run browser "(م) رأسُ الجدول رماديٌّ كما كان" sub src/index.css \
+  "thead th {
+  color: var(--gold-ink);" "thead th {
+  color: inherit;"
+
+run browser "(ن) حدُّ البطاقة ورديٌّ كما كان" sub src/index.css \
+  ".glass-panel {
+  background: var(--surface);
+  border-color: var(--border);" ".glass-panel {
+  background: var(--surface);
+  border-color: color-mix(in oklab, var(--accent) 12%, var(--border));"
+
+run browser "(س) مجرى الأعمدة رماديّ" sub src/components/charts/BarChart.tsx \
+  'flex h-3 flex-1 items-center rounded-full bg-gold-soft' 'flex h-3 flex-1 items-center rounded-full bg-surface-2'
+
+run unit "(ع) صبغةٌ تعود على بطاقةٍ في المدفوعات" sub src/pages/Payments.tsx \
+  '              label="المبالغ المحصّلة"' '              label="المبالغ المحصّلة"
+              tone="emerald"'
 
 echo
 echo "سقط $PASS — ولم يسقط $FAIL"

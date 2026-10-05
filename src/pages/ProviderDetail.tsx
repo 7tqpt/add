@@ -319,14 +319,12 @@ export function ProviderDetailPage() {
       <div className="stagger grid grid-cols-1 gap-4 sm:grid-cols-3">
         <StatTile
           label="الحجوزات المنفّذة"
-          tone="azure"
           value={formatNumber(record.completed_bookings)}
           icon={Package}
           refetching={provider.refetching}
         />
         <StatTile
           label="إجمالي الأرباح"
-          tone="emerald"
           value={formatMoneyCompact(record.total_earnings)}
           valueTitle={formatMoney(record.total_earnings)}
           icon={Wallet}
