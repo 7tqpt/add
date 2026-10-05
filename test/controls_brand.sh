@@ -5,7 +5,7 @@
 set -uo pipefail
 cd "$(dirname "$0")/.."
 
-FILES="src/index.css src/components/brand/Brand.tsx src/components/layout/Sidebar.tsx src/components/layout/UserMenu.tsx src/components/layout/Topbar.tsx index.html"
+FILES="src/index.css src/components/brand/Brand.tsx src/components/layout/Sidebar.tsx src/components/layout/UserMenu.tsx src/components/layout/Topbar.tsx src/pages/Login.tsx index.html"
 BACKUP=$(mktemp -d)
 for f in $FILES; do mkdir -p "$BACKUP/$(dirname "$f")"; cp "$f" "$BACKUP/$f"; done
 restore() { for f in $FILES; do cp "$BACKUP/$f" "$f"; done; }
@@ -86,6 +86,18 @@ run browser "(ز) القائمةُ بيضاءُ في المتصفّح" sub src/c
 run browser "(ح) الخطُّ لا يُحمَّل في المتصفّح" sub src/index.css \
   "@font-face { font-family: 'IBM Plex Sans Arabic'; src: url('/fonts/IBMPlexSansArabic-400.ttf')" \
   "@font-face { font-family: 'IBM Plex Sans Arabic'; src: url('/fonts/missing-400.ttf')"
+
+run unit "(ط) صفحةُ الدخول بلا ورود" sub src/pages/Login.tsx \
+  'style={{ backgroundImage: "url(/brand/roses.webp)" }}' 'style={{}}'
+
+run browser "(ي) البطاقةُ تتبع الوضعَ الداكن فتسودّ" sub src/pages/Login.tsx \
+  '          data-theme="light"
+' ''
+
+run browser "(ك) الحقلُ بـrem فيطول على جذر ١٧" sub src/index.css \
+  ".login-field {
+  height: 48px;" ".login-field {
+  height: 3rem;"
 
 echo
 echo "سقط $PASS — ولم يسقط $FAIL"

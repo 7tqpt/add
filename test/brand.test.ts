@@ -88,3 +88,17 @@ describe('التحيّةُ والحرف', () => {
     expect(initialOf('123@x.com')).toBe('؟')
   })
 })
+
+describe('صفحةُ الدخول — (أ) من صورتين', () => {
+  const login = () => read('src/pages/Login.tsx')
+
+  it('**ورودُ التطبيق خلف بطاقةٍ في الوسط** — لا اللوحُ الأزرقُ المائل', () => {
+    expect(login()).toContain('url(/brand/roses.webp)')
+    expect(login()).not.toContain('حيث تبدأ القوة')
+    expect(login()).not.toContain('onPointerMove')
+  })
+
+  it('**والبطاقةُ كريميّةٌ في الوضعين** — جزيرةٌ فاتحةٌ ولو كانت اللوحةُ داكنة', () => {
+    expect(login()).toMatch(/data-theme="light"\s+data-login-card/)
+  })
+})

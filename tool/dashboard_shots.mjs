@@ -33,9 +33,52 @@ const check = (label, ok, extra = '') => {
   console.log(`${ok ? '✅' : '❌'} ${label}${extra ? ' — ' + extra : ''}`)
 }
 
+// ── صفحةُ الدخول — (أ): البطاقةُ كريميّةٌ على الورود، **في الوضعين** ─────────
+async function measureLogin(p) {
+  return p.evaluate(async () => {
+    await document.fonts.ready
+    const root = document.querySelector('[data-login]')
+    const card = document.querySelector('[data-login-card]')
+    const field = card?.querySelector('input[type=email]')
+    const bg = root ? getComputedStyle(root).backgroundImage : ''
+    const img = new Image()
+    img.src = '/brand/roses.webp'
+    await img.decode().catch(() => {})
+    return {
+      roses: bg.includes('/brand/roses.webp') && img.naturalWidth > 0,
+      card: card ? getComputedStyle(card).backgroundColor : '',
+      title: card?.querySelector('h1')?.textContent ?? '',
+      fieldBg: field ? getComputedStyle(field).backgroundColor : '',
+      fieldH: field?.getBoundingClientRect().height ?? 0,
+      old: document.body.innerText.includes('حيث تبدأ القوة'),
+      overflow: document.documentElement.scrollWidth - innerWidth,
+    }
+  })
+}
+for (const theme of ['light', 'dark']) {
+  await page.goto(`${base}/#/login`)
+  await page.evaluate((t) => localStorage.setItem('theme', t), theme)
+  await page.reload()
+  await page.waitForTimeout(1200)
+  await page.screenshot({ path: `${out}/00-login-${theme}.png` })
+  const l = await measureLogin(page)
+  check(`**الدخول (${theme}): الورودُ خلفها محمَّلة**`, l.roses)
+  check(`والبطاقةُ كريميّة (${theme})`, l.card === 'rgb(255, 253, 250)', l.card)
+  check(`و«فرحتي» عنوانُها، ولا اللوحُ القديم (${theme})`, l.title === 'فرحتي' && !l.old, l.title)
+  check(`والحقلُ أبيضُ بارتفاع ٤٨ (${theme})`, l.fieldBg === 'rgb(255, 255, 255)' && l.fieldH === 48, `${l.fieldBg} ${l.fieldH}`)
+}
+await page.evaluate(() => localStorage.removeItem('theme'))
+const loginPhone = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 })
+await loginPhone.goto(`${base}/#/login`)
+await loginPhone.waitForTimeout(1200)
+await loginPhone.screenshot({ path: `${out}/00-login-phone.png` })
+const lp = await measureLogin(loginPhone)
+check('والدخولُ على الجوال بلا تمريرٍ أفقيّ', lp.overflow <= 0, `${lp.overflow}px`)
+await loginPhone.close()
+
 await page.goto(`${base}/#/login`)
+await page.reload()
 await page.waitForTimeout(1200)
-await page.screenshot({ path: `${out}/00-login.png` })
 await page.fill('input[type=email]', 'owner@sdd.company')
 await page.fill('input[type=password]', 'demo-password')
 await page.click('button[type=submit]')
