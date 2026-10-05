@@ -1,18 +1,9 @@
-import type { CSSProperties } from 'react'
 import { NavLink } from 'react-router-dom'
 import { X } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { useAuth } from '@/context/AuthContext'
 import { BrandLockup } from '@/components/brand/Brand'
 
-/** الصبغات نفسها التي يستعملها رأس الصفحة، فيتطابق القرصان لوناً. */
-const TONE_VAR = {
-  azure: 'var(--tile-azure)',
-  emerald: 'var(--tile-emerald)',
-  navy: 'var(--tile-navy)',
-  cyan: 'var(--tile-cyan)',
-  violet: 'var(--tile-violet)',
-} as const
 import { NAV_GROUPS } from './nav'
 
 export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -36,77 +27,75 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
         aria-hidden
       />
 
+      {/*
+        ── (أ) «المخمل» — اختارها صاحبُ المنصّة من ثلاثة اتجاهات ──────────
+        قائمةٌ نبيذيّةٌ في الوضعين، في رأسها مخملُ الورد من شاشة ترحيب
+        التطبيق، والبندُ النشطُ ورقةٌ كريميّةٌ بحافّةٍ ذهبيّة. **وبلا أقراصٍ
+        حول الأيقونات**: كانت زجاجاً مصبوغاً بصبغة القسم، وعلى النبيذيّ تُقرأ
+        بقعاً — والصورةُ أيقوناتٌ خطّيّةٌ وحدها.
+      */}
       <aside
+        data-sidebar
+        style={{ background: 'linear-gradient(180deg, var(--side-from), var(--side-to) 62%, var(--side-from))' }}
         className={cn(
-          // start-0 is the right edge under dir="rtl"; the border sits on the
-          // inline-end side, facing the content.
-          'fixed inset-y-0 start-0 z-40 flex w-64 flex-col border-e border-hairline bg-surface transition-transform lg:static lg:translate-x-0',
+          // start-0 is the right edge under dir="rtl".
+          'fixed inset-y-0 start-0 z-40 flex w-64 flex-col text-[var(--side-ink)] transition-transform lg:static lg:translate-x-0',
           // Transforms are not direction-aware: +100% X parks it off the right edge.
           open ? 'translate-x-0' : 'translate-x-full lg:translate-x-0',
         )}
       >
-        <div className="flex h-16 shrink-0 items-center justify-between gap-2 border-b border-hairline px-4">
-          <BrandLockup size={36} />
+        <div
+          data-sidebar-head
+          className="relative flex h-28 shrink-0 items-end justify-between gap-2 overflow-hidden px-4 pb-3"
+          style={{ background: 'url(/brand/roses.webp) center 30% / cover' }}
+        >
+          {/* يُعتَم الوردُ من تحت ليُقرأ الاسمُ عليه — ويذوب في نبيذيّ القائمة. */}
+          <span
+            aria-hidden
+            className="absolute inset-0"
+            style={{ background: 'linear-gradient(180deg, rgba(92,8,32,0.1), rgba(92,8,32,0.88))' }}
+          />
+          <span className="relative">
+            <BrandLockup size={40} tone="invert" />
+          </span>
           <button
             type="button"
             onClick={onClose}
-            className="cursor-pointer rounded-md p-1.5 text-muted hover:bg-surface-2 hover:text-ink lg:hidden"
+            className="relative cursor-pointer rounded-md p-1.5 text-white/80 hover:bg-white/10 hover:text-white lg:hidden"
             aria-label="إغلاق القائمة"
           >
             <X size={18} aria-hidden />
           </button>
         </div>
 
-        <nav className="flex-1 overflow-y-auto p-3">
+        <nav className="flex-1 overflow-y-auto px-3 pb-3 pt-2">
           {groups.map((group, index) => (
-            <div key={group.label ?? 'main'} className={index === 0 ? '' : 'mt-4'}>
+            <div key={group.label ?? 'main'} className={index === 0 ? '' : 'mt-3'}>
               {group.label ? (
-                <p className="px-3 pb-1.5 text-[11px] font-medium tracking-wide text-muted">
+                <p className="px-3 pb-1 text-[11px] font-medium tracking-wide text-[var(--side-gold)] opacity-80">
                   {group.label}
                 </p>
               ) : null}
-              <ul className="flex flex-col gap-1">
+              <ul className="flex flex-col gap-0.5">
                 {group.items.map((item) => (
                   <li key={item.to}>
                     <NavLink
                       to={item.to}
                       end={item.to === '/'}
                       onClick={onClose}
-                      // الصبغة على البند نفسه لا على قرصه: الحبّة والقرص
-                      // كلاهما يقرأها، فلا تُكتب مرّتين ولا تفترقان لوناً.
-                      style={{ '--tone': TONE_VAR[item.tone] } as CSSProperties}
                       className={({ isActive }) =>
                         cn(
-                          'nav-item nav-pill relative flex h-10 items-center gap-2.5 overflow-hidden rounded-xl px-2.5 text-sm font-medium transition-colors',
-                          // شريطٌ على الحافّة الداخلية للبند النشط: علامةٌ
-                          // ثانية غير اللون، فمن لا يفرّق الألوان يرى موضعه.
+                          'nav-item relative flex h-10 items-center gap-2.5 rounded-xl px-3 text-sm transition-colors',
+                          // **وعلامةٌ ثانيةٌ غير اللون** للبند النشط: حافّةٌ
+                          // ذهبيّةٌ على طرفه — فمن لا يفرّق الألوان يرى موضعه.
                           isActive
-                            ? 'nav-pill-active text-ink before:absolute before:inset-y-1.5 before:start-0 before:w-[3px] before:rounded-full before:bg-[var(--tone)]'
-                            : 'text-ink-2 hover:text-ink',
+                            ? 'bg-[#f7e9ec] font-bold text-[#7b0f2e] shadow-[inset_3px_0_0_var(--side-gold)]'
+                            : 'font-medium text-[var(--side-muted)] hover:bg-white/8 hover:text-[var(--side-ink)]',
                         )
                       }
                     >
-                      {({ isActive }) => (
-                        <>
-                          {/* الأيقونة في قرصٍ زجاجيّ: القرص يعطيها جسماً
-                              ويجعل صفَّ البنود مقروءاً بمسحةٍ واحدة، بدل
-                              رموزٍ عائمةٍ في الفراغ تتفاوت أوزانها. */}
-                          <span
-                            className={cn(
-                              'icon-glass',
-                              isActive && 'icon-glass-active',
-                            )}
-                          >
-                            <item.icon
-                              size={16}
-                              aria-hidden
-                              style={{ color: isActive ? TONE_VAR[item.tone] : undefined }}
-                              className={isActive ? undefined : 'text-ink-2'}
-                            />
-                          </span>
-                          {item.label}
-                        </>
-                      )}
+                      <item.icon size={18} aria-hidden strokeWidth={1.8} />
+                      {item.label}
                     </NavLink>
                   </li>
                 ))}
@@ -115,7 +104,10 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
           ))}
         </nav>
 
-        <p className="border-t border-hairline px-4 py-3 text-[11px] text-muted">الإصدار 0.1.0</p>
+        {/* صانعةُ اللوحة — كانت علامتَها، فبقي اسمُها هنا. */}
+        <p className="border-t border-white/10 px-4 py-3 text-[11px] text-[var(--side-muted)]">
+          من سد للبرمجيات
+        </p>
       </aside>
     </>
   )

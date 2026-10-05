@@ -49,7 +49,7 @@ export interface NavGroup {
 export const NAV_GROUPS: NavGroup[] = [
   {
     label: null,
-    items: [{ to: '/', label: 'لوحة المعلومات', icon: LayoutDashboard, area: 'bookings', tone: 'azure' }],
+    items: [{ to: '/', label: 'نظرة عامة', icon: LayoutDashboard, area: 'bookings', tone: 'azure' }],
   },
   {
     label: 'الحجوزات',

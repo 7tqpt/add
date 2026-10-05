@@ -31,6 +31,7 @@ import {
   PLATFORM_LABEL,
   formatCompact,
   formatDate,
+  formatDelta,
   formatMoney,
   formatMoneyCompact,
   formatNumber,
@@ -86,11 +87,8 @@ export function DashboardPage() {
   ]
 
   return (
-    <div className="dashboard-concept flex flex-col gap-4">
-      <div>
-        <h1 className="text-2xl font-semibold text-ink">نظرة عامة</h1>
-        <p className="mt-1 text-sm text-muted">الحجوزات والطلبات التي تحتاج متابعتك</p>
-      </div>
+    <div className="flex flex-col gap-4">
+      {/* (والعنوانُ والتحيّةُ في الرأس — `Topbar` — كما في صورة (أ).) */}
       {/* One filter row above everything it scopes — never per-card filters. */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div
@@ -134,15 +132,46 @@ export function DashboardPage() {
         </p>
       ) : null}
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <ActionTile to="/bookings" icon={CalendarCheck} label="حجوزات الفترة" value={data.bookings.value} />
-        <ActionTile to="/providers" icon={BriefcaseBusiness} label="طلبات توثيق" value={data.pendingProviders} />
-        <ActionTile to="/support" icon={LifeBuoy} label="تذاكر مفتوحة" value={data.openTickets} />
+      {/* ── أربعُ بطاقاتٍ بأقراصٍ ذهبيّة، كما في صورة (أ) ── */}
+      <div data-kpis className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <ActionTile
+          to="/bookings"
+          icon={CalendarCheck}
+          label="حجوزات الفترة"
+          value={formatNumber(data.bookings.value)}
+          note={`${formatDelta(data.bookings.change)} عن الفترة السابقة`}
+        />
+        <ActionTile
+          to="/providers"
+          icon={BriefcaseBusiness}
+          label="طلبات توثيق"
+          value={formatNumber(data.pendingProviders)}
+          note="بانتظار مراجعة المستندات"
+        />
+        {/* **ما دخل الخزنة لا ما استُحقّ** — وإن لم تُشغَّل `income.sql` فالعمولة. */}
+        <ActionTile
+          to="/payments"
+          icon={Wallet}
+          label="إيراد المنصّة"
+          value={formatMoneyCompact(data.income.available ? data.income.total : data.commission.value)}
+          valueTitle={formatMoney(data.income.available ? data.income.total : data.commission.value)}
+          note={data.income.available ? 'عمولاتٌ واشتراكاتٌ وإعلانات' : 'عمولةُ حجوزات الفترة'}
+        />
+        <ActionTile
+          to="/support"
+          icon={LifeBuoy}
+          label="تذاكر مفتوحة"
+          value={formatNumber(data.openTickets)}
+          note="تنتظر ردّ خدمة العملاء"
+        />
       </div>
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
         <div className="xl:col-span-2"><RecentBookings refreshKey={refreshKey} /></div>
-        <AdminQueue stats={data} />
+        <div className="flex flex-col gap-4">
+          <AdminQueue stats={data} />
+          <PeriodBars points={data.bookingsByDay} />
+        </div>
       </div>
 
       <details className="rounded-xl border border-hairline bg-surface p-3 sm:p-4">
@@ -281,19 +310,31 @@ export function DashboardPage() {
   )
 }
 
-function ActionTile({ to, icon: Icon, label, value }: {
+/** بطاقةُ رقمٍ في صدر الصفحة: قرصٌ ذهبيٌّ بأيقونته، والرقمُ نبيذيٌّ كبير. */
+function ActionTile({ to, icon: Icon, label, value, valueTitle, note }: {
   to: string
   icon: LucideIcon
   label: string
-  value: number
+  value: string
+  valueTitle?: string
+  note: string
 }) {
   return (
-    <Link to={to} className="flex items-center justify-between gap-3 rounded-xl border border-hairline bg-surface px-4 py-4 transition-colors hover:bg-surface-2">
-      <span className="flex items-center gap-3 text-sm text-ink-2">
-        <span className="rounded-lg bg-surface-2 p-2 text-accent"><Icon size={21} aria-hidden /></span>
-        {label}
+    <Link
+      to={to}
+      data-kpi
+      className="lift flex items-start gap-3 rounded-2xl border border-hairline bg-surface px-4 py-4"
+    >
+      <span data-kpi-disc className="flex size-11 shrink-0 items-center justify-center rounded-full bg-gold-soft text-gold-ink">
+        <Icon size={21} aria-hidden strokeWidth={1.8} />
       </span>
-      <span className="tnum text-2xl font-semibold text-ink">{formatNumber(value)}</span>
+      <span className="min-w-0">
+        <span className="block text-sm text-muted">{label}</span>
+        <span className="block text-[1.6rem] font-bold leading-snug text-accent" title={valueTitle}>
+          {value}
+        </span>
+        <span className="block truncate text-xs text-muted">{note}</span>
+      </span>
     </Link>
   )
 }
@@ -301,29 +342,61 @@ function ActionTile({ to, icon: Icon, label, value }: {
 function AdminQueue({ stats }: { stats: DashboardStats }) {
   return (
     <Card>
-      <CardHeader title="يحتاج إجراءك" subtitle="قوائم العمل الحالية" />
-      <CardBody className="flex flex-col gap-1 px-2 py-2 sm:px-2">
+      <CardHeader title="يحتاج إجراءك" />
+      <CardBody className="flex flex-col px-0 py-0 sm:px-0">
         {QUEUE.map((entry) => {
           const count = stats[entry.key] as number
           return (
             <Link key={entry.key} to={entry.to}
-              className="flex items-center justify-between gap-3 rounded-lg px-3 py-2.5 transition-colors hover:bg-surface-2">
+              className="flex items-center justify-between gap-3 border-t border-hairline px-4 py-3 transition-colors hover:bg-surface-2">
               <span className="flex min-w-0 items-center gap-2.5">
-                <span style={count > 0 ? toneChip(entry.tone) : undefined}
-                  className={cn('flex size-7 shrink-0 items-center justify-center rounded-lg', count === 0 && 'bg-surface-2 text-muted')}>
-                  <entry.icon size={15} aria-hidden />
-                </span>
-                <span className="truncate text-xs text-ink-2">{entry.label}</span>
+                <entry.icon size={18} aria-hidden strokeWidth={1.8} className={count > 0 ? 'text-gold-ink' : 'text-muted'} />
+                <span className="truncate text-sm text-ink-2">{entry.label}</span>
               </span>
-              <span className="flex shrink-0 items-center gap-1">
-                <span className={cn('tnum text-sm font-semibold', count > 0 ? 'text-ink' : 'text-muted')}>
+              <span className="flex shrink-0 items-center gap-2">
+                <span className={cn('tnum text-base font-bold', count > 0 ? 'text-accent' : 'text-muted')}>
                   {formatNumber(count)}
                 </span>
-                <ChevronLeft size={14} aria-hidden className="text-muted" />
+                <ChevronLeft size={15} aria-hidden className="text-muted" />
               </span>
             </Link>
           )
         })}
+      </CardBody>
+    </Card>
+  )
+}
+
+/**
+ * أعمدةُ الحجوزات في الفترة — الآخرُ نبيذيٌّ والباقي ورديٌّ باهت، كما في
+ * صورة (أ). **والأعمدةُ أيّامُ الفترة نفسُها** مجموعةً في اثني عشر عموداً على
+ * الأكثر، لا أرقامٌ مرسومة: الرسمُ من `bookingsByDay`.
+ */
+function PeriodBars({ points }: { points: { date: string; value: number }[] }) {
+  const groups = Math.min(12, points.length)
+  if (groups === 0) return null
+  const size = Math.ceil(points.length / groups)
+  const bars: { from: string; to: string; value: number }[] = []
+  for (let i = 0; i < points.length; i += size) {
+    const chunk = points.slice(i, i + size)
+    bars.push({ from: chunk[0].date, to: chunk[chunk.length - 1].date, value: chunk.reduce((n, p) => n + p.value, 0) })
+  }
+  const max = Math.max(1, ...bars.map((b) => b.value))
+  return (
+    <Card>
+      <CardHeader title="الحجوزات في الفترة" />
+      <CardBody>
+        {/* الأقدمُ يميناً كقراءة السطر العربيّ. */}
+        <div data-period-bars className="flex h-32 items-end gap-1.5" role="img" aria-label="الحجوزات في الفترة">
+          {bars.map((bar, i) => (
+            <span
+              key={bar.from}
+              title={`${formatDate(bar.from)} — ${formatDate(bar.to)}: ${formatNumber(bar.value)}`}
+              className={cn('flex-1 rounded-md', i === bars.length - 1 ? 'bg-accent' : 'bg-[color-mix(in_oklab,var(--accent)_16%,var(--surface))]')}
+              style={{ height: `${Math.max(6, Math.round((bar.value / max) * 100))}%` }}
+            />
+          ))}
+        </div>
       </CardBody>
     </Card>
   )

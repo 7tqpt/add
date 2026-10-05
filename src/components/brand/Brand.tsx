@@ -1,15 +1,15 @@
 /**
- * علامة «سد للبرمجيات».
- *
- * وهي ملفُّ العلامة نفسه لا رسمٌ يشبهه: `public/brand/logo.png` مقصوصةً في
- * قرصٍ شفّاف الحواف، فتجلس على أي أرضيةٍ بلا مربّعٍ داكنٍ حولها.
+ * علامة «فرحتي» — أيقونةُ التطبيق نفسُها (`mobile/assets/brand/app_icon.png`)
+ * لا رسمٌ يشبهها. اختارها صاحبُ المنصّة في (أ) «المخمل»: اللوحةُ والتطبيقُ
+ * علامةٌ واحدة، وكانت اللوحةُ تحمل علامةَ «سد للبرمجيات» — وهي صانعتُها،
+ * فبقي اسمُها في ذيل القائمة.
  *
  * ولا تدور: في العلامة اسمُ الشركة وشعارها مكتوبَين، ودورانُها يقلب الكلام
  * رأساً على عقب. فالحركة — إن طُلبت — في حلقةٍ مرسومةٍ حولها تدور وحدها،
  * والعلامة ثابتةٌ في مركزها.
  */
 
-const LOGO = "/brand/logo.png";
+const LOGO = "/brand/farhati.png";
 
 export function BrandMark({
   size = 40,
@@ -35,7 +35,7 @@ export function BrandMark({
             cy="50"
             r="48"
             fill="none"
-            stroke="#60a5fa"
+            stroke="#e6c473"
             strokeOpacity="0.55"
             strokeWidth="1"
             strokeDasharray="26 10 14 8"
@@ -52,7 +52,7 @@ export function BrandMark({
         height={size}
         // الحلقة تدور خارج العلامة، فتُصغَّر قليلاً لتترك لها مجالاً.
         style={{ width: spin ? "84%" : "100%", height: spin ? "84%" : "100%" }}
-        className="object-contain"
+        className="rounded-[22%] object-contain shadow-[0_0_0_2px_rgba(230,196,115,0.4)]"
       />
     </span>
   );
@@ -72,7 +72,7 @@ export function BrandLockup({
   size = 40,
   spin = false,
   tone = "auto",
-  subtitle = "منصة حجوزات الأعراس",
+  subtitle = "لوحة الإدارة",
 }: {
   size?: number;
   spin?: boolean;
@@ -81,14 +81,15 @@ export function BrandLockup({
   subtitle?: string;
 }) {
   const strong = tone === "invert" ? "text-white" : "text-ink";
-  const weak = tone === "invert" ? "text-white/60" : "text-muted";
+  // والسطرُ الثاني ذهبيٌّ على النبيذيّ كما في الصورة.
+  const weak = tone === "invert" ? "text-[var(--side-gold)]" : "text-muted";
 
   return (
     <span className="flex items-center gap-2.5">
       <BrandMark size={size} spin={spin} />
       <span className="leading-tight">
-        <span className={`block text-sm font-semibold ${strong}`}>
-          سد للبرمجيات
+        <span className={`block text-xl font-bold ${strong}`}>
+          فرحتي
         </span>
         <span className={`block text-[11px] ${weak}`}>{subtitle}</span>
       </span>

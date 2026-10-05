@@ -91,7 +91,7 @@ export function RecentBookings({ refreshKey }: { refreshKey: number }) {
               {data.rows.map((booking) => (
                 <tr key={booking.id}>
                   <td className="px-3 py-3">
-                    <span dir="ltr" className="tnum font-semibold text-ink">{booking.reference}</span>
+                    <span dir="ltr" className="tnum whitespace-nowrap font-semibold text-ink">{booking.reference}</span>
                     <span className="block text-xs text-muted">{booking.user_name}</span>
                   </td>
                   <td className="px-3 py-3 text-ink-2">{booking.service_title}</td>
