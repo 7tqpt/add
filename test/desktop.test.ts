@@ -60,3 +60,18 @@ describe('فتحُ الروابط من البرنامج', () => {
     expect(capability.permissions).not.toContain('opener:allow-default-urls')
   })
 })
+
+describe('وصلاتُ `_blank` في البرنامج', () => {
+  it('**تُسلَّم إلى المتصفّح روابطُ https وحدها** — كنطاق الصلاحية', async () => {
+    const { isExternalHref } = await import('../src/lib/desktop')
+    expect(isExternalHref('https://x.supabase.co/storage/v1/object/sign/a.jpg?token=1')).toBe(true)
+    expect(isExternalHref('HTTPS://sdd.company/dl/a.apk')).toBe(true)
+    for (const href of ['http://x.com', 'blob:http://localhost/1', 'file:///C:/a', '#/bookings', '', null, undefined]) {
+      expect(isExternalHref(href), String(href)).toBe(false)
+    }
+  })
+
+  it('**ومعالجتُها مرّةً واحدةً للّوحة كلّها** — تُستدعى عند الإقلاع', () => {
+    expect(read('src/main.tsx')).toMatch(/^routeExternalLinks\(\)$/m)
+  })
+})

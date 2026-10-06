@@ -4,7 +4,7 @@ import { HashRouter } from 'react-router-dom'
 import { App } from './App'
 import { AuthProvider } from './context/AuthContext'
 import { ThemeProvider } from './context/ThemeContext'
-import { revealWindow } from './lib/desktop'
+import { revealWindow, routeExternalLinks } from './lib/desktop'
 
 /**
  * الخطّ مُستضافٌ معنا لا مُحمَّلٌ من شبكة غوغل.
@@ -28,6 +28,9 @@ import '@fontsource/ibm-plex-sans-arabic/latin-500.css'
 import '@fontsource/ibm-plex-sans-arabic/latin-600.css'
 
 import './index.css'
+
+// في البرنامج: وصلاتُ `_blank` تُفتح في متصفّح النظام (لا أثر لها في المتصفّح).
+routeExternalLinks()
 
 /**
  * HashRouter لا BrowserRouter.

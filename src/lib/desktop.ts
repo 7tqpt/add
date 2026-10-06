@@ -46,6 +46,32 @@ export async function openExternal(url: string): Promise<void> {
   await openUrl(url)
 }
 
+/** رابطٌ يُسلَّم إلى المتصفّح: https وحده — كنطاق الصلاحية في `capabilities`. */
+export function isExternalHref(href: string | null | undefined): href is string {
+  return typeof href === 'string' && /^https:\/\//i.test(href)
+}
+
+/**
+ * كلُّ وصلةٍ `target="_blank"` تُفتح في متصفّح النظام.
+ *
+ * داخل النافذة لا يفتح `_blank` شيئاً: Tauri لا ينشئ نافذةً ثانية، فتسقط
+ * الضغطة صامتة. وكانت تُعالَج وصلةً وصلة — فنجا زرُّ «عرض» المستندات وحده،
+ * وبقيت صورُ خدمات مقدّم الخدمة ورابطُ التنزيل في «الإصدارات» لا تفتح.
+ * فالمعالجةُ هنا مرّةً واحدة لكلّ وصلةٍ في اللوحة، ما كان منها وما يأتي.
+ */
+export function routeExternalLinks(): void {
+  if (!isDesktop) return
+  document.addEventListener('click', (event) => {
+    if (event.defaultPrevented || event.button !== 0) return
+    const anchor =
+      event.target instanceof Element ? event.target.closest('a[target="_blank"]') : null
+    const href = anchor?.getAttribute('href')
+    if (!isExternalHref(href)) return
+    event.preventDefault()
+    void openExternal(href)
+  })
+}
+
 /**
  * يُظهر النافذة بعد أن ترسم الواجهة أوّل إطارٍ لها.
  *

@@ -157,6 +157,37 @@ await phone.screenshot({ path: `${out}/07-home-phone.png` })
 const overflow = await phone.evaluate(() => document.documentElement.scrollWidth - innerWidth)
 check('ولا تمريرَ أفقيّاً على الجوال', overflow <= 0, `${overflow}px`)
 
+// ── البرنامج: وصلاتُ `_blank` تصل متصفّحَ النظام ────────────────────────────
+// يُحقن `__TAURI_INTERNALS__` كما يحقنه Tauri قبل أيّ سطرٍ من شيفرتنا، فتعمل
+// اللوحةُ كأنّها في البرنامج. **ويُقاس ما وصل Tauri لا ما رُسم:** كلُّ نداءٍ
+// يُسجَّل، فيُسأل: أطُلب `plugin:opener|open_url` بالرابط نفسه؟
+const desk = await browser.newPage({ viewport: { width: 1366, height: 860 } })
+await desk.addInitScript(() => {
+  window.__calls = []
+  window.__TAURI_INTERNALS__ = {
+    metadata: { currentWindow: { label: 'main' }, currentWebview: { label: 'main', windowLabel: 'main' } },
+    transformCallback: () => 0,
+    invoke: (cmd, args) => { window.__calls.push([cmd, args]); return Promise.resolve(null) },
+  }
+})
+await desk.goto(`${base}/#/login`)
+await desk.waitForTimeout(900)
+await desk.fill('input[type=email]', 'owner@sdd.company')
+await desk.fill('input[type=password]', 'demo-password')
+await desk.click('button[type=submit]')
+await desk.waitForTimeout(1200)
+await desk.goto(`${base}/#/versions`)
+await desk.waitForTimeout(1300)
+const windowsBefore = desk.context().pages().length
+const external = desk.locator('a[target="_blank"][href^="https://"]').first()
+const href = await external.getAttribute('href').catch(() => null)
+if (href) await external.click()
+await desk.waitForTimeout(600)
+const opened = await desk.evaluate(() => window.__calls.filter(([cmd]) => cmd === 'plugin:opener|open_url').map(([, a]) => a.url))
+check('**البرنامج: رابطُ «الإصدارات» يُسلَّم إلى متصفّح النظام**', !!href && opened.length === 1 && opened[0] === href, `${href} → ${JSON.stringify(opened)}`)
+check('ولا نافذةَ ثانيةً داخل البرنامج', desk.context().pages().length === windowsBefore)
+await desk.close()
+
 await browser.close()
 server.close()
 console.log(failed === 0 ? '\nكلُّ ما قيس أخضر.' : `\n${failed} سقط.`)

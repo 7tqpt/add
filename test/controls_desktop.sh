@@ -4,7 +4,7 @@
 set -uo pipefail
 cd "$(dirname "$0")/.."
 
-FILES="src-tauri/tauri.conf.json src-tauri/capabilities/default.json .github/workflows/desktop.yml"
+FILES="src-tauri/tauri.conf.json src-tauri/capabilities/default.json .github/workflows/desktop.yml src/lib/desktop.ts src/main.tsx"
 BACKUP=$(mktemp -d)
 for f in $FILES; do mkdir -p "$BACKUP/$(dirname "$f")"; cp "$f" "$BACKUP/$f"; done
 restore() { for f in $FILES; do cp "$BACKUP/$f" "$f"; done; }
@@ -27,17 +27,30 @@ open(p, 'w', encoding='utf-8').write(s.replace(old, new, 1))
 PY
 }
 
+# المقياسُ: unit (Vitest) افتراضاً، أو browser (بناءٌ ثمّ dashboard_shots.mjs)
+# بـ`KIND=browser run …`.
 run() {
   local name="$1"; shift
   restore
   if ! "$@"; then echo "✗ $name — لم يقع الكسر"; FAIL=$((FAIL+1)); restore; return; fi
-  local out
-  out=$(npx vitest run test/desktop.test.ts 2>&1)
-  if echo "$out" | grep -qE "Tests +[0-9]+ passed \("; then
+  local out green
+  if [ "${KIND:-unit}" = browser ]; then
+    # بناءٌ يسقط يترك `dist` القديمة فتخضرّ اللقطاتُ على ما لم يُكسر — وقد
+    # خضرّت (ح) هكذا أوّلَ مرّة: حذفُ النداء ترك الاستيرادَ يتيماً فسقط tsc.
+    if ! npm run build >/dev/null 2>&1; then
+      echo "✗ $name — البناءُ سقط، فالمقيسُ نسخةٌ قديمة"; FAIL=$((FAIL+1)); restore; return
+    fi
+    out=$(SHOTS="$BACKUP/shots" node tool/dashboard_shots.mjs 2>&1)
+    echo "$out" | grep -q "كلُّ ما قيس أخضر" && green=1 || green=0
+  else
+    out=$(npx vitest run test/desktop.test.ts 2>&1)
+    echo "$out" | grep -qE "Tests +[0-9]+ passed \(" && green=1 || green=0
+  fi
+  if [ "$green" = 1 ]; then
     echo "✗ $name — الحزمةُ خضراءُ والضمانةُ مكسورة"; FAIL=$((FAIL+1))
   else
     echo "✓ $name — سقط:"
-    echo "$out" | grep -E "^ +×" | sort -u | head -3 | sed 's/^/   /'
+    echo "$out" | grep -E "^ +×|^❌" | sort -u | head -3 | sed 's/^/   /'
     PASS=$((PASS+1))
   fi
   restore
@@ -64,6 +77,17 @@ run "(هـ) الصلاحيةُ بلا نطاقٍ كما كانت" sub src-tauri/
 run "(و) النطاقُ يفتح كلَّ شيء" sub src-tauri/capabilities/default.json \
   '"allow": [{ "url": "https://*" }]' '"allow": [{ "url": "https://*" }, { "url": "file://*" }]'
 
+run "(ز) http يُسلَّم إلى المتصفّح" sub src/lib/desktop.ts \
+  "/^https:\\/\\//i.test(href)" "/^https?:\\/\\//i.test(href)"
+
+KIND=browser run "(ح) الوصلاتُ لا تُوجَّه عند الإقلاع" sub src/main.tsx \
+  "
+routeExternalLinks()
+" "
+void routeExternalLinks
+"
+
 echo
 echo "سقط $PASS — ولم يسقط $FAIL"
+npm run build >/dev/null 2>&1
 [ "$FAIL" = 0 ]
