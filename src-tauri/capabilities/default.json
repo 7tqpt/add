@@ -8,6 +8,9 @@
     "core:window:allow-show",
     "core:window:allow-set-focus",
     "dialog:allow-save",
-    "opener:allow-open-url"
+    {
+      "identifier": "opener:allow-open-url",
+      "allow": [{ "url": "https://*" }]
+    }
   ]
 }

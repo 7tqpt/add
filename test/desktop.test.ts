@@ -37,3 +37,26 @@ describe('برنامجُ سطح المكتب', () => {
     expect(workflow).not.toContain('sdd-dashboard')
   })
 })
+
+describe('فتحُ الروابط من البرنامج', () => {
+  // «مستندات التوثيق لا يمكنني عرضها» — من البرنامج على ويندوز. زرُّ «عرض»
+  // يسلّم الرابطَ إلى `openUrl`، والملحقُ يرفض كلَّ رابطٍ لا يطابق نطاقاً
+  // مسموحاً (`ForbiddenUrl`). وكانت الصلاحيةُ `opener:allow-open-url` وحدها
+  // بلا نطاق، فلا رابطَ يُفتح — ويضيع الرفضُ في `void openExternal(url)`.
+  const capability = JSON.parse(read('src-tauri/capabilities/default.json'))
+  const opener = capability.permissions.find(
+    (p: string | { identifier: string }) =>
+      (typeof p === 'string' ? p : p.identifier) === 'opener:allow-open-url',
+  )
+
+  it('**يفتح روابطَ https — ومنها روابطُ المستندات الموقَّتة**', () => {
+    expect(typeof opener, 'صلاحيةٌ بلا نطاقٍ لا تفتح شيئاً').toBe('object')
+    expect(opener.allow).toContainEqual({ url: 'https://*' })
+  })
+
+  it('ولا يفتح غيرَها — لا http ولا ملفّاتِ الجهاز', () => {
+    expect(opener.allow).toEqual([{ url: 'https://*' }])
+    expect(capability.permissions).not.toContain('opener:default')
+    expect(capability.permissions).not.toContain('opener:allow-default-urls')
+  })
+})

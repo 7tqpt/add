@@ -4,7 +4,7 @@
 set -uo pipefail
 cd "$(dirname "$0")/.."
 
-FILES="src-tauri/tauri.conf.json .github/workflows/desktop.yml"
+FILES="src-tauri/tauri.conf.json src-tauri/capabilities/default.json .github/workflows/desktop.yml"
 BACKUP=$(mktemp -d)
 for f in $FILES; do mkdir -p "$BACKUP/$(dirname "$f")"; cp "$f" "$BACKUP/$f"; done
 restore() { for f in $FILES; do cp "$BACKUP/$f" "$f"; done; }
@@ -54,6 +54,15 @@ run "(ج) النافذةُ باسمها القديم" sub src-tauri/tauri.conf.j
 
 run "(د) المُثبِّتُ باسمه القديم" sub .github/workflows/desktop.yml \
   'cp "$f" "out/farhati-dashboard-' 'cp "$f" "out/sdd-dashboard-'
+
+run "(هـ) الصلاحيةُ بلا نطاقٍ كما كانت" sub src-tauri/capabilities/default.json \
+  '    {
+      "identifier": "opener:allow-open-url",
+      "allow": [{ "url": "https://*" }]
+    }' '    "opener:allow-open-url"'
+
+run "(و) النطاقُ يفتح كلَّ شيء" sub src-tauri/capabilities/default.json \
+  '"allow": [{ "url": "https://*" }]' '"allow": [{ "url": "https://*" }, { "url": "file://*" }]'
 
 echo
 echo "سقط $PASS — ولم يسقط $FAIL"
