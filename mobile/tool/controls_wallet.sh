@@ -6,8 +6,8 @@ set -uo pipefail
 cd "$(dirname "$0")/.."
 command -v flutter >/dev/null || { echo "لا flutter في المسار"; exit 1; }
 
-SUITE="test/wallet_test.dart test/invoice_number_test.dart"
-FILES="lib/src/data/demo.dart lib/src/screens/payment.dart lib/src/screens/wallet.dart lib/src/screens/booking_detail.dart lib/src/data/supabase.dart"
+SUITE="test/wallet_test.dart test/invoice_number_test.dart test/provider_wallet_test.dart"
+FILES="lib/src/data/demo.dart lib/src/screens/payment.dart lib/src/screens/wallet.dart lib/src/screens/booking_detail.dart lib/src/data/supabase.dart lib/src/screens/provider_wallet.dart"
 
 BACKUP=$(mktemp -d)
 for f in $FILES; do mkdir -p "$BACKUP/$(dirname "$f")"; cp "$f" "$BACKUP/$f"; done
@@ -89,6 +89,20 @@ run "(ح) رقمُ الفاتورة لا يُكتب تحت الحجز" sub lib/s
 run "(ط) «Bad state:» قبل الرسالة" sub lib/src/data/supabase.dart \
   "  return text.replaceFirst(RegExp(r'^(Bad state|Exception|StateError): '), '');" \
   "  return text;"
+
+run "(ي) المزوّدُ يسحب إلى حسابٍ لم يُوثَّق" sub lib/src/screens/provider_wallet.dart \
+  "    final canWithdraw = account?.verified == true && !_editing && widget.wallet.balance > 0;" \
+  "    final canWithdraw = account != null && widget.wallet.balance > 0;"
+
+run "(ك) تغييرُ الحساب يُبقيه موثَّقاً" sub lib/src/data/demo.dart \
+  "    method: method, account: account.trim(), holderName: holderName.trim(), status: 'pending'," \
+  "    method: method, account: account.trim(), holderName: holderName.trim(), status: 'verified',"
+
+run "(ل) ما ينتظر التنفيذ لا يُقال" sub lib/src/screens/provider_wallet.dart \
+  "              if (wallet.pending > 0) ...[" "              if (wallet.pending < 0) ...["
+
+run "(م) صافي الحجز بلا اسمه في الحركات" sub lib/src/screens/wallet.dart \
+  "    'earning' => (icon: Icons.event_available_outlined, title: tr('حجزٌ منفَّذ'), color: AppColors.good)," ""
 
 echo
 echo "سقط $PASS — ولم يسقط $FAIL"

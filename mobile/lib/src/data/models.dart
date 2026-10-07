@@ -1759,3 +1759,64 @@ class Wallet {
     ],
   );
 }
+
+/// حسابُ سحب مقدّم الخدمة — يكتبه هو، **ولا يُسحب إليه حتى توثّقه الإدارة**.
+/// وكلُّ تغييرٍ فيه يعيده «بانتظار التوثيق».
+class PayoutAccount {
+  const PayoutAccount({
+    required this.method,
+    required this.account,
+    required this.holderName,
+    required this.status,
+    this.note = '',
+  });
+
+  final String method;
+  final String account;
+  final String holderName;
+
+  /// `pending` أو `verified` أو `rejected`.
+  final String status;
+  final String note;
+
+  bool get verified => status == 'verified';
+
+  factory PayoutAccount.fromMap(Map<String, dynamic> m) => PayoutAccount(
+    method: (m['method'] ?? 'jawali') as String,
+    account: (m['account'] ?? '') as String,
+    holderName: (m['holder_name'] ?? '') as String,
+    status: (m['status'] ?? 'pending') as String,
+    note: (m['note'] ?? '') as String,
+  );
+}
+
+/// «رصيد فرحتي» لمقدّم الخدمة — صافي حجوزاته المنفّذة بعد العمولة.
+class ProviderWallet {
+  const ProviderWallet({
+    required this.balance,
+    required this.pending,
+    required this.entries,
+    this.account,
+  });
+
+  final num balance;
+
+  /// صافي عرابين حجوزاتٍ مؤكَّدةٍ لم تُنفَّذ — يدخل الرصيدَ بالتنفيذ.
+  final num pending;
+  final List<WalletEntry> entries;
+  final PayoutAccount? account;
+
+  static const empty = ProviderWallet(balance: 0, pending: 0, entries: []);
+
+  factory ProviderWallet.fromMap(Map<String, dynamic> m) => ProviderWallet(
+    balance: (m['balance'] ?? 0) as num,
+    pending: (m['pending'] ?? 0) as num,
+    account: m['account'] == null
+        ? null
+        : PayoutAccount.fromMap(Map<String, dynamic>.from(m['account'] as Map)),
+    entries: [
+      for (final e in (m['entries'] as List? ?? const []))
+        WalletEntry.fromMap(Map<String, dynamic>.from(e as Map)),
+    ],
+  );
+}

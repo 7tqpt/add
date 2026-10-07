@@ -13,7 +13,7 @@ import '../ui/kit.dart';
 import '../ui/map_open.dart';
 import 'chat.dart';
 import 'labels.dart';
-import 'money.dart';
+import 'provider_wallet.dart';
 
 class RequestsScreen extends StatefulWidget {
   const RequestsScreen({super.key, required this.session});
@@ -333,18 +333,11 @@ class _DoneBar extends StatelessWidget {
     child: InkWell(
       key: const ValueKey('booking-done'),
       borderRadius: BorderRadius.circular(12),
-      // **وبعنوانٍ وسهمِ رجوعٍ كالبابِ الآخر.** `EarningsScreen` لا تبني
-      // `Scaffold` لنفسها — تُلفّ في «ملفّي» بواحدٍ عنوانُه «مستحقّاتي».
-      // فدفعُها عاريةً يُنزل المزوّدَ في شاشةٍ بلا اسمٍ ولا سهمِ رجوع،
-      // ولا يخرج منها إلّا بزرّ الجهاز. **وبابان إلى شاشةٍ واحدةٍ يجب أن
-      // يفتحاها واحدةً.**
+      // **وإلى «رصيد فرحتي»** — «عند ضغط يروح للمستحقات»، ومستحقُّ الحجز
+      // المنفَّذ صار يدخل الرصيدَ حين يُعتمد التنفيذ (لا تسويةً شهريّة).
+      // والشاشةُ تبني `Scaffold` لنفسها بعنوانٍ وسهمِ رجوع.
       onTap: () => Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (_) => Scaffold(
-            appBar: AppBar(title: Text(tr('مستحقّاتي'))),
-            body: EarningsScreen(session: session),
-          ),
-        ),
+        MaterialPageRoute(builder: (_) => const ProviderWalletScreen()),
       ),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
@@ -363,7 +356,7 @@ class _DoneBar extends StatelessWidget {
               ),
             ),
             Text(
-              tr('مستحقّاتي'),
+              tr('رصيد فرحتي'),
               style: const TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,

@@ -53,7 +53,7 @@ class _WalletScreenState extends State<WalletScreen> {
           child: ListView(
             padding: const EdgeInsets.all(Space.lg),
             children: [
-              _BalanceCard(
+              WalletBalanceCard(
                 balance: wallet.balance,
                 onWithdraw: wallet.balance > 0 ? () => _withdraw(wallet.balance) : null,
               ),
@@ -78,7 +78,7 @@ class _WalletScreenState extends State<WalletScreen> {
                   else
                     for (final (i, entry) in wallet.entries.indexed) ...[
                       if (i > 0) const Divider(height: 1, color: AppColors.hairline),
-                      _EntryRow(entry: entry),
+                      WalletEntryRow(entry: entry),
                     ],
                 ],
               ),
@@ -90,10 +90,13 @@ class _WalletScreenState extends State<WalletScreen> {
   );
 }
 
-class _BalanceCard extends StatelessWidget {
-  const _BalanceCard({required this.balance, required this.onWithdraw});
+class WalletBalanceCard extends StatelessWidget {
+  const WalletBalanceCard({super.key, required this.balance, required this.onWithdraw, this.subtitle});
   final num balance;
   final VoidCallback? onWithdraw;
+
+  /// سطرٌ تحت الرقم — للعميل «تدفع منه حجزك القادم…»، وللمزوّد ما يخصّه.
+  final String? subtitle;
 
   @override
   Widget build(BuildContext context) => HeroCard(
@@ -113,7 +116,7 @@ class _BalanceCard extends StatelessWidget {
       ),
       const SizedBox(height: Space.xs),
       Text(
-        tr('تدفع منه حجزك القادم — أو تسحبه إلى الحساب الذي دفعت منه.'),
+        subtitle ?? tr('تدفع منه حجزك القادم — أو تسحبه إلى الحساب الذي دفعت منه.'),
         style: const TextStyle(color: OnAccent.inkSoft, fontSize: 12, height: 1.6),
       ),
       const SizedBox(height: Space.md),
@@ -129,12 +132,16 @@ class _BalanceCard extends StatelessWidget {
 }
 
 /// حركةٌ: داخلٌ أخضر، وخارجٌ بلون الحبر، ومعلّقٌ بلون الانتظار.
-class _EntryRow extends StatelessWidget {
-  const _EntryRow({required this.entry});
+///
+/// **ومشتركةٌ بين رصيد العميل ورصيد المزوّد**: الحركةُ حركةٌ، وصفّان
+/// متطابقان في شاشتين يفترقان بمرور الوقت.
+class WalletEntryRow extends StatelessWidget {
+  const WalletEntryRow({super.key, required this.entry});
   final WalletEntry entry;
 
   ({IconData icon, String title, Color color}) get _look => switch (entry.kind) {
     'refund' => (icon: Icons.replay_rounded, title: tr('استرجاع'), color: AppColors.good),
+    'earning' => (icon: Icons.event_available_outlined, title: tr('حجزٌ منفَّذ'), color: AppColors.good),
     'withdrawal_reversal' => (
       icon: Icons.undo_rounded,
       title: tr('رُفض السحب — عاد إلى رصيدك'),
