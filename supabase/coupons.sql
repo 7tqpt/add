@@ -564,11 +564,17 @@ begin
     insert into public.invoices (number, booking_id, user_id, provider_id,
                                 subtotal, discount, commission, total)
     values (
-      'INV-' || to_char(now(), 'YYYY') || '-' || upper(substr(replace(gen_random_uuid()::text, '-', ''), 1, 8)),
+      -- **رقمُ الفاتورة يتبع رقمَ الحجز** — طلبُ صاحب المنصّة: «اريد رقم فاتورة
+      -- للكل حجز عشن اقدر اعرف جنب رقم الحجز». فـBK-2026-7F3A21C9 فاتورتُه
+      -- INV-2026-7F3A21C9، وتُعرف الفاتورةُ من الحجز بنظرةٍ ولو خارج النظام.
+      case when booking.reference like 'BK-%' then 'INV-' || substr(booking.reference, 4)
+           else 'INV-' || to_char(now(), 'YYYY') || '-' || upper(substr(replace(gen_random_uuid()::text, '-', ''), 1, 8))
+      end,
       booking.id, booking.user_id, booking.provider_id,
       booking.total_price, booking.discount_amount, booking.commission_amount,
       booking.total_price - booking.discount_amount
-    );
+    )
+    on conflict (number) do nothing;
 
     perform public.notify_user(
       booking.user_id, 'booking', 'تم تأكيد حجزك',
