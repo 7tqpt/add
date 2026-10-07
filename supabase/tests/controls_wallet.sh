@@ -73,12 +73,16 @@ run "(د) الرقمُ لا يُوحَّد (أرقامٌ عربيّة)" sub ../w
   "             coalesce(p_account, '')," 
 
 run "(هـ) السحبُ لا يُحجز من الرصيد" sub ../wallet.sql \
-  "  values (me, -p_amount, 'withdrawal', wd.id, 'طلب سحب ' || wd.reference);" \
-  "  select me, -p_amount, 'withdrawal', wd.id, 'طلب سحب ' || wd.reference where false;"
+  "  insert into public.wallet_entries (user_id, amount, kind, withdrawal_id, note)
+  values (me, -p_amount, 'withdrawal', wd.id, 'طلب سحب ' || wd.reference);" \
+  "  insert into public.wallet_entries (user_id, amount, kind, withdrawal_id, note)
+  select me, -p_amount, 'withdrawal', wd.id, 'طلب سحب ' || wd.reference where false;"
 
 run "(و) رفضُ السحب لا يُعيد المبلغ" sub ../wallet.sql \
-  "    values (wd.user_id, wd.amount, 'withdrawal_reversal', wd.id, 'رُفض طلب السحب ' || wd.reference);" \
-  "    select wd.user_id, wd.amount, 'withdrawal_reversal', wd.id, '' where false;"
+  "  if not p_paid then
+    -- الرفضُ يُعيد" \
+  "  if false then
+    -- الرفضُ يُعيد"
 
 run "(ز) الدفعُ من رصيدٍ لا يكفي" sub ../wallet.sql \
   "  if bal < due then" "  if bal < 0 then"
@@ -96,7 +100,8 @@ run "(ي) رفضُ الاسترجاع لا يُعيده للحجز" sub ../walle
   "  if false then"
 
 run "(ك) الغريبُ يرى الدفتر" sub ../wallet.sql \
-  "  using (user_id = public.current_app_user() or public.can_read_area('finance'));
+  "  using (user_id = public.current_app_user() or provider_id = public.current_provider()
+         or public.can_read_area('finance'));
 
 drop policy if exists wallet_withdrawals_owner_read" \
   "  using (true);
@@ -106,6 +111,35 @@ drop policy if exists wallet_withdrawals_owner_read"
 run "(ل) رقمُ الفاتورة عشوائيٌّ كما كان" sub ../coupons.sql \
   "      case when booking.reference like 'BK-%' then 'INV-' || substr(booking.reference, 4)" \
   "      case when false then ''"
+
+run "(م) التنفيذُ لا يُدخل رصيدَ المزوّد" sub ../wallet.sql \
+  "  if new.status = 'completed' and old.status is distinct from 'completed'" \
+  "  if false and old.status is distinct from 'completed'"
+
+run "(ن) السحبُ إلى حسابٍ لم يُوثَّق" sub ../wallet.sql \
+  "  if acc.status <> 'verified' then" "  if acc.status = 'never' then"
+
+run "(س) تغييرُ الحساب يُبقيه موثَّقاً" sub ../wallet.sql \
+  "        holder_name = excluded.holder_name, status = 'pending', note = ''," \
+  "        holder_name = excluded.holder_name, note = '',"
+
+run "(ع) التسويةُ تحتسب ما دخل الرصيد" sub ../wallet.sql \
+  "       and not exists (select 1 from public.wallet_entries e where e.booking_id = b.id and e.kind = 'earning')" \
+  "       and true"
+
+run "(ف) رفضُ سحب المزوّد لا يعود لرصيده" sub ../wallet.sql \
+  "    values (wd.user_id, wd.provider_id, wd.amount, 'withdrawal_reversal', wd.id," \
+  "    values (wd.user_id, null, wd.amount, 'withdrawal_reversal', wd.id,"
+
+run "(ص) مزوّدٌ يرى حركاتِ غيره" sub ../wallet.sql \
+  "  using (user_id = public.current_app_user() or provider_id = public.current_provider()
+         or public.can_read_area('finance'));
+
+drop policy if exists wallet_withdrawals_owner_read" \
+  "  using (user_id = public.current_app_user() or provider_id is not null
+         or public.can_read_area('finance'));
+
+drop policy if exists wallet_withdrawals_owner_read"
 
 echo
 echo "سقط $PASS — ولم يسقط $FAIL"
