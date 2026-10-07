@@ -19,6 +19,7 @@ import 'package:aras/src/core/theme.dart';
 import 'package:aras/src/data/demo.dart';
 import 'package:aras/src/screens/booking_detail.dart';
 import 'package:aras/src/screens/payment.dart';
+import 'package:aras/src/screens/provider_wallet.dart';
 import 'package:aras/src/screens/wallet.dart';
 
 Future<void> _load(String family, List<String> paths) async {
@@ -94,6 +95,7 @@ void main() {
   tearDown(() {
     demoResetWallet();
     demoResetPayments();
+    demoResetProviderWallet();
   });
 
   testWidgets('رصيد فرحتي', (tester) async {
@@ -134,6 +136,19 @@ void main() {
     await _shoot(tester, 'wallet-real-4-invoice',
         BookingDetailScreen(booking: demoBookings.firstWhere((b) => b.id == 'b1'), session: _session()),
         height: 1100);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('رصيد مقدّم الخدمة', (tester) async {
+    addTearDown(tester.view.reset);
+    await _shoot(tester, 'wallet-real-5-provider', const ProviderWalletScreen(), height: 1640);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('سحب مقدّم الخدمة إلى حسابه الموثَّق', (tester) async {
+    addTearDown(tester.view.reset);
+    await _shoot(tester, 'wallet-real-6-provider-withdraw',
+        ProviderWithdrawScreen(wallet: demoProviderWallet()), height: 1640);
     expect(tester.takeException(), isNull);
   });
 }

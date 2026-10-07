@@ -2369,3 +2369,81 @@ PaymentRow demoPayFromWallet({required String bookingId, required String kind}) 
   demoBookings = [...demoBookings]..[index] = booking.withPaid(booking.paidAmount + due);
   return row;
 }
+
+// ── «رصيد فرحتي» لمقدّم الخدمة ─────────────────────────────────────────────
+//
+// يُحاكي القسمَ ١٣ من `wallet.sql`: الرصيدُ صافي الحجوزات المنفّذة، والسحبُ إلى
+// الحساب المسجَّل الموثَّق وحدَه، وتغييرُ الحساب يعيده «بانتظار التوثيق».
+
+List<WalletEntry> demoProviderEntries = _demoProviderSeed();
+num demoProviderPending = 229500;
+PayoutAccount? demoPayoutAccount = _demoPayoutSeed;
+
+const _demoPayoutSeed = PayoutAccount(
+  method: 'kuraimi', account: '3001234567', holderName: 'مؤسسة الأصالة', status: 'verified',
+);
+
+List<WalletEntry> _demoProviderSeed() => [
+  WalletEntry(
+    id: 'pe3', amount: -300000, kind: 'withdrawal', note: 'طلب سحب WD-2026-0008', createdAt: _at(2),
+    withdrawalReference: 'WD-2026-0008', withdrawalStatus: 'pending', withdrawalMethod: 'kuraimi',
+    withdrawalAccount: '3001234567',
+  ),
+  WalletEntry(
+    id: 'pe2', amount: 765000, kind: 'earning', note: 'حجزٌ منفَّذ — BK-2026-000318', createdAt: _at(50),
+    bookingReference: 'BK-2026-000318',
+  ),
+  WalletEntry(
+    id: 'pe1', amount: 219000, kind: 'earning', note: 'حجزٌ منفَّذ — BK-2026-000244', createdAt: _at(220),
+    bookingReference: 'BK-2026-000244',
+  ),
+];
+
+void demoResetProviderWallet() {
+  demoProviderEntries = _demoProviderSeed();
+  demoProviderPending = 229500;
+  demoPayoutAccount = _demoPayoutSeed;
+}
+
+num get demoProviderBalance => demoProviderEntries.fold<num>(0, (sum, e) => sum + e.amount);
+
+ProviderWallet demoProviderWallet() => ProviderWallet(
+  balance: demoProviderBalance,
+  pending: demoProviderPending,
+  account: demoPayoutAccount,
+  entries: List.of(demoProviderEntries),
+);
+
+PayoutAccount demoSetPayoutAccount({
+  required String method,
+  required String account,
+  required String holderName,
+}) {
+  if (walletNorm(account).length < 6) throw StateError('اكتب رقم الحساب كاملاً');
+  if (holderName.trim().isEmpty) {
+    throw StateError('اكتب اسم صاحب الحساب كما هو عند البنك أو المحفظة');
+  }
+  return demoPayoutAccount = PayoutAccount(
+    method: method, account: account.trim(), holderName: holderName.trim(), status: 'pending',
+  );
+}
+
+WalletEntry demoRequestProviderWithdrawal(num amount) {
+  if (amount <= 0) throw StateError('اكتب مبلغاً أكبر من صفر');
+  final acc = demoPayoutAccount;
+  if (acc == null) throw StateError('سجّل حسابَ السحب أوّلاً — توثّقه الإدارة ثمّ تسحب إليه');
+  if (!acc.verified) throw StateError('حسابُ السحب لم يُوثَّق بعد — تراجعه الإدارة');
+  if (amount > demoProviderBalance) {
+    throw StateError('المبلغ أكبر من رصيدك المتاح (${demoProviderBalance.toStringAsFixed(0)} ريال)');
+  }
+  final n = demoProviderEntries.where((e) => e.kind == 'withdrawal').length + 8;
+  final ref = 'WD-2026-${n.toString().padLeft(4, '0')}';
+  final entry = WalletEntry(
+    id: 'pe${demoProviderEntries.length + 1}', amount: -amount, kind: 'withdrawal',
+    note: 'طلب سحب $ref', createdAt: DateTime.now().toIso8601String(),
+    withdrawalReference: ref, withdrawalStatus: 'pending', withdrawalMethod: acc.method,
+    withdrawalAccount: acc.account,
+  );
+  demoProviderEntries = [entry, ...demoProviderEntries];
+  return entry;
+}

@@ -150,6 +150,12 @@ check('**ورأسُ الجدول بحبرٍ ذهبيّ**', pay.th.length > 0 && 
 check('**والبطاقةُ بيضاءُ بحدٍّ رمليّ لا ورديّ**', pay.panelBg === 'rgb(255, 255, 255)' && pay.panelBorder === 'rgb(235, 218, 205)', `${pay.panelBg} ${pay.panelBorder}`)
 check('ومجرى الأعمدة ذهبيٌّ فاتح', pay.track === 'rgb(243, 231, 211)', pay.track)
 
+// ── «مستحقات الشركاء» سجلٌّ لما قبل الرصيد ───────────────────────────────────
+await page.goto(`${base}/#/settlements`)
+await page.waitForTimeout(1200)
+const settleNote = await page.evaluate(() => document.querySelector('[data-settlements-note]')?.textContent ?? '')
+check('**و«مستحقات الشركاء» تقول إنّها سجلٌّ لما قبل الرصيد**', /رصيد فرحتي/.test(settleNote) && /سجلٌّ/.test(settleNote))
+
 // ── رقمُ الفاتورة تحت رقم الحجز ─────────────────────────────────────────────
 await page.goto(`${base}/#/bookings`)
 await page.waitForTimeout(1400)
@@ -195,6 +201,15 @@ check('**«طلبات السحب» في القائمة**', wd.nav)
 check('**واسترجاعاتٌ بانتظار الاعتماد فوقها**', wd.refunds > 0, `${wd.refunds}`)
 check('**وكلُّ طلبٍ برقمين: ما أدخله العميل وما في سجلّ دفعه، وشارةُ مطابقة**', wd.rows > 0 && wd.both && wd.badges, JSON.stringify(wd))
 check('والجدولُ لا يفيض على شاشة ١٣٦٦', wd.overflow <= 0, `${wd.overflow}px`)
+const prov = await page.evaluate(() => ({
+  accounts: document.querySelectorAll('[data-payout-accounts] tbody tr').length,
+  party: [...document.querySelectorAll('[data-withdrawals] tbody tr')]
+    .filter((r) => r.querySelector('[data-party="provider"]'))
+    .map((r) => r.querySelector('[data-match]')?.getAttribute('data-match')),
+}))
+check('**وحساباتُ سحب المزوّدين تنتظر التوثيق**', prov.accounts > 0, `${prov.accounts}`)
+check('**وطلبُ المزوّد معلَّمٌ ومطابَقٌ بحسابه الموثَّق**', prov.party.length > 0 && prov.party.every((m) => m === 'yes'),
+  JSON.stringify(prov.party))
 
 // الرفضُ بلا سببٍ لا يُضغط، و«حوّلتُ» يُخرج الطلبَ من «بانتظار التحويل».
 const firstRef = await page.locator('[data-withdrawals] tbody tr').first().getAttribute('data-withdrawal')

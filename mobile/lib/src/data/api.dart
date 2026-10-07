@@ -2075,6 +2075,49 @@ class Api {
     return PaymentRow.fromMap(Map<String, dynamic>.from(row as Map));
   }
 
+  // ----- «رصيد فرحتي» لمقدّم الخدمة -----
+  //
+  // القسمُ ١٣ من `wallet.sql`: الرصيدُ صافي الحجوزات المنفّذة، والسحبُ إلى
+  // الحساب المسجَّل الموثَّق وحدَه — والقاعدةُ تردّ ما سواه.
+
+  static Future<ProviderWallet> myProviderWallet() async {
+    if (!isSupabaseConfigured) return demoDelay(demoProviderWallet());
+    try {
+      final row = await db.rpc('api_my_provider_wallet');
+      return ProviderWallet.fromMap(Map<String, dynamic>.from(row as Map));
+    } on PostgrestException catch (e) {
+      if (e.code == undefinedFunction) return ProviderWallet.empty;
+      rethrow;
+    }
+  }
+
+  /// يسجّل حسابَ السحب أو يغيّره — فيصير «بانتظار التوثيق».
+  static Future<PayoutAccount> setPayoutAccount({
+    required String method,
+    required String account,
+    required String holderName,
+  }) async {
+    if (!isSupabaseConfigured) {
+      await demoDelay(null);
+      return demoSetPayoutAccount(method: method, account: account, holderName: holderName);
+    }
+    final row = await db.rpc('api_set_payout_account', params: {
+      'p_method': method,
+      'p_account': account,
+      'p_holder_name': holderName,
+    });
+    return PayoutAccount.fromMap(Map<String, dynamic>.from(row as Map));
+  }
+
+  static Future<void> requestProviderWithdrawal(num amount) async {
+    if (!isSupabaseConfigured) {
+      await demoDelay(null);
+      demoRequestProviderWithdrawal(amount);
+      return;
+    }
+    await db.rpc('api_request_provider_withdrawal', params: {'p_amount': amount});
+  }
+
   // ----- النزاعات -----
   //
   // ولا ملفَّ SQL جديد لها: الجدولان وسياساتُهما ودالّة `api_open_dispute`

@@ -22,7 +22,7 @@ import 'package:aras/src/core/session.dart';
 import 'package:aras/src/core/theme.dart';
 import 'package:aras/src/data/demo.dart';
 import 'package:aras/src/data/models.dart';
-import 'package:aras/src/screens/money.dart';
+import 'package:aras/src/screens/provider_wallet.dart';
 import 'package:aras/src/screens/requests.dart';
 
 Widget _wrap(Widget child) => MaterialApp(
@@ -119,23 +119,22 @@ void main() {
           reason: 'بقي زرُّ المراسلة تحت الشريط في الحجز المنفَّذ');
     });
 
-    testWidgets('**والشريطُ بابٌ إلى «مستحقّاتي»**', (tester) async {
-      // «خلّه قابل للضغط وعند ضغط يروح للمستحقات» — ويُقاس بما فُتح لا
-      // بوجود `InkWell`: غلافٌ يُضغط ولا يذهب إلى شيءٍ يمرّ على الأوّل.
+    testWidgets('**والشريطُ بابٌ إلى «رصيد فرحتي»**', (tester) async {
+      // «خلّه قابل للضغط وعند ضغط يروح للمستحقات» — ومستحقُّ الحجز المنفَّذ
+      // صار يدخل «رصيد فرحتي». ويُقاس بما فُتح لا بوجود `InkWell`.
       _phone(tester);
       await tester.pumpWidget(_wrap(RequestsScreen(session: _provider())));
       await _settle(tester);
 
       await tester.tap(_done);
       await _settle(tester);
-      expect(find.byType(EarningsScreen), findsOneWidget,
+      expect(find.byType(ProviderWalletScreen), findsOneWidget,
           reason: 'ضُغط الشريطُ ولم يُفتح شيء');
     });
 
     testWidgets('**وبعنوانٍ وسهمِ رجوعٍ كالبابِ الآخر**', (tester) async {
-      // `EarningsScreen` لا تبني `Scaffold` لنفسها: تُلفّ في «ملفّي» بواحدٍ
-      // عنوانُه «مستحقّاتي». فدفعُها عاريةً يُنزل المزوّدَ في شاشةٍ بلا
-      // اسمٍ ولا مخرج — وهو ما وقع فعلاً، ورآه صاحبُ المنصّة قبلي.
+      // شاشةٌ تُدفع عاريةً تُنزل المزوّدَ بلا اسمٍ ولا مخرج — وهو ما وقع
+      // فعلاً مع «مستحقّاتي»، ورآه صاحبُ المنصّة قبلي.
       _phone(tester);
       await tester.pumpWidget(_wrap(RequestsScreen(session: _provider())));
       await _settle(tester);
@@ -143,7 +142,7 @@ void main() {
       await tester.tap(_done);
       await _settle(tester);
 
-      expect(find.widgetWithText(AppBar, 'مستحقّاتي'), findsOneWidget,
+      expect(find.widgetWithText(AppBar, 'رصيد فرحتي'), findsOneWidget,
           reason: 'شاشةٌ بلا اسم');
       expect(find.byType(BackButton), findsOneWidget,
           reason: 'لا مخرجَ إلّا زرُّ الجهاز');
@@ -156,7 +155,7 @@ void main() {
       await tester.pumpWidget(_wrap(RequestsScreen(session: _provider())));
       await _settle(tester);
 
-      expect(find.descendant(of: _done, matching: find.text('مستحقّاتي')),
+      expect(find.descendant(of: _done, matching: find.text('رصيد فرحتي')),
           findsOneWidget);
       expect(
         find.descendant(

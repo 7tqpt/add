@@ -231,6 +231,94 @@ const invoice = await one(`select number from public.invoices where booking_id =
 ok('**فاتورةُ BK-… رقمُها INV-… بالذيل نفسِه**', !refused(accepted)
   && invoice?.number === waiting.reference.replace(/^BK-/, 'INV-'), `${waiting.reference} → ${invoice?.number}`)
 
+// ── ٨. رصيدُ مقدّم الخدمة ──────────────────────────────────────────────────
+//
+// «باقي مقدم الخدمة محفظة رصيد فرحتي»: صافي الحجز يدخل حين تعتمد الإدارةُ
+// التنفيذ، ويُسحب إلى حسابٍ مسجَّلٍ وثّقته الإدارة وحدَه.
+const PRV = '44444444-4444-4444-8444-444444444444'
+const PRV2 = '55555555-5555-4555-8555-555555555555'
+await db.exec(`insert into auth.users (id, email) values ('${PRV}', 'p@x.com'), ('${PRV2}', 'p2@x.com')`)
+await as(PRV, `select public.api_register_profile('مزوّد', '+967773333333', 'صنعاء', 'android')`)
+await as(PRV2, `select public.api_register_profile('مزوّدٌ آخر', '+967774444444', 'صنعاء', 'android')`)
+const [prov, prov2] = (await q(`select id from public.service_providers where status = 'verified' order by id limit 2`)).map((r) => r.id)
+await db.query(`update public.service_providers set user_id = (select id from public.app_users where auth_user_id = $1) where id = $2`, [PRV, prov])
+await db.query(`update public.service_providers set user_id = (select id from public.app_users where auth_user_id = $1) where id = $2`, [PRV2, prov2])
+
+/** حجزٌ مؤكَّدٌ للمزوّد: دُفع منه ١٠٠ ألف، والعمولةُ ١٠ آلاف — فالصافي ٩٠ ألفاً. */
+const provBooking = async (i, providerId = prov) => {
+  const b = await booking(i)
+  await db.query(`delete from public.settlement_items where booking_id = $1`, [b.id])
+  await db.query(`update public.bookings set provider_id = $1, paid_amount = 100000, refunded_amount = 0,
+      commission_amount = 10000, event_date = current_date - 1 where id = $2`, [providerId, b.id])
+  return b
+}
+const pwallet = async (auth = PRV) => (await as(auth, `select public.api_my_provider_wallet() w`))[0]?.w
+const pbal = async () => num((await pwallet()).balance)
+
+const pb = await provBooking(0)
+ok('**عربونُ حجزٍ مؤكَّدٍ «ينتظر التنفيذ» بصافيه — ولا يدخل الرصيد**',
+  num((await pwallet()).pending) >= 90000 && (await pbal()) === 0, JSON.stringify(await pwallet()).slice(0, 120))
+
+ok('**ولا يُنهي المزوّدُ حجزَه بنفسه**', refused(await as(PRV, `select public.api_complete_booking($1)`, [pb.id])))
+const done = await as(ADMIN, `select status from public.api_complete_booking($1)`, [pb.id])
+ok('**واعتمادُ الإدارة للتنفيذ يُدخل الصافي رصيدَه — بعد العمولة**', !refused(done) && (await pbal()) === 90000,
+  `${JSON.stringify(done)} ${await pbal()}`)
+ok('ويصله إشعار', Number((await one(`select count(*) n from public.notifications where provider_id = $1 and title = 'دخل رصيدَك صافي حجز'`, [prov])).n) > 0)
+
+await db.query(`update public.bookings set status = 'confirmed', completed_at = null where id = $1`, [pb.id])
+await db.query(`update public.bookings set status = 'completed', completed_at = now() where id = $1`, [pb.id])
+ok('**وحجزٌ يُعاد تنفيذُه لا يدخل مرّتين**', (await pbal()) === 90000)
+
+ok('ولا يرى الآخرُ حركاتِه', Number((await as(PRV2, `select count(*) n from public.wallet_entries where provider_id = $1`, [prov]))[0].n) === 0)
+
+// حسابُ السحب
+const noAcc = await as(PRV, `select * from public.api_request_provider_withdrawal(10000)`)
+ok('**بلا حسابٍ مسجَّلٍ لا سحب**', refused(noAcc) && /سجّل حسابَ السحب/.test(noAcc.error), JSON.stringify(noAcc))
+ok('ولا يسجّل العميلُ حسابَ سحبٍ لمزوّد', refused(await as(C, `select * from public.api_set_payout_account('kuraimi', '3001234567', 'x')`)))
+const setAcc = await as(PRV, `select status from public.api_set_payout_account('kuraimi', '3001234567', 'مؤسسة الأصالة')`)
+ok('والمزوّدُ يسجّله «بانتظار التوثيق»', !refused(setAcc) && setAcc[0].status === 'pending', JSON.stringify(setAcc))
+const unverified = await as(PRV, `select * from public.api_request_provider_withdrawal(10000)`)
+ok('**وقبل توثيقه لا سحب**', refused(unverified) && /لم يُوثَّق/.test(unverified.error), JSON.stringify(unverified))
+ok('ولا يوثّقه هو', refused(await as(PRV, `select * from public.api_admin_verify_payout_account($1, true)`, [prov])))
+const listAcc = await as(ADMIN, `select public.api_admin_payout_accounts('pending') r`)
+ok('والمسؤولُ يراه في قائمة التوثيق', listAcc[0].r.some((a) => a.provider_id === prov), JSON.stringify(listAcc).slice(0, 120))
+await as(ADMIN, `select * from public.api_admin_verify_payout_account($1, true)`, [prov])
+
+const pwd = await as(PRV, `select id, account, provider_id, user_id from public.api_request_provider_withdrawal(50000)`)
+ok('**وبعد توثيقه يُسحب إليه — ويُحجز من الرصيد**', !refused(pwd) && pwd[0].account === '3001234567'
+  && pwd[0].user_id === null && (await pbal()) === 40000, JSON.stringify(pwd))
+ok('ولا بأكثر من رصيده', refused(await as(PRV, `select * from public.api_request_provider_withdrawal(40001)`)))
+const prow = (await as(ADMIN, `select public.api_admin_withdrawals('pending') r`))[0].r.find((r) => r.id === pwd[0].id)
+ok('**واللوحةُ تراه طلبَ مزوّدٍ، و«مطابق» لحسابه الموثَّق**', prow?.party === 'provider' && prow.matched === true
+  && prow.user_name && prow.paid_account === '3001234567', JSON.stringify(prow))
+
+await as(PRV, `select public.api_set_payout_account('jawali', '771000999', 'شخصٌ آخر')`)
+const changed = await as(PRV, `select * from public.api_request_provider_withdrawal(1000)`)
+ok('**وتغييرُ الحساب يعيده «بانتظار التوثيق» فيقف السحب**', refused(changed) && /لم يُوثَّق/.test(changed.error), JSON.stringify(changed))
+const prow2 = (await as(ADMIN, `select public.api_admin_withdrawals('pending') r`))[0].r.find((r) => r.id === pwd[0].id)
+ok('والطلبُ القديمُ صار «غير مطابق» للّوحة', prow2?.matched === false, JSON.stringify(prow2))
+
+await as(ADMIN, `select public.api_admin_decide_withdrawal($1, false, 'الحساب تغيّر')`, [pwd[0].id])
+ok('**ورفضُ سحب المزوّد يُعيد المبلغ إلى رصيده ويُعلمه**', (await pbal()) === 90000
+  && Number((await one(`select count(*) n from public.notifications where provider_id = $1 and title = 'لم يُقبل طلبُ السحب'`, [prov])).n) > 0)
+
+// «مستحقات الشركاء» سجلٌّ لما قبل الرصيد
+await as(ADMIN, `select public.api_admin_build_settlements(current_date - 30, current_date)`)
+ok('**وحجزٌ دخل رصيدَ مزوّده لا يُحتسب في تسوية**',
+  Number((await one(`select count(*) n from public.settlement_items where booking_id = $1`, [pb.id])).n) === 0)
+
+const settle = read('settlements.sql')
+const fromSettle = settle.slice(settle.indexOf('create or replace function public.api_admin_build_settlements('),
+  settle.indexOf('end $$;', settle.indexOf('create or replace function public.api_admin_build_settlements(')))
+const walletSql = read('wallet.sql')
+const fromWallet = walletSql.slice(walletSql.indexOf('create or replace function public.api_admin_build_settlements('),
+  walletSql.indexOf('end $$;', walletSql.indexOf('create or replace function public.api_admin_build_settlements(')))
+const extra = `       -- ما دخل رصيدَ مزوّده لا يُحتسب في تسوية: دُفع له من الرصيد.
+       and not exists (select 1 from public.wallet_entries e where e.booking_id = b.id and e.kind = 'earning')
+`
+ok('**ونسخةُ الاحتساب في wallet.sql هي نسخةُ settlements.sql بسطرها الزائد وحدَه**',
+  fromWallet.replace(extra, '') === fromSettle)
+
 await db.close()
 if (fail) {
   console.log(`\n${fail} سقط.`)

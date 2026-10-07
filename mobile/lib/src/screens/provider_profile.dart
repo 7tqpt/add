@@ -18,6 +18,7 @@ import 'provider_public.dart';
 import 'money.dart';
 import 'subscription.dart';
 import 'support.dart';
+import 'provider_wallet.dart';
 
 class ProviderProfileScreen extends StatefulWidget {
   const ProviderProfileScreen({super.key, required this.session});
@@ -239,8 +240,18 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen> {
                   onTap: () =>
                       _push(tr('اشتراكك'), SubscriptionScreen(session: widget.session)),
                 ),
+                // «رصيد فرحتي»: صافي الحجز يدخله حين يُعتمد التنفيذ، ويُسحب منه.
+                // و«مستحقّاتي» بعده سجلٌّ لما قبل الرصيد.
                 MenuRow(
+                  key: const ValueKey('menu-provider-wallet'),
                   icon: Icons.account_balance_wallet_outlined,
+                  label: tr('رصيد فرحتي'),
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const ProviderWalletScreen()),
+                  ),
+                ),
+                MenuRow(
+                  icon: Icons.receipt_long_outlined,
                   label: tr('مستحقّاتي'),
                   onTap: () =>
                       _push(tr('مستحقّاتي'), EarningsScreen(session: widget.session)),
