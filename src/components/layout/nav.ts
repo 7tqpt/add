@@ -18,6 +18,7 @@ import {
   Smartphone,
   Star,
   Users,
+  Wallet,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -70,6 +71,8 @@ export const NAV_GROUPS: NavGroup[] = [
     label: 'المالية',
     items: [
       { to: '/payments', label: 'عمليات الدفع', icon: CreditCard, area: 'finance', tone: 'emerald' },
+      // «رصيد فرحتي»: استرجاعاتٌ تنتظر الاعتماد، وطلباتُ سحبٍ تُطابَق بسجلّ الدفع.
+      { to: '/withdrawals', label: 'طلبات السحب', icon: Wallet, area: 'finance', tone: 'emerald' },
       { to: '/settlements', label: 'مستحقات الشركاء', icon: Banknote, area: 'finance', tone: 'emerald' },
       { to: '/promotions', label: 'الاشتراكات والإعلانات', icon: Megaphone, area: 'finance', tone: 'emerald' },
       // مع المالية لا مع التسويق: الكوبون **مصروف** يُخصم من عمولة المنصّة،

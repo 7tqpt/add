@@ -150,6 +150,67 @@ check('**ورأسُ الجدول بحبرٍ ذهبيّ**', pay.th.length > 0 && 
 check('**والبطاقةُ بيضاءُ بحدٍّ رمليّ لا ورديّ**', pay.panelBg === 'rgb(255, 255, 255)' && pay.panelBorder === 'rgb(235, 218, 205)', `${pay.panelBg} ${pay.panelBorder}`)
 check('ومجرى الأعمدة ذهبيٌّ فاتح', pay.track === 'rgb(243, 231, 211)', pay.track)
 
+// ── رقمُ الفاتورة تحت رقم الحجز ─────────────────────────────────────────────
+await page.goto(`${base}/#/bookings`)
+await page.waitForTimeout(1400)
+const inv = await page.evaluate(() => {
+  const rows = [...document.querySelectorAll('tbody tr')].filter((r) => r.querySelector('a[href*="#/bookings/"]'))
+  const confirmed = rows.filter((r) => /مؤكد/.test(r.innerText))
+  const waiting = rows.filter((r) => /بانتظار مقدّم الخدمة/.test(r.innerText))
+  const pair = (r) => [r.querySelector('a[href*="#/bookings/"]')?.textContent.trim(), r.querySelector('[data-invoice]')?.textContent.trim()]
+  return {
+    confirmed: confirmed.map(pair),
+    waiting: waiting.map(pair),
+    link: confirmed[0]?.querySelector('a[href*="#/bookings/"]')?.getAttribute('href'),
+  }
+})
+check('**كلُّ حجزٍ مؤكَّدٍ تحته فاتورتُه بذيل رقمه**', inv.confirmed.length > 0
+  && inv.confirmed.every(([ref, line]) => line === ref.replace(/^BK-/, 'INV-')), JSON.stringify(inv.confirmed.slice(0, 2)))
+check('وما ينتظر المزوّد: «تصدر عند التأكيد»', inv.waiting.length > 0
+  && inv.waiting.every(([, line]) => line === 'الفاتورة: تصدر عند التأكيد'), JSON.stringify(inv.waiting.slice(0, 1)))
+await page.goto(`${base}/${inv.link}`)
+await page.waitForTimeout(1300)
+await page.screenshot({ path: `${out}/09-booking-invoice.png` })
+const head = await page.evaluate(() => document.querySelector('h2 [data-invoice]')?.textContent ?? '')
+check('**وفي صفحة الحجز: «رقم الفاتورة» تحت رقمه**', /رقم الفاتورة\s*INV-/.test(head), head)
+
+// ── «طلبات السحب» — الرقمان معاً، والقرارُ يصل ─────────────────────────────
+await page.goto(`${base}/#/withdrawals`)
+await page.waitForTimeout(1500)
+await page.mouse.move(5, 5)
+await page.screenshot({ path: `${out}/08-withdrawals.png` })
+const wd = await page.evaluate(() => {
+  const rows = [...document.querySelectorAll('[data-withdrawals] tbody tr')]
+  const wrap = document.querySelector('[data-withdrawals]')?.parentElement
+  return {
+    nav: [...document.querySelectorAll('[data-sidebar] a')].some((a) => a.textContent.includes('طلبات السحب')),
+    refunds: document.querySelectorAll('[data-refunds] tbody tr').length,
+    rows: rows.length,
+    both: rows.every((r) => r.querySelector('[data-entered]')?.textContent.trim() && r.querySelector('[data-paid-account]')?.textContent.trim()),
+    badges: rows.every((r) => r.querySelector('[data-match]')),
+    overflow: wrap ? wrap.scrollWidth - wrap.clientWidth : -1,
+  }
+})
+check('**«طلبات السحب» في القائمة**', wd.nav)
+check('**واسترجاعاتٌ بانتظار الاعتماد فوقها**', wd.refunds > 0, `${wd.refunds}`)
+check('**وكلُّ طلبٍ برقمين: ما أدخله العميل وما في سجلّ دفعه، وشارةُ مطابقة**', wd.rows > 0 && wd.both && wd.badges, JSON.stringify(wd))
+check('والجدولُ لا يفيض على شاشة ١٣٦٦', wd.overflow <= 0, `${wd.overflow}px`)
+
+// الرفضُ بلا سببٍ لا يُضغط، و«حوّلتُ» يُخرج الطلبَ من «بانتظار التحويل».
+const firstRef = await page.locator('[data-withdrawals] tbody tr').first().getAttribute('data-withdrawal')
+await page.locator('[data-withdrawals] tbody tr').first().getByRole('button', { name: 'رفض' }).click()
+await page.waitForTimeout(300)
+const rejectDisabled = await page.locator('dialog[open]').getByRole('button', { name: 'رفض الطلب' }).isDisabled()
+check('**ورفضُ السحب بلا سببٍ لا يُضغط**', rejectDisabled)
+await page.locator('dialog[open]').getByRole('button', { name: 'إلغاء' }).click()
+await page.waitForTimeout(300)
+await page.locator('[data-withdrawals] tbody tr').first().getByRole('button', { name: 'حوّلتُ المبلغ' }).click()
+await page.waitForTimeout(300)
+await page.locator('dialog[open]').getByRole('button', { name: 'حوّلتُ' }).click()
+await page.waitForTimeout(1200)
+const still = await page.locator(`[data-withdrawals] tbody tr[data-withdrawal="${firstRef}"]`).count()
+check('و«حوّلتُ المبلغ» يُخرجه من قائمة الانتظار', still === 0, `${firstRef} ${still}`)
+
 const phone = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 })
 await phone.goto(`${base}/#/`)
 await phone.waitForTimeout(1300)

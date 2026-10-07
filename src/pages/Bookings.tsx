@@ -16,6 +16,7 @@ import { mockCategories } from '@/data/mock'
 import {
   approveCompletion,
   BOOKING_STATUS_LABEL,
+  invoiceLine,
   listBookings,
   rejectCompletion,
   type BookingFilter,
@@ -329,6 +330,19 @@ export function BookingsPage() {
                       >
                         {booking.reference}
                       </Link>
+                      {/* رقمُ الفاتورة تحت رقم الحجز — ذيلُهما واحد، فيُعرف أحدُهما من الآخر. */}
+                      {invoiceLine(booking) ? (
+                        <span
+                          data-invoice
+                          dir={booking.invoice_number ? 'ltr' : 'rtl'}
+                          className={cn(
+                            'tnum mt-0.5 block text-start text-[11px] whitespace-nowrap',
+                            booking.invoice_number ? 'text-gold-ink' : 'text-muted',
+                          )}
+                        >
+                          {invoiceLine(booking)}
+                        </span>
+                      ) : null}
                     </td>
                     <td className="px-4 py-3 text-xs whitespace-nowrap text-ink-2">
                       {booking.user_name}
