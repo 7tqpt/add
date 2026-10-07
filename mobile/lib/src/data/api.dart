@@ -2026,6 +2026,55 @@ class Api {
     return PaymentRow.fromMap(Map<String, dynamic>.from(row as Map));
   }
 
+  // ----- «رصيد فرحتي» -----
+  //
+  // `supabase/wallet.sql`. والقاعدةُ هي التي تحسب الرصيدَ وتطابق رقمَ السحب
+  // وتقرّر أنّ الرصيدَ يكفي — وما هنا يسأل ويعرض.
+
+  /// رصيدي وحركاتُه. **وقاعدةٌ لم يُلصق عليها `wallet.sql` رصيدُها صفر**: تنقص
+  /// الميزةُ ولا تسقط شاشةُ الدفع.
+  static Future<Wallet> myWallet() async {
+    if (!isSupabaseConfigured) return demoDelay(demoWallet());
+    try {
+      final row = await db.rpc('api_my_wallet');
+      return Wallet.fromMap(Map<String, dynamic>.from(row as Map));
+    } on PostgrestException catch (e) {
+      if (e.code == undefinedFunction) return Wallet.empty;
+      rethrow;
+    }
+  }
+
+  /// طلبُ سحبٍ إلى الحساب الذي دفع منه العميل — وإلّا ردّته القاعدة.
+  static Future<void> requestWithdrawal({
+    required num amount,
+    required String method,
+    required String account,
+  }) async {
+    if (!isSupabaseConfigured) {
+      await demoDelay(null);
+      demoRequestWithdrawal(amount: amount, method: method, account: account);
+      return;
+    }
+    await db.rpc('api_request_withdrawal', params: {
+      'p_amount': amount,
+      'p_method': method,
+      'p_account': account,
+    });
+  }
+
+  /// الدفعُ من الرصيد — يتأكّد فوراً. والمبلغُ يحسبه الخادمُ من الحجز.
+  static Future<PaymentRow> payFromWallet({required String bookingId, String kind = 'deposit'}) async {
+    if (!isSupabaseConfigured) {
+      await demoDelay(null);
+      return demoPayFromWallet(bookingId: bookingId, kind: kind);
+    }
+    final row = await db.rpc('api_pay_from_wallet', params: {
+      'p_booking_id': bookingId,
+      'p_kind': kind,
+    });
+    return PaymentRow.fromMap(Map<String, dynamic>.from(row as Map));
+  }
+
   // ----- النزاعات -----
   //
   // ولا ملفَّ SQL جديد لها: الجدولان وسياساتُهما ودالّة `api_open_dispute`
@@ -2270,6 +2319,21 @@ class Api {
           .order('issued_at', ascending: false)
           .limit(60);
       return rows.map(Invoice.fromMap).toList();
+    }
+  }
+
+  /// رقمُ فاتورة حجزٍ بعينه، أو `null` إن لم تصدر — تصدر بتأكيد المزوّد.
+  ///
+  /// **وفشلُه صامت**: سطرٌ تحت رقم الحجز لا يُسقط صفحةَ الحجز.
+  static Future<String?> invoiceNumberOf(String bookingId) async {
+    if (!isSupabaseConfigured) {
+      return demoDelay(demoInvoices.where((i) => i.bookingId == bookingId).firstOrNull?.number);
+    }
+    try {
+      final row = await db.from('invoices').select('number').eq('booking_id', bookingId).maybeSingle();
+      return row?['number'] as String?;
+    } on PostgrestException {
+      return null;
     }
   }
 

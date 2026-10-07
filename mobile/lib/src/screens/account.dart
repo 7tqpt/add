@@ -19,6 +19,7 @@ import 'favourites.dart';
 import 'edit_profile.dart';
 import 'money.dart';
 import 'support.dart';
+import 'wallet.dart';
 
 class AccountScreen extends StatefulWidget {
   const AccountScreen({super.key, required this.session});
@@ -186,6 +187,14 @@ class _AccountScreenState extends State<AccountScreen> {
                         builder: (_) => BecomeProviderScreen(session: session),
                       ),
                     ),
+            ),
+            // «رصيد فرحتي»: ما يُسترجع من حجزٍ مُلغًى يدخله، فيُدفع منه أو يُسحب.
+            MenuRow(
+              key: const ValueKey('menu-wallet'),
+              icon: Icons.account_balance_wallet_outlined,
+              label: tr('رصيد فرحتي'),
+              onTap: () => Navigator.of(context)
+                  .push(MaterialPageRoute(builder: (_) => const WalletScreen())),
             ),
             MenuRow(
               icon: Icons.receipt_long_outlined,

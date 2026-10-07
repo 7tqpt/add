@@ -11,6 +11,7 @@ import '../data/supabase.dart';
 import '../ui/kit.dart';
 import 'account_extras.dart';
 import 'support.dart';
+import 'wallet.dart';
 
 /// دفعُ عربون الحجز أو باقيه.
 ///
@@ -48,6 +49,9 @@ class PaymentScreen extends StatefulWidget {
 class _PaymentScreenState extends State<PaymentScreen> {
   late Future<PaymentSettings> _settings;
   late Future<List<PaymentRow>> _payments;
+  late Future<Wallet> _wallet;
+  bool _walletBusy = false;
+  String? _walletError;
   final _senderRef = TextEditingController();
   String? _method;
   bool _busy = false;
@@ -66,13 +70,14 @@ class _PaymentScreenState extends State<PaymentScreen> {
     super.initState();
     _settings = Api.paymentSettings();
     _payments = Api.bookingPayments(widget.booking.id);
+    _wallet = Api.myWallet();
     _fillDefaultWallet();
   }
 
   /// يملأ الرقم من المحفظة الافتراضية إن وُجدت.
   ///
-  /// **وفشلُه صامتٌ عمداً:** الحقلُ اختياريٌّ أصلاً، وشاشةُ خطأٍ عن دفترِ
-  /// محافظَ لم يُقرأ تمنع صاحبها من الإبلاغ بحوالةٍ دفعها فعلاً.
+  /// **وفشلُه صامتٌ عمداً:** يكتب صاحبُ الحوالة رقمَه بيده، وشاشةُ خطأٍ عن
+  /// دفترِ محافظَ لم يُقرأ تمنعه من الإبلاغ بحوالةٍ دفعها فعلاً.
   Future<void> _fillDefaultWallet() async {
     try {
       final saved = await Api.myPaymentMethods();
@@ -113,6 +118,12 @@ class _PaymentScreenState extends State<PaymentScreen> {
       setState(() => _error = tr('اختر الوسيلة التي حوّلت بها.'));
       return;
     }
+    // **ورقمُ المحوِّل صار إجباريّاً** — إليه يُرجَع أيُّ استرجاع، ولا يُسحب
+    // «رصيد فرحتي» إلّا إليه (`wallet.sql`). والقاعدةُ تردّه كذلك.
+    if (walletDigits(_senderRef.text).length < 6) {
+      setState(() => _error = tr('اكتب رقم الحساب الذي حوّلت منه — إليه يُرجَع أيُّ مبلغٍ تسترجعه.'));
+      return;
+    }
     setState(() {
       _error = null;
       _busy = true;
@@ -135,6 +146,24 @@ class _PaymentScreenState extends State<PaymentScreen> {
     }
   }
 
+  /// الدفعُ من «رصيد فرحتي» — يتأكّد فوراً، فتُغلق الشاشةُ ويُحدَّث الحجز.
+  Future<void> _payFromWallet() async {
+    setState(() {
+      _walletError = null;
+      _walletBusy = true;
+    });
+    try {
+      await Api.payFromWallet(bookingId: widget.booking.id, kind: widget.kind);
+      if (!mounted) return;
+      showMessage(context, tr('دُفع من رصيدك — تأكّد الدفعُ على حجزك.'));
+      Navigator.of(context).pop(true);
+    } catch (e) {
+      if (mounted) setState(() => _walletError = messageOf(e));
+    } finally {
+      if (mounted) setState(() => _walletBusy = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -146,6 +175,25 @@ class _PaymentScreenState extends State<PaymentScreen> {
           const SizedBox(height: Space.md),
           _Pending(future: _payments, onRetry: _reload),
           const SizedBox(height: Space.md),
+          // **«رصيد فرحتي» فوق التحويل** — من له رصيدٌ يدفع منه فيتأكّد حجزه
+          // فوراً. ومن لا رصيدَ له لا يُرسم له شيء.
+          FutureBuilder<Wallet>(
+            future: _wallet,
+            builder: (context, snap) {
+              final balance = snap.data?.balance ?? 0;
+              if (balance <= 0) return const SizedBox.shrink();
+              return Padding(
+                padding: const EdgeInsets.only(bottom: Space.md),
+                child: _FromBalance(
+                  balance: balance,
+                  due: _due,
+                  busy: _walletBusy,
+                  error: _walletError,
+                  onPay: _payFromWallet,
+                ),
+              );
+            },
+          ),
           FutureBuilder<PaymentSettings>(
             future: _settings,
             builder: (context, snap) {
@@ -171,8 +219,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
                       SectionTitle(tr('أبلغنا بالحوالة')),
                       const SizedBox(height: Space.sm),
                       Text(
-                        tr('بعد التحويل اكتب الرقم الذي حوّلت منه — يُسرّع مطابقة '
-                            'حوالتك في كشف الحساب.'),
+                        tr('بعد التحويل اكتب رقم الحساب الذي حوّلت منه — به تُطابَق '
+                            'حوالتُك، وإليه يُرجَع أيُّ مبلغٍ تسترجعه.'),
                         style: const TextStyle(height: 1.7, fontSize: 13),
                       ),
                       const SizedBox(height: Space.md),
@@ -184,7 +232,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
                         keyboardType: TextInputType.text,
                         textDirection: TextDirection.ltr,
                         decoration: InputDecoration(
-                          labelText: tr('رقمك أو رقم عملية التحويل (اختياري)'),
+                          labelText: tr('رقم الحساب الذي حوّلت منه'),
+                          helperText: tr('إليه يُرجَع أيُّ مبلغٍ تسترجعه.'),
                           hintText: '77xxxxxxx',
                           suffixIcon: IconButton(
                             tooltip: tr('من محافظي'),
@@ -224,6 +273,68 @@ class _PaymentScreenState extends State<PaymentScreen> {
           const SizedBox(height: Space.xl),
         ],
       ),
+    );
+  }
+}
+
+/// «ادفع من رصيد فرحتي» — صورةُ صاحب المنصّة الثالثة.
+///
+/// **ولا يُدفع جزءٌ**: رصيدٌ لا يغطّي المستحقَّ يُقال له ذلك، ويبقى له التحويل.
+class _FromBalance extends StatelessWidget {
+  const _FromBalance({
+    required this.balance,
+    required this.due,
+    required this.busy,
+    required this.error,
+    required this.onPay,
+  });
+  final num balance;
+  final num due;
+  final bool busy;
+  final String? error;
+  final VoidCallback onPay;
+
+  @override
+  Widget build(BuildContext context) {
+    final enough = balance >= due && due > 0;
+    return AppCard(
+      key: const ValueKey('pay-from-balance'),
+      children: [
+        Row(
+          children: [
+            const Icon(Icons.account_balance_wallet_outlined, size: 20, color: AppColors.gold),
+            const SizedBox(width: 8),
+            Expanded(child: SectionTitle(tr('ادفع من رصيد فرحتي'))),
+          ],
+        ),
+        const SizedBox(height: Space.xs),
+        KeyValue(tr('رصيدك'), formatMoney(balance)),
+        const Divider(height: 1, color: AppColors.hairline),
+        if (enough)
+          KeyValue(tr('يبقى بعد الدفع'), formatMoney(balance - due))
+        else
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: Space.sm),
+            child: Muted(
+              trf('رصيدك لا يغطّي {0} — حوّل المبلغ وأبلغ الإدارة.', [formatMoney(due)]),
+              size: 12,
+            ),
+          ),
+        if (error != null) ...[
+          const SizedBox(height: Space.sm),
+          Text(error!, style: const TextStyle(color: AppColors.critical, fontSize: 13, height: 1.7)),
+        ],
+        const SizedBox(height: Space.md),
+        FilledButton(
+          key: const ValueKey('pay-from-balance-button'),
+          onPressed: enough && !busy ? onPay : null,
+          child: busy
+              ? const ButtonSpinner()
+              : Text(trf('ادفع {0} من رصيدك', [formatMoney(due)])),
+        ),
+        const SizedBox(height: Space.sm),
+        Muted(tr('يتأكّد الدفعُ على حجزك فوراً — بلا انتظار الإدارة.'), size: 11),
+      ],
     );
   }
 }

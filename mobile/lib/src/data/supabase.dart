@@ -193,5 +193,7 @@ String messageOf(Object error) {
     final body = message.group(1)!.replaceAll(r'\"', '"');
     if (body.trim().isNotEmpty) return body;
   }
-  return text;
+  // **ولا تُعرض بادئةُ Dart.** `StateError` يُكتب «Bad state: …» قبل الرسالة
+  // العربيّة، فخرجت «Bad state: اسحب إلى الحساب…» على شاشة السحب.
+  return text.replaceFirst(RegExp(r'^(Bad state|Exception|StateError): '), '');
 }

@@ -81,9 +81,14 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
   /// فيختفي زرُّه بلا انتظار قراءةٍ جديدة.
   late bool _reviewed = widget.reviewed;
 
+  /// رقمُ الفاتورة تحت رقم الحجز — «اريد رقم فاتورة للكل حجز عشن اقدر اعرف
+  /// جنب رقم الحجز». ويُعاد طلبُه إن تبدّل الحجز، للسبب الذي فوق.
+  late Future<String?> _invoice = Api.invoiceNumberOf(_b.id);
+
   @override
   void didUpdateWidget(BookingDetailScreen old) {
     super.didUpdateWidget(old);
+    if (widget.booking.id != old.booking.id) _invoice = Api.invoiceNumberOf(_b.id);
     // ولو جاء الجوابُ من فوقُ أنّه قُيّم أو أنّ له نزاعاً، أُخذ به.
     if (widget.reviewed != old.reviewed) _reviewed = widget.reviewed;
     if (widget.dispute != old.dispute) _dispute = widget.dispute;
@@ -418,6 +423,27 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                   ltr: true,
                   onTap: _copyReference,
                 ),
+              ),
+              // ── ورقمُ الفاتورة تحته — ذيلُهما واحد ─────────────────────────
+              FutureBuilder<String?>(
+                future: _invoice,
+                builder: (context, snap) {
+                  final number = snap.data;
+                  final waiting = _b.status == BookingStatus.pendingProvider;
+                  if (number == null && !waiting) return const SizedBox.shrink();
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Align(
+                      alignment: AlignmentDirectional.centerStart,
+                      child: _HeadFact(
+                        key: const ValueKey('booking-invoice'),
+                        icon: Icons.receipt_long_outlined,
+                        value: number ?? tr('الفاتورة: تصدر عند التأكيد'),
+                        ltr: number != null,
+                      ),
+                    ),
+                  );
+                },
               ),
             ],
           ),
@@ -783,6 +809,7 @@ class _HeadChip extends StatelessWidget {
 /// حقيقةٌ في صفّ الرأس: أيقونةٌ ذهبيّةٌ وقيمةٌ بيضاء، وقد تُضغط.
 class _HeadFact extends StatelessWidget {
   const _HeadFact({
+    super.key,
     required this.icon,
     required this.value,
     this.ltr = false,
