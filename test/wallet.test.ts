@@ -6,7 +6,16 @@ import { readFileSync } from 'node:fs'
 
 import { describe, expect, it } from 'vitest'
 
-import { decideRefund, decideWithdrawal, normalizeAccount, type PendingRefund, type Withdrawal } from '../src/services/wallet'
+import {
+  decideRefund,
+  decideWithdrawal,
+  listWithdrawals,
+  normalizeAccount,
+  verifyPayoutAccount,
+  type PayoutAccount,
+  type PendingRefund,
+  type Withdrawal,
+} from '../src/services/wallet'
 
 const sql = readFileSync(new URL('../supabase/wallet.sql', import.meta.url), 'utf8')
 
@@ -30,7 +39,7 @@ describe('توحيدُ رقم الحساب', () => {
 })
 
 const withdrawal: Withdrawal = {
-  id: 'wd_7', reference: 'WD-2026-0007', amount: 120000, method: 'jawali', account: '777 123 456',
+  id: 'wd_7', reference: 'WD-2026-0007', party: 'customer', amount: 120000, method: 'jawali', account: '777 123 456',
   status: 'pending', note: '', created_at: '', decided_at: null, user_name: 'x', user_phone: null,
   paid_reference: null, paid_account: '777 123 456', paid_method: 'jawali', paid_booking: null, matched: true,
 }
@@ -48,5 +57,24 @@ describe('قراراتُ المسؤول', () => {
     await expect(decideRefund(refund, true, 170001)).rejects.toThrow(/بين ريالٍ/)
     await expect(decideRefund(refund, true, 0)).rejects.toThrow(/بين ريالٍ/)
     await expect(decideRefund(refund, false, null, '')).rejects.toThrow(/سبب الرفض/)
+  })
+})
+
+describe('مقدّمُ الخدمة', () => {
+  const account: PayoutAccount = {
+    provider_id: 'prv_9', provider_name: 'x', owner_name: 'y', provider_phone: '', method: 'jawali',
+    account: '771234500', holder_name: 'z', status: 'pending', note: '', updated_at: '',
+  }
+
+  it('**رفضُ حساب السحب بلا سببٍ لا يُرسل** — يصل المزوّدَ ليصحّح', async () => {
+    await expect(verifyPayoutAccount(account, false, ' ')).rejects.toThrow(/سبب الرفض/)
+  })
+
+  it('**وطلبُ المزوّد يُعرف من طلب العميل**', async () => {
+    const rows = await listWithdrawals('pending')
+    const provider = rows.find((r) => r.party === 'provider')
+    expect(provider?.paid_reference).toBe('حساب مسجَّل')
+    expect(provider?.matched).toBe(true)
+    expect(rows.some((r) => r.party === 'customer')).toBe(true)
   })
 })

@@ -13,10 +13,13 @@ import { errorText } from '@/services/base'
 import {
   decideRefund,
   decideWithdrawal,
+  listPayoutAccounts,
   listPendingRefunds,
   listWithdrawals,
+  verifyPayoutAccount,
   WITHDRAWAL_METHOD_LABEL,
   WITHDRAWAL_STATUS_LABEL,
+  type PayoutAccount,
   type PendingRefund,
   type Withdrawal,
   type WithdrawalStatus,
@@ -39,6 +42,8 @@ export function WithdrawalsPage() {
   const [toast, setToast] = useState<string | null>(null)
 
   const refunds = useAsync(listPendingRefunds, [])
+  const accounts = useAsync(listPayoutAccounts, [])
+  const [accountAction, setAccountAction] = useState<{ account: PayoutAccount; approve: boolean } | null>(null)
   const withdrawals = useAsync(() => listWithdrawals(status), [status])
 
   const [refundAction, setRefundAction] = useState<{ refund: PendingRefund; approve: boolean } | null>(null)
@@ -81,6 +86,32 @@ export function WithdrawalsPage() {
       )
       setRefundAction(null)
       refunds.reload()
+    } catch (cause) {
+      setDialogError(errorText(cause, 'تعذّر تنفيذ الإجراء.'))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  function openAccount(account: PayoutAccount, approve: boolean) {
+    setAccountAction({ account, approve })
+    setNote('')
+    setDialogError(null)
+  }
+
+  async function confirmAccount() {
+    if (!accountAction) return
+    setBusy(true)
+    setDialogError(null)
+    try {
+      await verifyPayoutAccount(accountAction.account, accountAction.approve, note)
+      setToast(
+        accountAction.approve
+          ? `وُثّق حسابُ ${accountAction.account.provider_name} — صار يسحب إليه.`
+          : `رُفض حسابُ ${accountAction.account.provider_name} ووصله السبب.`,
+      )
+      setAccountAction(null)
+      accounts.reload()
     } catch (cause) {
       setDialogError(errorText(cause, 'تعذّر تنفيذ الإجراء.'))
     } finally {
@@ -166,6 +197,55 @@ export function WithdrawalsPage() {
         )}
       </Card>
 
+      {/* حساباتُ سحب مقدّمي الخدمة — لا يُسحب إلى حسابٍ حتى يُوثَّق هنا،
+          وكلُّ تغييرٍ فيه يعيده إلى هذه القائمة. */}
+      {accounts.data && accounts.data.length > 0 ? (
+        <Card className={cn('overflow-hidden', accounts.refetching && 'is-refetching')}>
+          <CardHeader
+            title="حساباتُ سحبٍ تنتظر التوثيق"
+            subtitle="سجّلها مقدّمو الخدمة لسحب رصيدهم — تحقّق أنّ الاسم اسمُ صاحب الحساب قبل التوثيق"
+          />
+          <div className="overflow-x-auto">
+            <table data-payout-accounts className="w-full border-collapse text-sm">
+              <thead>
+                <tr className="glass-item">
+                  {['مقدّم الخدمة', 'الحساب', 'باسم', 'الإجراء'].map((h) => (
+                    <th key={h} scope="col" className={TH}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {accounts.data.map((account) => (
+                  <tr key={account.provider_id} className="glass-row border-b border-hairline last:border-0">
+                    <td className={TD}>
+                      <span className="font-medium text-ink">{account.provider_name}</span>
+                      <span className="block text-[11px] text-muted">{account.owner_name} · {formatDate(account.updated_at)}</span>
+                    </td>
+                    <td className={TD}>
+                      {WITHDRAWAL_METHOD_LABEL[account.method]}{' '}
+                      <span dir="ltr" className="tnum font-semibold text-ink">{account.account}</span>
+                    </td>
+                    <td className={TD}>{account.holder_name}</td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <div className="flex items-center gap-2">
+                        <Button size="sm" variant="primary" disabled={!canWrite} title={readOnly}
+                          onClick={() => openAccount(account, true)}>
+                          توثيق
+                        </Button>
+                        <Button size="sm" variant="secondary" disabled={!canWrite} title={readOnly}
+                          onClick={() => openAccount(account, false)}>
+                          رفض
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      ) : null}
+
       <Card className={cn('overflow-hidden', withdrawals.refetching && 'is-refetching')}>
         <CardHeader
           title="طلباتُ سحب «رصيد فرحتي»"
@@ -209,9 +289,11 @@ export function WithdrawalsPage() {
                     </td>
                     <td className={TD}>
                       {w.user_name ?? '—'}
-                      {w.paid_booking ? (
-                        <span dir="ltr" className="block text-[11px] text-muted">{w.paid_booking}</span>
-                      ) : null}
+                      <span data-party={w.party} className="block text-[11px] text-muted">
+                        {w.party === 'provider' ? 'مقدّم خدمة — إلى حسابه الموثَّق' : (
+                          <span dir="ltr">{w.paid_booking ?? 'عميل'}</span>
+                        )}
+                      </span>
                     </td>
                     <td className={cn(TD, 'tnum font-semibold text-ink')}>{formatMoney(w.amount)}</td>
                     <td className={TD}>
@@ -300,6 +382,29 @@ export function WithdrawalsPage() {
         <Field label={withdrawalAction?.paid ? 'رقم عملية التحويل (اختياريّ)' : 'سبب الرفض'}>
           {(id) => <Input id={id} value={note} onChange={(event) => setNote(event.target.value)} />}
         </Field>
+      </ConfirmDialog>
+
+      <ConfirmDialog
+        open={accountAction !== null}
+        tone={accountAction?.approve ? 'primary' : 'danger'}
+        title={accountAction?.approve ? 'توثيقُ حساب السحب' : 'رفضُ حساب السحب'}
+        message={
+          accountAction?.approve
+            ? `يصير ${WITHDRAWAL_METHOD_LABEL[accountAction.account.method]} ${accountAction.account.account} باسم «${accountAction.account.holder_name}» الحسابَ الوحيد الذي يسحب إليه ${accountAction.account.provider_name} رصيده.`
+            : 'لا يُسحب إليه، ويصل مقدّمَ الخدمة السببُ ليصحّح حسابه.'
+        }
+        confirmLabel={accountAction?.approve ? 'توثيق' : 'رفض الحساب'}
+        busy={busy}
+        error={dialogError}
+        confirmDisabled={accountAction !== null && !accountAction.approve && !note.trim()}
+        onConfirm={() => void confirmAccount()}
+        onCancel={() => setAccountAction(null)}
+      >
+        {accountAction && !accountAction.approve ? (
+          <Field label="سبب الرفض">
+            {(id) => <Input id={id} value={note} onChange={(event) => setNote(event.target.value)} />}
+          </Field>
+        ) : null}
       </ConfirmDialog>
 
       {toast ? <Toast message={toast} /> : null}

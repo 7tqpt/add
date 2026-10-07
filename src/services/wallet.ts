@@ -16,6 +16,8 @@ export type WithdrawalMethod = 'jawali' | 'kuraimi' | 'bank_transfer' | 'cash_wa
 export interface Withdrawal {
   id: string
   reference: string
+  /** عميلٌ يُرجَع إلى حسابٍ دفع منه، أو مقدّمُ خدمةٍ يُسحب إلى حسابه الموثَّق. */
+  party: 'customer' | 'provider'
   amount: number
   method: WithdrawalMethod
   /** ما كتبه العميلُ في طلب السحب. */
@@ -46,6 +48,20 @@ export interface PendingRefund {
   provider_name: string
   paid_amount: number | null
   booking_status: string | null
+}
+
+/** حسابُ سحب مقدّم الخدمة — يكتبه، ولا يُسحب إليه حتى يُوثَّق هنا. */
+export interface PayoutAccount {
+  provider_id: string
+  provider_name: string
+  owner_name: string
+  provider_phone: string
+  method: WithdrawalMethod
+  account: string
+  holder_name: string
+  status: 'pending' | 'verified' | 'rejected'
+  note: string
+  updated_at: string
 }
 
 export const WITHDRAWAL_METHOD_LABEL: Record<WithdrawalMethod, string> = {
@@ -79,25 +95,42 @@ const ago = (hours: number) => new Date(now - hours * 3_600_000).toISOString()
 
 const demoWithdrawals: Withdrawal[] = [
   {
-    id: 'wd_7', reference: 'WD-2026-0007', amount: 120000, method: 'jawali', account: '777 123 456',
+    id: 'wd_7', reference: 'WD-2026-0007', party: 'customer', amount: 120000, method: 'jawali', account: '777 123 456',
     status: 'pending', note: '', created_at: ago(5), decided_at: null,
     user_name: 'بلقيس الحضرمي', user_phone: '+967777123456',
     paid_reference: 'PAY-2026-4C11AA', paid_account: '777 123 456', paid_method: 'jawali',
     paid_booking: 'BK-2026-000318', matched: true,
   },
   {
-    id: 'wd_6', reference: 'WD-2026-0006', amount: 255000, method: 'kuraimi', account: '3001234567',
+    id: 'wd_6', reference: 'WD-2026-0006', party: 'customer', amount: 255000, method: 'kuraimi', account: '3001234567',
     status: 'pending', note: '', created_at: ago(29), decided_at: null,
     user_name: 'أحمد الشرعي', user_phone: '+967771998210',
     paid_reference: 'PAY-2026-91E2B0', paid_account: '3001 234 567', paid_method: 'kuraimi',
     paid_booking: 'BK-2026-000270', matched: true,
   },
   {
-    id: 'wd_5', reference: 'WD-2026-0005', amount: 40000, method: 'jawali', account: '771 998 210',
+    id: 'wd_5', reference: 'WD-2026-0005', party: 'customer', amount: 40000, method: 'jawali', account: '771 998 210',
     status: 'paid', note: '', created_at: ago(120), decided_at: ago(100),
     user_name: 'فاطمة الصنعاني', user_phone: '+967771998210',
     paid_reference: 'PAY-2026-0D77F3', paid_account: '771998210', paid_method: 'jawali',
     paid_booking: 'BK-2026-000244', matched: true,
+  },
+]
+
+// طلبُ مقدّم خدمة: يُسحب إلى حسابه الموثَّق، فالمطابقةُ بحسابه لا بدفعة.
+demoWithdrawals.unshift({
+  id: 'wd_8', reference: 'WD-2026-0008', party: 'provider', amount: 300000, method: 'kuraimi',
+  account: '3001234567', status: 'pending', note: '', created_at: ago(2), decided_at: null,
+  user_name: 'مؤسسة الأصالة', user_phone: '+967770024275',
+  paid_reference: 'حساب مسجَّل', paid_account: '3001234567', paid_method: 'kuraimi',
+  paid_booking: null, matched: true,
+})
+
+const demoPayoutAccounts: PayoutAccount[] = [
+  {
+    provider_id: 'prv_9', provider_name: 'استوديو السعادة', owner_name: 'فهد بن شملان',
+    provider_phone: '+967771234500', method: 'jawali', account: '771 234 500',
+    holder_name: 'فهد عبدالله بن شملان', status: 'pending', note: '', updated_at: ago(7),
   },
 ]
 
@@ -207,5 +240,40 @@ export async function decideRefund(
     entityId: refund.id,
     entityLabel: refund.reference,
     details: { amount: amount ?? refund.amount, booking: refund.booking_reference, note: note.trim() },
+  })
+}
+
+export async function listPayoutAccounts(): Promise<PayoutAccount[]> {
+  if (!isSupabaseConfigured) return delay(demoPayoutAccounts.filter((a) => a.status === 'pending').map((a) => ({ ...a })))
+  const { data, error } = await requireSupabase().rpc('api_admin_payout_accounts', { p_status: 'pending' })
+  if (error) throw error
+  return (data as PayoutAccount[] | null) ?? []
+}
+
+/**
+ * توثيقُ حساب سحب المزوّد أو رفضُه — **وبلا سببٍ لا رفض**: يصل المزوّدَ ليصحّح.
+ */
+export async function verifyPayoutAccount(account: PayoutAccount, approve: boolean, note = ''): Promise<void> {
+  if (!approve && !note.trim()) throw new Error('اكتب سبب الرفض — يصل مقدّم الخدمة')
+  if (!isSupabaseConfigured) {
+    const target = demoPayoutAccounts.find((a) => a.provider_id === account.provider_id)
+    if (!target || target.status !== 'pending') throw new Error('لا حسابَ ينتظر التوثيق لهذا المزوّد')
+    target.status = approve ? 'verified' : 'rejected'
+    target.note = note.trim()
+    await delay(null, 380)
+  } else {
+    const { error } = await requireSupabase().rpc('api_admin_verify_payout_account', {
+      p_provider_id: account.provider_id,
+      p_approve: approve,
+      p_note: note.trim(),
+    })
+    if (error) throw error
+  }
+  await recordAudit({
+    action: approve ? 'payout_account.verify' : 'payout_account.reject',
+    entity: 'provider',
+    entityId: account.provider_id,
+    entityLabel: account.provider_name,
+    details: { method: account.method, account: account.account, holder: account.holder_name, note: note.trim() },
   })
 }

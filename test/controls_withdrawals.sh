@@ -5,7 +5,7 @@
 set -uo pipefail
 cd "$(dirname "$0")/.."
 
-FILES="src/services/wallet.ts src/pages/Withdrawals.tsx src/components/layout/nav.ts src/services/bookings.ts src/pages/Bookings.tsx src/pages/BookingDetail.tsx"
+FILES="src/services/wallet.ts src/pages/Withdrawals.tsx src/components/layout/nav.ts src/services/bookings.ts src/pages/Bookings.tsx src/pages/BookingDetail.tsx src/pages/Settlements.tsx"
 BACKUP=$(mktemp -d)
 for f in $FILES; do mkdir -p "$BACKUP/$(dirname "$f")"; cp "$f" "$BACKUP/$f"; done
 restore() { for f in $FILES; do cp "$BACKUP/$f" "$f"; done; }
@@ -95,6 +95,16 @@ run browser "(ط) القائمةُ بلا رقم الفاتورة" sub src/pages
 
 run browser "(ي) صفحةُ الحجز بلا رقم الفاتورة" sub src/pages/BookingDetail.tsx \
   "                  <span>رقم الفاتورة</span>" "                  <span></span>"
+
+run unit "(ك) رفضُ حساب المزوّد بلا سبب" sub src/services/wallet.ts \
+  "  if (!approve && !note.trim()) throw new Error('اكتب سبب الرفض — يصل مقدّم الخدمة')" \
+  "  if (approve && !note.trim() && note === 'never') throw new Error('')"
+
+run browser "(ل) حساباتُ المزوّدين لا تُعرض" sub src/pages/Withdrawals.tsx \
+  "      {accounts.data && accounts.data.length > 0 ? (" "      {accounts.data && accounts.data.length < 0 ? ("
+
+run browser "(م) «مستحقات الشركاء» بلا تنبيه" sub src/pages/Settlements.tsx \
+  "        data-settlements-note" "        data-settlements-old"
 
 echo
 echo "سقط $PASS — ولم يسقط $FAIL"

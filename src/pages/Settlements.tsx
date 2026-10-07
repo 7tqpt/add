@@ -154,6 +154,16 @@ export function SettlementsPage() {
 
   return (
     <div className="flex flex-col gap-4">
+      {/* اختار صاحبُ المنصّة: صافي الحجز يدخل «رصيد فرحتي» عند المزوّد حين
+          يُعتمد التنفيذ، فتبقى هذه الصفحةُ سجلّاً لما قبل الرصيد. */}
+      <p
+        data-settlements-note
+        className="rounded-xl border border-hairline bg-surface-2 px-4 py-3 text-xs leading-6 text-ink-2"
+      >
+        صار صافي كلّ حجزٍ منفَّذٍ يدخل <strong className="text-ink">«رصيد فرحتي»</strong> عند مقدّم الخدمة
+        حين تعتمد تنفيذه، ويسحبه إلى حسابه الموثَّق من «طلبات السحب». فهذه الصفحةُ سجلٌّ لما نُفّذ قبل ذلك،
+        ولا يُحتسب فيها حجزٌ دخل رصيدَ مزوّده.
+      </p>
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative min-w-56 flex-1">
           <Search
