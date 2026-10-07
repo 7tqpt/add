@@ -36,7 +36,7 @@ export function BarChart({
         return (
           <li
             key={datum.label}
-            className="group relative flex items-center gap-3"
+            className="group relative flex min-h-6 items-center gap-3"
             onPointerEnter={() => setHovered(datum.label)}
             onPointerLeave={() => setHovered(null)}
             onFocus={() => setHovered(datum.label)}
@@ -46,11 +46,16 @@ export function BarChart({
             <span className="w-28 shrink-0 truncate text-xs text-ink-2" title={datum.label}>
               {datum.label}
             </span>
-            {/* Track height 24px keeps the hover/focus target above the minimum. */}
-            <span className="relative flex h-6 flex-1 items-center rounded-[4px] bg-surface-2">
+            {/* (أ): عمودٌ نحيفٌ مدوَّرٌ بتدرّجٍ من لونه على مجرىً ذهبيٍّ فاتح. والهدفُ
+                للمؤشّر واللمس هو الصفُّ كلُّه (`min-h-6`) لا العمودُ النحيف. */}
+            <span data-bar-track className="relative flex h-3 flex-1 items-center rounded-full bg-gold-soft">
               <span
-                className="h-6 rounded-[4px] transition-[width] duration-300"
-                style={{ width: `${(datum.value / max) * 100}%`, background: color }}
+                data-bar
+                className="h-3 rounded-full transition-[width] duration-300"
+                style={{
+                  width: `${(datum.value / max) * 100}%`,
+                  background: `linear-gradient(90deg, color-mix(in oklab, ${color} 72%, black), color-mix(in oklab, ${color} 88%, white))`,
+                }}
               />
             </span>
             {/* Auto width, never wrapped: a fixed column breaks currency labels

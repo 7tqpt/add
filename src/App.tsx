@@ -18,6 +18,7 @@ import { PaymentsPage } from '@/pages/Payments'
 import { PlanDetailPage } from '@/pages/PlanDetail'
 import { PlansPage } from '@/pages/Plans'
 import { CouponsPage } from '@/pages/Coupons'
+import { WithdrawalsPage } from '@/pages/Withdrawals'
 import { DeleteAccountPage, PrivacyPage, TermsPage } from '@/pages/Legal'
 import { PromotionsPage } from '@/pages/Promotions'
 import { ProviderDetailPage } from '@/pages/ProviderDetail'
@@ -83,6 +84,7 @@ export function App() {
           <Route path="/settlements" element={<SettlementsPage />} />
           <Route path="/promotions" element={<PromotionsPage />} />
           <Route path="/coupons" element={<CouponsPage />} />
+          <Route path="/withdrawals" element={<WithdrawalsPage />} />
 
           <Route path="/support" element={<SupportPage />} />
           <Route path="/support/:id" element={<SupportTicketPage />} />

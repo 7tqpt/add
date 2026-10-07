@@ -115,7 +115,7 @@ export function PaymentsPage() {
     try {
       if (action === 'refund') {
         await refundPayment(payment)
-        setToast(`تم استرجاع ${formatMoney(payment.amount)} للعميل.`)
+        setToast(`دخل ${formatMoney(payment.amount)} رصيدَ ${payment.user_name}.`)
       } else if (action === 'confirm') {
         await confirmPayment(payment)
         setToast(`أُكِّدت ${formatMoney(payment.amount)} وأُضيفت إلى الحجز.`)
@@ -283,7 +283,6 @@ export function PaymentsPage() {
           <div className="stagger grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <StatTile
               label="المبالغ المحصّلة"
-              tone="emerald"
               value={formatMoneyCompact(totals.data.collected)}
               valueTitle={formatMoney(totals.data.collected)}
               icon={Banknote}
@@ -291,7 +290,6 @@ export function PaymentsPage() {
             />
             <StatTile
               label="حصة المنصة"
-              tone="navy"
               value={formatMoneyCompact(totals.data.platformShare)}
               valueTitle={formatMoney(totals.data.platformShare)}
               icon={PercentCircle}
@@ -299,7 +297,6 @@ export function PaymentsPage() {
             />
             <StatTile
               label={`المسترجع (${formatNumber(totals.data.refundedCount)} عملية)`}
-              tone="violet"
               value={formatMoneyCompact(totals.data.refunded)}
               valueTitle={formatMoney(totals.data.refunded)}
               icon={Undo2}
@@ -307,7 +304,6 @@ export function PaymentsPage() {
             />
             <StatTile
               label="نسبة نجاح العمليات"
-              tone="cyan"
               value={formatPercent(totals.data.successRate)}
               icon={TrendingUp}
               refetching={totals.refetching}
@@ -506,7 +502,7 @@ export function PaymentsPage() {
           !pending
             ? ''
             : action === 'refund'
-              ? `سيُعاد ${formatMoney(pending.amount)} إلى ${pending.user_name} عبر ${PAYMENT_METHOD_LABEL[pending.method]}. الاسترجاع لا يمكن التراجع عنه، وسيُسجَّل باسمك في سجل العمليات.`
+              ? `يدخل ${formatMoney(pending.amount)} «رصيد فرحتي» عند ${pending.user_name} فوراً — فيدفع منه حجزاً قادماً أو يطلب سحبَه إلى الحساب الذي دفع منه (من «طلبات السحب»). الاسترجاع لا يمكن التراجع عنه، وسيُسجَّل باسمك في سجل العمليات.`
               : action === 'confirm'
                 ? `تأكّد أن ${formatMoney(pending.amount)} وصلت فعلاً عبر ${PAYMENT_METHOD_LABEL[pending.method]} قبل التأكيد — سيُضاف المبلغ إلى الحجز ${pending.booking_reference} ويُخبَر الطرفان.`
                 : `سيُخبَر ${pending.user_name} أننا لم نجد حوالته. تحقّق من كشف الحساب أولاً.`

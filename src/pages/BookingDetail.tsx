@@ -16,6 +16,8 @@ import {
   BOOKING_STATUS_LABEL,
   BOOKING_TRAIL,
   getBooking,
+  INVOICE_STATUS_LABEL,
+  invoiceLine,
   listBookingPayments,
   refundableNow,
   setBookingStatus,
@@ -154,9 +156,27 @@ export function BookingDetailPage() {
       <Card>
         <CardHeader
           title={
-            <span dir="ltr" className="tnum block text-start">
-              {record.reference}
-            </span>
+            <>
+              <span dir="ltr" className="tnum block text-start">
+                {record.reference}
+              </span>
+              {/* رقمُ الفاتورة تحت رقم الحجز، وحالُها بجانبه. */}
+              {record.invoice_number ? (
+                <span data-invoice className="mt-1 flex flex-wrap items-center gap-2 text-xs font-medium text-gold-ink">
+                  <span>رقم الفاتورة</span>
+                  <span dir="ltr" className="tnum">{record.invoice_number}</span>
+                  {record.invoice_status ? (
+                    <Badge tone={record.invoice_status === 'paid' ? 'good' : 'neutral'} icon={false}>
+                      {INVOICE_STATUS_LABEL[record.invoice_status]}
+                    </Badge>
+                  ) : null}
+                </span>
+              ) : invoiceLine(record) ? (
+                <span data-invoice className="mt-1 block text-xs font-normal text-muted">
+                  {invoiceLine(record)}
+                </span>
+              ) : null}
+            </>
           }
           subtitle={`${record.service_title} · ${record.category_name}`}
           actions={

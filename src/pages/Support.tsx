@@ -117,21 +117,18 @@ export function SupportPage() {
       <div className="stagger grid grid-cols-1 gap-3 sm:grid-cols-3">
         <StatTile
           label="ينتظر ردّ الإدارة"
-          tone="azure"
           value={formatNumber(stats.data?.waitingOnUs ?? 0)}
           icon={Inbox}
           refetching={stats.refetching}
         />
         <StatTile
           label="لم يُردّ عليها بعد"
-          tone="navy"
           value={formatNumber(stats.data?.neverAnswered ?? 0)}
           icon={MailQuestion}
           refetching={stats.refetching}
         />
         <StatTile
           label="وسيط زمن أول ردّ"
-          tone="cyan"
           value={median === null ? '—' : formatCount(Math.round(median), HOUR_FORMS)}
           icon={Clock}
           refetching={stats.refetching}

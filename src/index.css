@@ -1,19 +1,11 @@
 @import 'tailwindcss';
 
-/* Warm brand treatment stays inside the approved dashboard layout. */
-.dashboard-concept {
-  --accent: #7b0f2e;
-  --accent-ink: #ffffff;
-  --surface-2: #fbf4ef;
-  --text-primary: #2a1119;
-}
-
-[data-theme='dark'] .dashboard-concept {
-  --accent: #e6c473;
-  --accent-ink: #2a1119;
-  --surface-2: #30242a;
-  --text-primary: #f7faff;
-}
+/* خطُّ «فرحتي» — الخطُّ الذي في التطبيق نفسه، **محمَّلاً لا مفترَضاً**: كان
+   الاسمُ مكتوباً في `font-family` ولا ملفَّ له، فيقع على خطّ الجهاز. */
+@font-face { font-family: 'IBM Plex Sans Arabic'; src: url('/fonts/IBMPlexSansArabic-400.ttf') format('truetype'); font-weight: 400; font-display: swap; }
+@font-face { font-family: 'IBM Plex Sans Arabic'; src: url('/fonts/IBMPlexSansArabic-500.ttf') format('truetype'); font-weight: 500; font-display: swap; }
+@font-face { font-family: 'IBM Plex Sans Arabic'; src: url('/fonts/IBMPlexSansArabic-600.ttf') format('truetype'); font-weight: 600; font-display: swap; }
+@font-face { font-family: 'IBM Plex Sans Arabic'; src: url('/fonts/IBMPlexSansArabic-700.ttf') format('truetype'); font-weight: 700; font-display: swap; }
 
 /* Theme is driven by a single `data-theme` attribute on <html>, stamped by
    ThemeProvider (and by the inline script in index.html before first paint).
@@ -28,56 +20,56 @@
    فالجزيرة تعمل بلا استثناء. */
 :root,
 [data-theme='light'] {
-  /* surfaces — أبيضٌ منحازٌ إلى الأزرق قليلاً لا رماديٌّ محايد: الرمادي
-     المحايد يبدو غير مقصود، والانحياز الخفيف نحو لون العلامة يجعله مُختاراً. */
-  --page: #f4f7fc;
+  /* ── هويّةُ «فرحتي» — (أ) «المخمل» من ثلاثة اتجاهاتٍ عُرضت على صاحب المنصّة ──
+     ورقٌ كريميّ، وحبرٌ نبيذيٌّ داكن، والنبيذيُّ والذهبيُّ لونا العلامة — هما
+     ألوانُ التطبيق نفسُها (`mobile/lib/src/core/theme.dart`). */
+  --page: #fffdfa;
   --surface: #ffffff;
-  --surface-2: #eef2f9;
+  --surface-2: #fbf4ef;
 
-  /* ink — أسودٌ مزرقّ لا أسود فحمي، ليجلس في العائلة نفسها */
-  --text-primary: #0b1220;
-  --text-secondary: #47536b;
-  --text-muted: #7b8699;
+  --text-primary: #2a1119;
+  --text-secondary: #54383f;
+  --text-muted: #7a5c64;
 
-  /* chrome */
-  --grid: #e3e9f3;
-  --axis: #c2cbdb;
-  --border: rgba(11, 18, 32, 0.1);
-  --ring: rgba(29, 78, 216, 0.35);
+  --grid: #f1e4db;
+  --axis: #dcc6b6;
+  --border: #ebdacd;
+  --ring: rgba(123, 15, 46, 0.32);
 
-  /* Brand accent for chrome — buttons, active nav, links. Deliberately not a
-     series colour: the data palette is validated for categorical separation and
-     must not shift when the brand does.
-     #1d4ed8 → 6.70:1 with white text. */
-  --accent: #1d4ed8;
+  /* النبيذيّ — ‏#7b0f2e مع الأبيض 10.9:1. */
+  --accent: #7b0f2e;
   --accent-ink: #ffffff;
 
-  /* categorical series — validated (light, surface #fcfcfb, --pairs all) */
-  --series-1: #2a78d6;
-  --series-2: #eb6834;
-  --series-3: #1baf7a;
+  /* الذهبُ للزينة والأقراص: لا يحمل نصّاً على أبيض (تباينُه لا يكفي)، فللنصّ
+     الذهبيّ درجتُه الداكنة `--gold-ink`. */
+  --gold: #c9a46a;
+  --gold-ink: #8a5f14;
+  --gold-soft: #f3e7d3;
 
-  /* sequential blue ramp */
-  --seq-200: #9ec5f4;
-  --seq-450: #2a78d6;
-  --seq-600: #184f95;
+  /* القائمةُ الجانبيّة نبيذيّةٌ في الوضعين: هي العلامة. */
+  --side-from: #5c0820;
+  --side-to: #7b0f2e;
+  --side-ink: #f7e9ec;
+  --side-muted: rgba(247, 233, 236, 0.72);
+  --side-gold: #e6c473;
 
+  /* سلاسلُ الرسوم: نبيذيٌّ وذهبيٌّ وأخضر — متباعدةٌ لوناً وإضاءةً. */
+  --series-1: #7b0f2e;
+  --series-2: #b8893f;
+  --series-3: #1b8a5a;
 
-  /* ---------------------------------------------------------------------
-     أصباغ البطاقات — هويّة لا زينة. كل بطاقة تُعرف بصبغتها قبل قراءة عنوانها.
-     وهي منفصلة عن ألوان الحالة (good/warning/critical) عمداً: لونُ تعريفٍ
-     لا يجوز أن يُقرأ حكماً على الرقم.
+  --seq-200: #ead3d9;
+  --seq-450: #9a1b3e;
+  --seq-600: #5c0820;
 
-     وكلّها باردة تدور حول الأزرق: `azure` قلبها، و`navy` أعمقها، و`cyan`
-     و`violet` جاراها في العائلة، و`emerald` وحدها خارجةٌ عنها — لأن المال
-     يستحقّ أن يُميَّز عمّا سواه، ولأن خمس درجاتٍ من أزرقٍ واحد لا تُفرَّق.
-     --------------------------------------------------------------------- */
-  --tile-azure: #1d4ed8;
-  --tile-emerald: #067a55;
-  --tile-navy: #2f3d99;
-  --tile-cyan: #0e6f8c;
-  --tile-violet: #5b34ba;
-  /* الحبر الذي يقع فوق الصبغة الصريحة: الأصباغ داكنة هنا فالحبر أبيض */
+  /* أصباغُ البطاقات — الأسماءُ باقيةٌ من العهد الأزرق كي لا تُمسّ ستّ عشرة
+     شاشة، والألوانُ عائلةُ العلامة: نبيذيٌّ وأعمقُه وذهبيٌّ وبرقوقيّ،
+     والمالُ وحده أخضر. */
+  --tile-azure: #7b0f2e;
+  --tile-emerald: #0a7a35;
+  --tile-navy: #5c0820;
+  --tile-cyan: #8a5f14;
+  --tile-violet: #8a3b5b;
   --tile-ink: #ffffff;
 
   /* status — fixed, never themed */
@@ -92,43 +84,49 @@
 }
 
 [data-theme='dark'] {
-  /* أسودٌ مزرقّ لا فحمي — العائلة نفسها في الوضعين */
-  --page: #070c16;
-  --surface: #101827;
-  --surface-2: #182133;
+  /* نبيذيٌّ ليليّ لا أسود: العائلةُ نفسُها في الوضعين. */
+  --page: #1a0f13;
+  --surface: #24161b;
+  --surface-2: #2e1d23;
 
-  --text-primary: #f5f8ff;
-  --text-secondary: #b3bed2;
-  --text-muted: #7f8ba0;
+  --text-primary: #f7eef0;
+  --text-secondary: #d9c2c8;
+  --text-muted: #a88f96;
 
-  --grid: #1e293e;
-  --axis: #2c3a55;
+  --grid: #3a262d;
+  --axis: #57404a;
   --border: rgba(255, 255, 255, 0.1);
-  --ring: rgba(96, 165, 250, 0.45);
+  --ring: rgba(230, 196, 115, 0.45);
 
-  /* الأزرق الداكن يذوب في أرضيةٍ داكنة، فيفتح الملء وينقلب حبره.
-     ‏#60a5fa → 6.99:1 على --surface. */
-  --accent: #60a5fa;
-  --accent-ink: #06101f;
+  /* النبيذيُّ يذوب في أرضٍ نبيذيّة، فيصير الذهبُ هو اللونَ الفاعل وينقلب
+     حبرُه. ‏#e6c473 على --surface ‏9.6:1. */
+  --accent: #e6c473;
+  --accent-ink: #2a1119;
 
-  /* same eight hues, stepped for the dark surface — not an automatic flip */
-  --series-1: #3987e5;
-  --series-2: #d95926;
-  --series-3: #199e70;
+  --gold: #e6c473;
+  --gold-ink: #e6c473;
+  --gold-soft: rgba(230, 196, 115, 0.14);
 
-  --seq-200: #184f95;
-  --seq-450: #3987e5;
-  --seq-600: #9ec5f4;
+  --side-from: #2a0a14;
+  --side-to: #4a0c22;
+  --side-ink: #f7e9ec;
+  --side-muted: rgba(247, 233, 236, 0.66);
+  --side-gold: #e6c473;
 
+  --series-1: #e07a98;
+  --series-2: #e6c473;
+  --series-3: #34c795;
 
-  /* الأصباغ نفسها مرفوعة الإضاءة للأرضية الداكنة — لا مقلوبة آلياً */
-  --tile-azure: #6b9dff;
+  --seq-200: #4a2430;
+  --seq-450: #c2577a;
+  --seq-600: #f2b9c9;
+
+  --tile-azure: #e79ab0;
   --tile-emerald: #34c795;
-  --tile-navy: #96a3ff;
-  --tile-cyan: #45b6d6;
-  --tile-violet: #a68af5;
-  /* وهي فاتحة هناك، فينقلب الحبر */
-  --tile-ink: #06101f;
+  --tile-navy: #c9a0ae;
+  --tile-cyan: #e6c473;
+  --tile-violet: #c79bd0;
+  --tile-ink: #1a0f13;
 
   --delta-up: #0ca30c;
   --delta-down: #e66767;
@@ -162,6 +160,10 @@
   --color-tile-cyan: var(--tile-cyan);
   --color-tile-violet: var(--tile-violet);
   --color-tile-ink: var(--tile-ink);
+
+  --color-gold: var(--gold);
+  --color-gold-ink: var(--gold-ink);
+  --color-gold-soft: var(--gold-soft);
 
   --color-good: var(--good);
   --color-warning: var(--warning);
@@ -282,10 +284,12 @@ body {
     border-color var(--dur-base) var(--ease-out);
 }
 @media (hover: hover) {
+  /* الحدُّ عند التحويم ذهبيّ لا نبيذيّ: النبيذيُّ على بطاقةٍ بيضاء يُقرأ إطاراً
+     ورديّاً — وهو ما أزالته (أ). */
   .lift:hover {
     transform: translateY(-2px);
-    box-shadow: 0 10px 26px -12px color-mix(in oklab, var(--accent) 45%, transparent);
-    border-color: color-mix(in oklab, var(--accent) 30%, var(--border));
+    box-shadow: 0 14px 30px -18px rgba(92, 8, 32, 0.4);
+    border-color: color-mix(in oklab, var(--gold) 55%, var(--border));
   }
 }
 
@@ -395,43 +399,22 @@ textarea {
        يفرّق الزجاج عن مستطيلٍ شفّافٍ فحسب. */ inset 0 1px 0 rgba(255, 255, 255, 0.22);
 }
 
-/**
- * جزيرةٌ داكنة بألوان زجاجية.
- *
- * الزجاج فوق أرضيةٍ زرقاءَ داكنة يبقى داكناً، فالحبر عليه يجب أن يكون فاتحاً —
- * وهو عكس البطاقة البيضاء تماماً. فبدل تلوين كل عنصرٍ بيده تُعاد المتغيّرات
- * هنا مرّةً واحدة: كل حقلٍ وحدٍّ وحبرٍ بداخلها يتبعها بلا أن يُذكر.
- *
- * والأسطح شفّافةٌ لا مصمتة، فيصير كل حقلٍ فيها زجاجاً صغيراً داخل الزجاج
- * الكبير بلا صنفٍ إضافيّ عليه.
- */
-.glass-island {
-  --surface: rgba(255, 255, 255, 0.1);
-  --surface-2: rgba(255, 255, 255, 0.06);
-  --border: rgba(255, 255, 255, 0.2);
-  --text-primary: #f7faff;
-  --text-secondary: rgba(233, 240, 255, 0.78);
-  --text-muted: rgba(214, 226, 245, 0.6);
-  --ring: rgba(147, 197, 253, 0.5);
-  color-scheme: dark;
-}
-
 /* زرٌّ أزرقُ زجاجيّ: تدرّجٌ رأسيّ لا لونٌ مصمت — الزجاج المضاء أعلاه أفتح
    ممّا في أسفله، وهذا ما يجعله يبدو جسماً لا مساحة. */
 .btn-glass {
-  background: linear-gradient(180deg, rgba(96, 165, 250, 0.62), rgba(29, 78, 216, 0.55));
+  background: linear-gradient(180deg, #9a1b3e, #7b0f2e);
   -webkit-backdrop-filter: blur(14px) saturate(160%);
   backdrop-filter: blur(14px) saturate(160%);
-  border: 1px solid rgba(147, 197, 253, 0.45);
+  border: 1px solid rgba(230, 196, 115, 0.55);
   color: #ffffff;
   box-shadow:
-    0 12px 30px -10px rgba(29, 78, 216, 0.75),
+    0 12px 30px -10px rgba(92, 8, 32, 0.75),
     inset 0 1px 0 rgba(255, 255, 255, 0.3);
 }
 @media (hover: hover) {
   .btn-glass:hover:not(:disabled) {
-    background: linear-gradient(180deg, rgba(120, 180, 255, 0.72), rgba(37, 92, 235, 0.65));
-    border-color: rgba(191, 219, 254, 0.6);
+    background: linear-gradient(180deg, #ad2448, #8a1235);
+    border-color: rgba(230, 196, 115, 0.8);
   }
 }
 
@@ -446,19 +429,11 @@ textarea {
    أن يصبغه كلّه، فيبقى النصّ على ورقٍ محايد.
    --------------------------------------------------------------------------- */
 .topbar-glass {
-  background:
-    linear-gradient(
-      to var(--wash-dir, left),
-      color-mix(in oklab, var(--tone, var(--accent)) 12%, transparent),
-      transparent 55%
-    ),
-    color-mix(in oklab, var(--surface) 74%, transparent);
-  -webkit-backdrop-filter: blur(18px) saturate(160%);
-  backdrop-filter: blur(18px) saturate(160%);
-  box-shadow:
-    inset 0 1px 0 color-mix(in oklab, white 42%, transparent),
-    inset 0 -2px 0 0 color-mix(in oklab, var(--tone, var(--accent)) 62%, transparent),
-    0 12px 26px -24px var(--tone, var(--accent));
+  /* رأسٌ من ورق الصفحة نفسه، بلا وشاحٍ مصبوغ ولا خطٍّ ملوّن — في (أ) العنوانُ
+     يجلس على الكريميّ، واللونُ في القائمة لا في الرأس. */
+  background: color-mix(in oklab, var(--page) 86%, transparent);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  backdrop-filter: blur(18px) saturate(140%);
 }
 
 /* مشهدٌ صغير: منظورٌ قصير يجعل الدوران يُقرأ في عنصرٍ لا يتجاوز أربعين
@@ -597,45 +572,49 @@ textarea {
    على محتواه.
    --------------------------------------------------------------------------- */
 .workspace {
+  /* ورقٌ كريميٌّ هادئ كما في صورة (أ) — والوشاحُ أخفّ ممّا كان بكثير:
+     كان أزرقَ صريحاً يُرى، وهنا يُحسّ ولا يُرى. */
   background-image:
     radial-gradient(
       760px 460px at 84% 2%,
-      color-mix(in oklab, var(--accent) 24%, transparent),
+      color-mix(in oklab, var(--gold) 9%, transparent),
       transparent 64%
     ),
     radial-gradient(
       680px 420px at 10% 96%,
-      color-mix(in oklab, var(--tile-cyan) 20%, transparent),
+      color-mix(in oklab, var(--accent) 5%, transparent),
       transparent 64%
     );
 }
 
 /* ---------------------------------------------------------------------------
-   بطاقات اللوحة الزجاجية.
+   بطاقاتُ اللوحة — (أ) اختارها صاحبُ المنصّة من صورتين.
 
-   والنسبة 76% لا أقلّ: البطاقة تحمل جداول وأرقاماً تُقرأ ساعاتٍ متّصلة، وسطحٌ
-   شفّافٌ أكثر يُمرّر الوشاح من تحته فيتغيّر لون الورق تحت السطر الواحد.
-   فالشفافية هنا محسوسةٌ لا صريحة — تُعطي العمق ولا تنازع النصّ.
+   بيضاءُ مصمتة بحدٍّ رمليّ وظلٍّ نبيذيٍّ خافت، كبطاقات «نظرة عامة» — لا زجاجٌ
+   يمرّر الوشاحَ تحته ولا حدٌّ مصبوغٌ بالنبيذيّ (كان يُرى إطاراً ورديّاً).
+
+   ورأسُ كلّ جدولٍ كريميٌّ بحبرٍ ذهبيّ. والقاعدةُ هنا لا في عشرين صفحة: هي
+   خارجَ طبقات Tailwind فتسبق `text-ink-2` المكتوبةَ على الخلايا، و`tr.glass-item`
+   في الرأس تُغلب بالتخصيص لا بالترتيب.
    --------------------------------------------------------------------------- */
 .glass-panel {
-  background: color-mix(in oklab, var(--surface) 76%, transparent);
-  -webkit-backdrop-filter: blur(16px) saturate(140%);
-  backdrop-filter: blur(16px) saturate(140%);
-  border-color: color-mix(in oklab, var(--accent) 12%, var(--border));
+  background: var(--surface);
+  border-color: var(--border);
+  border-radius: 16px;
   box-shadow:
-    0 1px 2px rgba(11, 18, 32, 0.05),
-    inset 0 1px 0 color-mix(in oklab, white 40%, transparent);
+    0 1px 2px rgba(42, 17, 25, 0.04),
+    0 12px 30px -22px rgba(92, 8, 32, 0.35);
 }
 
-/* بطاقات الأرقام: أرضيتها مصبوغةٌ بصبغتها فتُكتب في `style`، فلا يبقى للصنف
-   إلا الضباب وخطّ الضوء. */
-.glass-tile {
-  border-color: var(--tile-border);
-  -webkit-backdrop-filter: blur(16px) saturate(140%);
-  backdrop-filter: blur(16px) saturate(140%);
-  box-shadow:
-    0 1px 2px rgba(11, 18, 32, 0.05),
-    inset 0 1px 0 color-mix(in oklab, white 45%, transparent);
+thead tr,
+thead tr.glass-item {
+  background: var(--surface-2);
+  border: 0;
+  box-shadow: none;
+}
+thead th {
+  color: var(--gold-ink);
+  font-weight: 600;
 }
 
 /* ---------------------------------------------------------------------------
@@ -671,35 +650,35 @@ textarea {
     transform var(--dur-fast) var(--ease-out);
 }
 @media (hover: hover) {
+  /* يكتسي كريميّاً بلا إطار — الإطارُ النبيذيّ حول الصفّ كان يُقرأ «محدَّداً». */
   .glass-row:hover {
-    background: linear-gradient(
-      180deg,
-      color-mix(in oklab, var(--accent) 9%, transparent),
-      color-mix(in oklab, var(--accent) 3%, transparent)
-    );
-    border-color: color-mix(in oklab, var(--accent) 20%, transparent);
+    background: color-mix(in oklab, var(--surface-2) 70%, transparent);
   }
 }
 .glass-row:active {
   transform: scale(0.994);
-  border-color: color-mix(in oklab, var(--accent) 42%, transparent);
 }
 
-/* استدارةٌ تامّة للحقول والأزرار في صفحة الدخول.
-   وصنفٌ صريحٌ لا `rounded-full` من Tailwind: `cn` عندنا يَصِل الأصناف وصلاً
-   ولا يحلّ تعارضها، فلو اجتمع `rounded-lg` من المكوّن و`rounded-full` من موضع
-   الاستعمال لحسم الترتيبُ في ورقة الأنماط لا نيّةُ الكاتب. وهذا الصنف خارج
-   طبقات Tailwind، والقواعد خارج الطبقات تسبق ما بداخلها مهما كان ترتيبها. */
-.pill {
-  border-radius: 9999px;
+/* حقولُ صفحة الدخول وزرُّها — (أ) «المخمل»: حقلٌ أبيضُ على البطاقة الكريميّة
+   بزوايا ١٤ بكسلاً، وارتفاعُ ٤٨ — بالبكسل لا `rem`: جذرُ اللوحة ١٧ بكسلاً.
+   وصنفٌ صريحٌ لا أصنافُ Tailwind: `cn` عندنا يَصِل الأصناف وصلاً ولا يحلّ
+   تعارضها، فلو اجتمع `rounded-lg h-10` من المكوّن و`rounded-[14px] h-12` من
+   موضع الاستعمال لحسم الترتيبُ في ورقة الأنماط لا نيّةُ الكاتب. وهذا الصنف
+   خارج طبقات Tailwind، والقواعد خارج الطبقات تسبق ما بداخلها. */
+.login-field {
+  height: 48px;
+  border-radius: 14px;
+  padding-inline: 14px;
+}
+.login-button {
+  height: 50px;
+  border-radius: 14px;
+  font-size: 1rem;
+  font-weight: 700;
 }
 
 /* ---------------------------------------------------------------------------
-   العلامة والعمق — ثلاثيّ الأبعاد حيث يخدم، لا حيث يُبهر.
-
-   الميلان على لوح صفحة الدخول وحده: هناك لا شيء ينافسه على الانتباه، والدخول
-   لحظةٌ واحدة في اليوم. أمّا داخل اللوحة فالمستخدم يقرأ أرقاماً ساعاتٍ
-   متّصلة، وسطحٌ يميل تحت مؤشّره يجعل قراءة الجدول عملاً.
+   حلقةُ العلامة — تدور حولها إن طُلبت (`BrandMark spin`)، والعلامةُ ثابتة.
    --------------------------------------------------------------------------- */
 @keyframes brand-ring {
   to {
@@ -710,36 +689,6 @@ textarea {
   animation: brand-ring 14s linear infinite;
 }
 
-/* المشهد: المنظور على الحاوية لا على العنصر، فتشترك أبناؤه في نقطة تلاشٍ
-   واحدة. ولو وُضع على كلٍّ على حدة لبدا كلٌّ منها في غرفةٍ مستقلّة. */
-.scene {
-  perspective: 1400px;
-  perspective-origin: 50% 40%;
-}
-
-/* اللوح المائل. الزاويتان تُكتبان من JS في `--rx` و`--ry`، والانتقال يلحق
-   بهما فيصير التتبّع ناعماً بلا حساب إطاراتٍ في JS. */
-.tilt {
-  transform: rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
-  transform-style: preserve-3d;
-  transition: transform 260ms var(--ease-out);
-  will-change: transform;
-}
-
-/* الطبقات تطفو على أعماقٍ مختلفة، فيولد الفرق إحساسَ المجسّم عند الميل.
-   وبدونها يميل سطحٌ مسطّحٌ واحد، وهو ميلانٌ لا عمق. */
-.layer-1 { transform: translateZ(28px); }
-.layer-2 { transform: translateZ(56px); }
-.layer-3 { transform: translateZ(84px); }
-
-@keyframes float-y {
-  50% {
-    transform: translate3d(0, -10px, 0);
-  }
-}
-.float {
-  animation: float-y 6s ease-in-out infinite;
-}
 
 /* ---------------------------------------------------------------------------
    ردّ فعل الأيقونات — تأكيدٌ لمسيّ.
@@ -796,15 +745,7 @@ textarea {
   .tilt-hover:hover,
   .tilt-group:hover .tilt-hover,
   .chip-3d,
-  .tilt,
-  .layer-1,
-  .layer-2,
-  .layer-3,
-  .float,
   .brand-ring {
     transform: none !important;
-  }
-  .scene {
-    perspective: none;
   }
 }

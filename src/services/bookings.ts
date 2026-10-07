@@ -4,9 +4,17 @@ import { mockBookings, mockPayments } from '@/data/mock'
 import { delay, isSupabaseConfigured, isoDaysAgo } from './base'
 import { recordAudit } from './audit'
 
-const demoBookings: Booking[] = [...mockBookings].sort(
-  (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
-)
+// وضعُ التجربة: الفاتورةُ تصدر بالتأكيد كما في القاعدة، ورقمُها من رقم الحجز.
+const demoBookings: Booking[] = [...mockBookings]
+  .map((booking) => {
+    const issued = booking.confirmed_at !== null && booking.status !== 'pending_provider'
+    return {
+      ...booking,
+      invoice_number: issued ? booking.reference.replace(/^BK-/, 'INV-') : null,
+      invoice_status: issued ? (booking.paid_amount >= booking.total_price ? 'paid' : 'issued') : null,
+    } satisfies Booking
+  })
+  .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
 
 /**
  * The status filter, plus one pseudo-status the database does not have.
@@ -38,7 +46,7 @@ function matches(booking: Booking, query: BookingQuery): boolean {
   if (query.governorate !== 'all' && booking.governorate !== query.governorate) return false
   if (query.days !== 'all' && booking.created_at < isoDaysAgo(query.days)) return false
 
-  const term = query.search.trim().toLowerCase()
+  const term = invoiceToBookingTerm(query.search.trim()).toLowerCase()
   if (!term) return true
   return (
     booking.reference.toLowerCase().includes(term) ||
@@ -46,6 +54,41 @@ function matches(booking: Booking, query: BookingQuery): boolean {
     booking.provider_name.toLowerCase().includes(term) ||
     booking.service_title.toLowerCase().includes(term)
   )
+}
+
+// ---------------------------------------------------------------------------
+// رقمُ الفاتورة جنب رقم الحجز — «اريد رقم فاتورة للكل حجز عشن اقدر اعرف جنب
+// رقم الحجز»، واختار صاحبُ المنصّة أن يتبع رقمَ الحجز.
+// ---------------------------------------------------------------------------
+const INVOICE_EMBED = 'invoices(number, status)'
+
+type BookingRow = Booking & { invoices?: { number: string; status: Booking['invoice_status'] }[] | null }
+
+function withInvoice(row: BookingRow): Booking {
+  const { invoices, ...booking } = row
+  const invoice = invoices?.[0]
+  return { ...booking, invoice_number: invoice?.number ?? null, invoice_status: invoice?.status ?? null }
+}
+
+/** «INV-2026-7F3A21C9» يُبحث به كـ«BK-2026-7F3A21C9». */
+export function invoiceToBookingTerm(term: string): string {
+  return term.replace(/^inv-/i, 'BK-')
+}
+
+/**
+ * ما يُكتب تحت رقم الحجز: رقمُ فاتورته، أو «تصدر عند التأكيد» لما ينتظر المزوّد.
+ * وما سواهما لا يُكتب له شيء — ملغًى قبل التأكيد لا فاتورةَ له ولن تكون.
+ */
+export function invoiceLine(booking: Pick<Booking, 'invoice_number' | 'status'>): string | null {
+  if (booking.invoice_number) return booking.invoice_number
+  if (booking.status === 'pending_provider') return 'الفاتورة: تصدر عند التأكيد'
+  return null
+}
+
+export const INVOICE_STATUS_LABEL: Record<NonNullable<Booking['invoice_status']>, string> = {
+  issued: 'صادرة',
+  paid: 'مدفوعة',
+  void: 'ملغاة',
 }
 
 export async function listBookings(query: BookingQuery): Promise<Paged<Booking>> {
@@ -59,7 +102,7 @@ export async function listBookings(query: BookingQuery): Promise<Paged<Booking>>
   const from = query.page * query.pageSize
   let builder = client
     .from('bookings')
-    .select('*', { count: 'exact' })
+    .select(`*, ${INVOICE_EMBED}`, { count: 'exact' })
     .order('created_at', { ascending: false })
     .range(from, from + query.pageSize - 1)
 
@@ -72,7 +115,8 @@ export async function listBookings(query: BookingQuery): Promise<Paged<Booking>>
   if (query.governorate !== 'all') builder = builder.eq('governorate', query.governorate)
   if (query.days !== 'all') builder = builder.gte('created_at', isoDaysAgo(query.days))
 
-  const term = query.search.trim()
+  // رقمُ الفاتورة يُبحث به كرقم الحجز: ذيلُهما واحد.
+  const term = invoiceToBookingTerm(query.search.trim())
   if (term) {
     const safe = term.replace(/[,()]/g, ' ')
     builder = builder.or(
@@ -82,7 +126,7 @@ export async function listBookings(query: BookingQuery): Promise<Paged<Booking>>
 
   const { data, error, count } = await builder
   if (error) throw error
-  return { rows: (data ?? []) as Booking[], total: count ?? 0 }
+  return { rows: (data ?? []).map(withInvoice), total: count ?? 0 }
 }
 
 export async function getBooking(id: string): Promise<Booking | null> {
@@ -92,11 +136,11 @@ export async function getBooking(id: string): Promise<Booking | null> {
 
   const { data, error } = await requireSupabase()
     .from('bookings')
-    .select('*')
+    .select(`*, ${INVOICE_EMBED}`)
     .eq('id', id)
     .maybeSingle()
   if (error) throw error
-  return (data as Booking | null) ?? null
+  return data ? withInvoice(data) : null
 }
 
 export async function listBookingPayments(bookingId: string): Promise<Payment[]> {

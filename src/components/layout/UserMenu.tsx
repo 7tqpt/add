@@ -61,11 +61,9 @@ export function UserMenu() {
   return (
     <div ref={box} className="relative">
       {/*
-        الشعار في قرص الحساب لا حرفُ الاسم.
-
-        والحرف كان يفرّق بين مستخدمٍ وآخر، والشعار لا يفرّق — لكنّ اللوحة لا
-        تعرض إلا حساباً واحداً في وقت، وهو حسابُ من يجلس أمامها. فما يميّزه
-        عن غيره ليس بحاجةٍ إلى رمز، والبريد يظهر كاملاً بمجرّد فتح القائمة.
+        قرصُ الحساب — **حرفُه الأوّل على ذهبٍ فاتح**، كما في صورة (أ).
+        وكان شعاراً وكلمةَ «Profile» إنجليزيّةً وحيدةً في لوحةٍ عربيّة.
+        والبريدُ كاملٌ في القائمة حين تُفتح، وفي وصف الزرّ لقارئ الشاشة.
       */}
       <button
         ref={trigger}
@@ -73,27 +71,11 @@ export function UserMenu() {
         onClick={() => setOpen((on) => !on)}
         aria-haspopup="menu"
         aria-expanded={open}
-        // النصّ المرئي كلمةٌ واحدة، والبريد لا يظهر إلا داخل القائمة. ولذلك
-        // يحمله `aria-label`: قارئ الشاشة يسمع «Profile» وحدها فلا يعرف أيّ
-        // حسابٍ هو، ومن يدير حسابين يحتاج أن يعرف قبل أن يضغط الخروج.
-        //
-        // والوصف يبدأ بالكلمة المرئية نفسها لا بترجمتها: من يأمر بصوته يقول
-        // ما يقرأ، فلو خالف الوصفُ المكتوبَ لم يجد الأمرُ هدفه.
-        aria-label={`Profile — ${user.email}`}
-        className="icon-press tilt-group flex cursor-pointer items-center gap-2 rounded-full border border-hairline bg-surface-2 py-1 ps-1 pe-2.5 transition-colors hover:border-[color-mix(in_oklab,var(--accent)_40%,var(--border))]"
+        aria-label={`حسابي — ${user.email}`}
+        data-account
+        className="icon-press flex h-11 w-11 cursor-pointer items-center justify-center rounded-full bg-gold-soft text-base font-bold text-accent transition-shadow hover:shadow-[0_0_0_2px_var(--gold)]"
       >
-        <span className="tilt-hover inline-flex">
-          <BrandMark size={28} />
-        </span>
-        {/* `dir="ltr"` لكلمةٍ لاتينية داخل صفحةٍ عربية: الكلمة وحدها تُرتَّب
-            صحيحةً بلا توجيه، لكنّ التوجيه الصريح يحميها لو أُضيف إليها يوماً
-            رقمٌ أو نقطة — وعندها يقلبهما محرّك الاتجاه بلا تحذير. */}
-        <span
-          dir="ltr"
-          className="hidden text-xs font-medium text-ink-2 sm:inline"
-        >
-          Profile
-        </span>
+        {initialOf(user.email)}
       </button>
 
       {open ? (
@@ -140,4 +122,14 @@ export function UserMenu() {
       ) : null}
     </div>
   )
+}
+
+/**
+ * الحرفُ الأوّلُ من البريد — **حرفٌ لا رمز**: `9` أو `.` في أوّل بريدٍ لا
+ * يُقرأ اسماً، فيُتخطّى إلى أوّل حرف.
+ */
+export function initialOf(email: string): string {
+  const name = email.split('@')[0] ?? ''
+  const letter = [...name].find((c) => /\p{L}/u.test(c))
+  return (letter ?? '؟').toUpperCase()
 }

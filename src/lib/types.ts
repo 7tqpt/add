@@ -266,6 +266,13 @@ export interface Booking {
   commission_amount: number
   /** سلّم الإلغاء منسوخاً وقت الحجز — تعديل السياسة لاحقاً لا يمسّه. */
   cancellation_rules: RefundRule[]
+  /**
+   * رقمُ فاتورة الحجز إن صدرت — `INV-…` بذيل رقم الحجز نفسِه (`coupons.sql`).
+   * تصدر حين يؤكّد مقدّمُ الخدمة. ويُقرأ من `invoices` بالتضمين، فمن لا يقرأ
+   * المالَ لا يراه (`invoices_parties_read`).
+   */
+  invoice_number?: string | null
+  invoice_status?: 'issued' | 'paid' | 'void' | null
   rejection_reason: string
   cancel_reason: string
   created_at: string

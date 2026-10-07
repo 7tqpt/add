@@ -269,6 +269,33 @@ class Booking {
         completionRejectReason: completionRejectReason,
       );
 
+  /// نسخةٌ بمدفوعٍ آخر — لوضع العرض وحدَه حين يُدفع من «رصيد فرحتي»: في
+  /// القاعدة تحدّثه `api_confirm_payment`.
+  Booking withPaid(num paid) => Booking(
+        id: id,
+        reference: reference,
+        providerId: providerId,
+        userName: userName,
+        providerName: providerName,
+        serviceTitle: serviceTitle,
+        planId: planId,
+        coverPath: coverPath,
+        eventDate: eventDate,
+        eventTime: eventTime,
+        address: address,
+        guestsCount: guestsCount,
+        status: status,
+        totalPrice: totalPrice,
+        depositAmount: depositAmount,
+        paidAmount: paid,
+        couponCode: couponCode,
+        discountAmount: discountAmount,
+        point: point,
+        createdAt: createdAt,
+        completionRequestedAt: completionRequestedAt,
+        completionRejectReason: completionRejectReason,
+      );
+
   final String eventDate;
   final String? eventTime;
   final String address;
@@ -1663,4 +1690,72 @@ class PhoneGate {
 
   /// هل يُحجَز صاحبُ الجلسة على شاشة التحقّق.
   bool get blocks => required_ && !verified;
+}
+
+/// حركةٌ في «رصيد فرحتي» — موجبةٌ داخلة، وسالبةٌ خارجة.
+///
+/// `refund` استرجاعٌ اعتمدته الإدارة، و`payment` دفعُ حجزٍ من الرصيد،
+/// و`withdrawal` طلبُ سحبٍ حُجز به المبلغ، و`withdrawal_reversal` رفضُه.
+class WalletEntry {
+  const WalletEntry({
+    required this.id,
+    required this.amount,
+    required this.kind,
+    required this.note,
+    required this.createdAt,
+    this.bookingReference = '',
+    this.withdrawalReference = '',
+    this.withdrawalStatus = '',
+    this.withdrawalMethod = '',
+    this.withdrawalAccount = '',
+  });
+
+  final String id;
+  final num amount;
+  final String kind;
+  final String note;
+  final String createdAt;
+  final String bookingReference;
+  final String withdrawalReference;
+
+  /// `pending` أو `paid` أو `rejected` — لحركة السحب وحدها.
+  final String withdrawalStatus;
+  final String withdrawalMethod;
+  final String withdrawalAccount;
+
+  factory WalletEntry.fromMap(Map<String, dynamic> m) => WalletEntry(
+    id: m['id'] as String,
+    amount: (m['amount'] ?? 0) as num,
+    kind: (m['kind'] ?? '') as String,
+    note: (m['note'] ?? '') as String,
+    createdAt: (m['created_at'] ?? '') as String,
+    bookingReference: (m['booking_reference'] ?? '') as String,
+    withdrawalReference: (m['withdrawal_reference'] ?? '') as String,
+    withdrawalStatus: (m['withdrawal_status'] ?? '') as String,
+    withdrawalMethod: (m['withdrawal_method'] ?? '') as String,
+    withdrawalAccount: (m['withdrawal_account'] ?? '') as String,
+  );
+}
+
+/// «رصيد فرحتي» — الرصيدُ مجموعُ الحركات، والقاعدةُ هي التي تجمعه.
+class Wallet {
+  const Wallet({required this.balance, required this.entries, this.pendingRefunds = 0});
+
+  final num balance;
+  final List<WalletEntry> entries;
+
+  /// استرجاعاتٌ حسبها سلّمُ الإلغاء ولم تعتمدها الإدارةُ بعد — تُعرض فلا يظنّ
+  /// العميلُ أنّ مالَه ضاع، ولا تُعدّ في الرصيد.
+  final num pendingRefunds;
+
+  static const empty = Wallet(balance: 0, entries: []);
+
+  factory Wallet.fromMap(Map<String, dynamic> m) => Wallet(
+    balance: (m['balance'] ?? 0) as num,
+    pendingRefunds: (m['pending_refunds'] ?? 0) as num,
+    entries: [
+      for (final e in (m['entries'] as List? ?? const []))
+        WalletEntry.fromMap(Map<String, dynamic>.from(e as Map)),
+    ],
+  );
 }

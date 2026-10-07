@@ -2110,7 +2110,8 @@ void demoResetSubscription() => demoMySub = null;
 final demoInvoices = [
   Invoice(
     id: 'inv-1',
-    number: 'INV-2026-A1B2C3D4',
+    // رقمُ الفاتورة يتبع رقمَ الحجز (`coupons.sql`): b1 هو BK-2026-000318.
+    number: 'INV-2026-000318',
     bookingId: 'b1',
     subtotal: 800000,
     commission: 80000,
@@ -2250,4 +2251,121 @@ bool demoVerifyPhoneOtp(String phone, String otp) {
   if (otp != demoOtpCode) return false;
   demoPhoneVerified = true;
   return true;
+}
+
+// ── «رصيد فرحتي» ────────────────────────────────────────────────────────────
+//
+// يُحاكي `supabase/wallet.sql` بقواعده نفسِها: الرصيدُ مجموعُ الحركات، والسحبُ
+// إلى حسابٍ دُفع منه وحدَه ويُحجز فور الطلب، والدفعُ لا يُقبل من رصيدٍ لا يكفي.
+
+/// الحساباتُ التي دفع منها العميلُ — `payments.payer_account` في القاعدة.
+List<String> demoPaidAccounts = const ['777 123 456', '3001234567'];
+
+List<WalletEntry> demoWalletEntries = _demoWalletSeed();
+num demoPendingRefunds = 0;
+
+List<WalletEntry> _demoWalletSeed() => [
+  WalletEntry(
+    id: 'we3', amount: -50000, kind: 'withdrawal', note: 'طلب سحب WD-2026-0007', createdAt: _at(5),
+    withdrawalReference: 'WD-2026-0007', withdrawalStatus: 'pending', withdrawalMethod: 'jawali',
+    withdrawalAccount: '777 123 456',
+  ),
+  WalletEntry(
+    id: 'we2', amount: 200000, kind: 'refund', note: 'استرجاع — إلغاء حجز', createdAt: _at(52),
+    bookingReference: 'BK-2026-000318',
+  ),
+  WalletEntry(
+    id: 'we1', amount: -30000, kind: 'withdrawal', note: 'طلب سحب WD-2026-0003', createdAt: _at(400),
+    withdrawalReference: 'WD-2026-0003', withdrawalStatus: 'paid', withdrawalMethod: 'kuraimi',
+    withdrawalAccount: '3001234567',
+  ),
+];
+
+void demoResetWallet() {
+  demoWalletEntries = _demoWalletSeed();
+  demoPendingRefunds = 0;
+  demoPaidAccounts = const ['777 123 456', '3001234567'];
+}
+
+num get demoWalletBalance => demoWalletEntries.fold<num>(0, (sum, e) => sum + e.amount);
+
+Wallet demoWallet() => Wallet(
+  balance: demoWalletBalance,
+  entries: List.of(demoWalletEntries),
+  pendingRefunds: demoPendingRefunds,
+);
+
+/// نسخةُ `wallet_norm` — «٧٧٧ ١٢٣ ٤٥٦» و«+967777123456» حسابٌ واحد.
+String walletNorm(String account) {
+  final buffer = StringBuffer();
+  for (final rune in account.runes) {
+    if (rune >= 0x30 && rune <= 0x39) buffer.writeCharCode(rune);
+    if (rune >= 0x660 && rune <= 0x669) buffer.writeCharCode(rune - 0x660 + 0x30);
+    if (rune >= 0x6F0 && rune <= 0x6F9) buffer.writeCharCode(rune - 0x6F0 + 0x30);
+  }
+  final digits = buffer.toString();
+  return digits.replaceFirst(RegExp(r'^(00)?967(?=\d{9}$)'), '');
+}
+
+WalletEntry demoRequestWithdrawal({required num amount, required String method, required String account}) {
+  if (amount <= 0) throw StateError('اكتب مبلغاً أكبر من صفر');
+  final acct = walletNorm(account);
+  if (acct.length < 6) throw StateError('اكتب رقم الحساب الذي دفعت منه');
+  if (!demoPaidAccounts.any((a) => walletNorm(a) == acct)) {
+    throw StateError('اسحب إلى الحساب الذي دفعت منه — هذا الرقم ليس في سجلّ دفعك. '
+        'وإن أُغلق حسابُك فتواصل مع الدعم');
+  }
+  if (amount > demoWalletBalance) {
+    throw StateError('المبلغ أكبر من رصيدك المتاح (${demoWalletBalance.toStringAsFixed(0)} ريال)');
+  }
+  final n = demoWalletEntries.where((e) => e.kind == 'withdrawal').length + 7;
+  final ref = 'WD-2026-${n.toString().padLeft(4, '0')}';
+  final entry = WalletEntry(
+    id: 'we${demoWalletEntries.length + 1}', amount: -amount, kind: 'withdrawal',
+    note: 'طلب سحب $ref', createdAt: DateTime.now().toIso8601String(),
+    withdrawalReference: ref, withdrawalStatus: 'pending', withdrawalMethod: method,
+    withdrawalAccount: account.trim(),
+  );
+  demoWalletEntries = [entry, ...demoWalletEntries];
+  return entry;
+}
+
+PaymentRow demoPayFromWallet({required String bookingId, required String kind}) {
+  final index = demoBookings.indexWhere((b) => b.id == bookingId);
+  if (index < 0) throw StateError('الحجز غير موجود');
+  final booking = demoBookings[index];
+  final due = kind == 'deposit'
+      ? booking.depositAmount - booking.paidAmount
+      : booking.totalPrice - booking.paidAmount;
+  if (due <= 0) throw StateError('لا مبلغ مستحقّاً على هذا الحجز');
+  if (demoPayments.any((p) => p.bookingId == bookingId && p.isPending)) {
+    throw StateError('لديك إبلاغٌ سابق قيد التأكيد على هذا الحجز');
+  }
+  if (demoWalletBalance < due) {
+    throw StateError('رصيدك ${demoWalletBalance.toStringAsFixed(0)} ريال لا يكفي — '
+        'المستحقّ ${due.toStringAsFixed(0)} ريال');
+  }
+  final row = PaymentRow(
+    id: 'pay${demoPayments.length + 1}',
+    reference: 'PAY-2026-${(demoPayments.length + 1).toString().padLeft(6, '0')}',
+    bookingId: bookingId,
+    bookingReference: booking.reference,
+    kind: kind,
+    description: kind == 'deposit' ? 'عربون الحجز — من رصيد فرحتي' : 'إكمال مبلغ الحجز — من رصيد فرحتي',
+    amount: due,
+    method: 'wallet',
+    status: 'paid',
+    createdAt: DateTime.now().toIso8601String(),
+  );
+  demoPayments = [row, ...demoPayments];
+  demoWalletEntries = [
+    WalletEntry(
+      id: 'we${demoWalletEntries.length + 1}', amount: -due, kind: 'payment',
+      note: '${kind == 'deposit' ? 'عربون' : 'إكمال'} ${booking.reference}',
+      createdAt: row.createdAt, bookingReference: booking.reference,
+    ),
+    ...demoWalletEntries,
+  ];
+  demoBookings = [...demoBookings]..[index] = booking.withPaid(booking.paidAmount + due);
+  return row;
 }
