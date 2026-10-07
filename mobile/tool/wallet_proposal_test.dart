@@ -199,7 +199,13 @@ Widget _withdraw() => Scaffold(
                 ),
               ),
               const SizedBox(height: Space.lg),
-              const SectionTitle('إلى أين؟'),
+              // **والسحبُ إلى الحساب الذي دُفع منه** — طلبُ صاحب المنصّة:
+              // «عند السحب ادخل رقم الحساب الذي دفعت منه للمراجعة». فيُقارَن
+              // في اللوحة بما في سجلّ الدفع، ولا يُسحب مالٌ إلى حسابٍ غريب.
+              const SectionTitle('من أيّ حسابٍ دفعت؟'),
+              const SizedBox(height: Space.xs),
+              const Muted('يُرجع المبلغ إلى الحساب نفسه الذي دفعت منه — '
+                  'وتراجعه الإدارة مع سجلّ دفعك.', size: 12),
               const SizedBox(height: Space.sm),
               Wrap(
                 spacing: Space.sm,
@@ -215,7 +221,7 @@ Widget _withdraw() => Scaffold(
                 controller: TextEditingController(text: '777 123 456'),
                 textDirection: TextDirection.ltr,
                 decoration: const InputDecoration(
-                  labelText: 'رقم محفظتك',
+                  labelText: 'رقم الحساب الذي دفعت منه',
                   prefixIcon: Icon(Icons.account_balance_wallet_outlined, size: 20),
                 ),
               ),
@@ -227,7 +233,7 @@ Widget _withdraw() => Scaffold(
               ),
               const SizedBox(height: Space.sm),
               const Muted(
-                'يُحجز المبلغ من رصيدك حتى تحوّله الإدارة إلى محفظتك — '
+                'يُحجز المبلغ من رصيدك حتى تراجعه الإدارة وتحوّله — '
                 'ويصلك إشعارٌ حين يتمّ.',
                 size: 11,
               ),
