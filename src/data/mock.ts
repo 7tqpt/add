@@ -417,12 +417,17 @@ export const mockServices: ProviderService[] = mockProviders
     // القاعات تأخذ السياسة الصارمة لارتباطها بموسم وموعد لا يُعوَّض
     const policy = categoryId === 'cat_halls' ? mockPolicies[2] : mockPolicies[0]
 
+    // **وخدمةٌ واحدةٌ خارج قسم صاحبها** — باقةُ أوّل مزوّدٍ الوسطى في «التصوير»:
+    // ما يقع لمن أضاف قبل أن يُقيَّد المزوّدُ بأقسامه، فتُرى في وضع العرض
+    // مخفيّةً عن العملاء ويُرى «تغيير القسم» يعيدها.
+    const photo = mockCategories.find((c) => c.id === 'cat_photo')!
     return PACKAGE_TIERS.map((tier, t) => ({
       id: `svc_${i}_${t}`,
       provider_id: provider.id,
       provider_name: provider.business_name,
-      category_id: categoryId,
-      category_name: category.name,
+      ...(i === 0 && t === 1 && categoryId !== photo.id
+        ? { category_id: photo.id, category_name: photo.name }
+        : { category_id: categoryId, category_name: category.name }),
       title: `${category.name} — ${tier}`,
       description: 'تشمل الباقة تجهيزاً كاملاً مع فريق مختص وضمان جودة التنفيذ.',
       price: base * (t + 1),

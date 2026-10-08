@@ -88,6 +88,20 @@ class Api {
     return rows.map(Governorate.fromMap).toList();
   }
 
+  /// **أقسامُ المزوّد** — ما تضيف فيه ورقةُ «خدمة جديدة» وحدَه.
+  ///
+  /// تضبطها الإدارةُ من صفحته في اللوحة، والقاعدةُ تردّ خدمةً في غيرها
+  /// (`supabase/provider_category_lock.sql`). وتُقرأ من الجدول: أقسامُ المزوّد
+  /// ظاهرةٌ للعامّة أصلاً.
+  static Future<Set<String>> myCategoryIds(String providerId) async {
+    if (!isSupabaseConfigured) return demoDelay(Set.of(demoProviderCategoryIds));
+    final rows = await db
+        .from('provider_categories')
+        .select('category_id')
+        .eq('provider_id', providerId);
+    return {for (final r in rows) r['category_id'] as String};
+  }
+
   static Future<List<ServiceCategory>> categories() async {
     if (!isSupabaseConfigured) return demoDelay(demoCategories);
 
@@ -977,14 +991,21 @@ class Api {
   /// خدماتي أنا — المعطَّلة منها كذلك، وهي التي تُخفيها `v_services`.
   static Future<List<MyService>> myServices(String providerId) async {
     if (!isSupabaseConfigured) return demoDelay(demoMyServices);
-    final rows = await db
-        .from('provider_services')
-        .select(
-          'id, title, description, price, price_to, unit, deposit_percent, category_id, is_active',
-        )
-        .eq('provider_id', providerId)
-        .order('created_at', ascending: false);
-    return rows.map(MyService.fromMap).toList();
+    const columns = 'id, title, description, price, price_to, unit, deposit_percent, category_id, is_active';
+    Future<List<MyService>> read(String select) async {
+      final rows = await db
+          .from('provider_services')
+          .select(select)
+          .eq('provider_id', providerId)
+          .order('created_at', ascending: false);
+      return rows.map(MyService.fromMap).toList();
+    }
+
+    // وحالُ الموافقة عمودان قد لا يكونان بعد (`provider_category_lock.sql`).
+    return whenColumnMissing(
+      () => read('$columns, approval, approval_note'),
+      () => read(columns),
+    );
   }
 
   static Future<void> saveService({

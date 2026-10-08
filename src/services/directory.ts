@@ -5,6 +5,7 @@ import type {
   Payment,
   ProviderDocument,
   ProviderService,
+  ServiceCategory,
   ServiceMedia,
   ServiceProvider,
   ProviderStatus,
@@ -215,7 +216,12 @@ export async function listProviders(query: ProviderQuery): Promise<Paged<Service
 }
 
 export async function getProvider(id: string): Promise<ServiceProvider | null> {
-  if (!isSupabaseConfigured) return delay(demoProviders.find((p) => p.id === id) ?? null)
+  if (!isSupabaseConfigured) {
+    // **نسخةٌ لا المرجعُ نفسُه** — كما يُرجع الخادم. وإلّا عدّلت الحفظةُ الكائنَ
+    // الذي تعرضه الصفحةُ فبدا الحفظُ ظاهراً بلا إعادة تحميل، وفي الإنتاج لا يظهر.
+    const found = demoProviders.find((p) => p.id === id)
+    return delay(found ? { ...found, categories: [...found.categories] } : null)
+  }
   const { data, error } = await requireSupabase()
     .from('v_admin_providers').select('*').eq('id', id).maybeSingle()
   if (error) throw error
@@ -441,6 +447,161 @@ export async function setProviderCommission(
       from: previous === null ? 'العمولة العامة' : `${previous}%`,
       to: clamped === null ? 'العمولة العامة' : `${clamped}%`,
     },
+  })
+}
+
+// ---------------------------------------------------------------------------
+// أقسامُ مقدّم الخدمة — تضبطها الإدارةُ وحدها (`supabase/provider_category_lock.sql`)
+// ---------------------------------------------------------------------------
+
+/**
+ * **أهذه الخدمةُ خارج أقسام صاحبها؟** فهي مخفيّةٌ عن العملاء ولا تُحجز.
+ *
+ * والمقارنةُ بالاسم: صفُّ المزوّد يحمل أسماءَ أقسامه (`categories`) وصفُّ
+ * الخدمة اسمَ قسمها، وكلاهما يُقرأ من جدول الأقسام نفسِه لحظةَ الطلب.
+ */
+export const isOutsideCategories = (
+  service: Pick<ProviderService, 'category_name'>,
+  provider: Pick<ServiceProvider, 'categories'>,
+) => !provider.categories.includes(service.category_name)
+
+/**
+ * يضبط أقسامَ المزوّد — قسماً واحداً على الأقلّ — ويُرجع عددَ خدماته التي ما
+ * زالت تنتظر الموافقةَ أو مرفوضة. وإضافةُ القسم موافقةٌ على خدماته فيه، وحذفُه
+ * يُعيدها للمراجعة. والقاعدةُ هي الحَكَم، وتُشعر المزوّدَ بأقسامه.
+ */
+export async function setProviderCategories(
+  provider: Pick<ServiceProvider, 'id' | 'business_name' | 'categories'>,
+  categories: Pick<ServiceCategory, 'id' | 'name'>[],
+): Promise<{ hidden: number }> {
+  if (categories.length === 0) throw new Error('اختر قسماً واحداً على الأقلّ.')
+  const names = categories.map((c) => c.name)
+  let hidden: number
+
+  if (!isSupabaseConfigured) {
+    const target = demoProviders.find((candidate) => candidate.id === provider.id)
+    if (target) target.categories = names
+    const own = mockServices.filter((s) => s.provider_id === provider.id)
+    // إضافةُ القسم موافقةٌ على خدماته فيه — والمرفوضةُ معها.
+    for (const s of own) {
+      if (names.includes(s.category_name) && demoDecisions.get(s.id)?.approval === 'rejected') {
+        demoDecisions.delete(s.id)
+      }
+    }
+    hidden = own.filter((s) => demoApproval(s) !== 'approved').length
+    await delay(null, 240)
+  } else {
+    const { data, error } = await requireSupabase().rpc('api_admin_set_provider_categories', {
+      p_provider_id: provider.id,
+      p_category_ids: categories.map((c) => c.id),
+    })
+    if (error) throw error
+    const row = (Array.isArray(data) ? data[0] : data) as { hidden: number } | null
+    hidden = row?.hidden ?? 0
+  }
+
+  await recordAudit({
+    action: 'provider.categories',
+    entity: 'provider',
+    entityId: provider.id,
+    entityLabel: provider.business_name,
+    details: { from: provider.categories.join('، '), to: names.join('، '), hidden },
+  })
+  return { hidden }
+}
+
+// ---------------------------------------------------------------------------
+// مراجعةُ الخدمات — خدمةٌ في قسمٍ ليس من أقسام صاحبها تنتظر الإدارة (ج)
+// ---------------------------------------------------------------------------
+
+export type ServiceApproval = 'approved' | 'pending' | 'rejected'
+
+/** خدمةٌ تنتظر الإدارةَ أو رفضتها — صفٌّ من `api_admin_service_reviews`. */
+export interface ServiceReview {
+  id: string
+  title: string
+  price: number
+  approval: ServiceApproval
+  approval_note: string
+  category_id: string
+  category_name: string
+  provider_id: string
+  provider_name: string
+  /** أقسامُ صاحبها مكتوبةً — «القاعات والخيام، …». */
+  provider_categories: string
+  created_at: string
+}
+
+/**
+ * **وضعُ العرض يحاكي القاعدةَ بقاعدتها نفسِها:** الخدمةُ خارج أقسام صاحبها
+ * تنتظر، إلّا ما وُوفق عليه بعينه أو رُفض. فإضافةُ القسم تقبلها بلا خطوةٍ ثانية،
+ * وحذفُه يُعيدها — كما في `provider_category_lock.sql`.
+ */
+const demoDecisions = new Map<string, { approval: 'approved' | 'rejected'; note: string }>()
+
+function demoApproval(service: ProviderService): ServiceApproval {
+  const provider = demoProviders.find((p) => p.id === service.provider_id)
+  const decided = demoDecisions.get(service.id)
+  if (decided?.approval === 'rejected') return 'rejected'
+  if (decided?.approval === 'approved') return 'approved'
+  return provider && isOutsideCategories(service, provider) ? 'pending' : 'approved'
+}
+
+/** ما ينتظر الإدارةَ أو رفضته — المنتظرُ أوّلاً. */
+export async function listServiceReviews(): Promise<ServiceReview[]> {
+  if (!isSupabaseConfigured) {
+    const rows = mockServices
+      .map((service) => ({ service, approval: demoApproval(service) }))
+      .filter(({ approval }) => approval !== 'approved')
+      .map(({ service, approval }): ServiceReview => ({
+        id: service.id,
+        title: service.title,
+        price: service.price,
+        approval,
+        approval_note: demoDecisions.get(service.id)?.note ?? '',
+        category_id: service.category_id,
+        category_name: service.category_name,
+        provider_id: service.provider_id,
+        provider_name: service.provider_name,
+        provider_categories:
+          demoProviders.find((p) => p.id === service.provider_id)?.categories.join('، ') ?? '',
+        created_at: new Date(Date.now() - 2 * 3_600_000).toISOString(),
+      }))
+      .sort((a, b) => Number(b.approval === 'pending') - Number(a.approval === 'pending'))
+    return delay(rows)
+  }
+  const { data, error } = await requireSupabase().rpc('api_admin_service_reviews')
+  if (error) throw error
+  return (data ?? []) as ServiceReview[]
+}
+
+/** يوافق على خدمةٍ بعينها، أو يرفضها بسببٍ يصل صاحبَها. */
+export async function reviewService(
+  review: Pick<ServiceReview, 'id' | 'title' | 'provider_name'>,
+  approve: boolean,
+  note = '',
+): Promise<void> {
+  const reason = note.trim()
+  if (!approve && !reason) throw new Error('اكتب سبب الرفض — يصل مقدّمَ الخدمة.')
+
+  if (!isSupabaseConfigured) {
+    demoDecisions.set(review.id, { approval: approve ? 'approved' : 'rejected', note: approve ? '' : reason })
+    await delay(null, 220)
+  } else {
+    const { error } = await requireSupabase().rpc('api_admin_review_service', {
+      p_service_id: review.id,
+      p_approve: approve,
+      p_note: reason,
+    })
+    if (error) throw error
+  }
+
+  await recordAudit({
+    action: approve ? 'service.approve' : 'service.reject',
+    entity: 'service',
+    entityId: review.id,
+    entityLabel: `${review.title} — ${review.provider_name}`,
+    details: approve ? {} : { note: reason },
   })
 }
 

@@ -33,6 +33,8 @@ for (const f of [
   'wallet.sql',
   // «تفريغ المنتهية» — زرُّ المالك في «الاشتراكات والإعلانات» (`src/services/growth.ts`).
   'banners.sql', 'promotions_clear.sql',
+  // وأقسامُ المزوّد تضبطها الإدارةُ من صفحته (`src/services/directory.ts`).
+  'provider_category_lock.sql',
 ]) {
   await db.exec(readFileSync(`../${f}`, 'utf8'))
 }

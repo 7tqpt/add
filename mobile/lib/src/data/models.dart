@@ -671,6 +671,8 @@ class MyService {
     required this.depositPercent,
     required this.categoryId,
     required this.isActive,
+    this.approval = 'approved',
+    this.approvalNote = '',
   });
 
   final String id;
@@ -683,6 +685,13 @@ class MyService {
   final String categoryId;
   final bool isActive;
 
+  /// **موافقةُ الإدارة** — `approved` أو `pending` أو `rejected`. خدمةٌ في قسمٍ ليس
+  /// من أقسام صاحبها تنتظر ولا يراها العملاء (`supabase/provider_category_lock.sql`).
+  final String approval;
+
+  /// سببُ الرفض كما كتبته الإدارة.
+  final String approvalNote;
+
   factory MyService.fromMap(Map<String, dynamic> m) => MyService(
     id: m['id'] as String,
     title: (m['title'] ?? '') as String,
@@ -693,6 +702,8 @@ class MyService {
     depositPercent: ((m['deposit_percent'] ?? 30) as num).toInt(),
     categoryId: (m['category_id'] ?? '') as String,
     isActive: (m['is_active'] ?? true) as bool,
+    approval: (m['approval'] ?? 'approved') as String,
+    approvalNote: (m['approval_note'] ?? '') as String,
   );
 }
 

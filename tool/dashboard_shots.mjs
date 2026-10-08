@@ -279,6 +279,76 @@ const leftover = await page.evaluate(() => ({
 check('**وبعد التفريغ لا منتهيةَ ولا ملغاةَ في الجدول، والجاريةُ باقية**',
   leftover.ended === 0 && leftover.rows > 0 && leftover.count === '0', JSON.stringify(leftover))
 
+// ── أقسامُ مقدّم الخدمة وموافقةُ الإدارة — (ج) ───────────────────────────────
+// في وضع العرض لأوّل مزوّدٍ موثَّقٍ باقةٌ في «التصوير» خارج قسمه: تنتظر في بطاقة
+// «خدماتٌ بانتظار موافقتك» وفي صفحته. تُرفض بسبب، ثمّ يُضاف قسمُها له فتُقبل.
+await page.goto(`${base}/#/providers`)
+await page.waitForTimeout(1500)
+const queue = await page.evaluate(() => ({
+  count: document.querySelector('[data-pending-services]')?.getAttribute('data-pending-services'),
+  rows: [...document.querySelectorAll('[data-pending-services] tbody tr')].map((tr) => tr.innerText.replace(/\s+/g, ' ')),
+}))
+await page.screenshot({ path: `${out}/11-pending-services.png` })
+check('**«خدماتٌ بانتظار موافقتك» فوق مقدّمي الخدمة — بقسمها وأقسام صاحبها**',
+  Number(queue.count) >= 1 && queue.rows.some((r) => /التصوير والإضاءة/.test(r) && /القاعات والخيام/.test(r) && /موافقة/.test(r)), JSON.stringify(queue))
+
+const providerLinks = await page.locator('tbody a[href*="#/providers/"]').evaluateAll((as) => as.map((a) => a.getAttribute('href')))
+let catPage = null
+for (const href of providerLinks) {
+  await page.goto(`${base}/${href}`)
+  await page.waitForTimeout(1100)
+  if (await page.locator('[data-outside-note]').count()) { catPage = href; break }
+}
+const cat = await page.evaluate(() => {
+  const row = document.querySelector('[data-outside-line]')?.closest('tr')
+  return {
+    note: document.querySelector('[data-outside-note]')?.textContent?.trim() ?? '',
+    line: document.querySelector('[data-outside-line]')?.textContent?.trim() ?? '',
+    state: row?.querySelector('[data-service-state]')?.textContent?.replace(/\s+/g, ' ').trim() ?? '',
+  }
+})
+check('**وفي صفحته: «بانتظار الموافقة» وزرّاها على الخدمة نفسها**',
+  !!catPage && /التصوير والإضاءة/.test(cat.line) && /بانتظار الموافقة/.test(cat.state) && /موافقة/.test(cat.state) && /رفض/.test(cat.state) && /بانتظار موافقتك/.test(cat.note), JSON.stringify(cat))
+
+// الرفضُ بسبب — والزرُّ لا يُضغط بلا سبب.
+await page.locator('[data-outside-line]').first().locator('xpath=ancestor::tr').locator('button', { hasText: 'رفض' }).click()
+await page.waitForTimeout(400)
+const rejectBlocked = await page.locator('dialog[open] button', { hasText: 'ارفض' }).isDisabled()
+await page.locator('dialog[open] [data-reject-note]').fill('خارج نشاط القاعة')
+await page.screenshot({ path: `${out}/12-reject-service.png` })
+await page.locator('dialog[open] button', { hasText: 'ارفض' }).click()
+await page.waitForTimeout(1200)
+const rejectedLine = await page.locator('[data-outside-line]').first().textContent().catch(() => '')
+check('**والرفضُ لا يُضغط بلا سبب، ثمّ يُكتب السببُ تحت الخدمة**', rejectBlocked && /مرفوضة — خارج نشاط القاعة/.test(rejectedLine ?? ''), `${rejectBlocked} ${rejectedLine}`)
+
+// وإضافةُ قسمها له تقبلها — ولو كانت مرفوضة.
+await page.locator('[data-change-categories]').click()
+await page.waitForTimeout(500)
+await page.locator('dialog[open] input[data-category="التصوير والإضاءة"]').check()
+await page.waitForTimeout(200)
+const effect = await page.locator('dialog[open] [data-category-effect]').textContent().catch(() => '')
+await page.screenshot({ path: `${out}/13-provider-categories.png` })
+check('**والنافذةُ تقول إنّ خدمتَه المنتظرةَ تُقبل**', /تُقبل 1 من خدماته المنتظرة/.test(effect ?? ''), effect)
+await page.locator('dialog[open] button', { hasText: 'احفظ' }).click()
+await page.waitForTimeout(1400)
+const afterCat = await page.evaluate(() => ({
+  note: document.querySelectorAll('[data-outside-note]').length,
+  lines: document.querySelectorAll('[data-outside-line]').length,
+  subtitle: [...document.querySelectorAll('p')].find((p) => p.textContent.includes(' · '))?.textContent ?? '',
+}))
+check('**وبعد الحفظ قُبلت** — ويُكتب القسمُ الجديد في رأس صفحته',
+  afterCat.note === 0 && afterCat.lines === 0 && /التصوير والإضاءة/.test(afterCat.subtitle), JSON.stringify(afterCat))
+await page.locator('button', { hasText: /^محاسب$/ }).first().click()
+await page.waitForTimeout(900)
+const accountantCan = await page.locator('[data-change-categories]').isEnabled().catch(() => null)
+check('ومن لا يدير مقدّمي الخدمة لا يضغط «تغيير القسم»', accountantCan === false, String(accountantCan))
+await page.locator('button', { hasText: /^المالك$/ }).first().click()
+await page.waitForTimeout(600)
+await page.goto(`${base}/#/providers`)
+await page.waitForTimeout(1300)
+const queueAfter = await page.locator('[data-pending-services]').count()
+check('**وتخلو «بانتظار موافقتك» فتغيب**', queueAfter === 0, String(queueAfter))
+
 const phone = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 })
 await phone.goto(`${base}/#/`)
 await phone.waitForTimeout(1300)

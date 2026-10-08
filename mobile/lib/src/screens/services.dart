@@ -265,16 +265,25 @@ class _ServicesScreenState extends State<ServicesScreen> {
                     subtitle: s.description,
                     // **وغيرُ الموثَّق لا «معروضة» عنده** — ولو فعّلها: لا
                     // يراها أحد. فتُكتب حالُ الملفّ لا حالُ الخدمة.
+                    //
+                    // **وما ينتظر الإدارةَ أو رفضته يُقال بعده** — قسمٌ ليس من
+                    // أقسامه (`provider_category_lock.sql`): لا يراها العملاء.
                     badge: _unlisted
                         ? (_status == 'pending' ? tr('قيد المراجعة') : tr('غير ظاهرة'))
-                        : s.isActive ? tr('معروضة') : tr('موقوفة'),
+                        : s.approval == 'pending'
+                            ? tr('بانتظار موافقة الإدارة')
+                            : s.approval == 'rejected'
+                                ? tr('مرفوضة')
+                                : s.isActive ? tr('معروضة') : tr('موقوفة'),
                     // **ولونُ الشارة يفرّق الحالَين بلمحة**: المعروضةُ
                     // خضراء والموقوفةُ باهتة — وعلى الشريط النبيذيّ القديم
                     // كانتا بيضاوين تُقرآن حرفاً حرفاً.
-                    badgeColor: _unlisted
+                    badgeColor: _unlisted || s.approval == 'pending'
                         ? AppColors.warning
-                        : s.isActive ? AppColors.good : AppColors.muted,
-                    badgeIcon: _unlisted ? Icons.hourglass_top_rounded : null,
+                        : s.approval == 'rejected'
+                            ? AppColors.critical
+                            : s.isActive ? AppColors.good : AppColors.muted,
+                    badgeIcon: _unlisted || s.approval == 'pending' ? Icons.hourglass_top_rounded : null,
                     opens: true,
                   ),
                   const SizedBox(height: Space.sm),
@@ -306,6 +315,20 @@ class _ServicesScreenState extends State<ServicesScreen> {
                   ),
                   const SizedBox(height: Space.xs),
                   Muted(trf('العربون {0}٪', ['${s.depositPercent}']), size: 11),
+                  if (!_unlisted && s.approval != 'approved') ...[
+                    const SizedBox(height: Space.xs),
+                    Text(
+                      s.approval == 'rejected'
+                          ? trf('لم تقبلها الإدارة: {0} — عدّلها فتعود للمراجعة.', [s.approvalNote])
+                          : tr('في قسمٍ ليس من أقسامك — لا يراها العملاءُ حتى توافق الإدارة.'),
+                      key: ValueKey('service-approval-${s.id}'),
+                      style: TextStyle(
+                        fontSize: 12,
+                        height: 1.6,
+                        color: s.approval == 'rejected' ? AppColors.critical : AppColors.warning,
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: Space.sm),
                   const Divider(height: 1, color: AppColors.hairline),
                   const SizedBox(height: Space.sm),
@@ -404,6 +427,11 @@ class _ServiceEditorState extends State<_ServiceEditor> {
   late String? _categoryId = widget.service?.categoryId;
 
   late Future<List<ServiceCategory>> _categories;
+
+  /// أقسامُه المسجّلة — **والأقسامُ كلُّها تُعرض مع ذلك.** قال صاحبُ المنصّة:
+  /// «مقدم الخدمة يختار القسم الذي يبغى بس لايمكنه تغيير الي بعلم الادارة»؛
+  /// فما يختاره خارجها يُحفظ وينتظر موافقتها، ويُقال له ذلك تحت الحقل.
+  Set<String> _mine = const {};
   bool _busy = false;
   String? _error;
 
@@ -411,6 +439,9 @@ class _ServiceEditorState extends State<_ServiceEditor> {
   void initState() {
     super.initState();
     _categories = Api.categories();
+    Api.myCategoryIds(widget.session.providerId ?? '').then((ids) {
+      if (mounted) setState(() => _mine = ids);
+    }).catchError((_) {});
   }
 
   @override
@@ -553,6 +584,28 @@ class _ServiceEditorState extends State<_ServiceEditor> {
                 );
               },
             ),
+            // **خارج أقسامه: يُقال قبل الحفظ لا بعده** — ما دام القسمُ جديداً عليها؛
+            // خدمةٌ وُوفق عليها بعينها لا يُقال لها ذلك عند تعديل سعرها.
+            if (_categoryId != null &&
+                _mine.isNotEmpty &&
+                !_mine.contains(_categoryId) &&
+                (widget.service == null || widget.service!.categoryId != _categoryId)) ...[
+              const SizedBox(height: Space.xs),
+              Row(
+                key: const ValueKey('service-category-pending'),
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.hourglass_top_rounded, size: 16, color: AppColors.warning),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      tr('ليس من أقسامك المسجّلة — تُحفظ الخدمة، وتظهر للعملاء بعد موافقة الإدارة.'),
+                      style: const TextStyle(fontSize: 12.5, height: 1.6, color: AppColors.warning),
+                    ),
+                  ),
+                ],
+              ),
+            ],
             const SizedBox(height: Space.lg),
             Align(alignment: AlignmentDirectional.centerStart, child: Muted(trf('العربون: {0}٪', ['$_deposit']))),
             Slider(

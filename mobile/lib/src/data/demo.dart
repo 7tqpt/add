@@ -23,6 +23,10 @@ const demoGovernorates = [
   Governorate(id: 'g6', name: 'إب'),
 ];
 
+/// أقسامُ المزوّد في وضع العرض — «القاعات والخيام» وحدَها، كما يسجّل صاحبُ قاعة.
+/// وما يضيفه في غيرها ينتظر موافقةَ الإدارة، كما في القاعدة.
+Set<String> demoProviderCategoryIds = {'c1'};
+
 const demoCategories = [
   ServiceCategory(id: 'c1', name: 'القاعات والخيام', slug: 'halls'),
   ServiceCategory(id: 'c2', name: 'الطبخ والضيافة', slug: 'catering'),
@@ -1023,6 +1027,14 @@ List<MyService> demoMyServices = [];
 int _serviceSeq = 0;
 
 void demoSaveService({String? id, required Map<String, dynamic> values}) {
+  final before = id == null ? null : demoMyServices.firstWhere((s) => s.id == id);
+  final category = values['category_id'] as String;
+  // **وضعُ العرض يحسب الموافقةَ بقاعدة القاعدة:** جديدةٌ أو نُقلت أو كانت مرفوضةً —
+  // في أقسامه تُقبل، وفي غيرها تنتظر. وما سوى ذلك يُبقي حالَها.
+  final recompute = before == null || before.categoryId != category || before.approval == 'rejected';
+  final approval = recompute
+      ? (demoProviderCategoryIds.contains(category) ? 'approved' : 'pending')
+      : before.approval;
   final next = MyService(
     id: id ?? 'ms${++_serviceSeq}',
     title: values['title'] as String,
@@ -1031,8 +1043,10 @@ void demoSaveService({String? id, required Map<String, dynamic> values}) {
     priceTo: values['price_to'] as num?,
     unit: values['unit'] as String,
     depositPercent: values['deposit_percent'] as int,
-    categoryId: values['category_id'] as String,
-    isActive: id == null ? true : demoMyServices.firstWhere((s) => s.id == id).isActive,
+    categoryId: category,
+    isActive: before?.isActive ?? true,
+    approval: approval,
+    approvalNote: recompute ? '' : before.approvalNote,
   );
   demoMyServices = id == null
       ? [next, ...demoMyServices]
@@ -1052,6 +1066,8 @@ void demoSetServiceActive(String id, bool active) {
       depositPercent: s.depositPercent,
       categoryId: s.categoryId,
       isActive: active,
+      approval: s.approval,
+      approvalNote: s.approvalNote,
     );
   }).toList();
 }
