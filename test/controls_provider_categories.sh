@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# ضوابطُ سالبةٌ لـ«تغيير القسم» وخدماتٍ خارج أقسام صاحبها — `test/provider_categories.test.ts`،
+# ضوابطُ سالبةٌ لموافقة الإدارة على الخدمات (ج) و«تغيير القسم» — `test/provider_categories.test.ts`،
 # ثمّ المقيسُ في المتصفّح (`tool/dashboard_shots.mjs`). تكسر كلَّ ضمانةٍ مرّةً
 # بشيفرةٍ صالحة، وتتأكّد أنّ ما يقيسها يحمرّ، وتطبع ما سقط.
 set -uo pipefail
 cd "$(dirname "$0")/.."
 
-FILES="src/services/directory.ts src/pages/ProviderDetail.tsx src/data/mock.ts"
+FILES="src/services/directory.ts src/pages/ProviderDetail.tsx src/pages/Providers.tsx src/components/dashboard/ServiceReview.tsx src/data/mock.ts"
 BACKUP=$(mktemp -d)
 for f in $FILES; do mkdir -p "$BACKUP/$(dirname "$f")"; cp "$f" "$BACKUP/$f"; done
 restore() { for f in $FILES; do cp "$BACKUP/$f" "$f"; done; }
@@ -53,39 +53,48 @@ run() {
   restore
 }
 
-# ── أ) الخدمةُ خارج أقسامه لا تُعلَّم — فتبدو للإدارة ظاهرةً وهي مخفيّة ──────
-run unit "(أ) المخفيّةُ لا تُعدّ" sub src/services/directory.ts \
-  ") => !provider.categories.includes(service.category_name)" \
-  ") => !provider.categories.includes(service.category_name) && false"
+# ── أ) ما خارج أقسامه لا ينتظر — فلا تعرف الإدارةُ به ─────────────────────────
+run unit "(أ) لا شيءَ ينتظر" sub src/services/directory.ts \
+  "  return provider && isOutsideCategories(service, provider) ? 'pending' : 'approved'" \
+  "  return 'approved'"
 
-run unit "(ب) يُحفظ بلا قسم" sub src/services/directory.ts \
-  "  if (categories.length === 0) throw new Error('اختر قسماً واحداً على الأقلّ.')" \
+run unit "(ب) رفضٌ بلا سبب" sub src/services/directory.ts \
+  "  if (!approve && !reason) throw new Error('اكتب سبب الرفض — يصل مقدّمَ الخدمة.')" \
   ""
 
-run unit "(ج) وضعُ العرض بلا خدمةٍ خارج قسمها" sub src/data/mock.ts \
+run unit "(ج) إضافةُ القسم لا تقبل المرفوضة" sub src/services/directory.ts \
+  "      if (names.includes(s.category_name) && demoDecisions.get(s.id)?.approval === 'rejected') {" \
+  "      if (false) {"
+
+run unit "(د) وضعُ العرض بلا خدمةٍ تنتظر" sub src/data/mock.ts \
   "      ...(i === 0 && t === 1 && categoryId !== photo.id" \
   "      ...(i === -1 && t === 1 && categoryId !== photo.id"
 
-run browser "(د) الشارةُ تقول «معروضة» لمخفيّة" sub src/pages/ProviderDetail.tsx \
-  "                            {isOutsideCategories(service, record) ? (
-                              <Badge tone=\"critical\" icon={false}>" \
+# لا يُحذف سطرُ البطاقة: يبقى مكوّنُها بلا استعمالٍ فيسقط البناءُ لا الفحص.
+run browser "(هـ) البطاقةُ تغيب عن «مقدّمو الخدمة»" sub src/pages/Providers.tsx \
+  "  if (rows.length === 0) return null" \
+  "  if (rows.length >= 0) return null"
+
+run browser "(و) لا زرَّين على الخدمة في صفحته" sub src/pages/ProviderDetail.tsx \
+  "                            {reviewOf.has(service.id) ? (
+                              <div className=\"flex flex-col items-start gap-1.5\">" \
   "                            {false ? (
-                              <Badge tone=\"critical\" icon={false}>"
+                              <div className=\"flex flex-col items-start gap-1.5\">"
 
-run browser "(هـ) النافذةُ لا تقول ما يعود" sub src/pages/ProviderDetail.tsx \
-  "  const wouldReturn = outside.filter((s) => pickedNames.includes(s.category_name)).length" \
-  "  const wouldReturn = 0"
+run browser "(ز) الرفضُ يُضغط بلا سبب" sub src/components/dashboard/ServiceReview.tsx \
+  "      confirmDisabled={!note.trim()}" \
+  "      confirmDisabled={false}"
 
-run browser "(و) الحفظُ لا يعيد تحميل المزوّد" sub src/pages/ProviderDetail.tsx \
-  "      provider.reload()
-      portfolio.reload()
-    } catch (cause) {
-      setCategoriesError" \
+run browser "(ح) سببُ الرفض لا يُكتب تحت الخدمة" sub src/pages/ProviderDetail.tsx \
+  "                                مرفوضة — {reviewOf.get(service.id)?.approval_note}" \
+  "                                مرفوضة"
+
+run browser "(ط) حفظُ الأقسام لا يعيد المراجعات" sub src/pages/ProviderDetail.tsx \
   "      portfolio.reload()
-    } catch (cause) {
-      setCategoriesError"
+      serviceReviews.reload()" \
+  "      portfolio.reload()"
 
-run browser "(ز) «تغيير القسم» لكلّ دور" sub src/pages/ProviderDetail.tsx \
+run browser "(ي) «تغيير القسم» لكلّ دور" sub src/pages/ProviderDetail.tsx \
   "                disabled={busy || !canWrite || !allCategories.data}" \
   "                disabled={busy || !allCategories.data}"
 

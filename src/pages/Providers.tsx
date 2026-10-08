@@ -1,20 +1,32 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Search, XCircle } from 'lucide-react'
+import { Hourglass, Search, XCircle } from 'lucide-react'
+import { ReviewButtons, RejectServiceDialog } from '@/components/dashboard/ServiceReview'
 import { Badge, type Tone } from '@/components/ui/Badge'
-import { Card } from '@/components/ui/Card'
+import { Card, CardHeader } from '@/components/ui/Card'
 import { ExportButton } from '@/components/ui/ExportButton'
 import { EmptyState, ErrorState, LoadingBlock, Toast } from '@/components/ui/Feedback'
 import { Input, Select } from '@/components/ui/Field'
 import { Pagination } from '@/components/ui/Pagination'
 import { Rating } from '@/components/ui/Rating'
+import { useAuth } from '@/context/AuthContext'
 import { useAsync } from '@/hooks/useAsync'
 import { useDebounced } from '@/hooks/useDebounced'
 import { cn } from '@/lib/cn'
-import { formatDate, formatMoney, formatNumber } from '@/lib/format'
+import { formatDate, formatMoney, formatNumber, formatRelative } from '@/lib/format'
 import type { ProviderStatus } from '@/lib/types'
 import { mockCategories } from '@/data/mock'
-import { GOVERNORATES, PROVIDER_STATUS_LABEL, listProviders } from '@/services/directory'
+import {
+  GOVERNORATES,
+  PROVIDER_STATUS_LABEL,
+  listProviders,
+  listServiceReviews,
+  reviewService,
+  setProviderCategories,
+  type ServiceReview,
+} from '@/services/directory'
+import { listCategories } from '@/services/catalog'
+import { errorText } from '@/services/base'
 
 const CATEGORY_NAMES = mockCategories.map((category) => category.name)
 
@@ -116,6 +128,9 @@ export function ProvidersPage() {
 
   return (
     <div className="flex flex-col gap-4">
+      {/* ما ينتظر الإدارةَ من الخدمات — يجمعها من كلّ المزوّدين، ويغيب إن لم يكن شيء. */}
+      <PendingServicesCard onToast={setToast} onChanged={reload} />
+
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative min-w-56 flex-1">
           <Search
@@ -277,6 +292,161 @@ export function ProvidersPage() {
       </Card>
 
       {toast ? <Toast message={toast} /> : null}
+    </div>
+  )
+}
+
+/**
+ * **«خدماتٌ بانتظار موافقتك»** — اختيارُ صاحب المنصّة (ج): مقدّمُ الخدمة يختار أيَّ
+ * قسمٍ لخدمته، وما ليس من أقسامه ينتظر هنا. فتُقبل وحدَها، أو تُرفض بسبب، أو
+ * يُضاف قسمُها لأقسامه فتُقبل خدماتُه فيه كلُّها.
+ */
+function PendingServicesCard({
+  onToast,
+  onChanged,
+}: {
+  onToast: (message: string) => void
+  onChanged: () => void
+}) {
+  const { can } = useAuth()
+  const canWrite = can('directory')
+  const reviews = useAsync(listServiceReviews, [])
+  const categories = useAsync(listCategories, [])
+  const [busy, setBusy] = useState(false)
+  const [rejecting, setRejecting] = useState<ServiceReview | null>(null)
+  const [rejectError, setRejectError] = useState<string | null>(null)
+
+  const rows = reviews.data ?? []
+  if (rows.length === 0) return null
+  const pending = rows.filter((r) => r.approval === 'pending').length
+
+  async function decide(review: ServiceReview, approve: boolean, note = '') {
+    setBusy(true)
+    setRejectError(null)
+    try {
+      await reviewService(review, approve, note)
+      setRejecting(null)
+      onToast(approve ? `ظهرت «${review.title}» للعملاء.` : `رُفضت «${review.title}» — وصل السببُ صاحبَها.`)
+      reviews.reload()
+    } catch (cause) {
+      const message = errorText(cause, 'تعذّرت المراجعة.')
+      if (approve) onToast(message)
+      else setRejectError(message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function addCategory(review: ServiceReview) {
+    const all = categories.data ?? []
+    const current = review.provider_categories ? review.provider_categories.split('، ') : []
+    const picked = all.filter((c) => current.includes(c.name) || c.id === review.category_id)
+    setBusy(true)
+    try {
+      await setProviderCategories(
+        { id: review.provider_id, business_name: review.provider_name, categories: current },
+        picked,
+      )
+      onToast(`أُضيف «${review.category_name}» لأقسام ${review.provider_name} — وقُبلت خدماتُه فيه.`)
+      reviews.reload()
+      onChanged()
+    } catch (cause) {
+      onToast(errorText(cause, 'تعذّرت إضافة القسم.'))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    // `Card` لا يمرّر سماتٍ أخرى، فالعلامةُ على غلافٍ حوله.
+    <div data-pending-services={pending}>
+      <Card className={cn('overflow-hidden', reviews.refetching && 'is-refetching')}>
+        <CardHeader
+          title={`خدماتٌ بانتظار موافقتك (${formatNumber(pending)})`}
+          subtitle="أضافها مقدّمو خدمة في قسمٍ ليس من أقسامهم — لا يراها العملاءُ حتى توافق."
+        />
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse text-xs">
+            <thead>
+              <tr className="glass-item">
+                {['الخدمة', 'مقدّم الخدمة', 'قسمُها', 'أقسامُه', 'السعر', '', ''].map((heading, index) => (
+                  <th
+                    key={index}
+                    scope="col"
+                    className="border-b border-hairline px-4 py-2 text-start font-medium whitespace-nowrap text-ink-2"
+                  >
+                    {heading}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((review) => (
+                <tr
+                  key={review.id}
+                  data-review={review.approval}
+                  className="glass-row border-b border-hairline last:border-0"
+                >
+                  <td className="px-4 py-2.5 font-semibold text-ink">
+                    {review.title}
+                    <span className="block text-[11px] font-normal text-muted">
+                      {review.approval === 'rejected'
+                        ? `مرفوضة — ${review.approval_note}`
+                        : formatRelative(review.created_at)}
+                    </span>
+                  </td>
+                  <td className="px-4 py-2.5">
+                    <Link
+                      to={`/providers/${review.provider_id}`}
+                      className="text-ink underline-offset-4 hover:text-accent hover:underline"
+                    >
+                      {review.provider_name}
+                    </Link>
+                  </td>
+                  <td className="px-4 py-2.5">
+                    <Badge tone={review.approval === 'pending' ? 'warning' : 'critical'} icon={review.approval === 'pending' ? Hourglass : XCircle}>
+                      {review.category_name}
+                    </Badge>
+                  </td>
+                  <td className="px-4 py-2.5 text-muted">{review.provider_categories || '—'}</td>
+                  <td className="tnum px-4 py-2.5 whitespace-nowrap text-ink">{formatMoney(review.price)}</td>
+                  <td className="px-4 py-2.5 whitespace-nowrap">
+                    <ReviewButtons
+                      review={review}
+                      canWrite={canWrite}
+                      busy={busy}
+                      onApprove={(r) => decide(r, true)}
+                      onReject={(r) => {
+                        setRejectError(null)
+                        setRejecting(r)
+                      }}
+                    />
+                  </td>
+                  <td className="px-4 py-2.5 whitespace-nowrap">
+                    <button
+                      type="button"
+                      data-add-category={review.id}
+                      disabled={busy || !canWrite || !categories.data}
+                      onClick={() => addCategory(review)}
+                      className="text-xs text-accent underline underline-offset-4 disabled:opacity-50"
+                    >
+                      أضف «{review.category_name}» لأقسامه
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <RejectServiceDialog
+          review={rejecting}
+          busy={busy}
+          error={rejectError}
+          onConfirm={(review, note) => decide(review, false, note)}
+          onCancel={() => setRejecting(null)}
+        />
+      </Card>
     </div>
   )
 }

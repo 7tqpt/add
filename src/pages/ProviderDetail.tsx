@@ -15,6 +15,7 @@ import {
   XCircle,
 } from 'lucide-react'
 import { StatTile } from '@/components/charts/StatTile'
+import { ApprovalBadge, RejectServiceDialog, ReviewButtons } from '@/components/dashboard/ServiceReview'
 import { Badge, type Tone } from '@/components/ui/Badge'
 import { Button, buttonClass } from '@/components/ui/Button'
 import { Card, CardBody, CardHeader } from '@/components/ui/Card'
@@ -48,12 +49,14 @@ import {
   deleteServiceMedia,
   getProvider,
   getProviderPortfolio,
-  isOutsideCategories,
+  listServiceReviews,
+  reviewService,
   serviceMediaUrl,
   setDocumentStatus,
   setProviderCategories,
   setProviderCommission,
   setProviderStatus,
+  type ServiceReview,
 } from '@/services/directory'
 import { REVIEW_STATUS_LABEL, listProviderReviews } from '@/services/trust'
 import { errorText } from '@/services/base'
@@ -90,6 +93,8 @@ export function ProviderDetailPage() {
   // «تغيير القسم»: ما اختير في النافذة، أو `null` وهي مغلقة.
   const [chosen, setChosen] = useState<Set<string> | null>(null)
   const [categoriesError, setCategoriesError] = useState<string | null>(null)
+  const [rejecting, setRejecting] = useState<ServiceReview | null>(null)
+  const [rejectError, setRejectError] = useState<string | null>(null)
 
   const loadProvider = useCallback(() => getProvider(id), [id])
   const loadPortfolio = useCallback(() => getProviderPortfolio(id), [id])
@@ -100,6 +105,11 @@ export function ProviderDetailPage() {
   const portfolio = useAsync(loadPortfolio, [id])
   const reviews = useAsync(loadReviews, [id])
   const allCategories = useAsync(listCategories, [])
+  const loadReviewsOfProvider = useCallback(
+    () => listServiceReviews().then((rows) => rows.filter((r) => r.provider_id === id)),
+    [id],
+  )
+  const serviceReviews = useAsync(loadReviewsOfProvider, [id])
 
   useEffect(() => {
     if (!toast) return
@@ -143,8 +153,26 @@ export function ProviderDetailPage() {
       )
       provider.reload()
       portfolio.reload()
+      serviceReviews.reload()
     } catch (cause) {
       setCategoriesError(errorText(cause, 'تعذّر حفظ الأقسام.'))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function decide(review: ServiceReview, approve: boolean, note = '') {
+    setBusy(true)
+    setRejectError(null)
+    try {
+      await reviewService(review, approve, note)
+      setRejecting(null)
+      setToast(approve ? `ظهرت «${review.title}» للعملاء.` : `رُفضت «${review.title}» — وصل السببُ صاحبَها.`)
+      serviceReviews.reload()
+    } catch (cause) {
+      const message = errorText(cause, 'تعذّرت المراجعة.')
+      if (approve) setToast(message)
+      else setRejectError(message)
     } finally {
       setBusy(false)
     }
@@ -216,13 +244,16 @@ export function ProviderDetailPage() {
   const media = portfolio.data?.media ?? {}
   const reviewRows = reviews.data ?? []
   const allApproved = documents.length > 0 && documents.every((doc) => doc.status === 'approved')
-  // خدماتُه خارج أقسامه — مخفيّةٌ عن العملاء (`provider_category_lock.sql`).
-  const outside = services.filter((service) => isOutsideCategories(service, record))
-  // وما تختاره النافذةُ الآن: كم يعود وكم يختفي لو حُفظ.
+  // خدماتُه التي تنتظر الإدارةَ أو رفضتها (`provider_category_lock.sql`) — بمعرّفها.
+  const reviewOf = new Map((serviceReviews.data ?? []).map((r) => [r.id, r]))
+  const waiting = (serviceReviews.data ?? []).filter((r) => r.approval === 'pending').length
+  // وما تختاره النافذةُ الآن: كم يُقبل بإضافة قسمه، وكم يعود للمراجعة بحذف قسمه.
   const pickedCategories = (allCategories.data ?? []).filter((c) => chosen?.has(c.id))
   const pickedNames = pickedCategories.map((c) => c.name)
-  const wouldHide = services.filter((s) => !pickedNames.includes(s.category_name)).length
-  const wouldReturn = outside.filter((s) => pickedNames.includes(s.category_name)).length
+  const wouldReturn = (serviceReviews.data ?? []).filter((r) => pickedNames.includes(r.category_name)).length
+  const wouldHide = services.filter(
+    (s) => !reviewOf.has(s.id) && record.categories.includes(s.category_name) && !pickedNames.includes(s.category_name),
+  ).length
 
   return (
     <div className="flex flex-col gap-4">
@@ -501,17 +532,16 @@ export function ProviderDetailPage() {
           <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
             <Card className="overflow-hidden">
               <CardHeader title="الخدمات المعروضة" subtitle={`${formatNumber(services.length)} خدمة`} />
-              {outside.length > 0 ? (
+              {waiting > 0 ? (
                 <p
                   data-outside-note
-                  className="mx-4 mb-2.5 rounded-lg bg-[color-mix(in_oklab,var(--critical)_8%,transparent)] px-3 py-2 text-xs leading-relaxed text-ink"
+                  className="mx-4 mb-2.5 rounded-lg bg-[color-mix(in_oklab,var(--warning)_12%,transparent)] px-3 py-2 text-xs leading-relaxed text-ink"
                 >
-                  <b className="text-[var(--critical)]">
-                    {outside.length === 1
-                      ? 'خدمةٌ واحدة خارج أقسامه'
-                      : `${formatNumber(outside.length)} خدمات خارج أقسامه`}
+                  <b className="text-[color-mix(in_oklab,var(--warning)_55%,var(--text-primary))]">
+                    {waiting === 1 ? 'خدمةٌ بانتظار موافقتك' : `${formatNumber(waiting)} خدمات بانتظار موافقتك`}
                   </b>{' '}
-                  — مخفيّةٌ عن العملاء حتى تضيف قسمَها له من «تغيير القسم»، أو يعدّلها هو إلى قسمه.
+                  — في قسمٍ ليس من أقسامه. وافق عليها وحدَها، أو أضف قسمَها له من «تغيير القسم» فتُقبل
+                  خدماتُه فيه كلُّها.
                 </p>
               ) : null}
               {services.length === 0 ? (
@@ -537,9 +567,16 @@ export function ProviderDetailPage() {
                         <tr key={service.id} className="glass-row border-b border-hairline last:border-0">
                           <td className="px-4 py-2.5 text-ink">
                             {service.title}
-                            {isOutsideCategories(service, record) ? (
-                              <span data-outside-line className="block text-[11px] text-[var(--critical)]">
+                            {reviewOf.get(service.id)?.approval === 'pending' ? (
+                              <span
+                                data-outside-line
+                                className="block text-[11px] text-[color-mix(in_oklab,var(--warning)_55%,var(--text-primary))]"
+                              >
                                 في «{service.category_name}» — ليس من أقسامه
+                              </span>
+                            ) : reviewOf.get(service.id)?.approval === 'rejected' ? (
+                              <span data-outside-line className="block text-[11px] text-[var(--critical)]">
+                                مرفوضة — {reviewOf.get(service.id)?.approval_note}
                               </span>
                             ) : null}
                             {/* الوسائط تحت اسم الخدمة لا في عمودٍ خاص: عمودٌ
@@ -558,10 +595,22 @@ export function ProviderDetailPage() {
                             {formatDuration(service.duration_minutes * 60)}
                           </td>
                           <td className="px-4 py-2.5" data-service-state={service.id}>
-                            {isOutsideCategories(service, record) ? (
-                              <Badge tone="critical" icon={false}>
-                                مخفيّة عن العملاء
-                              </Badge>
+                            {reviewOf.has(service.id) ? (
+                              <div className="flex flex-col items-start gap-1.5">
+                                <ApprovalBadge
+                                  approval={reviewOf.get(service.id)!.approval as 'pending' | 'rejected'}
+                                />
+                                <ReviewButtons
+                                  review={reviewOf.get(service.id)!}
+                                  canWrite={canWrite}
+                                  busy={busy}
+                                  onApprove={(r) => decide(r, true)}
+                                  onReject={(r) => {
+                                    setRejectError(null)
+                                    setRejecting(r)
+                                  }}
+                                />
+                              </div>
                             ) : (
                               <Badge tone={service.is_active ? 'good' : 'neutral'}>
                                 {service.is_active ? 'معروضة' : 'مخفية'}
@@ -629,7 +678,7 @@ export function ProviderDetailPage() {
       <ConfirmDialog
         open={chosen !== null}
         title="أقسام مقدّم الخدمة"
-        message="يضيف خدماتٍ في هذه الأقسام وحدها، ويراه العميلُ فيها. وما كان من خدماته في غيرها يُخفى."
+        message="خدماتُه في هذه الأقسام تظهر للعملاء بلا انتظار، وما يضيفه في غيرها ينتظر موافقتك."
         confirmLabel="احفظ"
         tone="primary"
         busy={busy}
@@ -677,12 +726,20 @@ export function ProviderDetailPage() {
             data-category-effect
             className="rounded-lg bg-[var(--gold-soft)] px-3 py-2 text-[13px] leading-relaxed text-ink"
           >
-            {wouldReturn > 0 ? `تعود ${formatNumber(wouldReturn)} من خدماته المخفيّة إلى العملاء.` : ''}
+            {wouldReturn > 0 ? `تُقبل ${formatNumber(wouldReturn)} من خدماته المنتظرة وتظهر للعملاء.` : ''}
             {wouldReturn > 0 && wouldHide > 0 ? ' ' : ''}
-            {wouldHide > 0 ? `وتبقى ${formatNumber(wouldHide)} مخفيّةً خارج هذه الأقسام.` : ''}
+            {wouldHide > 0 ? `وتعود ${formatNumber(wouldHide)} للمراجعة بحذف قسمها.` : ''}
           </p>
         ) : null}
       </ConfirmDialog>
+
+      <RejectServiceDialog
+        review={rejecting}
+        busy={busy}
+        error={rejectError}
+        onConfirm={(review, note) => decide(review, false, note)}
+        onCancel={() => setRejecting(null)}
+      />
 
       <ConfirmDialog
         open={pendingMedia !== null}
