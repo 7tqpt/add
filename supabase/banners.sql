@@ -219,6 +219,12 @@ grant execute on function public.api_active_promotions() to anon, authenticated;
 --
 --  والاسمُ يبقى `expire_promotions` ليبقى ما يناديه — الجدولةُ اليوميّة —
 --  عاملاً بلا تعديل.
+--
+--  **و`scheduled` معنيان، والرفعُ لأحدهما وحده.** لافتةُ الإدارة «تبدأ
+--  لاحقاً»؛ وطلبُ المزوّد (`api_request_promotion`) «حوالتُه لم تُؤكَّد» —
+--  يُكتب `scheduled` وبدايتُه الآن ومعه `payment_id`. فكان رفعُ كلِّ مجدولٍ
+--  حان وقتُه **يُظهر في الرئيسية مَن لم يدفع** عند أوّل دورةٍ يوميّة. وطلبُ
+--  المزوّد يرفعه تأكيدُ حوالته (`activate_paid_promotion`) لا الساعة.
 create or replace function public.expire_promotions()
 returns integer language plpgsql security definer set search_path = public as $$
 declare
@@ -227,6 +233,7 @@ begin
   update public.promotions
      set status = 'active'
    where status = 'scheduled'
+     and payment_id is null
      and now() between starts_at and ends_at;
 
   update public.promotions
