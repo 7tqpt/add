@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Ban, ImagePlus, Megaphone, Search, Star, X } from 'lucide-react'
+import { Ban, ImagePlus, Megaphone, Search, Star, Trash2, X } from 'lucide-react'
 import { Badge, type Tone } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Card, CardBody, CardHeader } from '@/components/ui/Card'
@@ -33,7 +33,9 @@ import {
   PROMOTION_KIND_LABEL,
   PROMOTION_STATUS_LABEL,
   cancelPromotion,
+  clearEndedPromotions,
   clickRate,
+  countClearablePromotions,
   createBanner,
   featureProvider,
   listPromotions,
@@ -609,7 +611,12 @@ function NewBannerCard({ onToast }: { onToast: (message: string) => void }) {
 }
 
 function Campaigns({ onToast }: { onToast: (message: string) => void }) {
-  const { canWrite } = useAuth()
+  const { canWrite, role } = useAuth()
+  // «تفريغ المنتهية» للمالك وحده — والقاعدةُ تتحقّق أيضاً، فإخفاؤه هنا راحةٌ لا حماية.
+  const isOwner = role === 'owner'
+  const [clearOpen, setClearOpen] = useState(false)
+  const [clearing, setClearing] = useState(false)
+  const [clearError, setClearError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState<PromotionStatus | 'all'>('all')
   const [kind, setKind] = useState<PromotionKind | 'all'>('all')
@@ -634,6 +641,28 @@ function Campaigns({ onToast }: { onToast: (message: string) => void }) {
     kind,
     page,
   ])
+  // العدُّ في القائمة كلِّها لا في الصفحة المعروضة — ويُعاد مع كلّ تحميل.
+  const { data: clearable, reload: recount } = useAsync(
+    () => (isOwner ? countClearablePromotions() : Promise.resolve(0)),
+    [isOwner, data],
+  )
+
+  async function clear() {
+    setClearing(true)
+    setClearError(null)
+    try {
+      const { deleted } = await clearEndedPromotions()
+      setClearOpen(false)
+      onToast(deleted ? `فُرّغت ${deleted} من الحملات المنتهية.` : 'لا حملات منتهية.')
+      setPage(0)
+      reload()
+      recount()
+    } catch (cause) {
+      setClearError(errorText(cause, 'تعذّر التفريغ.'))
+    } finally {
+      setClearing(false)
+    }
+  }
 
   async function run() {
     if (!cancelling) return
@@ -653,11 +682,28 @@ function Campaigns({ onToast }: { onToast: (message: string) => void }) {
 
   return (
     <section className="flex flex-col gap-3">
-      <div>
-        <h2 className="text-sm font-semibold text-ink">الحملات الترويجية</h2>
-        <p className="mt-0.5 text-xs text-muted">
-          مساحات مدفوعة يشتريها مقدّمو الخدمة لإبراز أعمالهم داخل التطبيق.
-        </p>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h2 className="text-sm font-semibold text-ink">الحملات الترويجية</h2>
+          <p className="mt-0.5 text-xs text-muted">
+            مساحات مدفوعة يشتريها مقدّمو الخدمة لإبراز أعمالهم داخل التطبيق.
+          </p>
+        </div>
+        {isOwner ? (
+          <Button
+            variant="ghost"
+            data-clear-promotions={clearable ?? 0}
+            onClick={() => {
+              setClearError(null)
+              setClearOpen(true)
+            }}
+            disabled={!clearable || clearing}
+            className="border border-[color-mix(in_oklab,var(--critical)_35%,transparent)] font-semibold text-[var(--critical)]"
+          >
+            <Trash2 size={15} aria-hidden />
+            تفريغ المنتهية ({clearable ?? 0})
+          </Button>
+        ) : null}
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
@@ -849,6 +895,25 @@ function Campaigns({ onToast }: { onToast: (message: string) => void }) {
             />
           )}
         </Field>
+      </ConfirmDialog>
+
+      <ConfirmDialog
+        open={clearOpen}
+        title="تفريغ الحملات المنتهية؟"
+        message={`تُحذف ${clearable ?? 0} من الحملات المنتهية والملغاة من القائمة، وصورُ لافتاتها من التخزين — نهائيّاً.`}
+        confirmLabel={`فرّغ ${clearable ?? 0}`}
+        busy={clearing}
+        error={clearError}
+        onConfirm={clear}
+        onCancel={() => setClearOpen(false)}
+      >
+        <ul
+          data-clear-notes
+          className="flex flex-col gap-1 rounded-lg bg-[var(--gold-soft)] px-3 py-2.5 text-[13px] leading-relaxed text-ink"
+        >
+          <li>• الجاريةُ والمجدولةُ لا تُمسّ.</li>
+          <li>• والمبالغُ المدفوعة تبقى في «عمليات الدفع» وتقارير الدخل.</li>
+        </ul>
       </ConfirmDialog>
     </section>
   )

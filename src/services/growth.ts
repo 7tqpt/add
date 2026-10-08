@@ -363,6 +363,83 @@ export async function featureProvider(input: {
   })
 }
 
+// ---------------------------------------------------------------------------
+// «تفريغ المنتهية» — للمالك وحده (`supabase/promotions_clear.sql`)
+// ---------------------------------------------------------------------------
+
+/**
+ * أيُفرَّغ هذا؟ المنتهيةُ والملغاةُ، **وما انقضى تاريخُه وعمودُه «جارية»** — كما
+ * تقول عنه الصفحة «انتهت مدّتها». وطلبُ المزوّد المعلَّقُ لا يُحذف في القاعدة،
+ * ولا طلبَ معلَّقاً في وضع العرض.
+ */
+export const isClearable = (promotion: Pick<Promotion, 'status' | 'ends_at'>, now = new Date()) => {
+  const status = promotionTiming(promotion, now).status
+  return status === 'ended' || status === 'cancelled'
+}
+
+/** كم يُفرَّغ — في القائمة كلِّها لا في الصفحة المعروضة. */
+export async function countClearablePromotions(): Promise<number> {
+  if (!isSupabaseConfigured) return delay(demoPromotions.filter((p) => isClearable(p)).length, 120)
+  const now = new Date().toISOString()
+  const { count, error } = await requireSupabase()
+    .from('promotions')
+    .select('id', { count: 'exact', head: true })
+    // الشرطُ نفسُه في القاعدة — والقاعدةُ هي الحَكَم فيما يُحذف فعلاً.
+    .or(
+      `status.in.(ended,cancelled),and(status.eq.active,ends_at.lt.${now}),` +
+        `and(status.eq.scheduled,payment_id.is.null,ends_at.lt.${now})`,
+    )
+  if (error) throw error
+  return count ?? 0
+}
+
+/** اسمُ الملفّ في سلّة اللافتات من رابطه العامّ — أو `null` لرابطٍ من غيرها. */
+export function bannerPathOf(url: string): string | null {
+  const marker = `/storage/v1/object/public/${BANNER_BUCKET}/`
+  const at = url.indexOf(marker)
+  if (at < 0) return null
+  const path = decodeURIComponent(url.slice(at + marker.length).split('?')[0])
+  return path || null
+}
+
+/**
+ * يحذف المنتهيةَ والملغاة، ثمّ صورَها من التخزين.
+ *
+ * **والصفوفُ أوّلاً والصورُ بعدها:** لو حُذفت الصورُ ثمّ تعثّر حذفُ الصفّ لبقيت
+ * في التطبيق لافتةٌ بلا صورة. والعكسُ يترك في أسوأ حالاته ملفّاً لا يقرؤه أحد.
+ */
+export async function clearEndedPromotions(): Promise<{ deleted: number; images: number }> {
+  let deleted: number
+  let images = 0
+  if (!isSupabaseConfigured) {
+    const keep = demoPromotions.filter((p) => !isClearable(p))
+    deleted = demoPromotions.length - keep.length
+    demoPromotions.splice(0, demoPromotions.length, ...keep)
+    await delay(null, 260)
+  } else {
+    const supabase = requireSupabase()
+    const { data, error } = await supabase.rpc('api_admin_clear_promotions')
+    if (error) throw error
+    const row = (Array.isArray(data) ? data[0] : data) as { deleted: number; image_urls: string[] } | null
+    deleted = row?.deleted ?? 0
+    const paths = (row?.image_urls ?? []).map(bannerPathOf).filter((p): p is string => !!p)
+    if (paths.length) {
+      // وتعثّرُ الصور لا يُبطل ما حُذف: الحملاتُ ذهبت، والملفُّ اليتيمُ لا يُعرض.
+      const { error: storageError } = await supabase.storage.from(BANNER_BUCKET).remove(paths)
+      if (!storageError) images = paths.length
+    }
+  }
+
+  await recordAudit({
+    action: 'promotion.clear',
+    entity: 'promotion',
+    entityId: 'ended',
+    entityLabel: 'تفريغ الحملات المنتهية',
+    details: { deleted, images },
+  })
+  return { deleted, images }
+}
+
 export const PROMOTION_KIND_LABEL: Record<PromotionKind, string> = {
   featured: 'إبراز في النتائج',
   banner: 'لافتة إعلانية',
