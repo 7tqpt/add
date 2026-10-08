@@ -31,6 +31,8 @@ for (const f of [
   'app_download.sql', 'service_delete.sql', 'completion_review.sql',
   // «رصيد فرحتي» — بابُ «طلبات السحب» في اللوحة (`src/services/wallet.ts`).
   'wallet.sql',
+  // «تفريغ المنتهية» — زرُّ المالك في «الاشتراكات والإعلانات» (`src/services/growth.ts`).
+  'banners.sql', 'promotions_clear.sql',
 ]) {
   await db.exec(readFileSync(`../${f}`, 'utf8'))
 }

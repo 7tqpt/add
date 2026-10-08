@@ -252,6 +252,33 @@ check('ولا يُعرض لها «إلغاء»', promo.cancel === false)
 check('**وما ينتهي قريباً: «جارية» وتحتها «تنتهي خلال…»**', promo.soonBadge === 'جارية' && /^تنتهي خلال/.test(promo.soon), promo.soon)
 check('والتنبيهُ مقروءٌ لا أصفرُ على أبيض', promo.soonColor !== '' && promo.soonColor !== 'rgb(250, 178, 25)', promo.soonColor)
 
+// ── «تفريغ المنتهية» — للمالك وحده (أ أ) ────────────────────────────────────
+// «مدير» لا يراه أصلاً؛ والمالكُ يراه بعدد ما سيُحذف، ويؤكّد، فيخلو الجدولُ منه.
+const roleBar = (name) => page.locator('button', { hasText: new RegExp(`^${name}$`) }).first()
+await roleBar('مدير').click()
+await page.waitForTimeout(900)
+const managerSees = await page.locator('[data-clear-promotions]').count()
+await roleBar('المالك').click()
+await page.waitForTimeout(1200)
+const clearBtn = page.locator('[data-clear-promotions]')
+const clearCount = Number(await clearBtn.getAttribute('data-clear-promotions').catch(() => -1))
+check('**«تفريغ المنتهية» لا يظهر لـ«مدير»**', managerSees === 0, `${managerSees}`)
+check('**ويظهر للمالك بعدد ما سيُحذف**', clearCount > 0 && new RegExp(`\\(${clearCount}\\)`).test(await clearBtn.textContent()), `${clearCount}`)
+await clearBtn.click()
+await page.waitForTimeout(500)
+const notes = await page.locator('dialog[open] [data-clear-notes]').innerText().catch(() => '')
+await page.screenshot({ path: `${out}/10-promotions-clear.png` })
+check('**والتأكيدُ يقول إنّ الجاريةَ والمالَ لا يُمسّان**', /الجاريةُ والمجدولةُ لا تُمسّ/.test(notes) && /عمليات الدفع/.test(notes), notes)
+await page.locator('dialog[open] button', { hasText: `فرّغ ${clearCount}` }).click()
+await page.waitForTimeout(1500)
+const leftover = await page.evaluate(() => ({
+  ended: document.querySelectorAll('[data-promotion-status="ended"], [data-promotion-status="cancelled"]').length,
+  rows: document.querySelectorAll('tbody tr').length,
+  count: document.querySelector('[data-clear-promotions]')?.getAttribute('data-clear-promotions'),
+}))
+check('**وبعد التفريغ لا منتهيةَ ولا ملغاةَ في الجدول، والجاريةُ باقية**',
+  leftover.ended === 0 && leftover.rows > 0 && leftover.count === '0', JSON.stringify(leftover))
+
 const phone = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 })
 await phone.goto(`${base}/#/`)
 await phone.waitForTimeout(1300)
