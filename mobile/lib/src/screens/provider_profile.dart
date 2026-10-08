@@ -15,7 +15,6 @@ import 'documents.dart';
 import 'labels.dart';
 import 'map_picker.dart';
 import 'provider_public.dart';
-import 'money.dart';
 import 'subscription.dart';
 import 'support.dart';
 import 'provider_wallet.dart';
@@ -132,7 +131,7 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen> {
         // **نفسُ ترتيب «حسابي»:** رأسٌ نبيذيٌّ ثمّ ورقةُ أبوابٍ صفّاً صفّاً.
         //
         // وكان ستَّ بطاقاتٍ في كلٍّ عنوانٌ وسطرا شرحٍ وزرّ — فيصير البابُ
-        // الواحد أربعةَ أسطر، ويقرأ صاحبُ القاعة شاشتين ليصل إلى «مستحقّاتي».
+        // الواحد أربعةَ أسطر، ويقرأ صاحبُ القاعة شاشتين ليصل إلى «رصيد فرحتي».
         // وما يُبحث عنه هنا اسمُ الباب لا شرحُه.
         if (p == null) {
           return ListView(
@@ -241,7 +240,8 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen> {
                       _push(tr('اشتراكك'), SubscriptionScreen(session: widget.session)),
                 ),
                 // «رصيد فرحتي»: صافي الحجز يدخله حين يُعتمد التنفيذ، ويُسحب منه.
-                // و«مستحقّاتي» بعده سجلٌّ لما قبل الرصيد.
+                // **و«مستحقّاتي» لم تعد بنداً:** صارت «تسويات سابقة» في أسفله —
+                // «ليش مكرر»، سأل صاحبُ المنصّة، فهما مالٌ واحد.
                 MenuRow(
                   key: const ValueKey('menu-provider-wallet'),
                   icon: Icons.account_balance_wallet_outlined,
@@ -249,12 +249,6 @@ class _ProviderProfileScreenState extends State<ProviderProfileScreen> {
                   onTap: () => Navigator.of(context).push(
                     MaterialPageRoute(builder: (_) => const ProviderWalletScreen()),
                   ),
-                ),
-                MenuRow(
-                  icon: Icons.receipt_long_outlined,
-                  label: tr('مستحقّاتي'),
-                  onTap: () =>
-                      _push(tr('مستحقّاتي'), EarningsScreen(session: widget.session)),
                 ),
                 MenuRow(
                   icon: Icons.support_agent_outlined,

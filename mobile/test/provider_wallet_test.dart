@@ -70,6 +70,33 @@ void main() {
     expect(find.text('طلب سحب — قيد المراجعة'), findsOneWidget);
   });
 
+  testWidgets('**وتسوياتُ ما قبل الرصيد قسمٌ في أسفله — بالمقبوض والعمولة والصافي**', (tester) async {
+    // «ايش الفرق بين المستحقات ورصيد وليش مكرر» — فاختار (أ): قسمٌ هنا لا بند.
+    _phone(tester);
+    await tester.pumpWidget(_wrap(const ProviderWalletScreen()));
+    await _settle(tester);
+    final section = find.byKey(const ValueKey('past-settlements'));
+    expect(section, findsOneWidget);
+    final old = demoSettlements.single;
+    for (final text in ['تسويات سابقة', 'قيد المراجعة', formatMoney(old.gross),
+        formatMoney(old.commission), formatMoney(old.net)]) {
+      expect(find.descendant(of: section, matching: find.text(text)), findsOneWidget, reason: text);
+    }
+    // ولا تُعدّ في الرصيد: تُصرف بتحويلٍ كما كانت، لا بطلب سحب.
+    expect(tester.widget<Text>(find.byKey(const ValueKey('wallet-balance'))).data, formatMoney(684000));
+  });
+
+  testWidgets('**ومن لا تسويةَ قديمةَ له لا يُرسم له القسم**', (tester) async {
+    final saved = List.of(demoSettlements);
+    demoSettlements.clear();
+    addTearDown(() => demoSettlements..clear()..addAll(saved));
+    _phone(tester);
+    await tester.pumpWidget(_wrap(const ProviderWalletScreen()));
+    await _settle(tester);
+    expect(find.byKey(const ValueKey('past-settlements')), findsNothing);
+    expect(find.text('تسويات سابقة'), findsNothing);
+  });
+
   testWidgets('**يُسحب إلى الحساب الموثَّق — ويُحجز المبلغ**', (tester) async {
     await _withdrawScreen(tester);
     expect(find.textContaining('وثّقته الإدارة'), findsOneWidget);
