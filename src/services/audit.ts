@@ -188,6 +188,7 @@ export const AUDIT_ACTION_LABEL: Record<string, string> = {
 
   'promotion.cancel': 'إلغاء حملة ترويجية',
   'promotion.clear': 'تفريغ الحملات المنتهية',
+  'provider.categories': 'تغيير أقسام مقدّم خدمة',
   'subscription.activate': 'إتاحة باقة اشتراك',
   'subscription.deactivate': 'إيقاف باقة اشتراك',
 

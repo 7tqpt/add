@@ -7,6 +7,7 @@ import {
   Check,
   ExternalLink,
   FileText,
+  LayoutGrid,
   Package,
   RotateCcw,
   Wallet,
@@ -35,9 +36,11 @@ import type {
   DocumentStatus,
   ProviderDocument,
   ProviderStatus,
+  ServiceCategory,
   ServiceMedia,
   ServiceProvider,
 } from '@/lib/types'
+import { listCategories } from '@/services/catalog'
 import {
   DOCUMENT_STATUS_LABEL,
   DOCUMENT_TYPE_LABEL,
@@ -45,8 +48,10 @@ import {
   deleteServiceMedia,
   getProvider,
   getProviderPortfolio,
+  isOutsideCategories,
   serviceMediaUrl,
   setDocumentStatus,
+  setProviderCategories,
   setProviderCommission,
   setProviderStatus,
 } from '@/services/directory'
@@ -82,6 +87,9 @@ export function ProviderDetailPage() {
   const [pending, setPending] = useState<PendingAction | null>(null)
   const [pendingMedia, setPendingMedia] = useState<ServiceMedia | null>(null)
   const [busy, setBusy] = useState(false)
+  // «تغيير القسم»: ما اختير في النافذة، أو `null` وهي مغلقة.
+  const [chosen, setChosen] = useState<Set<string> | null>(null)
+  const [categoriesError, setCategoriesError] = useState<string | null>(null)
 
   const loadProvider = useCallback(() => getProvider(id), [id])
   const loadPortfolio = useCallback(() => getProviderPortfolio(id), [id])
@@ -91,6 +99,7 @@ export function ProviderDetailPage() {
   const provider = useAsync(loadProvider, [id])
   const portfolio = useAsync(loadPortfolio, [id])
   const reviews = useAsync(loadReviews, [id])
+  const allCategories = useAsync(listCategories, [])
 
   useEffect(() => {
     if (!toast) return
@@ -109,6 +118,35 @@ export function ProviderDetailPage() {
     } finally {
       setBusy(false)
       setPending(null)
+    }
+  }
+
+  function openCategories(record: ServiceProvider) {
+    setCategoriesError(null)
+    setChosen(
+      new Set(
+        (allCategories.data ?? []).filter((c) => record.categories.includes(c.name)).map((c) => c.id),
+      ),
+    )
+  }
+
+  async function saveCategories(record: ServiceProvider, picked: ServiceCategory[]) {
+    setBusy(true)
+    setCategoriesError(null)
+    try {
+      const { hidden } = await setProviderCategories(record, picked)
+      setChosen(null)
+      setToast(
+        hidden
+          ? `حُفظت الأقسام — وبقيت ${formatNumber(hidden)} من خدماته خارجها فهي مخفيّة.`
+          : 'حُفظت الأقسام — وكلُّ خدماته ظاهرة.',
+      )
+      provider.reload()
+      portfolio.reload()
+    } catch (cause) {
+      setCategoriesError(errorText(cause, 'تعذّر حفظ الأقسام.'))
+    } finally {
+      setBusy(false)
     }
   }
 
@@ -178,6 +216,13 @@ export function ProviderDetailPage() {
   const media = portfolio.data?.media ?? {}
   const reviewRows = reviews.data ?? []
   const allApproved = documents.length > 0 && documents.every((doc) => doc.status === 'approved')
+  // خدماتُه خارج أقسامه — مخفيّةٌ عن العملاء (`provider_category_lock.sql`).
+  const outside = services.filter((service) => isOutsideCategories(service, record))
+  // وما تختاره النافذةُ الآن: كم يعود وكم يختفي لو حُفظ.
+  const pickedCategories = (allCategories.data ?? []).filter((c) => chosen?.has(c.id))
+  const pickedNames = pickedCategories.map((c) => c.name)
+  const wouldHide = services.filter((s) => !pickedNames.includes(s.category_name)).length
+  const wouldReturn = outside.filter((s) => pickedNames.includes(s.category_name)).length
 
   return (
     <div className="flex flex-col gap-4">
@@ -196,6 +241,18 @@ export function ProviderDetailPage() {
           subtitle={`${record.business_name} · ${record.categories.join('، ')} · ${record.governorate}`}
           actions={
             <div className="flex flex-wrap items-center gap-2">
+              <Button
+                size="sm"
+                variant="secondary"
+                data-change-categories
+                disabled={busy || !canWrite || !allCategories.data}
+                title={canWrite ? undefined : 'دورك الحالي للقراءة فقط'}
+                onClick={() => openCategories(record)}
+                className="font-semibold text-accent"
+              >
+                <LayoutGrid size={14} aria-hidden />
+                تغيير القسم
+              </Button>
               <Badge
                 tone={STATUS_TONE[record.status]}
                 icon={record.status === 'rejected' ? XCircle : true}
@@ -444,6 +501,19 @@ export function ProviderDetailPage() {
           <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
             <Card className="overflow-hidden">
               <CardHeader title="الخدمات المعروضة" subtitle={`${formatNumber(services.length)} خدمة`} />
+              {outside.length > 0 ? (
+                <p
+                  data-outside-note
+                  className="mx-4 mb-2.5 rounded-lg bg-[color-mix(in_oklab,var(--critical)_8%,transparent)] px-3 py-2 text-xs leading-relaxed text-ink"
+                >
+                  <b className="text-[var(--critical)]">
+                    {outside.length === 1
+                      ? 'خدمةٌ واحدة خارج أقسامه'
+                      : `${formatNumber(outside.length)} خدمات خارج أقسامه`}
+                  </b>{' '}
+                  — مخفيّةٌ عن العملاء حتى تضيف قسمَها له من «تغيير القسم»، أو يعدّلها هو إلى قسمه.
+                </p>
+              ) : null}
               {services.length === 0 ? (
                 <EmptyState title="لا توجد خدمات معروضة" />
               ) : (
@@ -467,6 +537,11 @@ export function ProviderDetailPage() {
                         <tr key={service.id} className="glass-row border-b border-hairline last:border-0">
                           <td className="px-4 py-2.5 text-ink">
                             {service.title}
+                            {isOutsideCategories(service, record) ? (
+                              <span data-outside-line className="block text-[11px] text-[var(--critical)]">
+                                في «{service.category_name}» — ليس من أقسامه
+                              </span>
+                            ) : null}
                             {/* الوسائط تحت اسم الخدمة لا في عمودٍ خاص: عمودٌ
                                 خامس يضيّق الجدول على شاشةٍ ضيّقة، والوسائط
                                 تُراجَع بالنظر لا بالمسح السريع. */}
@@ -482,10 +557,16 @@ export function ProviderDetailPage() {
                           <td className="tnum px-4 py-2.5 whitespace-nowrap text-ink-2">
                             {formatDuration(service.duration_minutes * 60)}
                           </td>
-                          <td className="px-4 py-2.5">
-                            <Badge tone={service.is_active ? 'good' : 'neutral'}>
-                              {service.is_active ? 'معروضة' : 'مخفية'}
-                            </Badge>
+                          <td className="px-4 py-2.5" data-service-state={service.id}>
+                            {isOutsideCategories(service, record) ? (
+                              <Badge tone="critical" icon={false}>
+                                مخفيّة عن العملاء
+                              </Badge>
+                            ) : (
+                              <Badge tone={service.is_active ? 'good' : 'neutral'}>
+                                {service.is_active ? 'معروضة' : 'مخفية'}
+                              </Badge>
+                            )}
                           </td>
                         </tr>
                       ))}
@@ -544,6 +625,64 @@ export function ProviderDetailPage() {
           </div>
         </>
       )}
+
+      <ConfirmDialog
+        open={chosen !== null}
+        title="أقسام مقدّم الخدمة"
+        message="يضيف خدماتٍ في هذه الأقسام وحدها، ويراه العميلُ فيها. وما كان من خدماته في غيرها يُخفى."
+        confirmLabel="احفظ"
+        tone="primary"
+        busy={busy}
+        error={categoriesError}
+        confirmDisabled={!chosen || chosen.size === 0}
+        onConfirm={() => saveCategories(record, pickedCategories)}
+        onCancel={() => setChosen(null)}
+      >
+        <div data-category-picker className="grid grid-cols-2 gap-2">
+          {(allCategories.data ?? []).map((category) => {
+            const on = chosen?.has(category.id) ?? false
+            return (
+              <label
+                key={category.id}
+                className={cn(
+                  'flex cursor-pointer items-center gap-2 rounded-lg border px-2.5 py-2 text-[13px]',
+                  on
+                    ? 'border-accent bg-[color-mix(in_oklab,var(--accent)_8%,transparent)] font-semibold'
+                    : 'border-hairline',
+                )}
+              >
+                <input
+                  type="checkbox"
+                  checked={on}
+                  data-category={category.name}
+                  onChange={() =>
+                    setChosen((current) => {
+                      const next = new Set(current ?? [])
+                      if (next.has(category.id)) next.delete(category.id)
+                      else next.add(category.id)
+                      return next
+                    })
+                  }
+                  className="accent-[var(--accent)]"
+                />
+                {category.name}
+              </label>
+            )
+          })}
+        </div>
+        {chosen && chosen.size === 0 ? (
+          <p className="text-xs text-[var(--critical)]">اختر قسماً واحداً على الأقلّ.</p>
+        ) : wouldReturn > 0 || wouldHide > 0 ? (
+          <p
+            data-category-effect
+            className="rounded-lg bg-[var(--gold-soft)] px-3 py-2 text-[13px] leading-relaxed text-ink"
+          >
+            {wouldReturn > 0 ? `تعود ${formatNumber(wouldReturn)} من خدماته المخفيّة إلى العملاء.` : ''}
+            {wouldReturn > 0 && wouldHide > 0 ? ' ' : ''}
+            {wouldHide > 0 ? `وتبقى ${formatNumber(wouldHide)} مخفيّةً خارج هذه الأقسام.` : ''}
+          </p>
+        ) : null}
+      </ConfirmDialog>
 
       <ConfirmDialog
         open={pendingMedia !== null}

@@ -279,6 +279,48 @@ const leftover = await page.evaluate(() => ({
 check('**وبعد التفريغ لا منتهيةَ ولا ملغاةَ في الجدول، والجاريةُ باقية**',
   leftover.ended === 0 && leftover.rows > 0 && leftover.count === '0', JSON.stringify(leftover))
 
+// ── أقسامُ مقدّم الخدمة — (أ ب) ─────────────────────────────────────────────
+// في وضع العرض لأوّل مزوّدٍ موثَّقٍ باقةٌ في «التصوير» خارج قسمه: تُعلَّم مخفيّة،
+// و«تغيير القسم» يضيف قسمَها فتعود. ومن لا يكتب في «مقدّمو الخدمة» لا يضغطه.
+await page.goto(`${base}/#/providers`)
+await page.waitForTimeout(1300)
+const providerLinks = await page.locator('tbody a[href*="#/providers/"]').evaluateAll((as) => as.map((a) => a.getAttribute('href')))
+let catPage = null
+for (const href of providerLinks) {
+  await page.goto(`${base}/${href}`)
+  await page.waitForTimeout(1100)
+  if (await page.locator('[data-outside-note]').count()) { catPage = href; break }
+}
+const cat = await page.evaluate(() => ({
+  note: document.querySelector('[data-outside-note]')?.textContent?.trim() ?? '',
+  line: document.querySelector('[data-outside-line]')?.textContent?.trim() ?? '',
+  badge: document.querySelector('[data-outside-line]')?.closest('tr')?.querySelector('[data-service-state]')?.textContent?.trim() ?? '',
+}))
+check('**خدمةٌ خارج قسم صاحبها: سطرٌ يقول قسمَها، وشارةُ «مخفيّة عن العملاء»**',
+  !!catPage && /التصوير والإضاءة/.test(cat.line) && cat.badge === 'مخفيّة عن العملاء' && /خارج أقسامه/.test(cat.note), JSON.stringify(cat))
+await page.locator('[data-change-categories]').click()
+await page.waitForTimeout(500)
+await page.locator('dialog[open] input[data-category="التصوير والإضاءة"]').check()
+await page.waitForTimeout(200)
+const effect = await page.locator('dialog[open] [data-category-effect]').textContent().catch(() => '')
+await page.screenshot({ path: `${out}/11-provider-categories.png` })
+check('**والنافذةُ تقول إنّ خدمتَه المخفيّةَ تعود**', /تعود 1 من خدماته المخفيّة/.test(effect ?? ''), effect)
+await page.locator('dialog[open] button', { hasText: 'احفظ' }).click()
+await page.waitForTimeout(1300)
+const afterCat = await page.evaluate(() => ({
+  note: document.querySelectorAll('[data-outside-note]').length,
+  lines: document.querySelectorAll('[data-outside-line]').length,
+  subtitle: [...document.querySelectorAll('p')].find((p) => p.textContent.includes(' · '))?.textContent ?? '',
+}))
+check('**وبعد الحفظ تعود ظاهرة** — ويُكتب القسمُ الجديد في رأس صفحته',
+  afterCat.note === 0 && afterCat.lines === 0 && /التصوير والإضاءة/.test(afterCat.subtitle), JSON.stringify(afterCat))
+await page.locator('button', { hasText: /^محاسب$/ }).first().click()
+await page.waitForTimeout(900)
+const accountantCan = await page.locator('[data-change-categories]').isEnabled().catch(() => null)
+check('ومن لا يدير مقدّمي الخدمة لا يضغط «تغيير القسم»', accountantCan === false, String(accountantCan))
+await page.locator('button', { hasText: /^المالك$/ }).first().click()
+await page.waitForTimeout(600)
+
 const phone = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 })
 await phone.goto(`${base}/#/`)
 await phone.waitForTimeout(1300)

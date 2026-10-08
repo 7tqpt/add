@@ -5,6 +5,7 @@ import type {
   Payment,
   ProviderDocument,
   ProviderService,
+  ServiceCategory,
   ServiceMedia,
   ServiceProvider,
   ProviderStatus,
@@ -215,7 +216,12 @@ export async function listProviders(query: ProviderQuery): Promise<Paged<Service
 }
 
 export async function getProvider(id: string): Promise<ServiceProvider | null> {
-  if (!isSupabaseConfigured) return delay(demoProviders.find((p) => p.id === id) ?? null)
+  if (!isSupabaseConfigured) {
+    // **نسخةٌ لا المرجعُ نفسُه** — كما يُرجع الخادم. وإلّا عدّلت الحفظةُ الكائنَ
+    // الذي تعرضه الصفحةُ فبدا الحفظُ ظاهراً بلا إعادة تحميل، وفي الإنتاج لا يظهر.
+    const found = demoProviders.find((p) => p.id === id)
+    return delay(found ? { ...found, categories: [...found.categories] } : null)
+  }
   const { data, error } = await requireSupabase()
     .from('v_admin_providers').select('*').eq('id', id).maybeSingle()
   if (error) throw error
@@ -442,6 +448,60 @@ export async function setProviderCommission(
       to: clamped === null ? 'العمولة العامة' : `${clamped}%`,
     },
   })
+}
+
+// ---------------------------------------------------------------------------
+// أقسامُ مقدّم الخدمة — تضبطها الإدارةُ وحدها (`supabase/provider_category_lock.sql`)
+// ---------------------------------------------------------------------------
+
+/**
+ * **أهذه الخدمةُ خارج أقسام صاحبها؟** فهي مخفيّةٌ عن العملاء ولا تُحجز.
+ *
+ * والمقارنةُ بالاسم: صفُّ المزوّد يحمل أسماءَ أقسامه (`categories`) وصفُّ
+ * الخدمة اسمَ قسمها، وكلاهما يُقرأ من جدول الأقسام نفسِه لحظةَ الطلب.
+ */
+export const isOutsideCategories = (
+  service: Pick<ProviderService, 'category_name'>,
+  provider: Pick<ServiceProvider, 'categories'>,
+) => !provider.categories.includes(service.category_name)
+
+/**
+ * يضبط أقسامَ المزوّد — قسماً واحداً على الأقلّ — ويُرجع عددَ خدماته التي
+ * بقيت خارجها فهي مخفيّة. والقاعدةُ هي الحَكَم، وتُشعر المزوّدَ بأقسامه.
+ */
+export async function setProviderCategories(
+  provider: ServiceProvider,
+  categories: Pick<ServiceCategory, 'id' | 'name'>[],
+): Promise<{ hidden: number }> {
+  if (categories.length === 0) throw new Error('اختر قسماً واحداً على الأقلّ.')
+  const names = categories.map((c) => c.name)
+  let hidden: number
+
+  if (!isSupabaseConfigured) {
+    const target = demoProviders.find((candidate) => candidate.id === provider.id)
+    if (target) target.categories = names
+    hidden = mockServices.filter(
+      (s) => s.provider_id === provider.id && !names.includes(s.category_name),
+    ).length
+    await delay(null, 240)
+  } else {
+    const { data, error } = await requireSupabase().rpc('api_admin_set_provider_categories', {
+      p_provider_id: provider.id,
+      p_category_ids: categories.map((c) => c.id),
+    })
+    if (error) throw error
+    const row = (Array.isArray(data) ? data[0] : data) as { hidden: number } | null
+    hidden = row?.hidden ?? 0
+  }
+
+  await recordAudit({
+    action: 'provider.categories',
+    entity: 'provider',
+    entityId: provider.id,
+    entityLabel: provider.business_name,
+    details: { from: provider.categories.join('، '), to: names.join('، '), hidden },
+  })
+  return { hidden }
 }
 
 export const PROVIDER_STATUS_LABEL: Record<ProviderStatus, string> = {
