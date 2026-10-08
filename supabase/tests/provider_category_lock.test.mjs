@@ -139,7 +139,12 @@ ok('ولا يراها غيرُ الإدارة', Array.isArray(reviewsP) && revie
 await as(PUID, `update public.provider_services set price = 2500 where id = $1`, [addB[0].id])
 ok('**والمرفوضةُ إن عدّلها صاحبُها عادت للمراجعة**', (await approval(addB[0].id)).approval === 'pending')
 const okd = await as(OWNER, `select approval from public.api_admin_review_service($1, true)`, [addB[0].id])
-ok('**والموافقةُ على خدمةٍ بعينها تُظهرها** — ولو بقي قسمُها خارج أقسامه', Array.isArray(okd) && (await seen(null, addB[0].id)))
+ok('**والموافقةُ على خدمةٍ بعينها تُظهرها**', Array.isArray(okd) && (await seen(null, addB[0].id)))
+const catsNow = (await q(`select category_id from public.provider_categories where provider_id = $1`, [provider.id])).map((r) => r.category_id)
+ok('**وتضيف قسمَها لأقسام صاحبها** — فيظهر في «عن المزوّد»', catsNow.includes(B) && catsNow.includes(A), JSON.stringify(catsNow))
+ok('**وتُقبل خدماتُه المنتظرةُ في القسم نفسِه**', (await approval(legacy)).approval === 'approved' && (await seen(null, legacy)))
+const okNote = await one(`select body from public.notifications where provider_id = $1 order by created_at desc limit 1`, [provider.id])
+ok('ويقول له الإشعارُ إنّ القسمَ أُضيف', /لأقسامك/.test(okNote?.body ?? ''), okNote?.body)
 await as(PUID, `update public.provider_services set price = 2600 where id = $1`, [addB[0].id])
 ok('وتعديلُ سعرها بعد الموافقة لا ينقضها', (await approval(addB[0].id)).approval === 'approved')
 
@@ -153,19 +158,26 @@ const waitingOutside = async (cats) => Number((await one(`select count(*) n from
 const both = await as(OWNER, `select * from public.api_admin_set_provider_categories($1, $2::uuid[])`, [provider.id, [A, B]])
 ok('**وإضافةُ قسمها له تقبل خدماتِه فيه كلَّها**', Array.isArray(both) && (await approval(legacy)).approval === 'approved' && (await seen(null, legacy)), JSON.stringify(both))
 ok('ويُعدّ ما بقي منتظراً', Array.isArray(both) && both[0].hidden === await waitingOutside())
-const note = await one(`select title from public.notifications where provider_id = $1 order by created_at desc limit 1`, [provider.id])
-ok('ويصله إشعارٌ بأقسامه', note?.title === 'تغيّرت أقسامُك', JSON.stringify(note))
 const later = await addAs(PUID, B, 'تصوير أعراس')
 ok('**وخدماتُه القادمةُ في القسم المضاف تظهر بلا انتظار**', Array.isArray(later) && later[0].approval === 'approved')
 const onlyB = await as(OWNER, `select * from public.api_admin_set_provider_categories($1, $2::uuid[])`, [provider.id, [B]])
+// والإشعارُ حين تتغيّر أقسامُه فعلاً — لا حين يُحفظ ما هو عليه.
+const note = await one(`select title from public.notifications where provider_id = $1 order by created_at desc limit 1`, [provider.id])
+ok('ويصله إشعارٌ بأقسامه حين تتغيّر', note?.title === 'تغيّرت أقسامُك', JSON.stringify(note))
 ok('**وحذفُ قسمٍ يُعيد خدماته فيه للمراجعة**', Array.isArray(onlyB) && (await approval(mine)).approval === 'pending' && !(await seen(null, mine)), JSON.stringify(onlyB))
 ok('وما وُوفق عليه بعينه في القسم الباقي باقٍ', (await approval(addB[0].id)).approval === 'approved')
 const onlyA = await as(OWNER, `select * from public.api_admin_set_provider_categories($1, $2::uuid[])`, [provider.id, [A]])
 ok('**وحذفُ القسم الذي قُبلت به خدماتُه يُعيدها للمراجعة**', Array.isArray(onlyA) && (await approval(legacy)).approval === 'pending', JSON.stringify(onlyA))
 ok('**إلّا ما وُوفق عليه بعينه** — يبقى ظاهراً', (await approval(addB[0].id)).approval === 'approved' && (await seen(null, addB[0].id)))
+const backB = await as(OWNER, `select * from public.api_admin_set_provider_categories($1, $2::uuid[])`, [provider.id, [A, B]])
+ok('**وإعادةُ القسم بـ«تغيير القسم» تقبل ما عاد للمراجعة فيه**', Array.isArray(backB) && (await approval(legacy)).approval === 'approved' && (await seen(null, legacy)), JSON.stringify(backB))
 
+const catsBefore = (await q(`select 1 from public.provider_categories where provider_id = $1`, [provider.id])).length
+const approvedBefore = (await approval(legacy)).approval
 await db.exec(read('provider_category_lock.sql'))
-ok('وإعادةُ اللصق آمنة', (await q(`select 1 from public.provider_categories where provider_id = $1`, [provider.id])).length === 1)
+ok('وإعادةُ اللصق آمنة — لا تمسّ الأقسامَ ولا الموافقات',
+   (await q(`select 1 from public.provider_categories where provider_id = $1`, [provider.id])).length === catsBefore
+   && (await approval(legacy)).approval === approvedBefore)
 
 console.log(fail === 0 ? '\nكلُّ اختبارات تقييد الأقسام نجحت.' : `\n${fail} فشل.`)
 process.exit(fail === 0 ? 0 : 1)

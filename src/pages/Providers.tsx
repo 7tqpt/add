@@ -22,10 +22,8 @@ import {
   listProviders,
   listServiceReviews,
   reviewService,
-  setProviderCategories,
   type ServiceReview,
 } from '@/services/directory'
-import { listCategories } from '@/services/catalog'
 import { errorText } from '@/services/base'
 
 const CATEGORY_NAMES = mockCategories.map((category) => category.name)
@@ -298,8 +296,8 @@ export function ProvidersPage() {
 
 /**
  * **«خدماتٌ بانتظار موافقتك»** — اختيارُ صاحب المنصّة (ج): مقدّمُ الخدمة يختار أيَّ
- * قسمٍ لخدمته، وما ليس من أقسامه ينتظر هنا. فتُقبل وحدَها، أو تُرفض بسبب، أو
- * يُضاف قسمُها لأقسامه فتُقبل خدماتُه فيه كلُّها.
+ * قسمٍ لخدمته، وما ليس من أقسامه ينتظر هنا. فتُقبل أو تُرفض بسبب — **والموافقةُ
+ * تضيف قسمَها لأقسامه** (ب)، فكان رابطُ «أضف القسم لأقسامه» زائداً فرُفع.
  */
 function PendingServicesCard({
   onToast,
@@ -311,7 +309,6 @@ function PendingServicesCard({
   const { can } = useAuth()
   const canWrite = can('directory')
   const reviews = useAsync(listServiceReviews, [])
-  const categories = useAsync(listCategories, [])
   const [busy, setBusy] = useState(false)
   const [rejecting, setRejecting] = useState<ServiceReview | null>(null)
   const [rejectError, setRejectError] = useState<string | null>(null)
@@ -326,32 +323,18 @@ function PendingServicesCard({
     try {
       await reviewService(review, approve, note)
       setRejecting(null)
-      onToast(approve ? `ظهرت «${review.title}» للعملاء.` : `رُفضت «${review.title}» — وصل السببُ صاحبَها.`)
+      onToast(
+        approve
+          ? `ظهرت الخدمة للعملاء — وأُضيف «${review.category_name}» لأقسام ${review.provider_name}.`
+          : `رُفضت «${review.title}» — وصل السببُ صاحبَها.`,
+      )
       reviews.reload()
+      // أقسامُه تغيّرت بالموافقة، فعمودُ «الأقسام» في القائمة يُعاد.
+      if (approve) onChanged()
     } catch (cause) {
       const message = errorText(cause, 'تعذّرت المراجعة.')
       if (approve) onToast(message)
       else setRejectError(message)
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  async function addCategory(review: ServiceReview) {
-    const all = categories.data ?? []
-    const current = review.provider_categories ? review.provider_categories.split('، ') : []
-    const picked = all.filter((c) => current.includes(c.name) || c.id === review.category_id)
-    setBusy(true)
-    try {
-      await setProviderCategories(
-        { id: review.provider_id, business_name: review.provider_name, categories: current },
-        picked,
-      )
-      onToast(`أُضيف «${review.category_name}» لأقسام ${review.provider_name} — وقُبلت خدماتُه فيه.`)
-      reviews.reload()
-      onChanged()
-    } catch (cause) {
-      onToast(errorText(cause, 'تعذّرت إضافة القسم.'))
     } finally {
       setBusy(false)
     }
@@ -369,7 +352,7 @@ function PendingServicesCard({
           <table className="w-full border-collapse text-xs">
             <thead>
               <tr className="glass-item">
-                {['الخدمة', 'مقدّم الخدمة', 'قسمُها', 'أقسامُه', 'السعر', '', ''].map((heading, index) => (
+                {['الخدمة', 'مقدّم الخدمة', 'قسمُها', 'أقسامُه', 'السعر', ''].map((heading, index) => (
                   <th
                     key={index}
                     scope="col"
@@ -420,18 +403,8 @@ function PendingServicesCard({
                         setRejectError(null)
                         setRejecting(r)
                       }}
+                      hint={`الموافقةُ تضيف «${review.category_name}» لأقسام ${review.provider_name}`}
                     />
-                  </td>
-                  <td className="px-4 py-2.5 whitespace-nowrap">
-                    <button
-                      type="button"
-                      data-add-category={review.id}
-                      disabled={busy || !canWrite || !categories.data}
-                      onClick={() => addCategory(review)}
-                      className="text-xs text-accent underline underline-offset-4 disabled:opacity-50"
-                    >
-                      أضف «{review.category_name}» لأقسامه
-                    </button>
                   </td>
                 </tr>
               ))}

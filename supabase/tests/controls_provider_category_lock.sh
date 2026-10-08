@@ -120,6 +120,14 @@ run "(ك) القائمُ لا يُراجَع" sub "$F" \
 "update public.provider_services s
    set approval = 'approved'"
 
+# ── ل) والموافقةُ على خدمةٍ لا تضيف قسمَها — «ليش عن المزود جالس يظهر الملبوسات» ──
+run "(ل) الموافقةُ لا تضيف القسم" sub "$F" \
+"    insert into public.provider_categories (provider_id, category_id)
+    values (svc.provider_id, svc.category_id)
+    on conflict do nothing;
+    get diagnostics added = row_count;" \
+"    added := 0;"
+
 echo
 echo "الساقط: $PASS — الباقي: $FAIL"
 [ "$FAIL" = 0 ]

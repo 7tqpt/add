@@ -56,11 +56,14 @@ describe('أقسامُ مقدّم الخدمة وموافقةُ الإدارة',
     expect((await listServiceReviews()).find((r) => r.id === odd.id)?.approval).toBe('pending')
   })
 
-  it('**والموافقةُ عليها بعينها تُخرجها من القائمة** — وقسمُها باقٍ خارج أقسامه', async () => {
+  it('**والموافقةُ عليها بعينها تُخرجها من القائمة — وتضيف قسمَها لأقسام صاحبها** (ب)', async () => {
+    // «ليش عن المزود جالس يظهر الملبوسات وفي الاصل تم تغيير القسم الي طباعة».
     const row = (await listServiceReviews()).find((r) => r.id === odd.id)!
     await reviewService(row, true)
     expect((await listServiceReviews()).some((r) => r.id === odd.id)).toBe(false)
-    expect((await getProvider(odd.provider_id))!.categories).not.toContain('التصوير والإضاءة')
+    const categories = (await getProvider(odd.provider_id))!.categories
+    expect(categories).toContain('التصوير والإضاءة')
+    expect(categories).toContain('القاعات والخيام')
   })
 
   it('ولا يُترك بلا قسم', async () => {
