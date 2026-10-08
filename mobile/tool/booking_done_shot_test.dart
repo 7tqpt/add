@@ -183,7 +183,7 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('booking-done')));
     await _settle(tester);
 
-    expect(find.widgetWithText(AppBar, 'مستحقّاتي'), findsOneWidget);
+    expect(find.widgetWithText(AppBar, 'رصيد فرحتي'), findsOneWidget);
     expect(find.byType(BackButton), findsOneWidget);
 
     await _shoot(tester, '$out/booking-done-earnings.png');

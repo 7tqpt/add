@@ -8,6 +8,7 @@ import type {
   SubscriptionPlan,
 } from '@/lib/types'
 import { mockPromotions, mockSubscriptionPlans } from '@/data/mock'
+import { DAY_FORMS, HOUR_FORMS, formatCount } from '@/lib/format'
 import { delay, isSupabaseConfigured } from './base'
 import { recordAudit } from './audit'
 
@@ -373,4 +374,64 @@ export const PROMOTION_STATUS_LABEL: Record<PromotionStatus, string> = {
   active: 'جارية',
   ended: 'منتهية',
   cancelled: 'ملغاة',
+}
+
+/** كم يبقى قبل أن يُنبَّه: ثلاثةُ أيّامٍ تكفي لتمديدٍ أو حملةٍ تخلفها. */
+export const ENDING_SOON_DAYS = 3
+
+export interface PromotionTiming {
+  /** الحالةُ كما يراها العميلُ في التطبيق، لا كما في العمود. */
+  status: PromotionStatus
+  label: string
+  /** سطرٌ تحت الفترة — أو `null` إن لم يكن ما يُقال. */
+  note: { text: string; tone: 'critical' | 'warning' } | null
+}
+
+/**
+ * **حالُ الحملة من تاريخها لا من عمودها.**
+ *
+ * عمودُ `status` لا يتبدّل إلّا بدورة `expire_promotions` — مرّةً في اليوم.
+ * والتطبيقُ يسأل عن التاريخ (`now() between starts_at and ends_at`). فانتهت
+ * لافتاتُ صاحب المنصّة في منتصف الليل وغابت من الرئيسية، **واللوحةُ تقول
+ * «جارية»**. فما فات تاريخُه يُقال منتهياً هنا وإن تأخّر العمود.
+ *
+ * وما قارب نهايتَه يُنبَّه عليه قبلها، لا بعدها.
+ */
+export function promotionTiming(
+  promotion: Pick<Promotion, 'status' | 'ends_at'>,
+  now: Date = new Date(),
+): PromotionTiming {
+  const left = new Date(promotion.ends_at).getTime() - now.getTime()
+  const live = promotion.status === 'active' || promotion.status === 'scheduled'
+
+  if (live && left <= 0) {
+    return {
+      status: 'ended',
+      label: 'انتهت مدّتها',
+      note: { text: `انتهت ${since(-left)} — لا تظهر في التطبيق`, tone: 'critical' },
+    }
+  }
+
+  const base = { status: promotion.status, label: PROMOTION_STATUS_LABEL[promotion.status] }
+  if (promotion.status === 'active' && left <= ENDING_SOON_DAYS * DAY_MS) {
+    return { ...base, note: { text: `تنتهي ${within(left)}`, tone: 'warning' } }
+  }
+  return { ...base, note: null }
+}
+
+const HOUR_MS = 3_600_000
+const DAY_MS = 24 * HOUR_MS
+
+/** «قبل ساعة» / «قبل 3 أيام». */
+function since(ms: number): string {
+  if (ms < HOUR_MS) return 'قبل دقائق'
+  if (ms < DAY_MS) return `قبل ${formatCount(Math.floor(ms / HOUR_MS), HOUR_FORMS)}`
+  return `قبل ${formatCount(Math.floor(ms / DAY_MS), DAY_FORMS)}`
+}
+
+/** «خلال ساعتين» / «خلال يومين» — والأيّامُ تُعدّ بالسقف: ٢٥ ساعةً «خلال يومين». */
+function within(ms: number): string {
+  if (ms < HOUR_MS) return 'خلال أقلّ من ساعة'
+  if (ms < DAY_MS) return `خلال ${formatCount(Math.ceil(ms / HOUR_MS), HOUR_FORMS)}`
+  return `خلال ${formatCount(Math.ceil(ms / DAY_MS), DAY_FORMS)}`
 }

@@ -13,7 +13,11 @@ import 'wallet.dart';
 ///
 ///   • صافي الحجز يدخل الرصيدَ **حين تعتمد الإدارةُ التنفيذ** — بعد العمولة.
 ///   • ويُسحب **إلى حسابٍ مسجَّلٍ وثّقته الإدارة** وحدَه.
-///   • و«مستحقّاتي» تبقى سجلّاً لما قبل الرصيد.
+///   • وتسوياتُ ما قبل الرصيد قسمٌ في أسفله — «تسويات سابقة».
+///
+/// **وكانت «مستحقّاتي» شاشةً وحدها في القائمة**، فسأل صاحبُ المنصّة: «ايش
+/// الفرق بين المستحقات ورصيد وليش مكرر» — بندان لمالٍ واحد. فاختار (أ):
+/// تدخل هنا قسماً لا يظهر إلّا لمن له تسويةٌ قديمة، ويُحذف بندُها.
 ///
 /// والقاعدةُ هي التي تحسب وتردّ (`supabase/wallet.sql` القسم ١٣)؛ وما هنا
 /// يسأل ويعرض.
@@ -26,8 +30,12 @@ class ProviderWalletScreen extends StatefulWidget {
 
 class _ProviderWalletScreenState extends State<ProviderWalletScreen> {
   late Future<ProviderWallet> _wallet = Api.myProviderWallet();
+  late Future<List<Settlement>> _settlements = Api.mySettlements();
 
-  void _reload() => setState(() => _wallet = Api.myProviderWallet());
+  void _reload() => setState(() {
+    _wallet = Api.myProviderWallet();
+    _settlements = Api.mySettlements();
+  });
 
   Future<void> _withdraw(ProviderWallet wallet) async {
     final sent = await Navigator.of(context).push<bool>(
@@ -106,6 +114,19 @@ class _ProviderWalletScreenState extends State<ProviderWalletScreen> {
                       WalletEntryRow(entry: entry),
                     ],
                 ],
+              ),
+              // **ومنتظَرةٌ وحدَها:** تعثّرُها يُخفي القسمَ ولا يُسقط الرصيد — هي
+              // سجلٌّ قديم، والرصيدُ ما تُفتح الشاشةُ لأجله.
+              FutureBuilder<List<Settlement>>(
+                future: _settlements,
+                builder: (context, snap) {
+                  final list = snap.data ?? const <Settlement>[];
+                  if (list.isEmpty) return const SizedBox.shrink();
+                  return Padding(
+                    padding: const EdgeInsets.only(top: Space.md),
+                    child: PastSettlements(settlements: list),
+                  );
+                },
               ),
             ],
           ),
@@ -333,4 +354,63 @@ class _ProviderWithdrawScreenState extends State<ProviderWithdrawScreen> {
       ),
     );
   }
+}
+
+/// «تسويات سابقة» — ما نُفّذ قبل الرصيد، ويُصرف كما كان بتحويلٍ من الإدارة.
+///
+/// كانت شاشةَ «مستحقّاتي» وحدها، ثمّ صارت قسماً هنا (اختيارُ صاحب المنصّة).
+/// **والثلاثةُ معاً لا الصافي وحده:** من رأى صافياً أقلّ ممّا حسب سأل عن
+/// الفرق، ووجودُ العمولة مكتوبةً يجيبه قبل أن يسأل.
+class PastSettlements extends StatelessWidget {
+  const PastSettlements({super.key, required this.settlements});
+  final List<Settlement> settlements;
+
+  /// حالُ التسوية — دالّةٌ لا ثابت: `tr` تُقرأ بلغة اللحظة.
+  static Map<String, String> get _labels => {
+    'pending': tr('قيد المراجعة'),
+    'approved': tr('معتمَدة'),
+    'paid': tr('مصروفة'),
+    'on_hold': tr('موقوفة'),
+  };
+
+  @override
+  Widget build(BuildContext context) => AppCard(
+    key: const ValueKey('past-settlements'),
+    children: [
+      Row(
+        children: [
+          const Icon(Icons.receipt_long_outlined, size: 18, color: AppColors.gold),
+          const SizedBox(width: 6),
+          Expanded(child: SectionTitle(tr('تسويات سابقة'))),
+        ],
+      ),
+      const SizedBox(height: Space.xs),
+      Muted(tr('حجوزاتٌ نُفّذت قبل «رصيد فرحتي» — تُصرف لك كما كانت بتحويلٍ من الإدارة.'), size: 12),
+      for (final (i, s) in settlements.indexed) ...[
+        if (i > 0) const Divider(height: Space.lg, color: AppColors.hairline),
+        const SizedBox(height: Space.sm),
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                '${formatDay(s.periodStart)} — ${formatDay(s.periodEnd)}',
+                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+              ),
+            ),
+            StatusBadge(
+              _labels[s.status] ?? s.status,
+              color: switch (s.status) {
+                'paid' => AppColors.good,
+                'on_hold' => AppColors.critical,
+                _ => AppColors.warning,
+              },
+            ),
+          ],
+        ),
+        KeyValue(tr('المقبوض'), formatMoney(s.gross)),
+        KeyValue(tr('عمولة المنصّة'), formatMoney(s.commission)),
+        KeyValue(tr('صافي مستحقّك'), formatMoney(s.net)),
+      ],
+    ],
+  );
 }

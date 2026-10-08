@@ -98,13 +98,15 @@ void main() {
       'مستندات التوثيق',
       'الباقات والاشتراك',
       'رصيد فرحتي',
-      'مستحقّاتي',
       'الدعم',
       'العودة إلى وضع العميل',
       'تسجيل الخروج',
     ]) {
       expect(find.text(door, skipOffstage: false), findsOneWidget, reason: door);
     }
+    // **و«مستحقّاتي» لم تعد بنداً:** صارت «تسويات سابقة» داخل «رصيد فرحتي».
+    // ويُسأل عنها بعينها: الترتيبُ في `menu_order_test` يُصفّي بما يعرفه.
+    expect(find.text('مستحقّاتي', skipOffstage: false), findsNothing);
   });
 
   testWidgets('وكلُّ بابٍ يُضغط فيفعل شيئاً', (tester) async {

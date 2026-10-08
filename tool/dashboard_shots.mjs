@@ -226,6 +226,32 @@ await page.waitForTimeout(1200)
 const still = await page.locator(`[data-withdrawals] tbody tr[data-withdrawal="${firstRef}"]`).count()
 check('و«حوّلتُ المبلغ» يُخرجه من قائمة الانتظار', still === 0, `${firstRef} ${still}`)
 
+// ── الحملات: الحالُ من التاريخ — اختيارُ صاحب المنصّة (ب) ─────────────────────
+// في وضع العرض حملةٌ «جارية» في عمودها انقضت أمس، وأخرى تنتهي بعد يومين.
+await page.goto(`${base}/#/promotions`)
+await page.waitForTimeout(1500)
+const promo = await page.evaluate(() => {
+  // المنقضيةُ بسطرها الأحمر — لا أوّلُ «منتهية»: تلك انتهت في عمودها من قبل.
+  const lapsed = document.querySelector('[data-promotion-note="critical"]')?.closest('tr')
+  const soon = document.querySelector('[data-promotion-note="warning"]')?.closest('tr')
+  return {
+    badge: lapsed?.querySelector('[data-promotion-status]')?.textContent?.trim() ?? '',
+    note: lapsed?.querySelector('[data-promotion-note="critical"]')?.textContent?.trim() ?? '',
+    cancel: lapsed ? [...lapsed.querySelectorAll('button')].some((b) => /إلغاء/.test(b.textContent)) : null,
+    soon: soon?.querySelector('[data-promotion-note]')?.textContent?.trim() ?? '',
+    soonColor: soon ? getComputedStyle(soon.querySelector('[data-promotion-note]')).color : '',
+    soonBadge: soon?.querySelector('[data-promotion-status]')?.textContent?.trim() ?? '',
+  }
+})
+await page.locator('[data-promotion-note="critical"]').first().scrollIntoViewIfNeeded().catch(() => {})
+await page.mouse.move(5, 5)
+await page.screenshot({ path: `${out}/09-promotions.png` })
+check('**حملةٌ انقضت وعمودُها «جارية»: تُقال «انتهت مدّتها» ولماذا لا تظهر**',
+  promo.badge === 'انتهت مدّتها' && /لا تظهر في التطبيق/.test(promo.note), JSON.stringify(promo))
+check('ولا يُعرض لها «إلغاء»', promo.cancel === false)
+check('**وما ينتهي قريباً: «جارية» وتحتها «تنتهي خلال…»**', promo.soonBadge === 'جارية' && /^تنتهي خلال/.test(promo.soon), promo.soon)
+check('والتنبيهُ مقروءٌ لا أصفرُ على أبيض', promo.soonColor !== '' && promo.soonColor !== 'rgb(250, 178, 25)', promo.soonColor)
+
 const phone = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 })
 await phone.goto(`${base}/#/`)
 await phone.waitForTimeout(1300)
