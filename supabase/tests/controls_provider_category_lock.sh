@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# ضوابطُ سالبةٌ لتقييد المزوّد بأقسامه — `provider_category_lock.sql`.
+# ضوابطُ سالبةٌ لأقسام المزوّد وموافقة الإدارة (ج) — `provider_category_lock.sql`.
 #
 # تكسر كلَّ ضمانةٍ كسراً واحداً وتتأكّد أنّ الحزمةَ تحمرّ. وما لا يسقط
 # بالكسر ضمانةٌ كاذبةٌ تُطمئن ولا تحرس.
@@ -51,56 +51,74 @@ else echo "الأساسُ أحمر — لا معنى للضوابط."; exit 1; f
 
 echo; echo "== الضوابط =="
 
-# ── أ) العميلُ يرى الخدمةَ خارج أقسام صاحبها ─────────────────────────────────
-run "(أ) المخفيّةُ تُرى" sub "$F" \
-"                  where p.id = provider_id and p.status = 'verified')
-     and public.service_in_provider_categories(provider_id, category_id))" \
-"                  where p.id = provider_id and p.status = 'verified'))"
+# ── أ) العميلُ يرى ما لم يُوافَق عليه ────────────────────────────────────────
+run "(أ) المنتظرةُ تُرى" sub "$F" \
+"     and approval = 'approved'
+     and exists (select 1 from public.service_providers p" \
+"     and exists (select 1 from public.service_providers p"
 
-# ── ب) المزوّدُ يضيف في أيّ قسم ─────────────────────────────────────────────
-#
-# **وهذا لبُّ الطلب:** «كيف اقيد المقدم الخدمة ب القسام الذي اختارة».
-run "(ب) يضيف في أيّ قسم" sub "$F" \
-"  if not public.service_in_provider_categories(new.provider_id, new.category_id) then
-    raise exception 'لا تُضاف خدمةٌ إلّا في قسمك المسجَّل.';" \
-"  if false then
-    raise exception 'لا تُضاف خدمةٌ إلّا في قسمك المسجَّل.';"
+# ── ب) وما خارج أقسامه يُقبل بلا موافقة — لبُّ الطلب «بعلم الادارة» ───────────
+run "(ب) خارج أقسامه يظهر فوراً" sub "$F" \
+"      else 'pending' end;" \
+"      else 'approved' end;"
 
-# ── ج) ويكتب أقسامَه بنفسه — السياسةُ القديمةُ تعود ──────────────────────────
-run "(ج) يضيف لنفسه قسماً" sub "$F" \
+# ── ج) والمزوّدُ يكتب موافقتَه بنفسه ─────────────────────────────────────────
+run "(ج) يوافق على خدمته" sub "$F" \
+"    new.approval      := old.approval;
+" \
+""
+
+# ── د) ويكتب أقسامَه بنفسه — السياسةُ القديمةُ تعود ──────────────────────────
+run "(د) يضيف لنفسه قسماً" sub "$F" \
 "  using (public.can_write_area('directory') or public.can_write_area('catalog'))
   with check (public.can_write_area('directory') or public.can_write_area('catalog'));" \
 "  using (provider_id = public.current_provider() or public.can_write_area('directory'))
   with check (provider_id = public.current_provider() or public.can_write_area('directory'));"
 
-# ── د) وتُحجز المخفيّةُ برابطٍ قديم ──────────────────────────────────────────
-run "(د) المخفيّةُ تُحجز" sub "$F" \
-"  if found and not public.service_in_provider_categories(svc.provider_id, svc.category_id) then
-    raise exception 'هذه الخدمة غير متاحة للحجز حالياً';" \
-"  if false then
-    raise exception 'هذه الخدمة غير متاحة للحجز حالياً';"
-
-# ── هـ) وكلُّ تعديلٍ لمخفيّةٍ يُردّ — فلا يستطيع إصلاحها ─────────────────────
-run "(هـ) تعديلُ المخفيّة يُردّ" sub "$F" \
-"  if tg_op = 'UPDATE'
-     and new.category_id is not distinct from old.category_id
-     and new.provider_id is not distinct from old.provider_id then
-    return new;
-  end if;
-" \
-""
-
-# ── و) والمزوّدُ يضبط أقسامَه بالدالّة ───────────────────────────────────────
-run "(و) المزوّدُ يضبط أقسامَه" sub "$F" \
-"  if not public.can_write_area('directory') then
-    raise exception 'تغييرُ أقسام مقدّم الخدمة لمن يدير مقدّمي الخدمة';" \
-"  if auth.uid() is null then
-    raise exception 'تغييرُ أقسام مقدّم الخدمة لمن يدير مقدّمي الخدمة';"
-
-# ── ز) ويُترك بلا قسم ─────────────────────────────────────────────────────────
-run "(ز) بلا قسم" sub "$F" \
-"  if coalesce(array_length(wanted, 1), 0) = 0 then" \
+# ── هـ) وتُحجز المنتظرةُ برابطٍ قديم ─────────────────────────────────────────
+run "(هـ) المنتظرةُ تُحجز" sub "$F" \
+"  if found and svc.approval <> 'approved' then" \
 "  if false then"
+
+# ── و) والمرفوضةُ تبقى مرفوضةً وإن عدّلها ────────────────────────────────────
+run "(و) المرفوضةُ لا تعود للمراجعة" sub "$F" \
+"              or new.provider_id is distinct from old.provider_id
+              or old.approval = 'rejected';" \
+"              or new.provider_id is distinct from old.provider_id;"
+
+# ── ز) وإضافةُ القسم لا تقبل خدماتِه فيه ─────────────────────────────────────
+run "(ز) إضافةُ القسم لا تقبل" sub "$F" \
+"     and approval <> 'approved'
+     and category_id = any (wanted);" \
+"     and approval <> 'approved'
+     and false;"
+
+# ── ح) وحذفُ القسم ينقض الموافقةَ على خدمةٍ بعينها ──────────────────────────
+run "(ح) حذفُ القسم ينقض الموافقةَ الفرديّة" sub "$F" \
+"     and approval = 'approved'
+     and approval_at is null
+     and category_id = any (coalesce(removed, '{}'));" \
+"     and approval = 'approved'
+     and category_id = any (coalesce(removed, '{}'));"
+
+# ── ط) والرفضُ بلا سبب ──────────────────────────────────────────────────────
+run "(ط) رفضٌ بلا سبب" sub "$F" \
+"  if not p_approve and btrim(coalesce(p_note, '')) = '' then" \
+"  if false then"
+
+# ── ي) والمزوّدُ يراجع خدمتَه ────────────────────────────────────────────────
+run "(ي) المزوّدُ يراجع" sub "$F" \
+"  if not (public.can_write_area('directory') or public.can_write_area('catalog')) then
+    raise exception 'مراجعةُ الخدمات لمن يدير مقدّمي الخدمة';" \
+"  if auth.uid() is null then
+    raise exception 'مراجعةُ الخدمات لمن يدير مقدّمي الخدمة';"
+
+# ── ك) وما كان قائماً خارج أقسامه يبقى ظاهراً بعد اللصق ──────────────────────
+run "(ك) القائمُ لا يُراجَع" sub "$F" \
+"update public.provider_services s
+   set approval = 'pending'" \
+"update public.provider_services s
+   set approval = 'approved'"
 
 echo
 echo "الساقط: $PASS — الباقي: $FAIL"
