@@ -289,6 +289,9 @@ const queue = await page.evaluate(() => ({
   rows: [...document.querySelectorAll('[data-pending-services] tbody tr')].map((tr) => tr.innerText.replace(/\s+/g, ' ')),
 }))
 await page.screenshot({ path: `${out}/11-pending-services.png` })
+const hint = await page.locator('[data-pending-services] [data-approve-hint]').first().textContent().catch(() => '')
+check('**وتحت «موافقة»: أنّها تضيف قسمَها لأقسام صاحبها** (ب)', /الموافقةُ تضيف «التصوير والإضاءة» لأقسام/.test(hint ?? ''), hint)
+check('ولا رابطَ «أضف القسم لأقسامه» — الموافقةُ تفعله', (await page.locator('[data-add-category]').count()) === 0)
 check('**«خدماتٌ بانتظار موافقتك» فوق مقدّمي الخدمة — بقسمها وأقسام صاحبها**',
   Number(queue.count) >= 1 && queue.rows.some((r) => /التصوير والإضاءة/.test(r) && /القاعات والخيام/.test(r) && /موافقة/.test(r)), JSON.stringify(queue))
 

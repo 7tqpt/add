@@ -167,8 +167,14 @@ export function ProviderDetailPage() {
     try {
       await reviewService(review, approve, note)
       setRejecting(null)
-      setToast(approve ? `ظهرت «${review.title}» للعملاء.` : `رُفضت «${review.title}» — وصل السببُ صاحبَها.`)
+      setToast(
+        approve
+          ? `ظهرت الخدمة للعملاء — وأُضيف «${review.category_name}» لأقسامه.`
+          : `رُفضت «${review.title}» — وصل السببُ صاحبَها.`,
+      )
       serviceReviews.reload()
+      // والموافقةُ تضيف قسمَها لأقسامه (ب): فرأسُ الصفحة يُعاد.
+      if (approve) provider.reload()
     } catch (cause) {
       const message = errorText(cause, 'تعذّرت المراجعة.')
       if (approve) setToast(message)
@@ -540,8 +546,7 @@ export function ProviderDetailPage() {
                   <b className="text-[color-mix(in_oklab,var(--warning)_55%,var(--text-primary))]">
                     {waiting === 1 ? 'خدمةٌ بانتظار موافقتك' : `${formatNumber(waiting)} خدمات بانتظار موافقتك`}
                   </b>{' '}
-                  — في قسمٍ ليس من أقسامه. وافق عليها وحدَها، أو أضف قسمَها له من «تغيير القسم» فتُقبل
-                  خدماتُه فيه كلُّها.
+                  — في قسمٍ ليس من أقسامه. والموافقةُ تضيف قسمَها لأقسامه فتُقبل خدماتُه فيه كلُّها.
                 </p>
               ) : null}
               {services.length === 0 ? (
@@ -609,6 +614,7 @@ export function ProviderDetailPage() {
                                     setRejectError(null)
                                     setRejecting(r)
                                   }}
+                                  hint={`الموافقةُ تضيف «${service.category_name}» لأقسامه`}
                                 />
                               </div>
                             ) : (

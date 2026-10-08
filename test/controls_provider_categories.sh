@@ -98,6 +98,15 @@ run browser "(ي) «تغيير القسم» لكلّ دور" sub src/pages/Provi
   "                disabled={busy || !canWrite || !allCategories.data}" \
   "                disabled={busy || !allCategories.data}"
 
+# ── ك) والموافقةُ لا تضيف قسمَها لأقسام صاحبها (ب) ──────────────────────────
+run unit "(ك) الموافقةُ لا تضيف القسم" sub src/services/directory.ts \
+  "    if (approve && service && owner && !owner.categories.includes(service.category_name)) {" \
+  "    if (false && service && owner) {"
+
+run browser "(ل) لا يُقال تحت «موافقة» ما تفعله" sub src/pages/Providers.tsx \
+  "                      hint={\`الموافقةُ تضيف «\${review.category_name}» لأقسام \${review.provider_name}\`}" \
+  "                      hint={undefined}"
+
 echo
 echo "الساقط: $PASS — الباقي: $FAIL"
 [ "$FAIL" = 0 ]

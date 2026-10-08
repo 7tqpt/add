@@ -13,6 +13,7 @@
 --      ولا يراه العملاء.
 --    • والإدارةُ توافق **بإضافة القسم له** («تغيير القسم» في صفحته) فتُقبل
 --      خدماتُه فيه كلُّها، **أو على كلّ خدمةٍ وحدَها** («موافقة» و«رفض» بسبب).
+--      **والموافقةُ على خدمةٍ تضيف قسمَها لأقسامه** — اختيارُه (ب) بعدها.
 --    • والمرفوضةُ يعدّلها صاحبُها فتعود للمراجعة.
 --    • وخدماتُه القائمةُ خارج أقسامه تصير «بانتظار الموافقة» لتُراجَع.
 --
@@ -241,6 +242,10 @@ grant execute on function public.api_admin_set_provider_categories(uuid, uuid[])
 -- ----------------------------------------------------------------------------
 --  ٨. وموافقةٌ على خدمةٍ بعينها، أو رفضُها بسببٍ يصل صاحبَها
 -- ----------------------------------------------------------------------------
+--  **والموافقةُ تضيف قسمَها لأقسام صاحبها** — اختيارُ صاحب المنصّة (ب) بعد أن سأل:
+--  «ليش عن المزود جالس يظهر الملبوسات وفي الاصل تم تغيير القسم الي طباعة».
+--  فيظهر القسمُ في «عن المزوّد»، وتُقبل خدماتُه المنتظرةُ فيه، والقادمةُ بلا انتظار.
+--  والمرفوضةُ في القسم نفسِه تبقى: رفضُها قرارٌ لا ينقضه قبولُ غيرها.
 create or replace function public.api_admin_review_service(
   p_service_id uuid,
   p_approve    boolean,
@@ -249,7 +254,9 @@ create or replace function public.api_admin_review_service(
 returns public.provider_services
 language plpgsql security definer set search_path = public as $$
 declare
-  svc public.provider_services;
+  svc      public.provider_services;
+  added    integer := 0;
+  cat_name text;
 begin
   if not (public.can_write_area('directory') or public.can_write_area('catalog')) then
     raise exception 'مراجعةُ الخدمات لمن يدير مقدّمي الخدمة';
@@ -269,9 +276,20 @@ begin
   end if;
 
   if p_approve then
+    insert into public.provider_categories (provider_id, category_id)
+    values (svc.provider_id, svc.category_id)
+    on conflict do nothing;
+    get diagnostics added = row_count;
+    update public.provider_services
+       set approval = 'approved', approval_note = '', approval_at = null
+     where provider_id = svc.provider_id
+       and category_id = svc.category_id
+       and approval = 'pending';
+    select name into cat_name from public.service_categories where id = svc.category_id;
     perform public.notify_provider(svc.provider_id, 'account',
       'وافقت الإدارةُ على خدمتك',
-      '«' || svc.title || '» ظاهرةٌ للعملاء الآن.',
+      '«' || svc.title || '» ظاهرةٌ للعملاء الآن.'
+        || case when added > 0 then ' وأُضيف «' || coalesce(cat_name, '') || '» لأقسامك.' else '' end,
       jsonb_build_object('service_id', svc.id));
   else
     perform public.notify_provider(svc.provider_id, 'account',

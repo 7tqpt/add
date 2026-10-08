@@ -575,7 +575,10 @@ export async function listServiceReviews(): Promise<ServiceReview[]> {
   return (data ?? []) as ServiceReview[]
 }
 
-/** يوافق على خدمةٍ بعينها، أو يرفضها بسببٍ يصل صاحبَها. */
+/**
+ * يوافق على خدمةٍ بعينها — **فيُضاف قسمُها لأقسام صاحبها** وتُقبل خدماتُه المنتظرةُ
+ * فيه (ب) — أو يرفضها بسببٍ يصل صاحبَها.
+ */
 export async function reviewService(
   review: Pick<ServiceReview, 'id' | 'title' | 'provider_name'>,
   approve: boolean,
@@ -586,6 +589,12 @@ export async function reviewService(
 
   if (!isSupabaseConfigured) {
     demoDecisions.set(review.id, { approval: approve ? 'approved' : 'rejected', note: approve ? '' : reason })
+    // **والموافقةُ تضيف قسمَها لأقسام صاحبها** (ب) — كما في القاعدة.
+    const service = mockServices.find((s) => s.id === review.id)
+    const owner = service && demoProviders.find((p) => p.id === service.provider_id)
+    if (approve && service && owner && !owner.categories.includes(service.category_name)) {
+      owner.categories = [...owner.categories, service.category_name]
+    }
     await delay(null, 220)
   } else {
     const { error } = await requireSupabase().rpc('api_admin_review_service', {

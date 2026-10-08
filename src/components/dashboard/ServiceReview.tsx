@@ -29,38 +29,48 @@ export function ReviewButtons({
   busy,
   onApprove,
   onReject,
+  hint,
 }: {
   review: ServiceReview
   canWrite: boolean
   busy: boolean
   onApprove: (review: ServiceReview) => void
   onReject: (review: ServiceReview) => void
+  /** ما تفعله «موافقة» — تضيف قسمَها لأقسام صاحبها (ب). */
+  hint?: string
 }) {
   const title = canWrite ? undefined : 'دورك الحالي للقراءة فقط'
   return (
-    <div className="flex items-center gap-1.5" data-review-buttons={review.id}>
-      <Button
-        size="sm"
-        variant="primary"
-        disabled={busy || !canWrite}
-        title={title}
-        onClick={() => onApprove(review)}
-      >
-        <Check size={14} aria-hidden />
-        موافقة
-      </Button>
-      {/* المرفوضةُ لا تُرفض ثانيةً: تُقبل، أو تبقى حتى يعدّلها صاحبُها. */}
-      {review.approval === 'pending' ? (
+    <div className="flex flex-col items-start gap-1">
+      <div className="flex items-center gap-1.5" data-review-buttons={review.id}>
         <Button
           size="sm"
-          variant="secondary"
+          variant="primary"
           disabled={busy || !canWrite}
           title={title}
-          onClick={() => onReject(review)}
+          onClick={() => onApprove(review)}
         >
-          <X size={14} aria-hidden />
-          رفض
+          <Check size={14} aria-hidden />
+          موافقة
         </Button>
+        {/* المرفوضةُ لا تُرفض ثانيةً: تُقبل، أو تبقى حتى يعدّلها صاحبُها. */}
+        {review.approval === 'pending' ? (
+          <Button
+            size="sm"
+            variant="secondary"
+            disabled={busy || !canWrite}
+            title={title}
+            onClick={() => onReject(review)}
+          >
+            <X size={14} aria-hidden />
+            رفض
+          </Button>
+        ) : null}
+      </div>
+      {hint ? (
+        <span data-approve-hint className="max-w-56 text-[11px] leading-relaxed whitespace-normal text-muted">
+          {hint}
+        </span>
       ) : null}
     </div>
   )
