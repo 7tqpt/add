@@ -38,6 +38,7 @@ import {
   featureProvider,
   listPromotions,
   listSubscriptionPlans,
+  promotionTiming,
   setSubscriptionPlanActive,
 } from '@/services/growth'
 import { errorText } from '@/services/base'
@@ -735,6 +736,8 @@ function Campaigns({ onToast }: { onToast: (message: string) => void }) {
               <tbody>
                 {data.rows.map((promotion) => {
                   const rate = clickRate(promotion)
+                  // الحالُ من التاريخ: العمودُ يتأخّر يوماً، والتطبيقُ لا ينتظره.
+                  const timing = promotionTiming(promotion)
                   return (
                     <tr
                       key={promotion.id}
@@ -759,6 +762,20 @@ function Campaigns({ onToast }: { onToast: (message: string) => void }) {
                       </td>
                       <td className="px-4 py-3 text-xs whitespace-nowrap text-ink-2">
                         {formatDate(promotion.starts_at)} — {formatDate(promotion.ends_at)}
+                        {timing.note ? (
+                          <span
+                            data-promotion-note={timing.note.tone}
+                            className={cn(
+                              'block text-[11px]',
+                              timing.note.tone === 'critical'
+                                ? 'text-critical'
+                                : // أصفرُ الحالة على الأبيض لا يُقرأ: يُمزج بلون النصّ.
+                                  'font-semibold text-[color-mix(in_oklab,var(--warning)_55%,var(--text-primary))]',
+                            )}
+                          >
+                            {timing.note.text}
+                          </span>
+                        ) : null}
                       </td>
                       <td className="tnum px-4 py-3 text-xs whitespace-nowrap text-ink-2">
                         {formatMoney(promotion.amount)}
@@ -774,12 +791,13 @@ function Campaigns({ onToast }: { onToast: (message: string) => void }) {
                         </span>
                       </td>
                       <td className="px-4 py-3">
-                        <Badge tone={STATUS_TONE[promotion.status]}>
-                          {PROMOTION_STATUS_LABEL[promotion.status]}
-                        </Badge>
+                        <span data-promotion-status={timing.status}>
+                          <Badge tone={STATUS_TONE[timing.status]}>{timing.label}</Badge>
+                        </span>
                       </td>
                       <td className="px-4 py-3 text-end">
-                        {promotion.status === 'scheduled' || promotion.status === 'active' ? (
+                        {/* وما انتهت مدّتُه لا يُلغى: لم يعد يُعرض ليوقَف. */}
+                        {timing.status === 'scheduled' || timing.status === 'active' ? (
                           <Button
                             size="sm"
                             variant="ghost"
