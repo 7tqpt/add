@@ -168,8 +168,8 @@ void main() {
           reason: 'التشخيصُ الكاذب هو العطبُ بعينه');
     });
 
-    test('وتشخيصُ المخطّط يبقى لمن يخصّه', () {
-      expect(identityHint('42P01'), contains('supabase/'));
+    test('ولا يُرسَل إليه أحدٌ — اختار صاحبُ المنصّة (ب)', () {
+      expect(identityHint('42P01'), isNot(contains('supabase/')));
     });
   });
 

@@ -2148,6 +2148,64 @@ class ErrorBlock extends StatelessWidget {
   );
 }
 
+/// وجهٌ هادئٌ لعطبٍ يراه العميل — دائرةٌ ورمزٌ وعنوانٌ وسطرٌ وزرُّ إعادة.
+///
+/// **بلا حبرٍ أحمر ولا تفاصيلَ تقنيّة** — اختار صاحبُ المنصّة (ب): لا رمزَ
+/// ولا نصَّ مطوّرٍ في وجه العميل ولو مطويّاً. وهو على مثال وجه الانقطاع في
+/// [ErrorBlock].
+class QuietError extends StatelessWidget {
+  const QuietError({
+    super.key,
+    required this.title,
+    required this.message,
+    this.icon = Icons.sync_rounded,
+    this.onRetry,
+  });
+
+  final String title;
+  final String message;
+  final IconData icon;
+  final VoidCallback? onRetry;
+
+  @override
+  Widget build(BuildContext context) => Center(
+    child: SingleChildScrollView(
+      padding: const EdgeInsets.all(Space.xl),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 76,
+            height: 76,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: AppColors.accent.withValues(alpha: Tint.disc),
+            ),
+            child: Icon(icon, key: const ValueKey('quiet-error-icon'), size: 36, color: AppColors.accent),
+          ),
+          const SizedBox(height: Space.lg),
+          Text(
+            title,
+            key: const ValueKey('quiet-error-title'),
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: AppColors.ink),
+          ),
+          const SizedBox(height: Space.sm),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 13, height: 1.7, color: AppColors.muted),
+          ),
+          if (onRetry != null) ...[
+            const SizedBox(height: Space.lg),
+            FilledButton(onPressed: onRetry, child: Text(tr('إعادة المحاولة'))),
+          ],
+        ],
+      ),
+    ),
+  );
+}
+
 /// أيقونة القسم من `slug`.
 ///
 /// من الـ`slug` لا من عمود `icon` في القاعدة: العمود موجودٌ لكنه فارغٌ في

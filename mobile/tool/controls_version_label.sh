@@ -56,13 +56,13 @@ run "(أ) رقمُ البناء في السطر" sub lib/src/core/app_version.da
 
 # ── ب) ويُصفَّر رقمُ البناء معه — فيرفض Android الحزمةَ فوق القديمة ──────────
 run "(ب) رقمُ البناء يُصفَّر" sub lib/src/core/app_version.dart \
-"const appBuild = 138;" \
+"const appBuild = 139;" \
 "const appBuild = 1;"
 
 # ── ج) ويفترق الاسمُ عن pubspec ─────────────────────────────────────────────
 run "(ج) الاسمُ يفترق عن pubspec" sub pubspec.yaml \
-"version: 1.1.1+138" \
-"version: 2.8.1+138"
+"version: 1.1.1+139" \
+"version: 2.8.1+139"
 
 echo
 echo "الساقط: $PASS — الباقي: $FAIL"

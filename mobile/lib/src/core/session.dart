@@ -142,12 +142,12 @@ class Session extends ChangeNotifier {
 
   /// فرقُ ساعةٍ بين مُصدِر الرمز وقارئه: يُطلب رمزٌ جديد ويُعاد السؤال.
   ///
-  /// **ولماذا إعادة المحاولة لا رسالة عطب:** الفرق ثوانٍ في العادة، فرمزٌ
-  /// يُصدَر بعد ثانيتين يمرّ. ومحاولتان تكفيان — وما زاد عليهما انتظارٌ أمام
-  /// شاشةٍ جامدة لعطبٍ لن يزول.
+  /// **ولماذا إعادة المحاولة لا رسالة عطب:** الفرق ثوانٍ في العادة — وأكثرُه
+  /// عطبٌ معروفٌ في ساعة خادم PostgREST نفسِه يزول وحده — فرمزٌ يُصدَر بعد
+  /// لحظاتٍ يمرّ. والعميلُ أمام شاشة التحميل في أثنائها لا أمام رسالة.
   Future<bool> _healClockSkew() async {
-    for (var i = 0; i < 2; i++) {
-      await Future.delayed(const Duration(seconds: 2));
+    for (final wait in clockSkewRetryDelays) {
+      await Future.delayed(wait);
       try {
         await db.auth.refreshSession();
         await _readIdentity();

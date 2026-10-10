@@ -30,6 +30,18 @@ Future<void> initSupabase() async {
 /// يمضي وحده، ولذلك يُعالَج بإعادة المحاولة لا برسالةِ عطبٍ نهائية.
 const jwtIssuedAtFuture = 'PGRST303';
 
+/// انتظارُ ما قبل كلّ محاولةٍ صامتةٍ عند [jwtIssuedAtFuture] — عشرُ ثوانٍ كلُّها.
+///
+/// **وكانت محاولتين بينهما ثانيتان.** وما يُبلَّغ عنه عند Supabase يزول في
+/// ثوانٍ لا في أقلّ من ثانية (ومن جرّب ستّمئة جزءٍ من الثانية لم تكفه)،
+/// فتتباعد المحاولاتُ ولا تتلاحق، والعميلُ أمام شاشة التحميل في أثنائها.
+const clockSkewRetryDelays = [
+  Duration(seconds: 1),
+  Duration(seconds: 2),
+  Duration(seconds: 3),
+  Duration(seconds: 4),
+];
+
 /// فرقُ الساعة بين هذا الجهاز والخادم — موجبٌ إن كان الجهاز **متقدّماً**.
 ///
 /// **ولماذا يُقاس ولا يُخمَّن:** «فرقٌ في الساعة» جملةٌ لا تدلّ على من يُصلح
@@ -150,16 +162,31 @@ String? errorCodeOf(Object error) {
   // **قبل كلّ شيء:** لو قُرئ الرمزُ من النصّ أوّلاً لَوقع رمزُ الحالة في
   // عنوان الرابط أو في نصّ العطب موقعَ رمزِ الخادم.
   if (isOffline(error)) return offlineCode;
-  if (error is PostgrestException && error.code != null) return error.code;
+  // **ورقمُ حالةٍ ليس رمزاً.** حين تطلب القراءةُ صفّاً واحداً (`maybeSingle`)
+  // تبتلع مكتبةُ postgrest العطبَ وتعيد رميَه برمز `401` وجسمُ الردّ كلُّه في
+  // الرسالة — فكان `PGRST303` يُقرأ `401`، فلا يُحاوَل الإصلاحُ الذاتيّ ويُعرض
+  // على العميل نصُّ المطوّر. فالرقمُ وحده يُترك ويُقرأ الرمزُ من الجسم.
+  final status = error is PostgrestException ? error.code : null;
+  if (status != null && !_httpStatus.hasMatch(status)) return status;
 
-  final text = error.toString();
+  final text = error is PostgrestException ? error.message : error.toString();
   // `"code":"PGRST303"` — كما يردّه PostgREST في جسم الردّ.
   final coded = RegExp(r'"code"\s*:\s*"([A-Za-z0-9]+)"').firstMatch(text);
   if (coded != null) return coded.group(1);
 
   // وبالرسالة حين لا رمزَ فيها: بعض المسالك تُسقط الجسمَ وتُبقي النصّ.
   if (text.contains('JWT issued at future')) return jwtIssuedAtFuture;
-  return null;
+  return status;
+}
+
+final _httpStatus = RegExp(r'^\d{3}$');
+
+/// الجملةُ من جسم ردٍّ خامّ (`"message":"…"`)، أو `null` إن لم يكن فيه.
+String? _bodyMessage(String text) {
+  final message = RegExp(r'"message"\s*:\s*"((?:[^"\\]|\\.)*)"').firstMatch(text);
+  if (message == null) return null;
+  final body = message.group(1)!.replaceAll(r'\"', '"');
+  return body.trim().isEmpty ? null : body;
 }
 
 /// يستخرج رسالةً مقروءة مما رُمي.
@@ -173,8 +200,9 @@ String messageOf(Object error) {
   if (isOffline(error)) return offlineMessage;
   if (error is PostgrestException) {
     final hint = error.hint == null ? '' : ' — ${error.hint}';
-    final code = error.code == null ? '' : '[${error.code}] ';
-    return '$code${error.message}$hint';
+    final code = errorCodeOf(error);
+    final prefix = code == null ? '' : '[$code] ';
+    return '$prefix${_bodyMessage(error.message) ?? error.message}$hint';
   }
   if (error is AuthException) {
     return error.message == 'Invalid login credentials'
@@ -188,11 +216,8 @@ String messageOf(Object error) {
   // `{"message":"JWT issued at future","code":"PGRST303",…}` وقع على شاشة
   // مستخدمٍ فعلاً. ومن رأى أقواساً وعلاماتِ اقتباسٍ لا يقرأ منها شيئاً، ولا
   // يعرف أنّ ساعةَ جهازه هي السبب.
-  final message = RegExp(r'"message"\s*:\s*"((?:[^"\\]|\\.)*)"').firstMatch(text);
-  if (message != null) {
-    final body = message.group(1)!.replaceAll(r'\"', '"');
-    if (body.trim().isNotEmpty) return body;
-  }
+  final body = _bodyMessage(text);
+  if (body != null) return body;
   // **ولا تُعرض بادئةُ Dart.** `StateError` يُكتب «Bad state: …» قبل الرسالة
   // العربيّة، فخرجت «Bad state: اسحب إلى الحساب…» على شاشة السحب.
   return text.replaceFirst(RegExp(r'^(Bad state|Exception|StateError): '), '');

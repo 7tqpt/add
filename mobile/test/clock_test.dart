@@ -34,28 +34,26 @@ void main() {
   });
 
   group('التشخيص', () {
-    test('رمزُ المستقبل يقول: اضبط ساعة الجوال', () {
+    test('ساعةُ الجوال المتقدّمة: الرقمُ وما يُفعل', () {
       final hint = identityHint(jwtIssuedAtFuture, const Duration(minutes: 7));
-      expect(hint, contains('الساعة'));
       expect(hint, contains('التلقائي'));
       // والرقم المقيس فيه.
       expect(hint, contains('تسبق'));
-      // ولا يُرسَل صاحبُه إلى ملفات SQL.
-      expect(hint, isNot(contains('supabase/')));
+      expect(identityTitle(jwtIssuedAtFuture, const Duration(minutes: 7)),
+          'ساعة جوالك غير مضبوطة');
     });
 
-    test('والجدولُ الغائب يقول: شغّل الملفات', () {
-      expect(identityHint('42P01'), contains('supabase/'));
-      expect(identityHint('42P01'), isNot(contains('الساعة')));
+    test('وبلا فرقٍ مقيسٍ لا يُتّهم الجوال — العطبُ من الخادم', () {
+      expect(identityHint(jwtIssuedAtFuture), isNot(contains('التلقائي')));
+      expect(identityTitle(jwtIssuedAtFuture), 'تعذّر فتح حسابك الآن');
     });
 
-    test('والعمودُ الغائب يقول: قاعدتك أقدم', () {
-      expect(identityHint('42703'), contains('أقدم'));
-    });
-
-    test('وما لا رمزَ له يقول شيئاً عامّاً لا شيئاً خاطئاً', () {
+    test('**ولا نصَّ مطوّرٍ لأيّ رمز** — اختار صاحبُ المنصّة (ب)', () {
+      // كانت «الجدولُ الغائب يقول: شغّل الملفات» — ووقعت على عميل.
+      expect(identityHint('42P01'), isNot(contains('supabase/')));
+      expect(identityHint('42703'), isNot(contains('supabase/')));
       expect(identityHint(null), isNotEmpty);
-      expect(identityHint(null), isNot(contains('الساعة')));
+      expect(identityHint(null), isNot(contains('ساعة')));
     });
   });
 }
