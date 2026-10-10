@@ -214,9 +214,18 @@ void main() {
       // حزمةٍ يشغّل — **ولا نحن**: سُئلنا «عدّلتَ الأيقونات ولم تتغيّر»،
       // ولا سبيلَ إلى الجواب إلّا أن يُعرف ما في يده.
       expect(appVersionLabel, contains(appVersionName));
-      expect(appVersionLabel, contains('$appBuild'));
       expect(appVersionLabel, isNot(contains('1.0.0')),
           reason: 'ما لم تكن النسخةُ ١٫٠٫٠ فعلاً');
+    });
+
+    test('**والاسمُ وحده بلا رقم البناء** — «بدون (127)هذا العدد»', () {
+      // اختار صاحبُ المنصّة (أ): يُعرض «الإصدار ١٫١٫١» ويبقى رقمُ البناء في الداخل.
+      expect(appVersionLabel, 'الإصدار $appVersionName');
+      expect(appVersionLabel, isNot(contains('$appBuild')));
+      expect(appVersionLabel, isNot(contains('(')));
+      // **ورقمُ البناء لا يُصفَّر:** Android يرفض حزمةً أصغرَ ممّا على الجهاز.
+      // وآخرُ ما نُشر كان ‎137‎ (2.8.0) — فلا ينزل تحته.
+      expect(appBuild, greaterThan(137), reason: 'رقمُ البناء نزل فلن تُثبَّت الحزمةُ فوق القديمة');
     });
 
     testWidgets('**ويُعرض في «حسابي» كما هو**', (tester) async {

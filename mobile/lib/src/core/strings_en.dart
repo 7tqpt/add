@@ -728,7 +728,7 @@ const Map<String, String> englishStrings = {
   'مدفوعة': 'Paid',
   'مرفوض': 'Rejected',
   'مزوّد موثَّق': 'Verified provider',
-  'مزوّدون مميّزون': 'Featured providers',
+  'مقدّم خدمة مميّز': 'Featured provider',
   // شعارُ رأس الخطّة — سطرٌ واحدٌ تحت العدّ التنازلي.
   'مستقبلٌ أجملُ يبدأ من هنا': 'A brighter future starts here',
   'مستندات التوثيق': 'Verification documents',

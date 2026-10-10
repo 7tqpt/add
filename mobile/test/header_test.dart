@@ -93,6 +93,16 @@ Color _iconColour(WidgetTester tester) => tester
     .foregroundColor!
     .resolve(const <WidgetState>{})!;
 
+/// ولونُ المربّع تحت الرمز كما رُسم — والرمزُ يُقرأ عليه هو لا على الزجاج.
+Color _tileColour(WidgetTester tester) => tester
+    .widget<IconButton>(find
+        .descendant(
+            of: find.byType(GlassHeader), matching: find.byType(IconButton))
+        .first)
+    .style!
+    .backgroundColor!
+    .resolve(const <WidgetState>{})!;
+
 /// تمريرُ الشاشة رأسيّاً.
 Future<void> _scroll(WidgetTester tester, double by) async {
   await tester.drag(find.byType(ListView).first, Offset(0, -by));
@@ -257,7 +267,8 @@ void main() {
     testWidgets('**الحبرُ والرمزُ يُقرآن على أرضيّة الصفحة**', (tester) async {
       await _openShell(tester);
       expect(_ratio(_titleColour(tester), AppColors.page), greaterThan(4.5));
-      expect(_ratio(_iconColour(tester), AppColors.page), greaterThan(4.5));
+      // والرمزُ على مربّعه المعتم — «نفذ لي هذا» — لا على الصفحة.
+      expect(_ratio(_iconColour(tester), _tileColour(tester)), greaterThan(4.5));
     });
 
     testWidgets('**ويُقرآن على الزجاج وتحته البطاقةُ النبيذيّة**',
@@ -269,7 +280,10 @@ void main() {
       await _scroll(tester, 260);
       final glass = _over(_surface(tester).color!, AppColors.accent);
       expect(_ratio(_titleColour(tester), glass), greaterThan(4.5));
-      expect(_ratio(_iconColour(tester), glass), greaterThan(4.5));
+      // **والمربّعُ معتم** — فما تحت الزجاج لا يصل الرمز. ولو صار شفّافاً
+      // لَقُرئ الرمزُ النبيذيُّ على الزجاج فوق النبيذيّ فلا يُرى.
+      expect(_tileColour(tester).a, 1.0, reason: 'المربّعُ شفّاف');
+      expect(_ratio(_iconColour(tester), _tileColour(tester)), greaterThan(4.5));
     });
 
     test('**والأبيضُ لا يصلح لهما — ولذلك ليسا أبيضين**', () {
@@ -281,8 +295,9 @@ void main() {
   });
 
   group('الأيقونات', () {
-    testWidgets('**بلا قرصٍ أبيضَ تحتها**', (tester) async {
-      // قرصان وحبّتا عددٍ في ستٍّ وتسعين بكسلاً — أربعةُ أشكالٍ متجاورة.
+    testWidgets('**مربّعٌ بيجيٌّ مستديرٌ تحتها — لا قرصٌ أبيض**', (tester) async {
+      // كان تحتها قرصٌ أبيضُ شفّافٌ فرُفع؛ ثمّ أرسل صاحبُ المنصّة صورةَ مربّعٍ
+      // بيجيٍّ مستديرٍ والرمزُ نبيذيّ: «نفذ لي هذا». فيُقاس المربّعُ بلونه وشكله.
       _phone(tester);
       await tester.pumpWidget(_wrap(Scaffold(
         body: GlassHeader(
@@ -297,8 +312,11 @@ void main() {
           of: find.byType(GlassHeader), matching: find.byType(IconButton)))) {
         final fill = button.style?.backgroundColor
             ?.resolve(const <WidgetState>{});
-        expect(fill == null || fill.a == 0, isTrue,
-            reason: 'عاد القرصُ الأبيضُ تحت الرمز');
+        expect(fill, AppColors.surface2, reason: 'ليس المربّعَ البيجيّ');
+        expect(fill, isNot(Colors.white));
+        final shape = button.style?.shape?.resolve(const <WidgetState>{});
+        expect(shape, isA<RoundedRectangleBorder>(), reason: 'ليس مربّعاً مستديراً');
+        expect(button.style?.foregroundColor?.resolve(const <WidgetState>{}), AppColors.accent);
       }
     });
 
@@ -314,9 +332,11 @@ void main() {
 
       final dot = tester.getRect(find.byType(UnreadDot));
       final glyph = tester.getRect(find.byIcon(Icons.notifications_none_rounded));
-      // تلمس الرمزَ أو تتداخل معه — لا تطفو بعيداً عنه.
-      expect(dot.overlaps(glyph.inflate(2)), isTrue,
-          reason: 'الحبّةُ تطفو بعيداً عن رمزها');
+      // على ركن المربّع العلويّ الأيمن — حيث النقطةُ في صورته — ويبقى فيها الرقم.
+      expect(dot.center.dx, greaterThan(glyph.center.dx), reason: 'الحبّةُ على اليسار');
+      expect(dot.center.dy, lessThan(glyph.center.dy), reason: 'الحبّةُ في الأسفل');
+      expect(dot.overlaps(glyph.inflate(14)), isTrue, reason: 'الحبّةُ تطفو بعيداً عن مربّعها');
+      expect(find.text('9+'), findsOneWidget, reason: 'زال الرقمُ من الحبّة');
     });
   });
 }

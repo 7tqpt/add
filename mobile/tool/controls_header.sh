@@ -93,10 +93,8 @@ run "هـ) لا سطحَ أبداً ولو مرّ المحتوى" sub "$KIT" \
 
 # هـ٢) التمويهُ يعمل في الحالتين — فتبيضّ حافّتُه فوق شاشةٍ لم تُمرَّر.
 run "هـ٢) تمويهٌ يعمل بلا سطح" sub "$KIT" \
-  'sigmaX: scrolled ? 20 : 0,
-          sigmaY: scrolled ? 20 : 0,' \
-  'sigmaX: 20,
-          sigmaY: 20,'
+  'filter: ImageFilter.blur(sigmaX: scrolled ? 20 : 0, sigmaY: scrolled ? 20 : 0),' \
+  'filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),'
 
 # و) الشعرةُ لا تظهر.
 run "و) لا شعرةَ تفصل الرأسَ عن المحتوى" sub "$KIT" \
@@ -118,22 +116,34 @@ run "ط) المحتوى يبدأ خلف الزجاج" sub "$KIT" \
   'const double glassHeaderSpace = glassHeaderBar + Space.sm;' \
   'const double glassHeaderSpace = glassHeaderBar;'
 
-# ي) القرصُ الأبيضُ يعود تحت الرموز.
-run "ي) عودةُ القرص الأبيض تحت الرمز" sub "$KIT" \
-  'style: IconButton.styleFrom(foregroundColor: AppColors.ink2),' \
-  'style: IconButton.styleFrom(foregroundColor: AppColors.ink2, backgroundColor: Colors.white),'
+# ي) المربّعُ البيجيُّ يصير قرصاً أبيض — «نفذ لي هذا» أراد مربّعاً بيجيّاً.
+run "ي) قرصٌ أبيضُ بدل المربّع البيجيّ" sub "$KIT" \
+  'backgroundColor: AppColors.surface2,' \
+  'backgroundColor: Colors.white,'
 
-# ك) الرمزُ يُصبغ أبيضَ — وهو ما كان يمرّ حين كانت الألوانُ تُقرأ من اللوح.
+# ك) الرمزُ يُصبغ أبيضَ على المربّع — وهو ما كان يمرّ حين كانت الألوانُ تُقرأ من اللوح.
 run "ك) رمزٌ أبيضُ لا يُقرأ" sub "$KIT" \
-  'style: IconButton.styleFrom(foregroundColor: AppColors.ink2),' \
-  'style: IconButton.styleFrom(foregroundColor: Colors.white),'
+  'foregroundColor: AppColors.accent,
+          backgroundColor: AppColors.surface2,' \
+  'foregroundColor: Colors.white,
+          backgroundColor: AppColors.surface2,'
 
-# ل) حبّةُ العدد تطفو بعيداً عن رمزها.
-run "ل) الحبّةُ تطفو بعيداً عن رمزها" sub "$KIT" \
-  'top: 7,
-          left: 7,' \
-  'top: -30,
-          left: -30,'
+# ك٢) المربّعُ يصير شفّافاً — فيُقرأ الرمزُ النبيذيُّ على ما تحت الزجاج.
+run "ك٢) مربّعٌ شفّاف" sub "$KIT" \
+  'backgroundColor: AppColors.surface2,' \
+  'backgroundColor: AppColors.surface2.withValues(alpha: 0.4),'
+
+# ك٣) المربّعُ يصير دائرة.
+run "ك٣) دائرةٌ لا مربّع" sub "$KIT" \
+  'shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),' \
+  'shape: const CircleBorder(),'
+
+# ل) حبّةُ العدد تنتقل إلى الركن الأيسر.
+run "ل) الحبّةُ على اليسار" sub "$KIT" \
+  'top: -2,
+          right: -2,' \
+  'top: -2,
+          left: -2,'
 
 echo
 echo "== الحصيلة: $PASS سقطت، $FAIL لم تسقط =="
