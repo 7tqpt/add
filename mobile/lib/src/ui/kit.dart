@@ -2881,25 +2881,29 @@ class BadgeIconButton extends StatelessWidget {
       IconButton(
         onPressed: onTap,
         tooltip: tooltip,
-        // **ولا قرصَ أبيضَ تحتها.** كان تحت كلّ رمزٍ قرصٌ شفّافٌ يقول
-        // «زجاج»، فصار في الشريط قرصان وحبّتا عددٍ في ستٍّ وتسعين بكسلاً —
-        // أربعةُ أشكالٍ متجاورةٍ تُقرأ ضجيجاً. والزجاجيّةُ موضعُها السطحُ
-        // نفسُه لا ما تحت كل رمز.
+        // **مربّعٌ بيجيٌّ مستديرٌ تحت الرمز، والرمزُ نبيذيّ** — على صورةٍ أرسلها
+        // صاحبُ المنصّة: «نفذ لي هذا». وكان قبلها رمزاً عارياً بلون `ink2`
+        // بعد أن رُفع قرصٌ أبيضُ شفّافٌ كان تحته؛ والمربّعُ غيرُ ذلك القرص:
+        // معتمٌ بلون `surface2`، فالرمزُ يُقرأ عليه وحدَه أيّاً كان ما تحت الزجاج.
         //
-        // واللون كما هو مقيسٌ: `ink2` على أرضيّة الصفحة ‎٩٫٥٨:١‎، وعلى
-        // الزجاج حين تمرّ البطاقةُ النبيذيّة تحته ‎٧٫٣٧:١‎ — والقياسُ في
-        // `header_test.dart` يُحسب لا يُنقل.
-        style: IconButton.styleFrom(foregroundColor: AppColors.ink2),
+        // والتباينُ مقيسٌ في `header_test.dart`: النبيذيُّ على `surface2`.
+        style: IconButton.styleFrom(
+          foregroundColor: AppColors.accent,
+          backgroundColor: AppColors.surface2,
+          fixedSize: const Size(42, 42),
+          minimumSize: const Size(42, 42),
+          padding: EdgeInsets.zero,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        ),
         icon: Icon(icon, size: 23),
       ),
       if (count > 0)
-        // على ركن الرمز لا على حافّة الزرّ: صندوق `IconButton` ‎٤٨‎ بكسلاً
-        // والرمز ‎٢٣‎ في وسطه، فحبّةٌ عند الحافّة تطفو على بُعد أحد عشر بكسلاً
-        // منه — تُقرأ عائمةً لا تابعةً له، وتزدحم بجارتها حين يكون في الشريط
-        // زرّان. وقد رُئي ذلك في الرسم لا في الشيفرة.
+        // **على ركن المربّع العلويّ الأيمن** — حيث النقطةُ في صورته — والرقمُ
+        // باقٍ فيها كما اختار (ب). وصندوقُ `IconButton` ‎٤٨‎ والمربّعُ ‎٤٢‎ في
+        // وسطه، فركنُه على ثلاثةٍ من الحافّة.
         Positioned(
-          top: 7,
-          left: 7,
+          top: -2,
+          right: -2,
           child: IgnorePointer(child: UnreadDot(count: count)),
         ),
     ],
@@ -2914,7 +2918,8 @@ class ChatIconButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => BadgeIconButton(
-    icon: Icons.forum_outlined,
+    // فقاعةٌ واحدةٌ فيها ثلاثُ نقاط — كما في صورة صاحب المنصّة.
+    icon: Icons.sms_outlined,
     tooltip: tr('المحادثات'),
     count: unread,
     onTap: onTap,

@@ -228,7 +228,7 @@ void main() {
       await tester.pumpWidget(_wrap(CustomerShell(session: _session())));
       await _settle(tester);
 
-      await tester.tap(find.byIcon(Icons.forum_outlined));
+      await tester.tap(find.byIcon(Icons.sms_outlined));
       await _settle(tester);
       expect(find.byType(ConversationsScreen), findsOneWidget);
     });
