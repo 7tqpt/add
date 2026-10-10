@@ -758,7 +758,8 @@ class _Promoted extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        SectionTitle(tr('مزوّدون مميّزون')),
+        // «مقدّم خدمة مميّز» — العنوانُ كما في صورة صاحب المنصّة.
+        SectionTitle(tr('مقدّم خدمة مميّز')),
         const SizedBox(height: Space.sm),
         SizedBox(
           // **والارتفاعُ يتبع خطَّ الجهاز لا يقيّده.**
@@ -773,7 +774,9 @@ class _Promoted extends StatelessWidget {
           // مقصوصاً — وذلك خيرٌ من شريطٍ يبتلع الشاشة.
           //
           // (والفيضُ كشفه اختبارٌ لا عين: ثلاثةُ بكسلاتٍ لا تُرى في لقطة.)
-          height: 96 + 56 * MediaQuery.textScalerOf(context).scale(1).clamp(1.0, 2.0),
+          //
+          // وكبرت الصورةُ من ‎٣٤‎ إلى ‎٦٤‎ والاسمُ والشارة — فزاد الثابتُ والمتمدّد.
+          height: 122 + 60 * MediaQuery.textScalerOf(context).scale(1).clamp(1.0, 2.0),
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             itemCount: promos.length,
@@ -791,73 +794,84 @@ class _Promoted extends StatelessWidget {
                       ),
                     ),
                   ),
+                  // **على صورة صاحب المنصّة:** «عدل لي بطاقة نفس ذي» — كلُّ شيءٍ في
+                  // الوسط، والصورةُ كبيرةٌ وعلامةُ التوثيق على زاويتها، وشارةُ
+                  // القسم مستديرة، وأيقونةُ موقعٍ قبل المحافظة.
                   children: [
-                    // **و`Align` ضرورةٌ لا زينة.** عمودُ `AppCard` يمدّ
-                    // أبناءَه (`stretch`)، فصورةٌ ثابتةُ المقاس تتوسّط
-                    // وحدَها بينما الاسمُ والقسمُ والمحافظةُ إلى الحافّة —
-                    // فتُقرأ البطاقةُ متنافرة. رأيتُها في الرسم لا في
-                    // اختبار.
-                    Align(
-                      alignment: AlignmentDirectional.centerStart,
-                      child: ProviderAvatar(
-                        name: promo.providerName,
-                        imageUrl: Api.avatarUrl(promo.logoPath),
-                        size: 34,
+                    Center(
+                      child: Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          ProviderAvatar(
+                            name: promo.providerName,
+                            imageUrl: Api.avatarUrl(promo.logoPath),
+                            size: 64,
+                          ),
+                          // في زاويتها اليمنى السفلى كما في صورته — «البداية» في العربيّة.
+                          if (promo.verified)
+                            PositionedDirectional(
+                              start: -2,
+                              bottom: -2,
+                              child: Container(
+                                key: const ValueKey('promo-verified'),
+                                padding: const EdgeInsets.all(2),
+                                decoration: const BoxDecoration(
+                                  color: AppColors.surface,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const VerifiedMark(size: 18),
+                              ),
+                            ),
+                        ],
                       ),
                     ),
                     const SizedBox(height: Space.sm),
-                    // الاسمُ والعلامةُ في صفٍّ واحد، و`Flexible` على النصّ
-                    // وحدَه: اسمٌ طويلٌ يقصّ نفسَه ولا يدفع العلامةَ خارج
-                    // البطاقة.
-                    Row(
-                      children: [
-                        Flexible(
-                          child: Text(
-                            promo.providerName,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontSize: 13.5,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.ink,
-                            ),
-                          ),
-                        ),
-                        if (promo.verified) ...[
-                          const SizedBox(width: 4),
-                          const VerifiedMark(size: 14),
-                        ],
-                      ],
+                    // اسمٌ طويلٌ يقصّ نفسَه في سطرٍ واحد.
+                    Text(
+                      promo.providerName,
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.ink,
+                      ),
                     ),
                     if (promo.category.isNotEmpty) ...[
-                      const SizedBox(height: 5),
+                      const SizedBox(height: 6),
                       // شارةُ القسم — وتُقصّ إلى سطرٍ واحد: «تنسيق حفلات
                       // ومناسبات» في مئةٍ وأربعةٍ وستّين بكسلاً تلتفّ سطرين
                       // فتدفع المحافظةَ خارج البطاقة.
-                      Align(
-                        alignment: AlignmentDirectional.centerStart,
+                      Center(
                         child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 7, vertical: 2),
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
                           decoration: BoxDecoration(
                             color: AppColors.accent.withValues(alpha: Tint.chip),
-                            borderRadius: BorderRadius.circular(5),
+                            borderRadius: BorderRadius.circular(999),
                           ),
                           child: Text(
                             promo.category,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
-                              fontSize: 10.5,
-                              fontWeight: FontWeight.w600,
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w700,
                               color: AppColors.accent,
                             ),
                           ),
                         ),
                       ),
                     ],
-                    const SizedBox(height: 5),
-                    Muted(promo.governorate, size: 11, maxLines: 1),
+                    const SizedBox(height: 6),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.location_on, size: 14, color: AppColors.muted),
+                        const SizedBox(width: 3),
+                        Flexible(child: Muted(promo.governorate, size: 11.5, maxLines: 1)),
+                      ],
+                    ),
                   ],
                 ),
               );
